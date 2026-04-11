@@ -4,6 +4,7 @@ import {
   Bell, Settings, ArrowRight, ChevronRight,
   CheckCircle2, Clock, Users, CreditCard,
 } from 'lucide-react';
+import { useSettings } from '../contexts/SettingsContext';
 
 const FILTERS = ['All', 'Active', 'Completed', 'Paid'];
 
@@ -20,8 +21,15 @@ const ACCENT_TEXT = {
   '#F0FDF4': '#166534',
 };
 
+const CARD_COLS = {
+  small: 'grid-cols-3',
+  medium: 'grid-cols-2',
+  large: 'grid-cols-1',
+};
+
 export default function Dashboard({ clients }) {
   const [filter, setFilter] = useState('All');
+  const { settings, formatMoney } = useSettings();
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
@@ -83,6 +91,10 @@ export default function Dashboard({ clients }) {
     .sort((a, b) => b.totalEarned - a.totalEarned)
     .slice(0, 3);
 
+  // Parse dashboard heading (replace literal \n with line breaks)
+  const headingLines = (settings.dashboard_heading || 'Track your\nwork & earnings').split('\\n');
+  const gridCols = CARD_COLS[settings.card_size] || 'grid-cols-2';
+
   return (
     <div className="flex min-h-screen page-enter">
       {/* Main Content */}
@@ -90,8 +102,16 @@ export default function Dashboard({ clients }) {
         {/* Hero heading */}
         <div className="mb-8">
           <h1 className="font-display text-[2.75rem] leading-tight font-bold text-gray-900">
-            Track your<br />work & earnings
+            {headingLines.map((line, i) => (
+              <span key={i}>
+                {i > 0 && <br />}
+                {line}
+              </span>
+            ))}
           </h1>
+          {settings.dashboard_subtitle && (
+            <p className="text-gray-500 text-sm mt-2">{settings.dashboard_subtitle}</p>
+          )}
         </div>
 
         {/* Filter pills */}
@@ -119,7 +139,7 @@ export default function Dashboard({ clients }) {
         <p className="text-sm text-gray-500 font-medium mb-4">Most active</p>
 
         {/* Client cards grid — colorful pastel backgrounds */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className={`grid ${gridCols} gap-4`}>
           {topClients.map((client) => {
             const doneTasks = client.tasks.filter((t) => t.done).length;
             const totalTasks = client.tasks.length;
@@ -147,7 +167,7 @@ export default function Dashboard({ clients }) {
                   {paidAmount > 0 && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white/70 text-success">
                       <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                      ₦{(paidAmount / 1000).toFixed(0)}k
+                      {formatMoney(paidAmount)}
                     </span>
                   )}
                 </div>
@@ -195,7 +215,8 @@ export default function Dashboard({ clients }) {
         {clients.length > 6 && (
           <Link
             to="/clients"
-            className="flex items-center gap-1.5 text-sm text-primary font-medium mt-4 hover:gap-2.5 transition-all"
+            className="flex items-center gap-1.5 text-sm font-medium mt-4 hover:gap-2.5 transition-all"
+            style={{ color: 'var(--accent, #667EEA)' }}
           >
             View all clients <ArrowRight size={14} />
           </Link>
@@ -209,18 +230,29 @@ export default function Dashboard({ clients }) {
           <button className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors">
             <Bell size={16} />
           </button>
-          <button className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors">
+          <Link to="/settings" className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors">
             <Settings size={16} />
-          </button>
+          </Link>
         </div>
 
         {/* Profile card */}
         <div className="bg-white rounded-2xl p-5 shadow-sm mb-4 text-center">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/60 to-purple-400 mx-auto mb-3 flex items-center justify-center text-white text-xl font-display font-bold">
-            A
-          </div>
-          <h3 className="font-display font-bold text-lg text-gray-900">Abiola</h3>
-          <p className="text-xs text-gray-400 mt-0.5">The Arc Company</p>
+          {settings.logo ? (
+            <img
+              src={settings.logo}
+              alt="Logo"
+              className="w-16 h-16 rounded-2xl mx-auto mb-3 object-cover"
+            />
+          ) : (
+            <div
+              className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center text-white text-xl font-display font-bold"
+              style={{ background: `linear-gradient(135deg, var(--accent, #667EEA)99, var(--accent, #667EEA))` }}
+            >
+              {(settings.username || 'A').charAt(0).toUpperCase()}
+            </div>
+          )}
+          <h3 className="font-display font-bold text-lg text-gray-900">{settings.username}</h3>
+          <p className="text-xs text-gray-400 mt-0.5">{settings.company_name}</p>
 
           {/* Quick stats row */}
           <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-gray-100">
@@ -249,13 +281,13 @@ export default function Dashboard({ clients }) {
           </div>
           <Link to="/payments" className="block">
             <p className="font-mono text-xl font-bold text-gray-900 mb-1 truncate">
-              ₦{earnedThisMonth.toLocaleString()}
+              {formatMoney(earnedThisMonth)}
             </p>
-            <p className="text-xs text-success font-medium mb-4">This month</p>
+            <p className="text-xs font-medium mb-4" style={{ color: 'var(--accent, #667EEA)' }}>This month</p>
 
             {/* Mini bar chart */}
             <div className="flex items-end gap-1.5 h-24">
-              {monthlyActivity.map((m, i) => {
+              {monthlyActivity.map((m) => {
                 const isCurrentMonth = m.key === currentMonth;
                 const height = m.earned > 0 ? Math.max((m.earned / maxEarned) * 100, 8) : 4;
                 // Use stacked colored bars like the reference
@@ -278,10 +310,16 @@ export default function Dashboard({ clients }) {
                         />
                       ))}
                       {isCurrentMonth && (
-                        <div className="absolute inset-0 ring-2 ring-primary/40 rounded-md" />
+                        <div
+                          className="absolute inset-0 ring-2 rounded-md"
+                          style={{ '--tw-ring-color': `var(--accent, #667EEA)40` }}
+                        />
                       )}
                     </div>
-                    <span className={`text-[10px] ${isCurrentMonth ? 'text-primary font-semibold' : 'text-gray-400'}`}>
+                    <span
+                      className={`text-[10px] ${isCurrentMonth ? 'font-semibold' : 'text-gray-400'}`}
+                      style={isCurrentMonth ? { color: 'var(--accent, #667EEA)' } : {}}
+                    >
                       {m.label}
                     </span>
                   </div>
@@ -295,7 +333,7 @@ export default function Dashboard({ clients }) {
         <div className="bg-white rounded-2xl p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-semibold text-gray-700">My clients</p>
-            <Link to="/clients" className="text-xs text-primary hover:underline">
+            <Link to="/clients" className="text-xs hover:underline" style={{ color: 'var(--accent, #667EEA)' }}>
               View all
             </Link>
           </div>

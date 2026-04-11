@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Plus, LayoutGrid, List, X, Trash2, Users } from 'lucide-react';
-import { getNextColor } from '../data/defaultClients';
+import { getNextColor, PALETTE } from '../data/defaultClients';
+import { useSettings } from '../contexts/SettingsContext';
 
 const ACCENT_TEXT = {
   '#FDE8E8': '#92400E',
@@ -15,13 +16,27 @@ const ACCENT_TEXT = {
   '#F0FDF4': '#166534',
 };
 
+const CARD_COLS = {
+  small: 'grid-cols-1 md:grid-cols-3 lg:grid-cols-4',
+  medium: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
+  large: 'grid-cols-1 lg:grid-cols-2',
+};
+
+const normalizeHex = (val) => {
+  const trimmed = val.trim();
+  return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+};
+const isValidHex = (val) => /^#[0-9A-Fa-f]{6}$/.test(normalizeHex(val));
+
 export default function Clients({ clients, actions }) {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [showModal, setShowModal] = useState(false);
   const [newName, setNewName] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [selectedColor, setSelectedColor] = useState('');
+  const [customHex, setCustomHex] = useState('');
   const [sortBy, setSortBy] = useState('name');
+  const { settings, formatMoney } = useSettings();
 
   const filtered = clients
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
@@ -30,17 +45,35 @@ export default function Clients({ clients, actions }) {
       return a.name.localeCompare(b.name);
     });
 
+  const openModal = () => {
+    const nextColor = getNextColor(clients);
+    setSelectedColor(nextColor);
+    setCustomHex('');
+    setNewName('');
+    setShowModal(true);
+  };
+
   const handleAddClient = async () => {
     if (!newName.trim()) return;
-    await actions.addClient(newName.trim(), getNextColor(clients));
+    const color = selectedColor || getNextColor(clients);
+    await actions.addClient(newName.trim(), color);
     setNewName('');
+    setCustomHex('');
     setShowModal(false);
+  };
+
+  const handleCustomHexChange = (val) => {
+    setCustomHex(val);
+    if (isValidHex(val)) {
+      setSelectedColor(normalizeHex(val));
+    }
   };
 
   const handleDeleteClient = async (id) => {
     await actions.deleteClient(id);
-    setConfirmDelete(null);
   };
+
+  const gridCols = CARD_COLS[settings.card_size] || CARD_COLS.medium;
 
   return (
     <div className="p-8 page-enter">
@@ -57,7 +90,7 @@ export default function Clients({ clients, actions }) {
             placeholder="Search clients..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-white rounded-full border border-gray-200 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
+            className="w-full pl-9 pr-4 py-2.5 bg-white rounded-full border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/10 transition-all"
           />
         </div>
 
@@ -88,8 +121,9 @@ export default function Clients({ clients, actions }) {
         </div>
 
         <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-full text-sm font-medium hover:bg-gray-800 transition-colors"
+          onClick={openModal}
+          className="flex items-center gap-2 px-5 py-2.5 text-white rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
+          style={{ backgroundColor: 'var(--accent, #667EEA)' }}
         >
           <Plus size={16} />
           Add Client
@@ -98,7 +132,7 @@ export default function Clients({ clients, actions }) {
 
       {/* Grid View */}
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className={`grid ${gridCols} gap-4`}>
           {filtered.map((client) => {
             const totalTasks = client.tasks.length;
             const doneTasks = client.tasks.filter((t) => t.done).length;
@@ -125,7 +159,7 @@ export default function Clients({ clients, actions }) {
                   {paidAmount > 0 && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white/70 text-success">
                       <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                      ₦{(paidAmount / 1000).toFixed(0)}k
+                      {formatMoney(paidAmount)}
                     </span>
                   )}
                 </div>
@@ -157,7 +191,7 @@ export default function Clients({ clients, actions }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(client.id); }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteClient(client.id); }}
                       className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-all"
                       style={{ color: textColor }}
                     >
@@ -214,7 +248,7 @@ export default function Clients({ clients, actions }) {
                   {pct}%
                 </span>
                 <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(client.id); }}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteClient(client.id); }}
                   className="opacity-0 group-hover:opacity-100 transition-all"
                   style={{ color: textColor }}
                 >
@@ -250,15 +284,49 @@ export default function Clients({ clients, actions }) {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddClient()}
-              className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 mb-4"
+              className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/10 mb-4"
             />
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-xs text-gray-400">Color:</span>
-              <div
-                className="w-6 h-6 rounded-full border-2 border-white shadow"
-                style={{ backgroundColor: getNextColor(clients) }}
-              />
+
+            {/* Color picker */}
+            <div className="mb-4">
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Color</p>
+              {/* Palette swatches */}
+              <div className="flex gap-2 flex-wrap mb-3">
+                {PALETTE.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => { setSelectedColor(color); setCustomHex(''); }}
+                    className="w-8 h-8 rounded-full transition-all duration-150 hover:scale-105"
+                    style={{
+                      backgroundColor: color,
+                      outline: selectedColor === color ? `3px solid #6B7280` : '3px solid transparent',
+                      outlineOffset: '2px',
+                    }}
+                  />
+                ))}
+              </div>
+              {/* Custom hex input */}
+              <div className="flex items-center gap-2">
+                {customHex && isValidHex(customHex) && (
+                  <div
+                    className="w-7 h-7 rounded-full flex-shrink-0 border border-gray-200"
+                    style={{ backgroundColor: normalizeHex(customHex) }}
+                  />
+                )}
+                <input
+                  type="text"
+                  placeholder="#hex color"
+                  value={customHex}
+                  onChange={(e) => handleCustomHexChange(e.target.value)}
+                  maxLength={7}
+                  className="w-32 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm font-mono outline-none focus:border-gray-400 transition-all"
+                />
+                {customHex && !isValidHex(customHex) && (
+                  <span className="text-xs text-danger">Invalid hex</span>
+                )}
+              </div>
             </div>
+
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setShowModal(false)}
@@ -269,35 +337,10 @@ export default function Clients({ clients, actions }) {
               <button
                 onClick={handleAddClient}
                 disabled={!newName.trim()}
-                className="px-5 py-2 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-40 transition-all"
+                className="px-5 py-2 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all"
+                style={{ backgroundColor: 'var(--accent, #667EEA)' }}
               >
                 Add Client
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation */}
-      {confirmDelete && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 animate-fadeIn">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl animate-slideDown">
-            <h2 className="font-display text-lg font-semibold mb-2">Delete Client?</h2>
-            <p className="text-sm text-gray-500 mb-5">
-              This will remove the client and all their tasks. This cannot be undone.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setConfirmDelete(null)}
-                className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDeleteClient(confirmDelete)}
-                className="px-5 py-2 bg-danger text-white rounded-xl text-sm font-medium hover:bg-red-400 transition-all"
-              >
-                Delete
               </button>
             </div>
           </div>

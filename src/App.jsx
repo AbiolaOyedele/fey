@@ -1,10 +1,13 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useSupabaseData } from './hooks/useSupabaseData';
+import { useSettings } from './contexts/SettingsContext';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import ClientWorkspace from './pages/ClientWorkspace';
 import Payments from './pages/Payments';
+import Settings from './pages/Settings';
+import ToastContainer from './components/Toast';
 
 export default function App() {
   const {
@@ -12,15 +15,17 @@ export default function App() {
     loading,
     error,
     addClient,
-    deleteClient,
     updateRetainer,
     toggleRetainerPaid,
     addTask,
     updateTask,
     deleteTask,
+    refetch,
   } = useSupabaseData();
 
-  if (loading) {
+  const { settingsLoading, trashClient, trashTask, showToast } = useSettings();
+
+  if (loading || settingsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-appbg">
         <div className="text-center">
@@ -47,14 +52,44 @@ export default function App() {
     );
   }
 
+  // Wrap deleteClient to use trash + toast (trashClient already deletes from DB)
+  const handleDeleteClient = async (clientId) => {
+    const client = clients.find((c) => c.id === clientId);
+    if (!client) return;
+
+    // trashClient handles DB deletion + inserting into trash table
+    const trashItem = await trashClient(client);
+    // Just update local state (don't call deleteClient which would try DB delete again)
+    refetch();
+
+    if (trashItem) {
+      showToast(`"${client.name}" moved to trash`);
+    }
+  };
+
+  // Wrap deleteTask to use trash + toast (trashTask already deletes from DB)
+  const handleDeleteTask = async (clientId, taskId) => {
+    const client = clients.find((c) => c.id === clientId);
+    const task = client?.tasks.find((t) => t.id === taskId);
+    if (!task || !client) return;
+
+    // trashTask handles DB deletion + inserting into trash table
+    await trashTask(task, clientId, client.name);
+    // Just update local state
+    refetch();
+
+    showToast(`"${task.title}" moved to trash`);
+  };
+
   const actions = {
     addClient,
-    deleteClient,
+    deleteClient: handleDeleteClient,
     updateRetainer,
     toggleRetainerPaid,
     addTask,
     updateTask,
-    deleteTask,
+    deleteTask: handleDeleteTask,
+    refetch,
   };
 
   return (
@@ -73,8 +108,10 @@ export default function App() {
               element={<ClientWorkspace clients={clients} actions={actions} />}
             />
             <Route path="/payments" element={<Payments clients={clients} />} />
+            <Route path="/settings" element={<Settings clients={clients} refetch={refetch} />} />
           </Routes>
         </main>
+        <ToastContainer />
       </div>
     </BrowserRouter>
   );

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ChevronUp, Plus, CheckCircle2, Clock, CreditCard } from 'lucide-react';
 import TaskItem from '../components/TaskItem';
+import { useSettings } from '../contexts/SettingsContext';
 
 const ACCENT_TEXT = {
   '#FDE8E8': '#92400E',
@@ -18,6 +19,7 @@ const ACCENT_TEXT = {
 export default function ClientWorkspace({ clients, actions }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { formatMoney } = useSettings();
   const client = clients.find((c) => c.id === id);
   const [newTask, setNewTask] = useState('');
   const [retainerOpen, setRetainerOpen] = useState(false);
@@ -116,8 +118,8 @@ export default function ClientWorkspace({ clients, actions }) {
             <span>
               Monthly Retainer
               {client.retainer > 0 && (
-                <span className="ml-2 font-mono text-primary">
-                  NGN {client.retainer.toLocaleString()}
+                <span className="ml-2 font-mono" style={{ color: 'var(--accent, #667EEA)' }}>
+                  {formatMoney(client.retainer)}
                 </span>
               )}
             </span>
@@ -204,7 +206,8 @@ export default function ClientWorkspace({ clients, actions }) {
             <button
               onClick={handleAddTask}
               disabled={!newTask.trim()}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-40 transition-all"
+              className="flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all"
+              style={{ backgroundColor: 'var(--accent, #667EEA)' }}
             >
               <Plus size={16} />
               Add
@@ -247,14 +250,14 @@ export default function ClientWorkspace({ clients, actions }) {
             <div>
               <p className="text-xs text-gray-400 mb-0.5">Total earned</p>
               <p className="font-mono text-xl font-bold text-success">
-                ₦{totalEarned.toLocaleString()}
+                {formatMoney(totalEarned)}
               </p>
             </div>
             {totalPending > 0 && (
               <div>
                 <p className="text-xs text-gray-400 mb-0.5">Pending</p>
                 <p className="font-mono text-lg font-semibold text-pending">
-                  ₦{totalPending.toLocaleString()}
+                  {formatMoney(totalPending)}
                 </p>
               </div>
             )}

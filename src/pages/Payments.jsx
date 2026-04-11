@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, TrendingUp, Clock } from 'lucide-react';
+import { useSettings } from '../contexts/SettingsContext';
 
 const ACCENT_TEXT = {
   '#FDE8E8': '#92400E',
@@ -16,11 +17,12 @@ const ACCENT_TEXT = {
 
 export default function Payments({ clients }) {
   const [expandedMonth, setExpandedMonth] = useState(null);
+  const { formatMoney, trash } = useSettings();
 
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  // Build monthly breakdown
+  // Build monthly breakdown from active clients
   const monthlyData = {};
 
   clients.forEach((client) => {
@@ -36,6 +38,7 @@ export default function Payments({ clients }) {
           pending: 0,
           retainer: 0,
           tasks: [],
+          isDeleted: false,
         };
       }
       const clientData = monthlyData[month].clients[client.id];
@@ -61,6 +64,7 @@ export default function Payments({ clients }) {
           pending: 0,
           retainer: 0,
           tasks: [],
+          isDeleted: false,
         };
       }
       if (paid) {
@@ -71,6 +75,104 @@ export default function Payments({ clients }) {
     });
   });
 
+  // Also include payment history from trashed clients
+  trash.filter((t) => t.item_type === 'client').forEach((trashItem) => {
+    try {
+      const clientData = JSON.parse(trashItem.item_data);
+      const clientKey = `deleted_${trashItem.id}`;
+
+      (clientData.tasks || []).forEach((task) => {
+        const month = (task.createdAt || task.created_at || '').slice(0, 7);
+        if (!month || (!task.paid && (task.amount || 0) <= 0)) return;
+
+        if (!monthlyData[month]) monthlyData[month] = { earned: 0, pending: 0, clients: {} };
+        if (!monthlyData[month].clients[clientKey]) {
+          monthlyData[month].clients[clientKey] = {
+            id: null,
+            name: clientData.name,
+            color: clientData.color || '#F0FDF4',
+            earned: 0,
+            pending: 0,
+            retainer: 0,
+            tasks: [],
+            isDeleted: true,
+          };
+        }
+        const cd = monthlyData[month].clients[clientKey];
+        if (task.paid) {
+          cd.earned += task.amount || 0;
+          monthlyData[month].earned += task.amount || 0;
+        } else {
+          cd.pending += task.amount || 0;
+          monthlyData[month].pending += task.amount || 0;
+        }
+        cd.tasks.push(task);
+      });
+
+      // Retainer payments from trashed client
+      Object.entries(clientData.retainerPaid || {}).forEach(([month, paid]) => {
+        if (!clientData.retainer || !paid) return;
+        if (!monthlyData[month]) monthlyData[month] = { earned: 0, pending: 0, clients: {} };
+        if (!monthlyData[month].clients[clientKey]) {
+          monthlyData[month].clients[clientKey] = {
+            id: null,
+            name: clientData.name,
+            color: clientData.color || '#F0FDF4',
+            earned: 0,
+            pending: 0,
+            retainer: 0,
+            tasks: [],
+            isDeleted: true,
+          };
+        }
+        monthlyData[month].clients[clientKey].retainer = clientData.retainer;
+        monthlyData[month].clients[clientKey].earned += clientData.retainer;
+        monthlyData[month].earned += clientData.retainer;
+      });
+    } catch {
+      // ignore parse errors
+    }
+  });
+
+  // Also include trashed tasks whose parent client still exists (paid tasks trashed individually)
+  trash.filter((t) => t.item_type === 'task').forEach((trashItem) => {
+    try {
+      const taskData = JSON.parse(trashItem.item_data);
+      const parentClient = clients.find((c) => c.id === taskData.client_id);
+      if (!parentClient) return; // covered by client trash above
+      if (!taskData.paid && (taskData.amount || 0) <= 0) return;
+
+      const month = (taskData.createdAt || '').slice(0, 7);
+      if (!month) return;
+
+      if (!monthlyData[month]) monthlyData[month] = { earned: 0, pending: 0, clients: {} };
+      const clientId = taskData.client_id;
+      if (!monthlyData[month].clients[clientId]) {
+        monthlyData[month].clients[clientId] = {
+          id: clientId,
+          name: parentClient.name,
+          color: parentClient.color,
+          earned: 0,
+          pending: 0,
+          retainer: 0,
+          tasks: [],
+          isDeleted: false,
+        };
+      }
+      const cd = monthlyData[month].clients[clientId];
+      if (taskData.paid) {
+        cd.earned += taskData.amount || 0;
+        monthlyData[month].earned += taskData.amount || 0;
+      } else {
+        cd.pending += taskData.amount || 0;
+        monthlyData[month].pending += taskData.amount || 0;
+      }
+      cd.tasks.push({ ...taskData, id: `trash_${trashItem.id}` });
+    } catch {
+      // ignore
+    }
+  });
+
   const months = Object.entries(monthlyData)
     .filter(([, data]) => data.earned > 0 || data.pending > 0)
     .sort(([a], [b]) => b.localeCompare(a));
@@ -78,7 +180,6 @@ export default function Payments({ clients }) {
   const totalEarned = months.reduce((sum, [, d]) => sum + d.earned, 0);
   const totalPending = months.reduce((sum, [, d]) => sum + d.pending, 0);
 
-  // Earnings for the current month
   const thisMonthData = monthlyData[currentMonth];
   const earnedThisMonth = thisMonthData?.earned || 0;
 
@@ -112,9 +213,12 @@ export default function Payments({ clients }) {
                     onClick={() => setExpandedMonth(isExpanded ? null : month)}
                     className="w-full flex items-center gap-4 px-6 py-5 hover:bg-gray-50 transition-colors"
                   >
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isExpanded ? 'bg-primary/10' : 'bg-gray-100'}`}>
+                    <div
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center ${isExpanded ? '' : 'bg-gray-100'}`}
+                      style={isExpanded ? { backgroundColor: 'var(--accent, #667EEA)15' } : {}}
+                    >
                       {isExpanded ? (
-                        <ChevronDown size={16} className="text-primary" />
+                        <ChevronDown size={16} style={{ color: 'var(--accent, #667EEA)' }} />
                       ) : (
                         <ChevronRight size={16} className="text-gray-400" />
                       )}
@@ -124,7 +228,13 @@ export default function Payments({ clients }) {
                         {label}
                       </span>
                       {isCurrentMonth && (
-                        <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                        <span
+                          className="ml-2 text-xs px-2 py-0.5 rounded-full font-medium"
+                          style={{
+                            backgroundColor: 'var(--accent, #667EEA)15',
+                            color: 'var(--accent, #667EEA)',
+                          }}
+                        >
                           Current
                         </span>
                       )}
@@ -132,12 +242,12 @@ export default function Payments({ clients }) {
                     <div className="flex items-center gap-4">
                       {data.earned > 0 && (
                         <span className="text-sm font-mono font-semibold text-success bg-success/10 px-3 py-1 rounded-lg">
-                          +₦{data.earned.toLocaleString()}
+                          +{formatMoney(data.earned)}
                         </span>
                       )}
                       {data.pending > 0 && (
                         <span className="text-sm font-mono text-pending bg-pending/10 px-3 py-1 rounded-lg">
-                          ₦{data.pending.toLocaleString()}
+                          {formatMoney(data.pending)}
                         </span>
                       )}
                     </div>
@@ -148,32 +258,57 @@ export default function Payments({ clients }) {
                       {clientEntries.map((clientData) => {
                         const textColor = ACCENT_TEXT[clientData.color] || '#374151';
                         return (
-                          <div key={clientData.name}>
-                            <Link
-                              to={`/clients/${clientData.id}`}
-                              className="flex items-center gap-3 mb-2 group"
-                            >
-                              <div
-                                className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
-                                style={{ backgroundColor: clientData.color, color: textColor }}
-                              >
-                                {clientData.name.charAt(0)}
-                              </div>
-                              <span className="text-sm font-semibold text-gray-800 group-hover:text-primary transition-colors">
-                                {clientData.name}
-                              </span>
-                              {clientData.earned > 0 && (
-                                <span className="text-xs font-mono text-success ml-auto">
-                                  +₦{clientData.earned.toLocaleString()}
+                          <div key={clientData.id || clientData.name}>
+                            {/* Client header row */}
+                            {clientData.isDeleted ? (
+                              <div className="flex items-center gap-3 mb-2">
+                                <div
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
+                                  style={{ backgroundColor: clientData.color, color: textColor }}
+                                >
+                                  {clientData.name.charAt(0)}
+                                </div>
+                                <span className="text-sm font-semibold text-gray-800">
+                                  {clientData.name}
                                 </span>
-                              )}
-                            </Link>
+                                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                                  deleted
+                                </span>
+                                {clientData.earned > 0 && (
+                                  <span className="text-xs font-mono text-success ml-auto">
+                                    +{formatMoney(clientData.earned)}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <Link
+                                to={`/clients/${clientData.id}`}
+                                className="flex items-center gap-3 mb-2 group"
+                              >
+                                <div
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
+                                  style={{ backgroundColor: clientData.color, color: textColor }}
+                                >
+                                  {clientData.name.charAt(0)}
+                                </div>
+                                <span className="text-sm font-semibold text-gray-800 group-hover:text-primary transition-colors">
+                                  {clientData.name}
+                                </span>
+                                {clientData.earned > 0 && (
+                                  <span className="text-xs font-mono text-success ml-auto">
+                                    +{formatMoney(clientData.earned)}
+                                  </span>
+                                )}
+                              </Link>
+                            )}
+
+                            {/* Task/retainer breakdown */}
                             <div className="pl-11 space-y-1.5">
                               {clientData.retainer > 0 && (
                                 <div className="flex items-center justify-between text-xs text-gray-500">
                                   <span>Retainer fee</span>
                                   <span className="font-mono text-success">
-                                    ₦{clientData.retainer.toLocaleString()}
+                                    {formatMoney(clientData.retainer)}
                                   </span>
                                 </div>
                               )}
@@ -187,12 +322,8 @@ export default function Payments({ clients }) {
                                     <span className={task.paid ? 'text-gray-600' : 'text-gray-400'}>
                                       {task.title}
                                     </span>
-                                    <span
-                                      className={`font-mono ${
-                                        task.paid ? 'text-success' : 'text-pending'
-                                      }`}
-                                    >
-                                      ₦{task.amount.toLocaleString()}
+                                    <span className={`font-mono ${task.paid ? 'text-success' : 'text-pending'}`}>
+                                      {formatMoney(task.amount)}
                                       {!task.paid && ' (pending)'}
                                     </span>
                                   </div>
@@ -221,7 +352,7 @@ export default function Payments({ clients }) {
             <p className="text-sm font-semibold text-gray-700">Total Earned</p>
           </div>
           <p className="font-mono text-2xl font-bold text-gray-900">
-            ₦{totalEarned.toLocaleString()}
+            {formatMoney(totalEarned)}
           </p>
         </div>
 
@@ -235,23 +366,23 @@ export default function Payments({ clients }) {
               <p className="text-sm font-semibold text-gray-700">Pending</p>
             </div>
             <p className="font-mono text-2xl font-bold text-pending">
-              ₦{totalPending.toLocaleString()}
+              {formatMoney(totalPending)}
             </p>
           </div>
         )}
 
         {/* This month */}
-        <div className="bg-primary/5 rounded-2xl p-5 mb-4">
+        <div className="rounded-2xl p-5 mb-4" style={{ backgroundColor: 'var(--accent, #667EEA)0D' }}>
           <p className="text-sm font-semibold text-gray-700 mb-1">This Month</p>
-          <p className="font-mono text-xl font-bold text-primary">
-            ₦{earnedThisMonth.toLocaleString()}
+          <p className="font-mono text-xl font-bold" style={{ color: 'var(--accent, #667EEA)' }}>
+            {formatMoney(earnedThisMonth)}
           </p>
           <p className="text-xs text-gray-400 mt-1">
             {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </p>
         </div>
 
-        {/* Top clients by earnings */}
+        {/* Top clients by earnings (active only) */}
         <div className="bg-white rounded-2xl p-5 shadow-sm">
           <p className="text-sm font-semibold text-gray-700 mb-4">Top Earners</p>
           <div className="space-y-3">
@@ -281,7 +412,7 @@ export default function Payments({ clients }) {
                       <p className="text-sm font-medium text-gray-900 truncate">{c.name}</p>
                     </div>
                     <span className="text-xs font-mono text-success font-medium">
-                      ₦{(c.totalEarned / 1000).toFixed(0)}k
+                      {formatMoney(c.totalEarned)}
                     </span>
                   </Link>
                 );

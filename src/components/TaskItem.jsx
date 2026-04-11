@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { Trash2, Check } from 'lucide-react';
+import { useSettings } from '../contexts/SettingsContext';
 
 export default function TaskItem({ task, onUpdate, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [deleting, setDeleting] = useState(false);
   const [bouncing, setBouncing] = useState(false);
+  const { settings } = useSettings();
+
+  const currencyLabel = settings.currency === 'USD' ? 'USD' : 'NGN';
 
   const handleDone = () => {
     setBouncing(true);
@@ -86,7 +90,7 @@ export default function TaskItem({ task, onUpdate, onDelete }) {
 
       {/* Amount */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        <span className="text-xs text-gray-400">NGN</span>
+        <span className="text-xs text-gray-400">{currencyLabel}</span>
         <input
           type="number"
           value={task.amount || ''}

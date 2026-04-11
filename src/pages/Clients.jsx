@@ -15,7 +15,7 @@ const ACCENT_TEXT = {
   '#F0FDF4': '#166534',
 };
 
-export default function Clients({ clients, updateClients }) {
+export default function Clients({ clients, actions }) {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [showModal, setShowModal] = useState(false);
@@ -30,23 +30,15 @@ export default function Clients({ clients, updateClients }) {
       return a.name.localeCompare(b.name);
     });
 
-  const addClient = () => {
+  const handleAddClient = async () => {
     if (!newName.trim()) return;
-    const newClient = {
-      id: crypto.randomUUID(),
-      name: newName.trim(),
-      color: getNextColor(clients),
-      retainer: 0,
-      retainerPaid: {},
-      tasks: [],
-    };
-    updateClients((prev) => [...prev, newClient]);
+    await actions.addClient(newName.trim(), getNextColor(clients));
     setNewName('');
     setShowModal(false);
   };
 
-  const deleteClient = (id) => {
-    updateClients((prev) => prev.filter((c) => c.id !== id));
+  const handleDeleteClient = async (id) => {
+    await actions.deleteClient(id);
     setConfirmDelete(null);
   };
 
@@ -257,7 +249,7 @@ export default function Clients({ clients, updateClients }) {
               placeholder="Client name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addClient()}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddClient()}
               className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 mb-4"
             />
             <div className="flex items-center gap-2 mb-4">
@@ -275,7 +267,7 @@ export default function Clients({ clients, updateClients }) {
                 Cancel
               </button>
               <button
-                onClick={addClient}
+                onClick={handleAddClient}
                 disabled={!newName.trim()}
                 className="px-5 py-2 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-40 transition-all"
               >
@@ -302,7 +294,7 @@ export default function Clients({ clients, updateClients }) {
                 Cancel
               </button>
               <button
-                onClick={() => deleteClient(confirmDelete)}
+                onClick={() => handleDeleteClient(confirmDelete)}
                 className="px-5 py-2 bg-danger text-white rounded-xl text-sm font-medium hover:bg-red-400 transition-all"
               >
                 Delete

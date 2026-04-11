@@ -15,7 +15,7 @@ const ACCENT_TEXT = {
   '#F0FDF4': '#166534',
 };
 
-export default function ClientWorkspace({ clients, updateClients }) {
+export default function ClientWorkspace({ clients, actions }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const client = clients.find((c) => c.id === id);
@@ -36,48 +36,36 @@ export default function ClientWorkspace({ clients, updateClients }) {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const textColor = ACCENT_TEXT[client.color] || '#374151';
+  const retainerPaidThisMonth = client.retainerPaid?.[currentMonth] || false;
 
-  const updateClient = (updates) => {
-    updateClients((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...updates } : c))
-    );
-  };
-
-  const addTask = () => {
+  const handleAddTask = async () => {
     if (!newTask.trim()) return;
-    const task = {
-      id: crypto.randomUUID(),
-      title: newTask.trim(),
-      done: false,
-      paid: false,
-      amount: 0,
-      createdAt: new Date().toISOString(),
-    };
-    updateClient({ tasks: [...client.tasks, task] });
+    await actions.addTask(id, newTask.trim());
     setNewTask('');
   };
 
-  const updateTask = (updatedTask) => {
-    updateClient({
-      tasks: client.tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t)),
+  const handleUpdateTask = async (updatedTask) => {
+    await actions.updateTask(id, updatedTask.id, {
+      title: updatedTask.title,
+      done: updatedTask.done,
+      paid: updatedTask.paid,
+      amount: updatedTask.amount,
     });
   };
 
-  const deleteTask = (taskId) => {
-    updateClient({ tasks: client.tasks.filter((t) => t.id !== taskId) });
+  const handleDeleteTask = async (taskId) => {
+    await actions.deleteTask(id, taskId);
   };
 
-  const setRetainer = (amount) => {
-    updateClient({ retainer: parseInt(amount) || 0 });
+  const handleSetRetainer = async (amount) => {
+    await actions.updateRetainer(id, parseInt(amount) || 0);
   };
 
-  const toggleRetainerPaid = () => {
-    const paid = { ...client.retainerPaid };
-    paid[currentMonth] = !paid[currentMonth];
-    updateClient({ retainerPaid: paid });
+  const handleToggleRetainerPaid = async () => {
+    const newPaid = !retainerPaidThisMonth;
+    await actions.toggleRetainerPaid(id, currentMonth, newPaid);
   };
 
-  const retainerPaidThisMonth = client.retainerPaid?.[currentMonth] || false;
   const pendingTasks = client.tasks.filter((t) => !t.done);
   const completedTasks = client.tasks.filter((t) => t.done);
   const totalEarned = client.tasks.filter((t) => t.paid).reduce((s, t) => s + t.amount, 0);
@@ -143,7 +131,7 @@ export default function ClientWorkspace({ clients, updateClients }) {
                   <input
                     type="number"
                     value={client.retainer || ''}
-                    onChange={(e) => setRetainer(e.target.value)}
+                    onChange={(e) => handleSetRetainer(e.target.value)}
                     placeholder="0"
                     className="w-32 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm font-mono outline-none focus:border-primary"
                   />
@@ -153,7 +141,7 @@ export default function ClientWorkspace({ clients, updateClients }) {
                     {now.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                   </span>
                   <button
-                    onClick={toggleRetainerPaid}
+                    onClick={handleToggleRetainerPaid}
                     disabled={!client.retainer}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                       retainerPaidThisMonth
@@ -184,7 +172,7 @@ export default function ClientWorkspace({ clients, updateClients }) {
           {pendingTasks.length > 0 && (
             <div className="mb-4">
               {pendingTasks.map((task) => (
-                <TaskItem key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
+                <TaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={handleDeleteTask} />
               ))}
             </div>
           )}
@@ -194,7 +182,7 @@ export default function ClientWorkspace({ clients, updateClients }) {
             <div className={pendingTasks.length > 0 ? 'border-t border-gray-100 pt-3' : ''}>
               <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 px-4">Completed</p>
               {completedTasks.map((task) => (
-                <TaskItem key={task.id} task={task} onUpdate={updateTask} onDelete={deleteTask} />
+                <TaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={handleDeleteTask} />
               ))}
             </div>
           )}
@@ -210,11 +198,11 @@ export default function ClientWorkspace({ clients, updateClients }) {
               placeholder="Add a new task..."
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addTask()}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
               className="flex-1 px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
             />
             <button
-              onClick={addTask}
+              onClick={handleAddTask}
               disabled={!newTask.trim()}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-40 transition-all"
             >

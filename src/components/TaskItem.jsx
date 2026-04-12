@@ -1,15 +1,48 @@
-import { useState } from 'react';
-import { Trash2, Check } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Trash2, Check, Calendar } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
+
+function formatWithCommas(val) {
+  const num = parseFloat(String(val).replace(/,/g, ''));
+  if (isNaN(num) || num === 0) return '';
+  const rounded = Math.round(num * 100) / 100;
+  const parts = rounded.toString().split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+}
+
+function formatDeadline(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 export default function TaskItem({ task, onUpdate, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [deleting, setDeleting] = useState(false);
   const [bouncing, setBouncing] = useState(false);
-  const { settings } = useSettings();
+  const [amountInput, setAmountInput] = useState('');
+  const [amountEditing, setAmountEditing] = useState(false);
+  const dateInputRef = useRef(null);
+  const { settings, convertAmount } = useSettings();
 
   const currencyLabel = settings.currency === 'USD' ? 'USD' : 'NGN';
+
+  const todayStr = (() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+  })();
+  const isOverdue = task.deadline && !task.done && task.deadline < todayStr;
+  const isToday = task.deadline && task.deadline === todayStr;
+
+  // Sync display amount when task amount/currency or viewing currency changes
+  useEffect(() => {
+    if (!amountEditing) {
+      const converted = convertAmount(task.amount, task.currency);
+      setAmountInput(converted > 0 ? formatWithCommas(converted) : '');
+    }
+  }, [task.amount, task.currency, settings.currency, settings.exchange_rate, amountEditing]); // eslint-disable-line
 
   const handleDone = () => {
     setBouncing(true);
@@ -32,9 +65,23 @@ export default function TaskItem({ task, onUpdate, onDelete }) {
     }
   };
 
-  const handleAmount = (e) => {
-    const val = parseFloat(e.target.value) || 0;
-    onUpdate({ ...task, amount: val, currency: settings.currency });
+  const handleAmountChange = (e) => {
+    const raw = e.target.value.replace(/,/g, '');
+    if (!/^\d*\.?\d*$/.test(raw)) return;
+    const parts = raw.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    setAmountInput(parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0]);
+  };
+
+  const handleAmountBlur = () => {
+    setAmountEditing(false);
+    const raw = parseFloat(amountInput.replace(/,/g, '')) || 0;
+    onUpdate({ ...task, amount: raw, currency: settings.currency });
+    setAmountInput(raw > 0 ? formatWithCommas(raw) : '');
+  };
+
+  const handleDeadlineChange = (e) => {
+    onUpdate({ ...task, deadline: e.target.value || null });
   };
 
   const handleDelete = () => {
@@ -46,62 +93,68 @@ export default function TaskItem({ task, onUpdate, onDelete }) {
     <div
       className={`group flex items-center gap-3 py-3 px-4 rounded-xl hover:bg-gray-50 transition-all duration-150 ${
         deleting ? 'animate-fadeOut' : 'animate-fadeIn'
-      }`}
+      } ${isOverdue ? 'border-l-2 border-red-400 pl-3' : ''}`}
     >
       {/* Done checkbox */}
       <button
         onClick={handleDone}
         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-150 flex-shrink-0 ${
           bouncing ? 'animate-scaleBounce' : ''
-        } ${
-          task.done ? 'text-white' : 'border-gray-300'
-        }`}
+        } ${task.done ? 'text-white' : 'border-gray-300'}`}
         style={task.done
           ? { backgroundColor: 'var(--accent, #667EEA)', borderColor: 'var(--accent, #667EEA)' }
-          : { '--hover-border': 'var(--accent, #667EEA)' }
-        }
+          : {}}
         onMouseEnter={e => { if (!task.done) e.currentTarget.style.borderColor = 'var(--accent, #667EEA)'; }}
         onMouseLeave={e => { if (!task.done) e.currentTarget.style.borderColor = ''; }}
       >
         {task.done && <Check size={12} strokeWidth={3} />}
       </button>
 
-      {/* Title */}
-      {editing ? (
-        <input
-          autoFocus
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={handleTitleBlur}
-          onKeyDown={(e) => e.key === 'Enter' && handleTitleBlur()}
-          className="flex-1 bg-transparent border-b border-primary/30 outline-none text-sm py-0.5 font-medium"
-        />
-      ) : (
-        <span
-          onClick={() => setEditing(true)}
-          className={`flex-1 text-sm font-medium cursor-text ${
-            task.done ? 'line-through text-gray-400' : 'text-gray-800'
-          }`}
-        >
-          {task.title}
-        </span>
-      )}
+      {/* Title + deadline label */}
+      <div className="flex-1 min-w-0">
+        {editing ? (
+          <input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={handleTitleBlur}
+            onKeyDown={(e) => e.key === 'Enter' && handleTitleBlur()}
+            className="w-full bg-transparent border-b border-primary/30 outline-none text-sm py-0.5 font-medium"
+          />
+        ) : (
+          <span
+            onClick={() => setEditing(true)}
+            className={`block text-sm font-medium cursor-text truncate ${
+              task.done ? 'line-through text-gray-400' : 'text-gray-800'
+            }`}
+          >
+            {task.title}
+          </span>
+        )}
+        {task.deadline && (
+          <span className={`text-xs ${
+            isOverdue ? 'text-red-500 font-medium' : isToday ? 'text-amber-500 font-medium' : 'text-gray-400'
+          }`}>
+            Due: {formatDeadline(task.deadline)}
+          </span>
+        )}
+      </div>
 
       {/* Paid dot indicator */}
-      {task.paid && (
-        <span className="w-2 h-2 rounded-full bg-success flex-shrink-0" />
-      )}
+      {task.paid && <span className="w-2 h-2 rounded-full bg-success flex-shrink-0" />}
 
       {/* Amount */}
       <div className="flex items-center gap-1 flex-shrink-0">
         <span className="text-xs text-gray-400">{currencyLabel}</span>
         <input
-          type="number"
-          step="0.01"
-          value={task.amount || ''}
-          onChange={handleAmount}
+          type="text"
+          inputMode="decimal"
+          value={amountInput}
+          onChange={handleAmountChange}
+          onFocus={() => setAmountEditing(true)}
+          onBlur={handleAmountBlur}
           placeholder="0"
-          className="w-20 text-right text-sm font-mono bg-transparent outline-none text-gray-700 placeholder:text-gray-300"
+          className="w-24 text-right text-sm font-mono bg-transparent outline-none text-gray-700 placeholder:text-gray-300"
         />
       </div>
 
@@ -119,6 +172,31 @@ export default function TaskItem({ task, onUpdate, onDelete }) {
       >
         {task.paid ? 'Paid' : 'Unpaid'}
       </button>
+
+      {/* Deadline calendar button */}
+      <div className="relative flex-shrink-0">
+        <button
+          onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
+          className={`transition-colors ${
+            isOverdue
+              ? 'text-red-400 hover:text-red-600'
+              : task.deadline
+              ? 'text-amber-400 hover:text-amber-600'
+              : 'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-500'
+          }`}
+          title={task.deadline ? `Due: ${formatDeadline(task.deadline)}` : 'Set deadline'}
+        >
+          <Calendar size={14} />
+        </button>
+        <input
+          ref={dateInputRef}
+          type="date"
+          value={task.deadline || ''}
+          onChange={handleDeadlineChange}
+          className="absolute inset-0 opacity-0 w-0 h-0 pointer-events-none"
+          tabIndex={-1}
+        />
+      </div>
 
       {/* Delete */}
       <button

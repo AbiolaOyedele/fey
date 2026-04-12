@@ -53,6 +53,7 @@ export default function ClientWorkspace({ clients, actions }) {
       paid: updatedTask.paid,
       amount: updatedTask.amount,
       currency: updatedTask.currency,
+      deadline: updatedTask.deadline,
     });
   };
 

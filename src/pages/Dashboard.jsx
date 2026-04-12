@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bell, Settings, ArrowRight,
   CheckCircle2, Clock, Users, CreditCard, Edit2,
+  AlertTriangle, TriangleAlert, Calendar,
 } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import EditClientModal from '../components/EditClientModal';
 
-const FILTERS = ['All', 'Active', 'Completed', 'Paid'];
+const FILTERS = ['All', 'Active', 'Completed', 'Overdue', 'Unpaid'];
 
-// Darker text colors for each pastel background
 const ACCENT_TEXT = {
   '#FDE8E8': '#92400E',
   '#FEF3C7': '#78350F',
@@ -28,12 +28,46 @@ const CARD_COLS = {
   large: 'grid-cols-1',
 };
 
+function formatDeadline(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function getTodayStr() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+}
+
+function daysDiff(dateStr) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr + 'T00:00:00');
+  return Math.round((today - d) / 86400000);
+}
+
 export default function Dashboard({ clients, actions }) {
   const [filter, setFilter] = useState('All');
   const [editingClient, setEditingClient] = useState(null);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [overdueOpen, setOverdueOpen] = useState(false);
+  const bellRef = useRef(null);
+  const overdueRef = useRef(null);
   const { settings, formatMoney, convertAmount } = useSettings();
+
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const todayStr = getTodayStr();
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
+      if (overdueRef.current && !overdueRef.current.contains(e.target)) setOverdueOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const allTasks = clients.flatMap((c) =>
     c.tasks.map((t) => ({ ...t, clientId: c.id, clientName: c.name, clientColor: c.color }))
@@ -41,6 +75,17 @@ export default function Dashboard({ clients, actions }) {
 
   const tasksDone = allTasks.filter((t) => t.done).length;
   const tasksPending = allTasks.filter((t) => !t.done).length;
+
+  // Deadline groupings for bell
+  const dueTodayTasks = allTasks.filter((t) => !t.done && t.deadline === todayStr);
+  const upcomingTasks = allTasks.filter((t) => !t.done && t.deadline && t.deadline > todayStr)
+    .sort((a, b) => a.deadline.localeCompare(b.deadline))
+    .slice(0, 10);
+  const overdueTasks = allTasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr)
+    .sort((a, b) => a.deadline.localeCompare(b.deadline));
+
+  const bellBadge = dueTodayTasks.length;
+  const overdueBadge = overdueTasks.length;
 
   const earnedThisMonth = clients.reduce((sum, client) => {
     const taskEarnings = client.tasks
@@ -50,21 +95,39 @@ export default function Dashboard({ clients, actions }) {
     return sum + taskEarnings + retainerEarning;
   }, 0);
 
-  // Filter clients
+  // Filter clients for All tab grid
   const filteredClients = clients.filter((c) => {
     if (filter === 'All') return true;
     if (filter === 'Active') return c.tasks.some((t) => !t.done);
     if (filter === 'Completed') return c.tasks.length > 0 && c.tasks.every((t) => t.done);
-    if (filter === 'Paid') return c.tasks.some((t) => t.paid);
+    if (filter === 'Overdue') return c.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
+    if (filter === 'Unpaid') return c.tasks.some((t) => t.done && !t.paid);
     return true;
   });
 
-  // Sort by most tasks for "Most active"
   const topClients = [...filteredClients]
     .sort((a, b) => b.tasks.length - a.tasks.length)
     .slice(0, 6);
 
-  // Activity data for the mini bar chart (last 6 months)
+  // Flat task list for non-All tabs
+  const flatTaskList = filter !== 'All' ? clients.flatMap((c) =>
+    c.tasks
+      .filter((t) => {
+        if (filter === 'Active') return !t.done;
+        if (filter === 'Completed') return t.done;
+        if (filter === 'Overdue') return !t.done && t.deadline && t.deadline < todayStr;
+        if (filter === 'Unpaid') return t.done && !t.paid;
+        return false;
+      })
+      .map((t) => ({ ...t, clientId: c.id, clientName: c.name, clientColor: c.color }))
+  ) : [];
+
+  // Group flat tasks by client
+  const tasksByClient = filter !== 'All' ? clients
+    .map((c) => ({ client: c, tasks: flatTaskList.filter((t) => t.clientId === c.id) }))
+    .filter((g) => g.tasks.length > 0) : [];
+
+  // Activity data for mini bar chart (last 6 months)
   const monthlyActivity = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -81,7 +144,7 @@ export default function Dashboard({ clients, actions }) {
   }
   const maxEarned = Math.max(...monthlyActivity.map((m) => m.earned), 1);
 
-  // Top 3 clients by earnings for "My clients" panel
+  // Top 3 clients by earnings
   const topEarningClients = [...clients]
     .map((c) => ({
       ...c,
@@ -93,7 +156,6 @@ export default function Dashboard({ clients, actions }) {
     .sort((a, b) => b.totalEarned - a.totalEarned)
     .slice(0, 3);
 
-  // Handle both real newlines and legacy literal \n strings
   const heading = (settings.dashboard_heading || 'Track your\nwork & earnings').replace(/\\n/g, '\n');
   const gridCols = CARD_COLS[settings.card_size] || 'grid-cols-2';
 
@@ -115,7 +177,7 @@ export default function Dashboard({ clients, actions }) {
         </div>
 
         {/* Filter pills */}
-        <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1 scrollbar-none">
           {FILTERS.map((f) => (
             <button
               key={f}
@@ -125,125 +187,315 @@ export default function Dashboard({ clients, actions }) {
                   ? 'text-white shadow-sm'
                   : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
               }`}
-              style={filter === f ? { backgroundColor: 'var(--accent, #667EEA)' } : {}}
+              style={filter === f ? { backgroundColor: f === 'Overdue' ? '#EF4444' : 'var(--accent, #667EEA)' } : {}}
             >
               {f === 'All' && <Users size={14} />}
               {f === 'Active' && <Clock size={14} />}
               {f === 'Completed' && <CheckCircle2 size={14} />}
-              {f === 'Paid' && <CreditCard size={14} />}
+              {f === 'Overdue' && <AlertTriangle size={14} />}
+              {f === 'Unpaid' && <CreditCard size={14} />}
               {f}
+              {f === 'Overdue' && overdueBadge > 0 && filter !== 'Overdue' && (
+                <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
+                  {overdueBadge}
+                </span>
+              )}
             </button>
           ))}
         </div>
 
-        {/* Section label */}
-        <p className="text-sm text-gray-500 font-medium mb-4">Most active</p>
+        {/* All tab: client cards grid */}
+        {filter === 'All' && (
+          <>
+            <p className="text-sm text-gray-500 font-medium mb-4">Most active</p>
+            <div className={`grid ${gridCols} gap-4`}>
+              {topClients.map((client) => {
+                const doneTasks = client.tasks.filter((t) => t.done).length;
+                const totalTasks = client.tasks.length;
+                const paidAmount = client.tasks
+                  .filter((t) => t.paid)
+                  .reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
+                const textColor = ACCENT_TEXT[client.color] || '#374151';
+                const hasOverdue = client.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
 
-        {/* Client cards grid — colorful pastel backgrounds */}
-        <div className={`grid ${gridCols} gap-4`}>
-          {topClients.map((client) => {
-            const doneTasks = client.tasks.filter((t) => t.done).length;
-            const totalTasks = client.tasks.length;
-            const paidAmount = client.tasks
-              .filter((t) => t.paid)
-              .reduce((s, t) => s + t.amount, 0);
-            const textColor = ACCENT_TEXT[client.color] || '#374151';
-
-            return (
-              <Link
-                key={client.id}
-                to={`/clients/${client.id}`}
-                className="group rounded-2xl p-5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
-                style={{ backgroundColor: client.color }}
-              >
-                {/* Category badge + rating */}
-                <div className="flex items-center justify-between mb-4">
-                  <span
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-white/60 backdrop-blur-sm"
-                    style={{ color: textColor }}
+                return (
+                  <Link
+                    key={client.id}
+                    to={`/clients/${client.id}`}
+                    className="group rounded-2xl p-5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
+                    style={{ backgroundColor: client.color }}
                   >
-                    <Users size={12} />
-                    {doneTasks}/{totalTasks} tasks
-                  </span>
-                  {paidAmount > 0 && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white/70 text-success">
-                      <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                      {formatMoney(paidAmount)}
-                    </span>
-                  )}
-                </div>
-
-                {/* Client name */}
-                <h3
-                  className="font-display text-xl font-bold mb-1 leading-snug"
-                  style={{ color: textColor }}
-                >
-                  {client.name}
-                </h3>
-
-                {/* Task summary */}
-                <p className="text-sm mb-4 opacity-70" style={{ color: textColor }}>
-                  {doneTasks} completed, {totalTasks - doneTasks} pending
-                </p>
-
-                {/* Bottom row: progress + edit + avatar */}
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 mr-4">
-                    <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-300"
-                        style={{
-                          width: `${totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0}%`,
-                          backgroundColor: textColor,
-                          opacity: 0.5,
-                        }}
-                      />
+                    <div className="flex items-center justify-between mb-4">
+                      <span
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-white/60 backdrop-blur-sm"
+                        style={{ color: textColor }}
+                      >
+                        <Users size={12} />
+                        {doneTasks}/{totalTasks} tasks
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {hasOverdue && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-red-100/80 text-red-600">
+                            <AlertTriangle size={10} />
+                            Overdue
+                          </span>
+                        )}
+                        {paidAmount > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white/70 text-success">
+                            <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                            {formatMoney(paidAmount)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingClient(client); }}
-                      className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-all"
+
+                    <h3
+                      className="font-display text-xl font-bold mb-1 leading-snug"
                       style={{ color: textColor }}
                     >
-                      <Edit2 size={12} />
-                    </button>
+                      {client.name}
+                    </h3>
+                    <p className="text-sm mb-4 opacity-70" style={{ color: textColor }}>
+                      {doneTasks} completed, {totalTasks - doneTasks} pending
+                    </p>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 mr-4">
+                        <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{
+                              width: `${totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0}%`,
+                              backgroundColor: textColor,
+                              opacity: 0.5,
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingClient(client); }}
+                          className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-all"
+                          style={{ color: textColor }}
+                        >
+                          <Edit2 size={12} />
+                        </button>
+                        {client.logo ? (
+                          <img src={client.logo} alt={client.name} className="w-8 h-8 rounded-full object-cover bg-white/50" />
+                        ) : (
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50"
+                            style={{ color: textColor }}
+                          >
+                            {client.name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {clients.length > 6 && (
+              <Link
+                to="/clients"
+                className="flex items-center gap-1.5 text-sm font-medium mt-4 hover:gap-2.5 transition-all"
+                style={{ color: 'var(--accent, #667EEA)' }}
+              >
+                View all clients <ArrowRight size={14} />
+              </Link>
+            )}
+          </>
+        )}
+
+        {/* Non-All tabs: flat task list grouped by client */}
+        {filter !== 'All' && (
+          <div className="space-y-5">
+            {tasksByClient.length === 0 && (
+              <div className="text-center py-16 text-gray-400">
+                <p className="text-lg">No tasks</p>
+                <p className="text-sm mt-1">Nothing to show in the {filter} view</p>
+              </div>
+            )}
+            {tasksByClient.map(({ client, tasks }) => {
+              const textColor = ACCENT_TEXT[client.color] || '#374151';
+              return (
+                <div key={client.id}>
+                  <Link
+                    to={`/clients/${client.id}`}
+                    className="flex items-center gap-2 mb-2 hover:opacity-70 transition-opacity"
+                  >
                     {client.logo ? (
-                      <img src={client.logo} alt={client.name} className="w-8 h-8 rounded-full object-cover bg-white/50" />
+                      <img src={client.logo} alt={client.name} className="w-5 h-5 rounded-md object-cover" />
                     ) : (
                       <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50"
-                        style={{ color: textColor }}
+                        className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold"
+                        style={{ backgroundColor: client.color, color: textColor }}
                       >
                         {client.name.charAt(0)}
                       </div>
                     )}
+                    <span className="text-sm font-semibold text-gray-700">{client.name}</span>
+                    <span className="text-xs text-gray-400">{tasks.length} task{tasks.length !== 1 ? 's' : ''}</span>
+                  </Link>
+                  <div className="space-y-1.5 pl-1">
+                    {tasks.map((task) => {
+                      const isTaskOverdue = task.deadline && task.deadline < todayStr && !task.done;
+                      return (
+                        <div
+                          key={task.id}
+                          className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border-l-4 shadow-sm"
+                          style={{ borderLeftColor: client.color }}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium truncate ${task.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                              {task.title}
+                            </p>
+                            {task.deadline && (
+                              <p className={`text-xs ${isTaskOverdue ? 'text-red-500 font-medium' : task.deadline === todayStr ? 'text-amber-500' : 'text-gray-400'}`}>
+                                {isTaskOverdue ? `${daysDiff(task.deadline)}d overdue` : `Due: ${formatDeadline(task.deadline)}`}
+                              </p>
+                            )}
+                          </div>
+                          {task.amount > 0 && (
+                            <span className="text-xs font-mono text-gray-500 flex-shrink-0">
+                              {formatMoney(convertAmount(task.amount, task.currency))}
+                            </span>
+                          )}
+                          {task.done && (
+                            <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${
+                              task.paid ? 'bg-success/10 text-success' : 'bg-pending/10 text-pending'
+                            }`}>
+                              {task.paid ? 'Paid' : 'Unpaid'}
+                            </span>
+                          )}
+                          {isTaskOverdue && (
+                            <AlertTriangle size={13} className="text-red-400 flex-shrink-0" />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* "View all clients" link */}
-        {clients.length > 6 && (
-          <Link
-            to="/clients"
-            className="flex items-center gap-1.5 text-sm font-medium mt-4 hover:gap-2.5 transition-all"
-            style={{ color: 'var(--accent, #667EEA)' }}
-          >
-            View all clients <ArrowRight size={14} />
-          </Link>
+              );
+            })}
+          </div>
         )}
       </div>
 
       {/* Right Summary Panel */}
       <div className="w-[260px] flex-shrink-0 p-4 pl-2 overflow-y-auto overflow-x-hidden">
-        {/* Top bar: bell + settings */}
+        {/* Top bar: overdue + bell + settings */}
         <div className="flex items-center justify-end gap-2 mb-6">
-          <button className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors">
-            <Bell size={16} />
-          </button>
+          {/* Overdue button — only shown when overdue tasks exist */}
+          {overdueBadge > 0 && (
+            <div className="relative" ref={overdueRef}>
+              <button
+                onClick={() => { setOverdueOpen(!overdueOpen); setBellOpen(false); }}
+                className="relative w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 shadow-sm transition-colors"
+              >
+                <TriangleAlert size={16} />
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">
+                  {overdueBadge > 9 ? '9+' : overdueBadge}
+                </span>
+              </button>
+              {overdueOpen && (
+                <div className="absolute right-0 top-11 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="text-sm font-semibold text-red-600">Overdue Tasks</p>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto">
+                    {overdueTasks.map((task) => (
+                      <Link
+                        key={task.id}
+                        to={`/clients/${task.clientId}`}
+                        onClick={() => setOverdueOpen(false)}
+                        className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                      >
+                        <AlertTriangle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{task.title}</p>
+                          <p className="text-xs text-gray-400">{task.clientName}</p>
+                        </div>
+                        <span className="text-xs text-red-500 font-medium flex-shrink-0">
+                          {daysDiff(task.deadline)}d ago
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Bell */}
+          <div className="relative" ref={bellRef}>
+            <button
+              onClick={() => { setBellOpen(!bellOpen); setOverdueOpen(false); }}
+              className="relative w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors"
+            >
+              <Bell size={16} />
+              {bellBadge > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] flex items-center justify-center font-bold">
+                  {bellBadge > 9 ? '9+' : bellBadge}
+                </span>
+              )}
+            </button>
+            {bellOpen && (
+              <div className="absolute right-0 top-11 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <p className="text-sm font-semibold text-gray-700">Upcoming Deadlines</p>
+                </div>
+                {dueTodayTasks.length === 0 && upcomingTasks.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-sm text-gray-400">No upcoming deadlines</div>
+                ) : (
+                  <div className="max-h-72 overflow-y-auto">
+                    {dueTodayTasks.length > 0 && (
+                      <>
+                        <p className="px-4 pt-3 pb-1 text-xs font-semibold text-amber-600 uppercase tracking-wider">Due Today</p>
+                        {dueTodayTasks.map((task) => (
+                          <Link
+                            key={task.id}
+                            to={`/clients/${task.clientId}`}
+                            onClick={() => setBellOpen(false)}
+                            className="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                          >
+                            <Calendar size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-800 truncate">{task.title}</p>
+                              <p className="text-xs text-gray-400">{task.clientName}</p>
+                            </div>
+                          </Link>
+                        ))}
+                      </>
+                    )}
+                    {upcomingTasks.length > 0 && (
+                      <>
+                        <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Upcoming</p>
+                        {upcomingTasks.map((task) => (
+                          <Link
+                            key={task.id}
+                            to={`/clients/${task.clientId}`}
+                            onClick={() => setBellOpen(false)}
+                            className="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                          >
+                            <Calendar size={14} className="text-gray-300 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-800 truncate">{task.title}</p>
+                              <p className="text-xs text-gray-400">{task.clientName}</p>
+                            </div>
+                            <span className="text-xs text-gray-400 flex-shrink-0">{formatDeadline(task.deadline)}</span>
+                          </Link>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <Link to="/settings" className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors">
             <Settings size={16} />
           </Link>
@@ -268,7 +520,6 @@ export default function Dashboard({ clients, actions }) {
           <h3 className="font-display font-bold text-lg text-gray-900">{settings.username}</h3>
           <p className="text-xs text-gray-400 mt-0.5">{settings.company_name}</p>
 
-          {/* Quick stats row */}
           <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-gray-100">
             <Link to="/clients" className="text-center hover:opacity-70 transition-opacity">
               <p className="font-mono font-semibold text-gray-900">{clients.length}</p>
@@ -299,12 +550,10 @@ export default function Dashboard({ clients, actions }) {
             </p>
             <p className="text-xs font-medium mb-4" style={{ color: 'var(--accent, #667EEA)' }}>This month</p>
 
-            {/* Mini bar chart */}
             <div className="flex items-end gap-1.5 h-24">
               {monthlyActivity.map((m) => {
                 const isCurrentMonth = m.key === currentMonth;
                 const height = m.earned > 0 ? Math.max((m.earned / maxEarned) * 100, 8) : 4;
-                // Use stacked colored bars like the reference
                 const colors = ['#FDE8E8', '#D1FAE5', '#DBEAFE', '#EDE9FE', '#FEF3C7'];
                 return (
                   <div key={m.key} className="flex-1 flex flex-col items-center gap-1">

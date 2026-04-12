@@ -24,6 +24,7 @@ function transformClients(clients, tasks, retainerPayments) {
         paid: t.paid,
         amount: Number(t.amount) || 0,
         currency: t.currency || 'NGN',
+        deadline: t.deadline || null,
         createdAt: t.created_at,
       })),
   }));
@@ -175,6 +176,7 @@ export function useSupabaseData() {
     if ('paid' in updates) dbUpdates.paid = updates.paid;
     if ('amount' in updates) dbUpdates.amount = updates.amount;
     if ('currency' in updates) dbUpdates.currency = updates.currency;
+    if ('deadline' in updates) dbUpdates.deadline = updates.deadline;
 
     const { error: err } = await supabase
       .from('tasks')

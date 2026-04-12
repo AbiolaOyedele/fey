@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, LayoutGrid, List, X, Trash2, Users, Edit2, Upload, Image } from 'lucide-react';
+import { Search, Plus, LayoutGrid, List, X, Trash2, Users, Edit2, Upload, Image, AlertTriangle } from 'lucide-react';
 import { getNextColor, PALETTE } from '../data/defaultClients';
 import { useSettings } from '../contexts/SettingsContext';
 import EditClientModal from '../components/EditClientModal';
@@ -41,6 +41,11 @@ export default function Clients({ clients, actions }) {
   const [editingClient, setEditingClient] = useState(null);
   const logoInputRef = useRef(null);
   const { settings, formatMoney } = useSettings();
+
+  const todayStr = (() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+  })();
 
   const filtered = clients
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
@@ -154,6 +159,7 @@ export default function Clients({ clients, actions }) {
             const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
             const paidAmount = client.tasks.filter((t) => t.paid).reduce((s, t) => s + t.amount, 0);
             const textColor = ACCENT_TEXT[client.color] || '#374151';
+            const hasOverdue = client.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
 
             return (
               <Link
@@ -171,12 +177,20 @@ export default function Clients({ clients, actions }) {
                     <Users size={12} />
                     {doneTasks}/{totalTasks} tasks
                   </span>
-                  {paidAmount > 0 && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white/70 text-success">
-                      <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                      {formatMoney(paidAmount)}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {hasOverdue && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-red-100/80 text-red-600">
+                        <AlertTriangle size={10} />
+                        Overdue
+                      </span>
+                    )}
+                    {paidAmount > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white/70 text-success">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                        {formatMoney(paidAmount)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Client name */}
@@ -242,6 +256,7 @@ export default function Clients({ clients, actions }) {
             const doneTasks = client.tasks.filter((t) => t.done).length;
             const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
             const textColor = ACCENT_TEXT[client.color] || '#374151';
+            const hasOverdue = client.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
 
             return (
               <Link
@@ -263,6 +278,12 @@ export default function Clients({ clients, actions }) {
                 <span className="font-display font-semibold w-40 truncate" style={{ color: textColor }}>
                   {client.name}
                 </span>
+                {hasOverdue && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold bg-red-100/80 text-red-600 flex-shrink-0">
+                    <AlertTriangle size={10} />
+                    Overdue
+                  </span>
+                )}
                 <span className="text-sm opacity-70 w-24" style={{ color: textColor }}>
                   {totalTasks} task{totalTasks !== 1 ? 's' : ''}
                 </span>

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
-import { Upload, RefreshCw, Trash2, RotateCcw, X, Palette, User, Image } from 'lucide-react';
+import { Upload, RefreshCw, Trash2, RotateCcw, X, Palette, User, Image, Type } from 'lucide-react';
 
 const THEME_COLORS = [
   '#667EEA', '#F56565', '#ED8936', '#38B2AC',
@@ -34,6 +34,8 @@ export default function Settings({ clients, refetch }) {
   const [refreshing, setRefreshing] = useState(false);
   const [accentHexInput, setAccentHexInput] = useState('');
   const fileInputRef = useRef(null);
+  const bodyFontFileRef = useRef(null);
+  const headingFontFileRef = useRef(null);
 
   const handleLogoUpload = (e) => {
     const file = e.target.files?.[0];
@@ -65,6 +67,34 @@ export default function Settings({ clients, refetch }) {
     if (isValidHex(val)) {
       saveSetting('accent_color', normalizeHex(val));
     }
+  };
+
+  const handleBodyFontUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { showToast('Font file must be under 2MB'); return; }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const fontName = file.name.replace(/\.[^.]+$/, '');
+      saveSetting('custom_font', reader.result);
+      saveSetting('custom_font_name', fontName);
+      saveSetting('font_family', 'custom');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleHeadingFontUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { showToast('Font file must be under 2MB'); return; }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const fontName = file.name.replace(/\.[^.]+$/, '');
+      saveSetting('custom_heading_font', reader.result);
+      saveSetting('custom_heading_font_name', fontName);
+      saveSetting('heading_font', 'custom');
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleRestore = async (item) => {
@@ -241,9 +271,8 @@ export default function Settings({ clients, refetch }) {
               onChange={(e) => saveSetting('dashboard_heading', e.target.value)}
               rows={2}
               className="w-full px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all resize-none"
-              placeholder="Track your\nwork & earnings"
+              placeholder={`Track your\nwork & earnings`}
             />
-            <p className="text-xs text-gray-400 mt-1">Use \n for line breaks</p>
           </div>
 
           {/* Dashboard Subtitle */}
@@ -280,6 +309,72 @@ export default function Settings({ clients, refetch }) {
                   {label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Body Font */}
+          <div>
+            <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">
+              Body Font
+            </label>
+            <select
+              value={settings.font_family || ''}
+              onChange={(e) => saveSetting('font_family', e.target.value)}
+              className="w-full px-3 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all mb-2"
+            >
+              <option value="">Default (DM Sans)</option>
+              {settings.custom_font_name && (
+                <option value="custom">Custom: {settings.custom_font_name}</option>
+              )}
+              <option value="Lato">Lato</option>
+              <option value="Urbanist">Urbanist</option>
+              <option value="Spectral">Spectral</option>
+              <option value="Spectral SC">Spectral SC</option>
+              <option value="Playfair Display">Playfair Display</option>
+            </select>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => bodyFontFileRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <Type size={14} />
+                Upload Body Font
+              </button>
+              <input ref={bodyFontFileRef} type="file" accept=".ttf,.otf,.woff2" onChange={handleBodyFontUpload} className="hidden" />
+              <span className="text-xs text-gray-400">.ttf, .otf, .woff2 — max 2MB</span>
+            </div>
+          </div>
+
+          {/* Heading Font */}
+          <div>
+            <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">
+              Heading Font
+            </label>
+            <select
+              value={settings.heading_font || ''}
+              onChange={(e) => saveSetting('heading_font', e.target.value)}
+              className="w-full px-3 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all mb-2"
+            >
+              <option value="">Default (Fraunces)</option>
+              {settings.custom_heading_font_name && (
+                <option value="custom">Custom: {settings.custom_heading_font_name}</option>
+              )}
+              <option value="Lato">Lato</option>
+              <option value="Urbanist">Urbanist</option>
+              <option value="Spectral">Spectral</option>
+              <option value="Spectral SC">Spectral SC</option>
+              <option value="Playfair Display">Playfair Display</option>
+            </select>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => headingFontFileRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <Type size={14} />
+                Upload Heading Font
+              </button>
+              <input ref={headingFontFileRef} type="file" accept=".ttf,.otf,.woff2" onChange={handleHeadingFontUpload} className="hidden" />
+              <span className="text-xs text-gray-400">.ttf, .otf, .woff2 — max 2MB</span>
             </div>
           </div>
 

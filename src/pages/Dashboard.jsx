@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Bell, Settings, ArrowRight, ChevronRight,
-  CheckCircle2, Clock, Users, CreditCard,
+  Bell, Settings, ArrowRight,
+  CheckCircle2, Clock, Users, CreditCard, Edit2,
 } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
+import EditClientModal from '../components/EditClientModal';
 
 const FILTERS = ['All', 'Active', 'Completed', 'Paid'];
 
@@ -27,8 +28,9 @@ const CARD_COLS = {
   large: 'grid-cols-1',
 };
 
-export default function Dashboard({ clients }) {
+export default function Dashboard({ clients, actions }) {
   const [filter, setFilter] = useState('All');
+  const [editingClient, setEditingClient] = useState(null);
   const { settings, formatMoney } = useSettings();
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -91,8 +93,8 @@ export default function Dashboard({ clients }) {
     .sort((a, b) => b.totalEarned - a.totalEarned)
     .slice(0, 3);
 
-  // Parse dashboard heading (replace literal \n with line breaks)
-  const headingLines = (settings.dashboard_heading || 'Track your\nwork & earnings').split('\\n');
+  // Handle both real newlines and legacy literal \n strings
+  const heading = (settings.dashboard_heading || 'Track your\nwork & earnings').replace(/\\n/g, '\n');
   const gridCols = CARD_COLS[settings.card_size] || 'grid-cols-2';
 
   return (
@@ -101,13 +103,11 @@ export default function Dashboard({ clients }) {
       <div className="flex-1 p-8 pr-4 overflow-y-auto min-w-0">
         {/* Hero heading */}
         <div className="mb-8">
-          <h1 className="font-display text-[2.75rem] leading-tight font-bold text-gray-900">
-            {headingLines.map((line, i) => (
-              <span key={i}>
-                {i > 0 && <br />}
-                {line}
-              </span>
-            ))}
+          <h1
+            className="font-display text-[2.75rem] leading-tight font-bold text-gray-900"
+            style={{ whiteSpace: 'pre-wrap' }}
+          >
+            {heading}
           </h1>
           {settings.dashboard_subtitle && (
             <p className="text-gray-500 text-sm mt-2">{settings.dashboard_subtitle}</p>
@@ -122,9 +122,10 @@ export default function Dashboard({ clients }) {
               onClick={() => setFilter(f)}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
                 filter === f
-                  ? 'bg-gray-900 text-white shadow-sm'
+                  ? 'text-white shadow-sm'
                   : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
               }`}
+              style={filter === f ? { backgroundColor: 'var(--accent, #667EEA)' } : {}}
             >
               {f === 'All' && <Users size={14} />}
               {f === 'Active' && <Clock size={14} />}
@@ -185,7 +186,7 @@ export default function Dashboard({ clients }) {
                   {doneTasks} completed, {totalTasks - doneTasks} pending
                 </p>
 
-                {/* Bottom row: progress + avatar */}
+                {/* Bottom row: progress + edit + avatar */}
                 <div className="flex items-center justify-between">
                   <div className="flex-1 mr-4">
                     <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
@@ -199,11 +200,24 @@ export default function Dashboard({ clients }) {
                       />
                     </div>
                   </div>
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50"
-                    style={{ color: textColor }}
-                  >
-                    {client.name.charAt(0)}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingClient(client); }}
+                      className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-all"
+                      style={{ color: textColor }}
+                    >
+                      <Edit2 size={12} />
+                    </button>
+                    {client.logo ? (
+                      <img src={client.logo} alt={client.name} className="w-8 h-8 rounded-full object-cover bg-white/50" />
+                    ) : (
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50"
+                        style={{ color: textColor }}
+                      >
+                        {client.name.charAt(0)}
+                      </div>
+                    )}
                   </div>
                 </div>
               </Link>
@@ -344,15 +358,19 @@ export default function Dashboard({ clients }) {
                 to={`/clients/${client.id}`}
                 className="flex items-center gap-3 p-2 -mx-2 rounded-xl hover:bg-gray-50 transition-colors"
               >
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
-                  style={{
-                    backgroundColor: client.color,
-                    color: ACCENT_TEXT[client.color] || '#374151',
-                  }}
-                >
-                  {client.name.charAt(0)}
-                </div>
+                {client.logo ? (
+                  <img src={client.logo} alt={client.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
+                ) : (
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
+                    style={{
+                      backgroundColor: client.color,
+                      color: ACCENT_TEXT[client.color] || '#374151',
+                    }}
+                  >
+                    {client.name.charAt(0)}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{client.name}</p>
                   <p className="text-xs text-gray-400">
@@ -375,6 +393,17 @@ export default function Dashboard({ clients }) {
           </div>
         </div>
       </div>
+
+      {editingClient && (
+        <EditClientModal
+          client={editingClient}
+          onClose={() => setEditingClient(null)}
+          onSave={async (updates) => {
+            await actions.updateClient(editingClient.id, updates);
+            setEditingClient(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -98,6 +98,7 @@ function transformClients(clients, tasks, retainerPayments) {
     id: c.id,
     name: c.name,
     color: c.color,
+    logo: c.logo || '',
     retainer: Number(c.retainer) || 0,
     retainerPaid: retainerPayments
       .filter((rp) => rp.client_id === c.id)
@@ -163,10 +164,10 @@ export function useSupabaseData() {
   }, [fetchData]);
 
   // Add a new client
-  const addClient = useCallback(async (name, color) => {
+  const addClient = useCallback(async (name, color, logo = '') => {
     const { data, error: err } = await supabase
       .from('clients')
-      .insert({ name, color, retainer: 0 })
+      .insert({ name, color, logo, retainer: 0 })
       .select()
       .single();
 
@@ -174,8 +175,27 @@ export function useSupabaseData() {
 
     setClients((prev) => [
       ...prev,
-      { id: data.id, name: data.name, color: data.color, retainer: 0, retainerPaid: {}, tasks: [] },
+      { id: data.id, name: data.name, color: data.color, logo: data.logo || '', retainer: 0, retainerPaid: {}, tasks: [] },
     ]);
+  }, []);
+
+  // Update a client's name, color, and/or logo
+  const updateClient = useCallback(async (clientId, updates) => {
+    const dbUpdates = {};
+    if ('name' in updates) dbUpdates.name = updates.name;
+    if ('color' in updates) dbUpdates.color = updates.color;
+    if ('logo' in updates) dbUpdates.logo = updates.logo;
+
+    const { error: err } = await supabase
+      .from('clients')
+      .update(dbUpdates)
+      .eq('id', clientId);
+
+    if (err) { setError(err.message); return; }
+
+    setClients((prev) =>
+      prev.map((c) => (c.id === clientId ? { ...c, ...updates } : c))
+    );
   }, []);
 
   // Delete a client (cascades to tasks and retainer_payments via DB)
@@ -293,6 +313,7 @@ export function useSupabaseData() {
     loading,
     error,
     addClient,
+    updateClient,
     deleteClient,
     updateRetainer,
     toggleRetainerPaid,

@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --body-font: 'DM Sans', 'Noto Sans', sans-serif;
+  --heading-font: 'Fraunces', 'Noto Sans', serif;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -9,7 +14,7 @@
 }
 
 body {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--body-font);
   background-color: #F7F8FA;
   color: #1a1a2e;
   -webkit-font-smoothing: antialiased;
@@ -88,4 +93,14 @@ body {
 /* Page transition */
 .page-enter {
   animation: fadeIn 200ms ease forwards;
+}
+
+/* Heading font — uses CSS variable with Noto Sans fallback for missing glyphs */
+h1, h2, h3, .font-display {
+  font-family: var(--heading-font);
+}
+
+/* Monospace utility uses body font — removes DM Mono, keeps everything consistent */
+.font-mono {
+  font-family: var(--body-font);
 }

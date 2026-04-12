@@ -14,6 +14,12 @@ const DEFAULTS = {
   currency: 'NGN',
   exchange_rate: 1,
   exchange_rate_updated_at: '',
+  font_family: '',
+  custom_font: '',
+  custom_font_name: '',
+  heading_font: '',
+  custom_heading_font: '',
+  custom_heading_font_name: '',
 };
 
 export function SettingsProvider({ children }) {
@@ -79,6 +85,64 @@ export function SettingsProvider({ children }) {
   useEffect(() => {
     document.documentElement.style.setProperty('--accent', settings.accent_color);
   }, [settings.accent_color]);
+
+  // Apply body font via --body-font CSS variable (inherited by all children including font-mono)
+  useEffect(() => {
+    if (!settings.font_family) {
+      document.documentElement.style.setProperty('--body-font', "'DM Sans', 'Noto Sans', sans-serif");
+      return;
+    }
+    if (settings.font_family === 'custom') {
+      if (!settings.custom_font) return;
+      const fontName = settings.custom_font_name || 'CustomBodyFont';
+      let style = document.getElementById('custom-body-font-face');
+      if (!style) {
+        style = document.createElement('style');
+        style.id = 'custom-body-font-face';
+        document.head.appendChild(style);
+      }
+      style.textContent = `@font-face { font-family: '${fontName}'; src: url('${settings.custom_font}'); }`;
+      document.documentElement.style.setProperty('--body-font', `'${fontName}', 'Noto Sans', sans-serif`);
+    } else {
+      const existing = document.getElementById('google-body-font-link');
+      if (existing) existing.remove();
+      const link = document.createElement('link');
+      link.id = 'google-body-font-link';
+      link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${settings.font_family.replace(/ /g, '+')}:wght@400;500;600;700&display=swap`;
+      document.head.appendChild(link);
+      document.documentElement.style.setProperty('--body-font', `'${settings.font_family}', 'Noto Sans', sans-serif`);
+    }
+  }, [settings.font_family, settings.custom_font, settings.custom_font_name]);
+
+  // Apply heading font via --heading-font CSS variable
+  useEffect(() => {
+    if (!settings.heading_font) {
+      document.documentElement.style.setProperty('--heading-font', "'Fraunces', 'Noto Sans', serif");
+      return;
+    }
+    if (settings.heading_font === 'custom') {
+      if (!settings.custom_heading_font) return;
+      const fontName = settings.custom_heading_font_name || 'CustomHeadingFont';
+      let style = document.getElementById('custom-heading-font-face');
+      if (!style) {
+        style = document.createElement('style');
+        style.id = 'custom-heading-font-face';
+        document.head.appendChild(style);
+      }
+      style.textContent = `@font-face { font-family: '${fontName}'; src: url('${settings.custom_heading_font}'); }`;
+      document.documentElement.style.setProperty('--heading-font', `'${fontName}', 'Noto Sans', sans-serif`);
+    } else {
+      const existing = document.getElementById('google-heading-font-link');
+      if (existing) existing.remove();
+      const link = document.createElement('link');
+      link.id = 'google-heading-font-link';
+      link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${settings.heading_font.replace(/ /g, '+')}:wght@400;500;600;700&display=swap`;
+      document.head.appendChild(link);
+      document.documentElement.style.setProperty('--heading-font', `'${settings.heading_font}', 'Noto Sans', sans-serif`);
+    }
+  }, [settings.heading_font, settings.custom_heading_font, settings.custom_heading_font_name]);
 
   // Save a single setting
   const saveSetting = useCallback(async (key, value) => {

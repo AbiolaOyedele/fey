@@ -7,9 +7,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['DM Sans', 'sans-serif'],
-        display: ['Fraunces', 'serif'],
-        mono: ['DM Mono', 'monospace'],
+        sans: ['DM Sans', 'Noto Sans', 'sans-serif'],
+        display: ['Fraunces', 'Noto Sans', 'serif'],
+        mono: ['inherit'],
       },
       colors: {
         primary: '#667EEA',

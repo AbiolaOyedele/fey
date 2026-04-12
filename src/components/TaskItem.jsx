@@ -54,10 +54,14 @@ export default function TaskItem({ task, onUpdate, onDelete }) {
         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-150 flex-shrink-0 ${
           bouncing ? 'animate-scaleBounce' : ''
         } ${
-          task.done
-            ? 'bg-success border-success text-white'
-            : 'border-gray-300 hover:border-primary'
+          task.done ? 'text-white' : 'border-gray-300'
         }`}
+        style={task.done
+          ? { backgroundColor: 'var(--accent, #667EEA)', borderColor: 'var(--accent, #667EEA)' }
+          : { '--hover-border': 'var(--accent, #667EEA)' }
+        }
+        onMouseEnter={e => { if (!task.done) e.currentTarget.style.borderColor = 'var(--accent, #667EEA)'; }}
+        onMouseLeave={e => { if (!task.done) e.currentTarget.style.borderColor = ''; }}
       >
         {task.done && <Check size={12} strokeWidth={3} />}
       </button>

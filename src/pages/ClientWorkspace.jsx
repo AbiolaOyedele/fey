@@ -92,12 +92,20 @@ export default function ClientWorkspace({ clients, actions }) {
           style={{ backgroundColor: client.color }}
         >
           <div className="flex items-center gap-4">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-display font-bold bg-white/50"
-              style={{ color: textColor }}
-            >
-              {client.name.charAt(0)}
-            </div>
+            {client.logo ? (
+              <img
+                src={client.logo}
+                alt={client.name}
+                className="w-14 h-14 rounded-2xl object-cover bg-white/50"
+              />
+            ) : (
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-display font-bold bg-white/50"
+                style={{ color: textColor }}
+              >
+                {client.name.charAt(0)}
+              </div>
+            )}
             <div>
               <h1 className="font-display text-3xl font-bold" style={{ color: textColor }}>
                 {client.name}

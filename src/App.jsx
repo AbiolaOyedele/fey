@@ -15,6 +15,7 @@ export default function App() {
     loading,
     error,
     addClient,
+    updateClient,
     updateRetainer,
     toggleRetainerPaid,
     addTask,
@@ -29,9 +30,7 @@ export default function App() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-appbg">
         <div className="text-center">
-          <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-display font-bold text-sm">W</span>
-          </div>
+          <img src="/favicon.svg" alt="Logo" className="w-10 h-10 rounded-xl mx-auto mb-4" />
           <p className="text-gray-500 text-sm">Loading WorkBoard...</p>
         </div>
       </div>
@@ -83,6 +82,7 @@ export default function App() {
 
   const actions = {
     addClient,
+    updateClient,
     deleteClient: handleDeleteClient,
     updateRetainer,
     toggleRetainerPaid,
@@ -98,7 +98,7 @@ export default function App() {
         <Sidebar />
         <main className="flex-1 ml-[72px] page-enter">
           <Routes>
-            <Route path="/" element={<Dashboard clients={clients} />} />
+            <Route path="/" element={<Dashboard clients={clients} actions={actions} />} />
             <Route
               path="/clients"
               element={<Clients clients={clients} actions={actions} />}

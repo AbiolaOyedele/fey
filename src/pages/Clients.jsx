@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, LayoutGrid, List, X, Trash2, Users } from 'lucide-react';
+import { Search, Plus, LayoutGrid, List, X, Trash2, Users, Edit2, Upload, Image } from 'lucide-react';
 import { getNextColor, PALETTE } from '../data/defaultClients';
 import { useSettings } from '../contexts/SettingsContext';
+import EditClientModal from '../components/EditClientModal';
 
 const ACCENT_TEXT = {
   '#FDE8E8': '#92400E',
@@ -35,7 +36,10 @@ export default function Clients({ clients, actions }) {
   const [newName, setNewName] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [customHex, setCustomHex] = useState('');
+  const [newLogo, setNewLogo] = useState('');
   const [sortBy, setSortBy] = useState('name');
+  const [editingClient, setEditingClient] = useState(null);
+  const logoInputRef = useRef(null);
   const { settings, formatMoney } = useSettings();
 
   const filtered = clients
@@ -50,16 +54,27 @@ export default function Clients({ clients, actions }) {
     setSelectedColor(nextColor);
     setCustomHex('');
     setNewName('');
+    setNewLogo('');
     setShowModal(true);
   };
 
   const handleAddClient = async () => {
     if (!newName.trim()) return;
     const color = selectedColor || getNextColor(clients);
-    await actions.addClient(newName.trim(), color);
+    await actions.addClient(newName.trim(), color, newLogo);
     setNewName('');
     setCustomHex('');
+    setNewLogo('');
     setShowModal(false);
+  };
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 500 * 1024) return;
+    const reader = new FileReader();
+    reader.onloadend = () => setNewLogo(reader.result);
+    reader.readAsDataURL(file);
   };
 
   const handleCustomHexChange = (val) => {
@@ -175,7 +190,7 @@ export default function Clients({ clients, actions }) {
                   {doneTasks} completed, {totalTasks - doneTasks} pending
                 </p>
 
-                {/* Progress + avatar + delete */}
+                {/* Progress + avatar + actions */}
                 <div className="flex items-center justify-between">
                   <div className="flex-1 mr-4">
                     <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
@@ -191,18 +206,29 @@ export default function Clients({ clients, actions }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingClient(client); }}
+                      className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-all"
+                      style={{ color: textColor }}
+                    >
+                      <Edit2 size={12} />
+                    </button>
+                    <button
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteClient(client.id); }}
                       className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-all"
                       style={{ color: textColor }}
                     >
                       <Trash2 size={12} />
                     </button>
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50"
-                      style={{ color: textColor }}
-                    >
-                      {client.name.charAt(0)}
-                    </div>
+                    {client.logo ? (
+                      <img src={client.logo} alt={client.name} className="w-8 h-8 rounded-full object-cover bg-white/50" />
+                    ) : (
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50"
+                        style={{ color: textColor }}
+                      >
+                        {client.name.charAt(0)}
+                      </div>
+                    )}
                   </div>
                 </div>
               </Link>
@@ -224,12 +250,16 @@ export default function Clients({ clients, actions }) {
                 className="group flex items-center gap-4 rounded-2xl px-5 py-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md"
                 style={{ backgroundColor: client.color }}
               >
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 bg-white/50"
-                  style={{ color: textColor }}
-                >
-                  {client.name.charAt(0)}
-                </div>
+                {client.logo ? (
+                  <img src={client.logo} alt={client.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0 bg-white/50" />
+                ) : (
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 bg-white/50"
+                    style={{ color: textColor }}
+                  >
+                    {client.name.charAt(0)}
+                  </div>
+                )}
                 <span className="font-display font-semibold w-40 truncate" style={{ color: textColor }}>
                   {client.name}
                 </span>
@@ -248,6 +278,13 @@ export default function Clients({ clients, actions }) {
                   {pct}%
                 </span>
                 <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingClient(client); }}
+                  className="opacity-0 group-hover:opacity-100 transition-all"
+                  style={{ color: textColor }}
+                >
+                  <Edit2 size={14} />
+                </button>
+                <button
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteClient(client.id); }}
                   className="opacity-0 group-hover:opacity-100 transition-all"
                   style={{ color: textColor }}
@@ -265,6 +302,18 @@ export default function Clients({ clients, actions }) {
           <p className="text-lg">No clients found</p>
           <p className="text-sm mt-1">Try a different search or add a new client</p>
         </div>
+      )}
+
+      {/* Edit Client Modal */}
+      {editingClient && (
+        <EditClientModal
+          client={editingClient}
+          onClose={() => setEditingClient(null)}
+          onSave={async (updates) => {
+            await actions.updateClient(editingClient.id, updates);
+            setEditingClient(null);
+          }}
+        />
       )}
 
       {/* Add Client Modal */}
@@ -286,6 +335,43 @@ export default function Clients({ clients, actions }) {
               onKeyDown={(e) => e.key === 'Enter' && handleAddClient()}
               className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/10 mb-4"
             />
+
+            {/* Logo upload */}
+            <div className="mb-4">
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Client Logo</p>
+              <div className="flex items-center gap-3">
+                {newLogo ? (
+                  <div className="relative group">
+                    <img src={newLogo} alt="Logo" className="w-10 h-10 rounded-xl object-cover border border-gray-200" />
+                    <button
+                      onClick={() => setNewLogo('')}
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={8} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 border border-dashed border-gray-300">
+                    <Image size={16} />
+                  </div>
+                )}
+                <button
+                  onClick={() => logoInputRef.current?.click()}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-600 hover:bg-gray-100 transition-colors"
+                >
+                  <Upload size={12} />
+                  Upload
+                </button>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                />
+                <span className="text-xs text-gray-400">PNG/JPG, max 500KB</span>
+              </div>
+            </div>
 
             {/* Color picker */}
             <div className="mb-4">

@@ -52,7 +52,6 @@ export default function TaskItem({ task, onUpdate, onDelete }) {
   };
 
   const handlePaid = () => {
-    if (!task.done) return;
     onUpdate({ ...task, paid: !task.paid });
   };
 
@@ -161,13 +160,10 @@ export default function TaskItem({ task, onUpdate, onDelete }) {
       {/* Paid toggle */}
       <button
         onClick={handlePaid}
-        disabled={!task.done}
         className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 flex-shrink-0 ${
           task.paid
             ? 'bg-success text-white'
-            : task.done
-            ? 'bg-gray-100 text-gray-500 hover:bg-pending/20 hover:text-pending'
-            : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+            : 'bg-gray-100 text-gray-500 hover:bg-pending/20 hover:text-pending'
         }`}
       >
         {task.paid ? 'Paid' : 'Unpaid'}

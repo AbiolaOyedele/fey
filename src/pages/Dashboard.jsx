@@ -51,6 +51,8 @@ export default function Dashboard({ clients, actions }) {
   const [editingClient, setEditingClient] = useState(null);
   const [bellOpen, setBellOpen] = useState(false);
   const [overdueOpen, setOverdueOpen] = useState(false);
+  const [bellPos, setBellPos] = useState({ top: 0, right: 0 });
+  const [overduePos, setOverduePos] = useState({ top: 0, right: 0 });
   const bellRef = useRef(null);
   const overdueRef = useRef(null);
   const { settings, formatMoney, convertAmount } = useSettings();
@@ -390,9 +392,14 @@ export default function Dashboard({ clients, actions }) {
         <div className="flex items-center justify-end gap-2 mb-6">
           {/* Overdue button — only shown when overdue tasks exist */}
           {overdueBadge > 0 && (
-            <div className="relative" ref={overdueRef}>
+            <div ref={overdueRef}>
               <button
-                onClick={() => { setOverdueOpen(!overdueOpen); setBellOpen(false); }}
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setOverduePos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+                  setOverdueOpen(!overdueOpen);
+                  setBellOpen(false);
+                }}
                 className="relative w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 shadow-sm transition-colors"
               >
                 <TriangleAlert size={16} />
@@ -401,7 +408,10 @@ export default function Dashboard({ clients, actions }) {
                 </span>
               </button>
               {overdueOpen && (
-                <div className="absolute right-0 top-11 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                <div
+                  className="fixed w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-[9999] overflow-hidden"
+                  style={{ top: overduePos.top, right: overduePos.right }}
+                >
                   <div className="px-4 py-3 border-b border-gray-100">
                     <p className="text-sm font-semibold text-red-600">Overdue Tasks</p>
                   </div>
@@ -430,9 +440,14 @@ export default function Dashboard({ clients, actions }) {
           )}
 
           {/* Bell */}
-          <div className="relative" ref={bellRef}>
+          <div ref={bellRef}>
             <button
-              onClick={() => { setBellOpen(!bellOpen); setOverdueOpen(false); }}
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setBellPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+                setBellOpen(!bellOpen);
+                setOverdueOpen(false);
+              }}
               className="relative w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors"
             >
               <Bell size={16} />
@@ -443,7 +458,10 @@ export default function Dashboard({ clients, actions }) {
               )}
             </button>
             {bellOpen && (
-              <div className="absolute right-0 top-11 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+              <div
+                className="fixed w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-[9999] overflow-hidden"
+                style={{ top: bellPos.top, right: bellPos.right }}
+              >
                 <div className="px-4 py-3 border-b border-gray-100">
                   <p className="text-sm font-semibold text-gray-700">Upcoming Deadlines</p>
                 </div>

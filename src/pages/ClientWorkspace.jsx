@@ -19,7 +19,7 @@ const ACCENT_TEXT = {
 export default function ClientWorkspace({ clients, actions }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { formatMoney } = useSettings();
+  const { formatMoney, convertAmount, settings } = useSettings();
   const client = clients.find((c) => c.id === id);
   const [newTask, setNewTask] = useState('');
   const [retainerOpen, setRetainerOpen] = useState(false);
@@ -42,7 +42,7 @@ export default function ClientWorkspace({ clients, actions }) {
 
   const handleAddTask = async () => {
     if (!newTask.trim()) return;
-    await actions.addTask(id, newTask.trim());
+    await actions.addTask(id, newTask.trim(), settings.currency);
     setNewTask('');
   };
 
@@ -52,6 +52,7 @@ export default function ClientWorkspace({ clients, actions }) {
       done: updatedTask.done,
       paid: updatedTask.paid,
       amount: updatedTask.amount,
+      currency: updatedTask.currency,
     });
   };
 
@@ -70,8 +71,8 @@ export default function ClientWorkspace({ clients, actions }) {
 
   const pendingTasks = client.tasks.filter((t) => !t.done);
   const completedTasks = client.tasks.filter((t) => t.done);
-  const totalEarned = client.tasks.filter((t) => t.paid).reduce((s, t) => s + t.amount, 0);
-  const totalPending = client.tasks.filter((t) => !t.paid && t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const totalEarned = client.tasks.filter((t) => t.paid).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
+  const totalPending = client.tasks.filter((t) => !t.paid && t.amount > 0).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
 
   return (
     <div className="flex min-h-screen page-enter">

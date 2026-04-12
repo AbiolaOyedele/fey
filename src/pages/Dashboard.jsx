@@ -31,7 +31,7 @@ const CARD_COLS = {
 export default function Dashboard({ clients, actions }) {
   const [filter, setFilter] = useState('All');
   const [editingClient, setEditingClient] = useState(null);
-  const { settings, formatMoney } = useSettings();
+  const { settings, formatMoney, convertAmount } = useSettings();
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
@@ -45,7 +45,7 @@ export default function Dashboard({ clients, actions }) {
   const earnedThisMonth = clients.reduce((sum, client) => {
     const taskEarnings = client.tasks
       .filter((t) => t.paid && t.createdAt.startsWith(currentMonth))
-      .reduce((s, t) => s + t.amount, 0);
+      .reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
     const retainerEarning = client.retainerPaid?.[currentMonth] ? client.retainer : 0;
     return sum + taskEarnings + retainerEarning;
   }, 0);
@@ -73,7 +73,7 @@ export default function Dashboard({ clients, actions }) {
     const earned = clients.reduce((sum, client) => {
       const te = client.tasks
         .filter((t) => t.paid && t.createdAt.startsWith(key))
-        .reduce((s, t) => s + t.amount, 0);
+        .reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
       const re = client.retainerPaid?.[key] ? client.retainer : 0;
       return sum + te + re;
     }, 0);
@@ -85,7 +85,7 @@ export default function Dashboard({ clients, actions }) {
   const topEarningClients = [...clients]
     .map((c) => ({
       ...c,
-      totalEarned: c.tasks.filter((t) => t.paid).reduce((s, t) => s + t.amount, 0),
+      totalEarned: c.tasks.filter((t) => t.paid).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0),
       completionPct: c.tasks.length > 0
         ? Math.round((c.tasks.filter((t) => t.done).length / c.tasks.length) * 100)
         : 0,
@@ -240,7 +240,7 @@ export default function Dashboard({ clients, actions }) {
       {/* Right Summary Panel */}
       <div className="w-[260px] flex-shrink-0 p-4 pl-2 overflow-y-auto overflow-x-hidden">
         {/* Top bar: bell + settings */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-end gap-2 mb-6">
           <button className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors">
             <Bell size={16} />
           </button>

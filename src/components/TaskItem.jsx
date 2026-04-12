@@ -33,8 +33,8 @@ export default function TaskItem({ task, onUpdate, onDelete }) {
   };
 
   const handleAmount = (e) => {
-    const val = parseInt(e.target.value) || 0;
-    onUpdate({ ...task, amount: val });
+    const val = parseFloat(e.target.value) || 0;
+    onUpdate({ ...task, amount: val, currency: settings.currency });
   };
 
   const handleDelete = () => {
@@ -97,6 +97,7 @@ export default function TaskItem({ task, onUpdate, onDelete }) {
         <span className="text-xs text-gray-400">{currencyLabel}</span>
         <input
           type="number"
+          step="0.01"
           value={task.amount || ''}
           onChange={handleAmount}
           placeholder="0"

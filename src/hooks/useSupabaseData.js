@@ -23,6 +23,7 @@ function transformClients(clients, tasks, retainerPayments) {
         done: t.done,
         paid: t.paid,
         amount: Number(t.amount) || 0,
+        currency: t.currency || 'NGN',
         createdAt: t.created_at,
       })),
   }));
@@ -141,10 +142,10 @@ export function useSupabaseData() {
   }, []);
 
   // Add a task
-  const addTask = useCallback(async (clientId, title) => {
+  const addTask = useCallback(async (clientId, title, currency = 'NGN') => {
     const { data, error: err } = await supabase
       .from('tasks')
-      .insert({ client_id: clientId, title, done: false, paid: false, amount: 0 })
+      .insert({ client_id: clientId, title, done: false, paid: false, amount: 0, currency })
       .select()
       .single();
 
@@ -156,6 +157,7 @@ export function useSupabaseData() {
       done: data.done,
       paid: data.paid,
       amount: Number(data.amount) || 0,
+      currency: data.currency || currency,
       createdAt: data.created_at,
     };
 
@@ -172,6 +174,7 @@ export function useSupabaseData() {
     if ('done' in updates) dbUpdates.done = updates.done;
     if ('paid' in updates) dbUpdates.paid = updates.paid;
     if ('amount' in updates) dbUpdates.amount = updates.amount;
+    if ('currency' in updates) dbUpdates.currency = updates.currency;
 
     const { error: err } = await supabase
       .from('tasks')

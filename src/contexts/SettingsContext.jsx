@@ -167,14 +167,25 @@ export function SettingsProvider({ children }) {
     }
   }, [saveSetting]);
 
-  // Format money based on currency setting
-  const formatMoney = useCallback((amountNGN) => {
-    if (settings.currency === 'USD' && settings.exchange_rate > 0) {
-      const usd = amountNGN / settings.exchange_rate;
-      return `$${usd.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-    }
-    return `₦${amountNGN.toLocaleString()}`;
+  // Convert amount from its stored currency to the currently selected viewing currency
+  const convertAmount = useCallback((amount, storedCurrency) => {
+    const n = Number(amount) || 0;
+    const sc = storedCurrency || 'NGN';
+    if (sc === settings.currency) return n;
+    const rate = Number(settings.exchange_rate) || 1;
+    if (sc === 'NGN' && settings.currency === 'USD') return n / rate;
+    if (sc === 'USD' && settings.currency === 'NGN') return n * rate;
+    return n;
   }, [settings.currency, settings.exchange_rate]);
+
+  // Format money based on currency setting (amount must already be in viewing currency)
+  const formatMoney = useCallback((amount) => {
+    const n = Number(amount) || 0;
+    if (settings.currency === 'USD') {
+      return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    return `₦${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }, [settings.currency]);
 
   // Toast system — returns toast id so callers can dismiss early
   const showToast = useCallback((message, action) => {
@@ -378,6 +389,7 @@ export function SettingsProvider({ children }) {
         settingsLoading,
         saveSetting,
         refreshExchangeRate,
+        convertAmount,
         formatMoney,
         trash,
         trashClient,

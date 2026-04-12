@@ -23,7 +23,7 @@ export default function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-[72px] bg-white border-r border-gray-100 flex flex-col items-center z-10">
       {/* Logo */}
-      <div className="pt-5 pb-4">
+      <div className="pt-5 pb-4 cursor-pointer" onClick={() => window.location.reload()}>
         {settings.logo ? (
           <img
             src={settings.logo}

@@ -17,7 +17,7 @@ const ACCENT_TEXT = {
 
 export default function Payments({ clients }) {
   const [expandedMonth, setExpandedMonth] = useState(null);
-  const { formatMoney, trash } = useSettings();
+  const { formatMoney, convertAmount, trash } = useSettings();
 
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -42,12 +42,13 @@ export default function Payments({ clients }) {
         };
       }
       const clientData = monthlyData[month].clients[client.id];
+      const converted = convertAmount(task.amount, task.currency);
       if (task.paid) {
-        clientData.earned += task.amount;
-        monthlyData[month].earned += task.amount;
+        clientData.earned += converted;
+        monthlyData[month].earned += converted;
       } else if (task.amount > 0) {
-        clientData.pending += task.amount;
-        monthlyData[month].pending += task.amount;
+        clientData.pending += converted;
+        monthlyData[month].pending += converted;
       }
       clientData.tasks.push(task);
     });
@@ -389,7 +390,7 @@ export default function Payments({ clients }) {
             {[...clients]
               .map((c) => ({
                 ...c,
-                totalEarned: c.tasks.filter((t) => t.paid).reduce((s, t) => s + t.amount, 0),
+                totalEarned: c.tasks.filter((t) => t.paid).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0),
               }))
               .filter((c) => c.totalEarned > 0)
               .sort((a, b) => b.totalEarned - a.totalEarned)

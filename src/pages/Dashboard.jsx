@@ -2,13 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bell, Settings, ArrowRight,
-  CheckCircle2, Clock, Users, CreditCard, Edit2,
+  CheckCircle2, Clock, Users, CreditCard,
   AlertTriangle, TriangleAlert, Calendar,
 } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
-import EditClientModal from '../components/EditClientModal';
-
-const FILTERS = ['All', 'Active', 'Completed', 'Overdue', 'Unpaid'];
 
 const ACCENT_TEXT = {
   '#FDE8E8': '#92400E',
@@ -48,7 +45,6 @@ function daysDiff(dateStr) {
 
 export default function Dashboard({ clients, actions }) {
   const [filter, setFilter] = useState('All');
-  const [editingClient, setEditingClient] = useState(null);
   const [bellOpen, setBellOpen] = useState(false);
   const [overdueOpen, setOverdueOpen] = useState(false);
   const [bellPos, setBellPos] = useState({ top: 0, right: 0 });
@@ -89,6 +85,16 @@ export default function Dashboard({ clients, actions }) {
   const bellBadge = dueTodayTasks.length;
   const overdueBadge = overdueTasks.length;
 
+  // Only show Overdue tab when there are overdue tasks
+  const visibleFilters = overdueBadge > 0
+    ? ['All', 'Active', 'Completed', 'Overdue', 'Unpaid']
+    : ['All', 'Active', 'Completed', 'Unpaid'];
+
+  // Reset filter if Overdue tab disappears
+  useEffect(() => {
+    if (filter === 'Overdue' && overdueBadge === 0) setFilter('All');
+  }, [filter, overdueBadge]);
+
   const earnedThisMonth = clients.reduce((sum, client) => {
     const taskEarnings = client.tasks
       .filter((t) => t.paid && t.createdAt.startsWith(currentMonth))
@@ -107,9 +113,7 @@ export default function Dashboard({ clients, actions }) {
     return true;
   });
 
-  const topClients = [...filteredClients]
-    .sort((a, b) => b.tasks.length - a.tasks.length)
-    .slice(0, 6);
+  const topClients = filteredClients.slice(0, 6);
 
   // Flat task list for non-All tabs
   const flatTaskList = filter !== 'All' ? clients.flatMap((c) =>
@@ -180,7 +184,7 @@ export default function Dashboard({ clients, actions }) {
 
         {/* Filter pills */}
         <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1 scrollbar-none">
-          {FILTERS.map((f) => (
+          {visibleFilters.map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -209,7 +213,7 @@ export default function Dashboard({ clients, actions }) {
         {/* All tab: client cards grid */}
         {filter === 'All' && (
           <>
-            <p className="text-sm text-gray-500 font-medium mb-4">Most active</p>
+            <p className="text-sm text-gray-500 font-medium mb-4">Clients</p>
             <div className={`grid ${gridCols} gap-4`}>
               {topClients.map((client) => {
                 const doneTasks = client.tasks.filter((t) => t.done).length;
@@ -275,13 +279,6 @@ export default function Dashboard({ clients, actions }) {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingClient(client); }}
-                          className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-all"
-                          style={{ color: textColor }}
-                        >
-                          <Edit2 size={12} />
-                        </button>
                         {client.logo ? (
                           <img src={client.logo} alt={client.name} className="w-8 h-8 rounded-full object-cover bg-white/50" />
                         ) : (
@@ -661,16 +658,6 @@ export default function Dashboard({ clients, actions }) {
         </div>
       </div>
 
-      {editingClient && (
-        <EditClientModal
-          client={editingClient}
-          onClose={() => setEditingClient(null)}
-          onSave={async (updates) => {
-            await actions.updateClient(editingClient.id, updates);
-            setEditingClient(null);
-          }}
-        />
-      )}
     </div>
   );
 }

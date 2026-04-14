@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 // Transform Supabase rows into the app's data shape
@@ -25,6 +25,7 @@ function transformClients(clients, tasks, retainerPayments) {
         amount: Number(t.amount) || 0,
         currency: t.currency || 'NGN',
         deadline: t.deadline || null,
+        sort_order: t.sort_order ?? 0,
         createdAt: t.created_at,
       })),
   }));
@@ -34,13 +35,19 @@ export function useSupabaseData() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const clientsRef = useRef([]);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    clientsRef.current = clients;
+  }, [clients]);
 
   // Fetch all data
   const fetchData = useCallback(async () => {
     try {
       const [clientsRes, tasksRes, retainerRes] = await Promise.all([
         supabase.from('clients').select('*').order('created_at'),
-        supabase.from('tasks').select('*').order('created_at'),
+        supabase.from('tasks').select('*').order('sort_order', { ascending: true }).order('created_at'),
         supabase.from('retainer_payments').select('*'),
       ]);
 
@@ -99,7 +106,6 @@ export function useSupabaseData() {
 
   // Delete a client (cascades to tasks and retainer_payments via DB)
   const deleteClient = useCallback(async (clientId) => {
-    // Delete tasks and retainer_payments first, then client
     await supabase.from('tasks').delete().eq('client_id', clientId);
     await supabase.from('retainer_payments').delete().eq('client_id', clientId);
     const { error: err } = await supabase.from('clients').delete().eq('id', clientId);
@@ -144,9 +150,15 @@ export function useSupabaseData() {
 
   // Add a task
   const addTask = useCallback(async (clientId, title, currency = 'NGN') => {
+    // Compute sort_order as max existing + 1 so new tasks go to the end
+    const existingClient = clientsRef.current.find((c) => c.id === clientId);
+    const maxSort = existingClient && existingClient.tasks.length > 0
+      ? Math.max(...existingClient.tasks.map((t) => t.sort_order ?? 0)) + 1
+      : 0;
+
     const { data, error: err } = await supabase
       .from('tasks')
-      .insert({ client_id: clientId, title, done: false, paid: false, amount: 0, currency })
+      .insert({ client_id: clientId, title, done: false, paid: false, amount: 0, currency, sort_order: maxSort })
       .select()
       .single();
 
@@ -159,6 +171,8 @@ export function useSupabaseData() {
       paid: data.paid,
       amount: Number(data.amount) || 0,
       currency: data.currency || currency,
+      deadline: data.deadline || null,
+      sort_order: data.sort_order ?? maxSort,
       createdAt: data.created_at,
     };
 
@@ -169,7 +183,6 @@ export function useSupabaseData() {
 
   // Update a task
   const updateTask = useCallback(async (clientId, taskId, updates) => {
-    // Map app field names to DB column names
     const dbUpdates = {};
     if ('title' in updates) dbUpdates.title = updates.title;
     if ('done' in updates) dbUpdates.done = updates.done;
@@ -177,6 +190,7 @@ export function useSupabaseData() {
     if ('amount' in updates) dbUpdates.amount = updates.amount;
     if ('currency' in updates) dbUpdates.currency = updates.currency;
     if ('deadline' in updates) dbUpdates.deadline = updates.deadline;
+    if ('sort_order' in updates) dbUpdates.sort_order = updates.sort_order;
 
     const { error: err } = await supabase
       .from('tasks')
@@ -193,6 +207,27 @@ export function useSupabaseData() {
           tasks: c.tasks.map((t) => (t.id === taskId ? { ...t, ...updates } : t)),
         };
       })
+    );
+  }, []);
+
+  // Reorder tasks within a client — saves sort_order to DB
+  const reorderTasks = useCallback(async (clientId, orderedIds) => {
+    // Optimistic update
+    setClients((prev) =>
+      prev.map((c) => {
+        if (c.id !== clientId) return c;
+        const taskMap = new Map(c.tasks.map((t) => [t.id, t]));
+        return {
+          ...c,
+          tasks: orderedIds.map((id, i) => ({ ...taskMap.get(id), sort_order: i })),
+        };
+      })
+    );
+    // Persist
+    await Promise.all(
+      orderedIds.map((id, i) =>
+        supabase.from('tasks').update({ sort_order: i }).eq('id', id)
+      )
     );
   }, []);
 
@@ -221,6 +256,7 @@ export function useSupabaseData() {
     toggleRetainerPaid,
     addTask,
     updateTask,
+    reorderTasks,
     deleteTask,
     refetch: fetchData,
   };

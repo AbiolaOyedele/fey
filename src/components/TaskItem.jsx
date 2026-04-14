@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Trash2, Check, Calendar } from 'lucide-react';
+import { Trash2, Check, Calendar, GripVertical } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 
 function formatWithCommas(val) {
@@ -17,7 +17,7 @@ function formatDeadline(dateStr) {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export default function TaskItem({ task, onUpdate, onDelete }) {
+export default function TaskItem({ task, onUpdate, onDelete, dragListeners, dragAttributes }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [deleting, setDeleting] = useState(false);
@@ -55,10 +55,15 @@ export default function TaskItem({ task, onUpdate, onDelete }) {
     onUpdate({ ...task, paid: !task.paid });
   };
 
+  const toSentenceCase = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+
   const handleTitleBlur = () => {
     setEditing(false);
-    if (title.trim() && title !== task.title) {
-      onUpdate({ ...task, title: title.trim() });
+    const trimmed = title.trim();
+    if (trimmed && trimmed !== task.title) {
+      const cased = toSentenceCase(trimmed);
+      setTitle(cased);
+      onUpdate({ ...task, title: cased });
     } else {
       setTitle(task.title);
     }
@@ -123,7 +128,7 @@ export default function TaskItem({ task, onUpdate, onDelete }) {
         ) : (
           <span
             onClick={() => setEditing(true)}
-            className={`block text-sm font-medium cursor-text truncate ${
+            className={`block text-sm font-medium cursor-text break-words whitespace-normal min-w-0 ${
               task.done ? 'line-through text-gray-400' : 'text-gray-800'
             }`}
           >
@@ -201,6 +206,18 @@ export default function TaskItem({ task, onUpdate, onDelete }) {
       >
         <Trash2 size={14} />
       </button>
+
+      {/* Drag handle — far right, after trash */}
+      {dragListeners && (
+        <button
+          {...dragListeners}
+          {...dragAttributes}
+          className="opacity-0 group-hover:opacity-40 hover:!opacity-70 transition-opacity cursor-grab active:cursor-grabbing touch-none flex-shrink-0 text-gray-400"
+          tabIndex={-1}
+        >
+          <GripVertical size={14} />
+        </button>
+      )}
     </div>
   );
 }

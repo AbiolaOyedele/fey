@@ -1,3 +1,4 @@
+import { useMemo, useCallback, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useSupabaseData } from './hooks/useSupabaseData';
 import { useSettings } from './contexts/SettingsContext';
@@ -20,11 +21,37 @@ export default function App() {
     toggleRetainerPaid,
     addTask,
     updateTask,
+    reorderTasks,
     deleteTask,
     refetch,
   } = useSupabaseData();
 
-  const { settingsLoading, trashClient, trashTask, showToast } = useSettings();
+  const { settingsLoading, trashClient, trashTask, showToast, settings, saveSetting } = useSettings();
+
+  // Explicit order state — updated immediately on drag, no settings roundtrip needed
+  const [explicitOrder, setExplicitOrder] = useState(null);
+
+  const orderedClients = useMemo(() => {
+    // Prefer the in-memory explicit order (set on drag) over the persisted settings value
+    let order = explicitOrder;
+    if (!order && settings.client_order) {
+      try {
+        const parsed = JSON.parse(settings.client_order);
+        if (Array.isArray(parsed) && parsed.length > 0) order = parsed;
+      } catch { /* ignore */ }
+    }
+    if (!order) return clients;
+    return [...clients].sort((a, b) => {
+      const ai = order.indexOf(a.id);
+      const bi = order.indexOf(b.id);
+      return (ai === -1 ? Infinity : ai) - (bi === -1 ? Infinity : bi);
+    });
+  }, [clients, explicitOrder, settings.client_order]);
+
+  const saveClientOrder = useCallback(async (ids) => {
+    setExplicitOrder(ids);                              // immediate — reorders all consumers at once
+    await saveSetting('client_order', JSON.stringify(ids)); // persist to Supabase
+  }, [saveSetting]);
 
   if (loading || settingsLoading) {
     return (
@@ -88,8 +115,10 @@ export default function App() {
     toggleRetainerPaid,
     addTask,
     updateTask,
+    reorderTasks,
     deleteTask: handleDeleteTask,
     refetch,
+    saveClientOrder,
   };
 
   return (
@@ -98,17 +127,17 @@ export default function App() {
         <Sidebar />
         <main className="flex-1 ml-[72px] page-enter">
           <Routes>
-            <Route path="/" element={<Dashboard clients={clients} actions={actions} />} />
+            <Route path="/" element={<Dashboard clients={orderedClients} actions={actions} />} />
             <Route
               path="/clients"
-              element={<Clients clients={clients} actions={actions} />}
+              element={<Clients clients={orderedClients} actions={actions} />}
             />
             <Route
               path="/clients/:id"
-              element={<ClientWorkspace clients={clients} actions={actions} />}
+              element={<ClientWorkspace clients={orderedClients} actions={actions} />}
             />
-            <Route path="/payments" element={<Payments clients={clients} />} />
-            <Route path="/settings" element={<Settings clients={clients} refetch={refetch} />} />
+            <Route path="/payments" element={<Payments clients={orderedClients} />} />
+            <Route path="/settings" element={<Settings clients={orderedClients} refetch={refetch} />} />
           </Routes>
         </main>
         <ToastContainer />

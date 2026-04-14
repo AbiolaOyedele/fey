@@ -1,9 +1,23 @@
-import { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, Plus, LayoutGrid, List, X, Trash2, Users, Edit2, Upload, Image, AlertTriangle } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Plus, LayoutGrid, List, X, Trash2, Users, Upload, Image, AlertTriangle, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  rectSortingStrategy,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { getNextColor, PALETTE } from '../data/defaultClients';
 import { useSettings } from '../contexts/SettingsContext';
-import EditClientModal from '../components/EditClientModal';
 
 const ACCENT_TEXT = {
   '#FDE8E8': '#92400E',
@@ -15,6 +29,17 @@ const ACCENT_TEXT = {
   '#ECFDF5': '#047857',
   '#FFF7ED': '#9A3412',
   '#F0FDF4': '#166534',
+  '#E0F2FE': '#0C4A6E',
+  '#F5F3FF': '#4C1D95',
+  '#FFF1F2': '#9F1239',
+  '#ECFEFF': '#164E63',
+  '#FEFCE8': '#713F12',
+  '#F7FEE7': '#365314',
+  '#FDF4FF': '#701A75',
+  '#F0F9FF': '#0C4A6E',
+  '#E6FFFA': '#134E4A',
+  '#EEF2FF': '#312E81',
+  '#FFF9F0': '#7C2D12',
 };
 
 const CARD_COLS = {
@@ -29,6 +54,208 @@ const normalizeHex = (val) => {
 };
 const isValidHex = (val) => /^#[0-9A-Fa-f]{6}$/.test(normalizeHex(val));
 
+function SortableGridCard({ client, isDraggingRef, onDelete, formatMoney, todayStr }) {
+  const navigate = useNavigate();
+  const textColor = ACCENT_TEXT[client.color] || '#374151';
+  const totalTasks = client.tasks.length;
+  const doneTasks = client.tasks.filter((t) => t.done).length;
+  const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  const paidAmount = client.tasks.filter((t) => t.paid).reduce((s, t) => s + t.amount, 0);
+  const hasOverdue = client.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: client.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    backgroundColor: client.color,
+  };
+
+  const handleCardClick = () => {
+    if (isDraggingRef.current) return;
+    navigate(`/clients/${client.id}`);
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group rounded-2xl p-5 transition-shadow duration-150 hover:shadow-lg relative overflow-hidden cursor-pointer"
+      onClick={handleCardClick}
+    >
+      {/* Top badges */}
+      <div className="flex items-center justify-between mb-4">
+        <span
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-white/60 backdrop-blur-sm"
+          style={{ color: textColor }}
+        >
+          <Users size={12} />
+          {doneTasks}/{totalTasks} tasks
+        </span>
+        <div className="flex items-center gap-1.5">
+          {hasOverdue && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-red-100/80 text-red-600">
+              <AlertTriangle size={10} />
+              Overdue
+            </span>
+          )}
+          {paidAmount > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white/70 text-success">
+              <span className="w-1.5 h-1.5 rounded-full bg-success" />
+              {formatMoney(paidAmount)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Client name */}
+      <h3 className="font-display text-xl font-bold mb-1" style={{ color: textColor }}>
+        {client.name}
+      </h3>
+      <p className="text-sm mb-4 opacity-70" style={{ color: textColor }}>
+        {doneTasks} completed, {totalTasks - doneTasks} pending
+      </p>
+
+      {/* Progress + avatar + delete */}
+      <div className="flex items-center justify-between">
+        <div className="flex-1 mr-4">
+          <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${pct}%`, backgroundColor: textColor, opacity: 0.5 }}
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            {...listeners}
+            {...attributes}
+            onClick={(e) => e.stopPropagation()}
+            className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-all cursor-grab active:cursor-grabbing touch-none"
+            style={{ color: textColor }}
+          >
+            <GripVertical size={12} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(client.id); }}
+            className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-all"
+            style={{ color: textColor }}
+          >
+            <Trash2 size={12} />
+          </button>
+          {client.logo ? (
+            <img src={client.logo} alt={client.name} className="w-8 h-8 rounded-full object-cover bg-white/50" />
+          ) : (
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50"
+              style={{ color: textColor }}
+            >
+              {client.name.charAt(0)}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SortableListRow({ client, isDraggingRef, onDelete, todayStr }) {
+  const navigate = useNavigate();
+  const textColor = ACCENT_TEXT[client.color] || '#374151';
+  const totalTasks = client.tasks.length;
+  const doneTasks = client.tasks.filter((t) => t.done).length;
+  const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  const hasOverdue = client.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: client.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    backgroundColor: client.color,
+  };
+
+  const handleRowClick = () => {
+    if (isDraggingRef.current) return;
+    navigate(`/clients/${client.id}`);
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group flex items-center gap-4 rounded-2xl px-5 py-4 transition-shadow duration-150 hover:shadow-md cursor-pointer"
+      onClick={handleRowClick}
+    >
+      {client.logo ? (
+        <img src={client.logo} alt={client.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0 bg-white/50" />
+      ) : (
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 bg-white/50"
+          style={{ color: textColor }}
+        >
+          {client.name.charAt(0)}
+        </div>
+      )}
+      <span className="font-display font-semibold w-40 truncate" style={{ color: textColor }}>
+        {client.name}
+      </span>
+      {hasOverdue && (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold bg-red-100/80 text-red-600 flex-shrink-0">
+          <AlertTriangle size={10} />
+          Overdue
+        </span>
+      )}
+      <span className="text-sm opacity-70 w-24" style={{ color: textColor }}>
+        {totalTasks} task{totalTasks !== 1 ? 's' : ''}
+      </span>
+      <div className="flex-1 max-w-xs">
+        <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-300"
+            style={{ width: `${pct}%`, backgroundColor: textColor, opacity: 0.5 }}
+          />
+        </div>
+      </div>
+      <span className="text-sm font-mono opacity-60 w-12 text-right" style={{ color: textColor }}>
+        {pct}%
+      </span>
+      <button
+        {...listeners}
+        {...attributes}
+        onClick={(e) => e.stopPropagation()}
+        className="opacity-0 group-hover:opacity-50 transition-opacity cursor-grab active:cursor-grabbing touch-none flex-shrink-0"
+        style={{ color: textColor }}
+      >
+        <GripVertical size={14} />
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(client.id); }}
+        className="opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+        style={{ color: textColor }}
+      >
+        <Trash2 size={14} />
+      </button>
+    </div>
+  );
+}
+
 export default function Clients({ clients, actions }) {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState('grid');
@@ -38,8 +265,8 @@ export default function Clients({ clients, actions }) {
   const [customHex, setCustomHex] = useState('');
   const [newLogo, setNewLogo] = useState('');
   const [sortBy, setSortBy] = useState('name');
-  const [editingClient, setEditingClient] = useState(null);
   const logoInputRef = useRef(null);
+  const isDraggingRef = useRef(false);
   const { settings, formatMoney } = useSettings();
 
   const todayStr = (() => {
@@ -47,12 +274,35 @@ export default function Clients({ clients, actions }) {
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
   })();
 
-  const filtered = clients
-    .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => {
-      if (sortBy === 'tasks') return b.tasks.length - a.tasks.length;
-      return a.name.localeCompare(b.name);
-    });
+  const dndEnabled = search === '';
+
+  const filtered = dndEnabled
+    ? clients
+    : clients
+        .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
+        .sort((a, b) => {
+          if (sortBy === 'tasks') return b.tasks.length - a.tasks.length;
+          return a.name.localeCompare(b.name);
+        });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const handleDragStart = useCallback(() => {
+    isDraggingRef.current = true;
+  }, []);
+
+  const handleDragEnd = useCallback((event) => {
+    const { active, over } = event;
+    setTimeout(() => { isDraggingRef.current = false; }, 500);
+    if (!over || active.id === over.id) return;
+    const oldIndex = clients.findIndex((c) => c.id === active.id);
+    const newIndex = clients.findIndex((c) => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newOrder = arrayMove(clients, oldIndex, newIndex);
+    actions.saveClientOrder(newOrder.map((c) => c.id));
+  }, [clients, actions]);
 
   const openModal = () => {
     const nextColor = getNextColor(clients);
@@ -94,6 +344,11 @@ export default function Clients({ clients, actions }) {
   };
 
   const gridCols = CARD_COLS[settings.card_size] || CARD_COLS.medium;
+
+  // Palette for Add Client modal: hide used colors (show all if all used)
+  const usedColors = new Set(clients.map((c) => c.color));
+  const availablePalette = PALETTE.filter((c) => !usedColors.has(c));
+  const paletteToShow = availablePalette.length > 0 ? availablePalette : PALETTE;
 
   return (
     <div className="p-8 page-enter">
@@ -152,170 +407,48 @@ export default function Clients({ clients, actions }) {
 
       {/* Grid View */}
       {viewMode === 'grid' ? (
-        <div className={`grid ${gridCols} gap-4`}>
-          {filtered.map((client) => {
-            const totalTasks = client.tasks.length;
-            const doneTasks = client.tasks.filter((t) => t.done).length;
-            const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
-            const paidAmount = client.tasks.filter((t) => t.paid).reduce((s, t) => s + t.amount, 0);
-            const textColor = ACCENT_TEXT[client.color] || '#374151';
-            const hasOverdue = client.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
-
-            return (
-              <Link
-                key={client.id}
-                to={`/clients/${client.id}`}
-                className="group rounded-2xl p-5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
-                style={{ backgroundColor: client.color }}
-              >
-                {/* Top badges */}
-                <div className="flex items-center justify-between mb-4">
-                  <span
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-white/60 backdrop-blur-sm"
-                    style={{ color: textColor }}
-                  >
-                    <Users size={12} />
-                    {doneTasks}/{totalTasks} tasks
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    {hasOverdue && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-red-100/80 text-red-600">
-                        <AlertTriangle size={10} />
-                        Overdue
-                      </span>
-                    )}
-                    {paidAmount > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white/70 text-success">
-                        <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                        {formatMoney(paidAmount)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Client name */}
-                <h3
-                  className="font-display text-xl font-bold mb-1"
-                  style={{ color: textColor }}
-                >
-                  {client.name}
-                </h3>
-                <p className="text-sm mb-4 opacity-70" style={{ color: textColor }}>
-                  {doneTasks} completed, {totalTasks - doneTasks} pending
-                </p>
-
-                {/* Progress + avatar + actions */}
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 mr-4">
-                    <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-300"
-                        style={{
-                          width: `${pct}%`,
-                          backgroundColor: textColor,
-                          opacity: 0.5,
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingClient(client); }}
-                      className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-all"
-                      style={{ color: textColor }}
-                    >
-                      <Edit2 size={12} />
-                    </button>
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteClient(client.id); }}
-                      className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-all"
-                      style={{ color: textColor }}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                    {client.logo ? (
-                      <img src={client.logo} alt={client.name} className="w-8 h-8 rounded-full object-cover bg-white/50" />
-                    ) : (
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50"
-                        style={{ color: textColor }}
-                      >
-                        {client.name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+        <DndContext
+          sensors={dndEnabled ? sensors : []}
+          collisionDetection={closestCenter}
+          onDragStart={dndEnabled ? handleDragStart : undefined}
+          onDragEnd={dndEnabled ? handleDragEnd : undefined}
+        >
+          <SortableContext items={filtered.map((c) => c.id)} strategy={rectSortingStrategy}>
+            <div className={`grid ${gridCols} gap-4`}>
+              {filtered.map((client) => (
+                <SortableGridCard
+                  key={client.id}
+                  client={client}
+                  isDraggingRef={isDraggingRef}
+                  onDelete={handleDeleteClient}
+                  formatMoney={formatMoney}
+                  todayStr={todayStr}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       ) : (
-        <div className="space-y-2">
-          {filtered.map((client) => {
-            const totalTasks = client.tasks.length;
-            const doneTasks = client.tasks.filter((t) => t.done).length;
-            const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
-            const textColor = ACCENT_TEXT[client.color] || '#374151';
-            const hasOverdue = client.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
-
-            return (
-              <Link
-                key={client.id}
-                to={`/clients/${client.id}`}
-                className="group flex items-center gap-4 rounded-2xl px-5 py-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md"
-                style={{ backgroundColor: client.color }}
-              >
-                {client.logo ? (
-                  <img src={client.logo} alt={client.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0 bg-white/50" />
-                ) : (
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 bg-white/50"
-                    style={{ color: textColor }}
-                  >
-                    {client.name.charAt(0)}
-                  </div>
-                )}
-                <span className="font-display font-semibold w-40 truncate" style={{ color: textColor }}>
-                  {client.name}
-                </span>
-                {hasOverdue && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold bg-red-100/80 text-red-600 flex-shrink-0">
-                    <AlertTriangle size={10} />
-                    Overdue
-                  </span>
-                )}
-                <span className="text-sm opacity-70 w-24" style={{ color: textColor }}>
-                  {totalTasks} task{totalTasks !== 1 ? 's' : ''}
-                </span>
-                <div className="flex-1 max-w-xs">
-                  <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-300"
-                      style={{ width: `${pct}%`, backgroundColor: textColor, opacity: 0.5 }}
-                    />
-                  </div>
-                </div>
-                <span className="text-sm font-mono opacity-60 w-12 text-right" style={{ color: textColor }}>
-                  {pct}%
-                </span>
-                <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingClient(client); }}
-                  className="opacity-0 group-hover:opacity-100 transition-all"
-                  style={{ color: textColor }}
-                >
-                  <Edit2 size={14} />
-                </button>
-                <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteClient(client.id); }}
-                  className="opacity-0 group-hover:opacity-100 transition-all"
-                  style={{ color: textColor }}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </Link>
-            );
-          })}
-        </div>
+        <DndContext
+          sensors={dndEnabled ? sensors : []}
+          collisionDetection={closestCenter}
+          onDragStart={dndEnabled ? handleDragStart : undefined}
+          onDragEnd={dndEnabled ? handleDragEnd : undefined}
+        >
+          <SortableContext items={filtered.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {filtered.map((client) => (
+                <SortableListRow
+                  key={client.id}
+                  client={client}
+                  isDraggingRef={isDraggingRef}
+                  onDelete={handleDeleteClient}
+                  todayStr={todayStr}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {filtered.length === 0 && (
@@ -323,18 +456,6 @@ export default function Clients({ clients, actions }) {
           <p className="text-lg">No clients found</p>
           <p className="text-sm mt-1">Try a different search or add a new client</p>
         </div>
-      )}
-
-      {/* Edit Client Modal */}
-      {editingClient && (
-        <EditClientModal
-          client={editingClient}
-          onClose={() => setEditingClient(null)}
-          onSave={async (updates) => {
-            await actions.updateClient(editingClient.id, updates);
-            setEditingClient(null);
-          }}
-        />
       )}
 
       {/* Add Client Modal */}
@@ -397,9 +518,8 @@ export default function Clients({ clients, actions }) {
             {/* Color picker */}
             <div className="mb-4">
               <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Color</p>
-              {/* Palette swatches */}
               <div className="flex gap-2 flex-wrap mb-3">
-                {PALETTE.map((color) => (
+                {paletteToShow.map((color) => (
                   <button
                     key={color}
                     onClick={() => { setSelectedColor(color); setCustomHex(''); }}
@@ -412,7 +532,6 @@ export default function Clients({ clients, actions }) {
                   />
                 ))}
               </div>
-              {/* Custom hex input */}
               <div className="flex items-center gap-2">
                 {customHex && isValidHex(customHex) && (
                   <div

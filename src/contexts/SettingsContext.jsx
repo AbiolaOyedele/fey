@@ -20,6 +20,7 @@ const DEFAULTS = {
   heading_font: '',
   custom_heading_font: '',
   custom_heading_font_name: '',
+  client_order: '',
 };
 
 export function SettingsProvider({ children }) {

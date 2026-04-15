@@ -68,7 +68,7 @@ function SortableGroupCard({ group, isDraggingRef, onDelete }) {
     <div
       ref={setNodeRef}
       style={style}
-      className="group rounded-2xl p-5 cursor-pointer transition-shadow duration-150 hover:shadow-md relative overflow-hidden"
+      className="group rounded-2xl p-4 sm:p-5 cursor-pointer transition-shadow duration-150 hover:shadow-md relative overflow-hidden"
       onClick={handleClick}
     >
       {/* Top row: task count badge */}
@@ -239,15 +239,15 @@ export default function Tasks({ taskGroupData }) {
 
   return (
     <>
-      {/* h-screen so both columns can scroll independently — same as Clients layout approach */}
-      <div className="flex h-screen page-enter overflow-hidden">
+      {/* Responsive layout: stacked on mobile, side-by-side on desktop */}
+      <div className="flex flex-col lg:flex-row lg:h-screen page-enter lg:overflow-hidden">
 
-        {/* ── Left column: standalone tasks (60%) ── */}
-        <div className="overflow-y-auto" style={{ width: '60%', flexShrink: 0 }}>
-          <div className="p-8">
+        {/* ── Left column: standalone tasks ── */}
+        <div className="lg:overflow-y-auto w-full lg:w-[60%] lg:flex-shrink-0">
+          <div className="p-4 lg:p-8">
             {/* Heading */}
             <div className="mb-6">
-              <h1 className="font-display text-[2.75rem] leading-tight font-bold text-gray-900">
+              <h1 className="font-display text-2xl lg:text-[2.75rem] leading-tight font-bold text-gray-900">
                 Tasks
               </h1>
               {standaloneTasks.length > 0 && (
@@ -310,9 +310,9 @@ export default function Tasks({ taskGroupData }) {
           </div>
         </div>
 
-        {/* ── Right column: task groups (40%) ── */}
-        <div className="overflow-y-auto border-l border-gray-100" style={{ width: '40%', flexShrink: 0 }}>
-          <div className="p-6 pb-10">
+        {/* ── Right column: task groups ── */}
+        <div className="lg:overflow-y-auto border-t lg:border-t-0 lg:border-l border-gray-100 w-full lg:w-[40%] lg:flex-shrink-0 rounded-2xl lg:rounded-none mx-0">
+          <div className="p-4 lg:p-6 pb-10">
             {/* Header */}
             <div className="flex items-center justify-between mb-6 pt-2">
               <div>
@@ -349,7 +349,7 @@ export default function Tasks({ taskGroupData }) {
                 onDragEnd={handleGroupDragEnd}
               >
                 <SortableContext items={groups.map((g) => g.id)} strategy={rectSortingStrategy}>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {groups.map((group) => (
                       <SortableGroupCard
                         key={group.id}
@@ -368,8 +368,11 @@ export default function Tasks({ taskGroupData }) {
 
       {/* ── Add Group Modal ── */}
       {showGroupModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 animate-fadeIn">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl animate-slideDown max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/30 flex items-end md:items-center justify-center z-50 animate-fadeIn">
+          <div
+            className="bg-white rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-md shadow-xl animate-slideUp md:animate-slideDown max-h-[85vh] overflow-y-auto"
+            style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+          >
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-display text-xl font-semibold">New Group</h2>
               <button

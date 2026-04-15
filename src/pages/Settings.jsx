@@ -130,13 +130,13 @@ export default function Settings({ clients, refetch }) {
 
   return (
     <>
-      <div className="p-8 page-enter max-w-3xl">
-        <h1 className="font-display text-[2.75rem] leading-tight font-bold text-gray-900 mb-8">
+      <div className="p-4 md:p-6 lg:p-8 page-enter max-w-3xl">
+        <h1 className="font-display text-2xl lg:text-[2.75rem] leading-tight font-bold text-gray-900 mb-6 lg:mb-8">
           Settings
         </h1>
 
         {/* Profile Section */}
-        <section className="bg-white rounded-2xl shadow-sm p-6 mb-4">
+        <section className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 mb-4">
           <div className="flex items-center gap-2 mb-5">
             <User size={18} className="text-gray-400" />
             <h2 className="font-display text-lg font-semibold text-gray-900">Profile</h2>
@@ -164,12 +164,12 @@ export default function Settings({ clients, refetch }) {
         </section>
 
         {/* Workspace Mode Section */}
-        <section className="bg-white rounded-2xl shadow-sm p-6 mb-4">
+        <section className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 mb-4">
           <div className="flex items-center gap-2 mb-5">
             <Monitor size={18} className="text-gray-400" />
             <h2 className="font-display text-lg font-semibold text-gray-900">Workspace Mode</h2>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {APP_MODES.map(({ value, label, description }) => (
               <button
                 key={value}
@@ -198,7 +198,7 @@ export default function Settings({ clients, refetch }) {
         </section>
 
         {/* Appearance Section */}
-        <section className="bg-white rounded-2xl shadow-sm p-6 mb-4">
+        <section className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 mb-4">
           <div className="flex items-center gap-2 mb-5">
             <Palette size={18} className="text-gray-400" />
             <h2 className="font-display text-lg font-semibold text-gray-900">Appearance</h2>
@@ -256,12 +256,12 @@ export default function Settings({ clients, refetch }) {
             {/* Accent Color */}
             <div>
               <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Accent Color</label>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 {THEME_COLORS.map((color) => (
                   <button
                     key={color}
                     onClick={() => { saveSetting('accent_color', color); setAccentHexInput(''); }}
-                    className="w-8 h-8 rounded-full transition-all duration-150 hover:scale-105"
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full transition-all duration-150 hover:scale-105"
                     style={{
                       backgroundColor: color,
                       outline: settings.accent_color === color ? `3px solid ${color}` : '3px solid transparent',
@@ -270,7 +270,7 @@ export default function Settings({ clients, refetch }) {
                   />
                 ))}
               </div>
-              <div className="flex items-center gap-2 mt-3">
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
                 {accentHexInput && isValidHex(accentHexInput) && (
                   <div className="w-7 h-7 rounded-full flex-shrink-0 border border-gray-200" style={{ backgroundColor: normalizeHex(accentHexInput) }} />
                 )}
@@ -280,7 +280,7 @@ export default function Settings({ clients, refetch }) {
                   value={accentHexInput}
                   onChange={(e) => handleAccentHexChange(e.target.value)}
                   maxLength={7}
-                  className="w-28 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm font-mono outline-none focus:border-gray-400 transition-all"
+                  className="w-28 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm font-mono outline-none focus:border-gray-400 transition-all flex-shrink-0"
                 />
                 <span className="text-xs text-gray-400">Custom hex</span>
               </div>
@@ -432,7 +432,7 @@ export default function Settings({ clients, refetch }) {
         </section>
 
         {/* What's New Section */}
-        <section className="bg-white rounded-2xl shadow-sm p-6 mb-4">
+        <section className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 mb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles size={18} className="text-gray-400" />
@@ -453,7 +453,7 @@ export default function Settings({ clients, refetch }) {
         </section>
 
         {/* Trash Section */}
-        <section className="bg-white rounded-2xl shadow-sm p-6">
+        <section className="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
             <Trash2 size={18} className="text-gray-400" />
             <h2 className="font-display text-lg font-semibold text-gray-900">Trash</h2>
@@ -471,7 +471,7 @@ export default function Settings({ clients, refetch }) {
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center gap-3 py-3 px-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
+                    className="flex items-center gap-3 py-2.5 px-3 sm:py-3 sm:px-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-800 truncate">{item.item_name}</p>

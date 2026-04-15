@@ -43,9 +43,9 @@ const ACCENT_TEXT = {
 };
 
 const CARD_COLS = {
-  small: 'grid-cols-1 md:grid-cols-3 lg:grid-cols-4',
-  medium: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
-  large: 'grid-cols-1 lg:grid-cols-2',
+  small: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
+  medium: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+  large: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2',
 };
 
 const normalizeHex = (val) => {
@@ -88,7 +88,7 @@ function SortableGridCard({ client, isDraggingRef, onDelete, formatMoney, conver
     <div
       ref={setNodeRef}
       style={style}
-      className="group rounded-2xl p-5 transition-shadow duration-150 hover:shadow-lg relative overflow-hidden cursor-pointer"
+      className="group rounded-2xl p-4 sm:p-5 transition-shadow duration-150 hover:shadow-lg relative overflow-hidden cursor-pointer"
       onClick={handleCardClick}
     >
       {/* Top badges */}
@@ -200,7 +200,7 @@ function SortableListRow({ client, isDraggingRef, onDelete, todayStr }) {
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex items-center gap-4 rounded-2xl px-5 py-4 transition-shadow duration-150 hover:shadow-md cursor-pointer"
+      className="group flex items-center gap-4 rounded-2xl px-3 py-3 md:px-5 md:py-4 transition-shadow duration-150 hover:shadow-md cursor-pointer"
       onClick={handleRowClick}
     >
       {client.logo ? (
@@ -213,7 +213,7 @@ function SortableListRow({ client, isDraggingRef, onDelete, todayStr }) {
           {client.name.charAt(0)}
         </div>
       )}
-      <span className="font-display font-semibold w-40 truncate" style={{ color: textColor }}>
+      <span className="font-display font-semibold flex-1 min-w-0 truncate" style={{ color: textColor }}>
         {client.name}
       </span>
       {hasOverdue && (
@@ -222,10 +222,10 @@ function SortableListRow({ client, isDraggingRef, onDelete, todayStr }) {
           Overdue
         </span>
       )}
-      <span className="text-sm opacity-70 w-24" style={{ color: textColor }}>
+      <span className="text-sm opacity-70 hidden sm:block flex-shrink-0" style={{ color: textColor }}>
         {totalTasks} task{totalTasks !== 1 ? 's' : ''}
       </span>
-      <div className="flex-1 max-w-xs">
+      <div className="flex-1 max-w-xs hidden sm:block">
         <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-300"
@@ -233,7 +233,7 @@ function SortableListRow({ client, isDraggingRef, onDelete, todayStr }) {
           />
         </div>
       </div>
-      <span className="text-sm font-mono opacity-60 w-12 text-right" style={{ color: textColor }}>
+      <span className="text-sm font-mono opacity-60 flex-shrink-0 text-right" style={{ color: textColor }}>
         {pct}%
       </span>
       <button
@@ -354,14 +354,14 @@ export default function Clients({ clients, actions }) {
   const paletteToShow = availablePalette.length > 0 ? availablePalette : PALETTE;
 
   return (
-    <div className="p-8 page-enter">
-      <h1 className="font-display text-[2.75rem] leading-tight font-bold text-gray-900 mb-8">
+    <div className="p-4 md:p-6 lg:p-8 page-enter">
+      <h1 className="font-display text-2xl md:text-3xl lg:text-[2.75rem] leading-tight font-bold text-gray-900 mb-6 lg:mb-8">
         {settings.clients_label || 'Clients'}
       </h1>
 
       {/* Top bar */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6">
+        <div className="relative w-full md:flex-1 md:min-w-[200px] md:max-w-sm">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
@@ -372,40 +372,42 @@ export default function Clients({ clients, actions }) {
           />
         </div>
 
-        {viewMode === 'list' && (
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-2.5 bg-white rounded-full border border-gray-200 text-sm outline-none"
-          >
-            <option value="name">Sort by name</option>
-            <option value="tasks">Sort by tasks</option>
-          </select>
-        )}
+        <div className="flex items-center gap-3">
+          {viewMode === 'list' && (
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-3 py-2.5 bg-white rounded-full border border-gray-200 text-sm outline-none"
+            >
+              <option value="name">Sort by name</option>
+              <option value="tasks">Sort by tasks</option>
+            </select>
+          )}
 
-        <div className="flex bg-white rounded-full border border-gray-200 overflow-hidden">
+          <div className="flex bg-white rounded-full border border-gray-200 overflow-hidden">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2.5 transition-colors ${viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2.5 transition-colors ${viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <List size={16} />
+            </button>
+          </div>
+
           <button
-            onClick={() => setViewMode('grid')}
-            className={`p-2.5 transition-colors ${viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-600'}`}
+            onClick={openModal}
+            className="flex items-center gap-2 px-5 py-2.5 text-white rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex-shrink-0"
+            style={{ backgroundColor: 'var(--accent, #667EEA)' }}
           >
-            <LayoutGrid size={16} />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-2.5 transition-colors ${viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            <List size={16} />
+            <Plus size={16} />
+            Add
           </button>
         </div>
-
-        <button
-          onClick={openModal}
-          className="flex items-center gap-2 px-5 py-2.5 text-white rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: 'var(--accent, #667EEA)' }}
-        >
-          <Plus size={16} />
-          Add
-        </button>
       </div>
 
       {/* Grid View */}
@@ -464,8 +466,11 @@ export default function Clients({ clients, actions }) {
 
       {/* Add Client Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 animate-fadeIn">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl animate-slideDown">
+        <div className="fixed inset-0 bg-black/30 flex items-end md:items-center justify-center z-50 animate-fadeIn">
+          <div
+            className="bg-white rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-md shadow-xl animate-slideUp md:animate-slideDown max-h-[85vh] overflow-y-auto"
+            style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display text-xl font-semibold">New Client</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">

@@ -159,7 +159,7 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
             onFocus={() => setAmountEditing(true)}
             onBlur={handleAmountBlur}
             placeholder="0"
-            className="w-24 text-right text-sm font-mono bg-transparent outline-none text-gray-700 placeholder:text-gray-300"
+            className="w-16 sm:w-24 text-right text-sm font-mono bg-transparent outline-none text-gray-700 placeholder:text-gray-300"
           />
         </div>
       )}
@@ -168,7 +168,7 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
       {!noMoney && (
         <button
           onClick={handlePaid}
-          className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 flex-shrink-0 ${
+          className={`px-2 sm:px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 flex-shrink-0 ${
             task.paid
               ? 'bg-success text-white'
               : 'bg-gray-100 text-gray-500 hover:bg-pending/20 hover:text-pending'
@@ -178,50 +178,53 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
         </button>
       )}
 
-      {/* Deadline calendar button */}
-      <div className="relative flex-shrink-0">
+      {/* Trailing icons — calendar, delete, drag — all baseline-aligned */}
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        {/* Deadline calendar button */}
+        <div className="relative">
+          <button
+            onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
+            className={`flex items-center justify-center w-6 h-6 transition-colors ${
+              isOverdue
+                ? 'text-red-400 hover:text-red-600'
+                : task.deadline
+                ? 'text-amber-400 hover:text-amber-600'
+                : 'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-500'
+            }`}
+            title={task.deadline ? `Due: ${formatDeadline(task.deadline)}` : 'Set deadline'}
+          >
+            <Calendar size={14} />
+          </button>
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={task.deadline || ''}
+            onChange={handleDeadlineChange}
+            className="absolute inset-0 opacity-0 w-0 h-0 pointer-events-none"
+            tabIndex={-1}
+          />
+        </div>
+
+        {/* Delete */}
         <button
-          onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
-          className={`transition-colors ${
-            isOverdue
-              ? 'text-red-400 hover:text-red-600'
-              : task.deadline
-              ? 'text-amber-400 hover:text-amber-600'
-              : 'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-500'
-          }`}
-          title={task.deadline ? `Due: ${formatDeadline(task.deadline)}` : 'Set deadline'}
+          onClick={handleDelete}
+          className="flex items-center justify-center w-6 h-6 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-danger transition-all duration-150"
         >
-          <Calendar size={14} />
+          <Trash2 size={14} />
         </button>
-        <input
-          ref={dateInputRef}
-          type="date"
-          value={task.deadline || ''}
-          onChange={handleDeadlineChange}
-          className="absolute inset-0 opacity-0 w-0 h-0 pointer-events-none"
-          tabIndex={-1}
-        />
+
+        {/* Drag handle */}
+        {dragListeners && (
+          <button
+            {...dragListeners}
+            {...dragAttributes}
+            className="flex items-center justify-center w-6 h-6 opacity-0 group-hover:opacity-40 hover:!opacity-70 transition-opacity cursor-grab active:cursor-grabbing touch-none text-gray-400"
+            tabIndex={-1}
+          >
+            <GripVertical size={14} />
+          </button>
+        )}
       </div>
-
-      {/* Delete */}
-      <button
-        onClick={handleDelete}
-        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-danger transition-all duration-150 flex-shrink-0"
-      >
-        <Trash2 size={14} />
-      </button>
-
-      {/* Drag handle — far right, after trash */}
-      {dragListeners && (
-        <button
-          {...dragListeners}
-          {...dragAttributes}
-          className="opacity-0 group-hover:opacity-40 hover:!opacity-70 transition-opacity cursor-grab active:cursor-grabbing touch-none flex-shrink-0 text-gray-400"
-          tabIndex={-1}
-        >
-          <GripVertical size={14} />
-        </button>
-      )}
     </div>
   );
 }

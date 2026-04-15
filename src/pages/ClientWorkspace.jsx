@@ -264,9 +264,9 @@ export default function ClientWorkspace({ clients, actions }) {
   const currentFilterLabel = TASK_FILTER_OPTIONS.find((o) => o.value === taskFilter)?.label || 'All Tasks';
 
   return (
-    <div className="flex min-h-screen page-enter overflow-hidden max-w-full">
+    <div className="flex flex-col lg:flex-row min-h-screen page-enter overflow-hidden max-w-full">
       {/* Main content */}
-      <div className="flex-1 p-8 pr-4 min-w-0 overflow-y-auto overflow-x-hidden">
+      <div className="flex-1 p-4 lg:p-8 lg:pr-4 min-w-0 overflow-y-auto overflow-x-hidden">
         {/* Back link */}
         <button
           onClick={() => navigate('/clients')}
@@ -278,7 +278,7 @@ export default function ClientWorkspace({ clients, actions }) {
 
         {/* Hero header */}
         <div className="rounded-2xl p-6 mb-6 overflow-hidden" style={{ backgroundColor: client.color }}>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             {client.logo ? (
               <img src={client.logo} alt={client.name} className="w-14 h-14 rounded-2xl object-cover bg-white/50 flex-shrink-0" />
             ) : (
@@ -310,7 +310,7 @@ export default function ClientWorkspace({ clients, actions }) {
         </div>
 
         {/* Retainer Section + Task Filter */}
-        <div className="flex items-stretch gap-2 mb-4">
+        <div className="flex flex-col sm:flex-row items-stretch gap-2 mb-4">
           <div className="bg-white rounded-2xl shadow-sm flex-1 overflow-hidden">
             <button
               onClick={() => setRetainerOpen(!retainerOpen)}
@@ -365,7 +365,7 @@ export default function ClientWorkspace({ clients, actions }) {
           </div>
 
           {/* Task filter button */}
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <button
               ref={filterBtnRef}
               onClick={(e) => {
@@ -373,7 +373,7 @@ export default function ClientWorkspace({ clients, actions }) {
                 setFilterPos({ top: rect.bottom + 4, left: rect.left });
                 setFilterDropdownOpen(!filterDropdownOpen);
               }}
-              className={`h-full flex items-center gap-2 px-4 py-3 bg-white rounded-2xl shadow-sm text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`w-full sm:w-auto h-full flex items-center gap-2 px-4 py-3 bg-white rounded-2xl shadow-sm text-sm font-medium whitespace-nowrap transition-colors ${
                 taskFilter !== 'all' ? 'text-white' : 'text-gray-600 hover:bg-gray-50'
               }`}
               style={taskFilter !== 'all' ? { backgroundColor: 'var(--accent, #667EEA)' } : {}}
@@ -481,9 +481,9 @@ export default function ClientWorkspace({ clients, actions }) {
       </div>
 
       {/* Right Summary Panel */}
-      <div className="w-[260px] flex-shrink-0 p-5 pl-2 overflow-y-auto overflow-x-hidden">
+      <div className="w-full lg:w-[260px] lg:flex-shrink-0 p-4 lg:p-5 lg:pl-2 overflow-y-auto overflow-x-hidden">
         {/* Client stats */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm mb-4">
           <p className="text-sm font-semibold text-gray-700 mb-4">Overview</p>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -519,7 +519,7 @@ export default function ClientWorkspace({ clients, actions }) {
         </div>
 
         {/* Earnings */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm mb-4">
           <p className="text-sm font-semibold text-gray-700 mb-3">Earnings</p>
           <div className="space-y-3">
             <div>

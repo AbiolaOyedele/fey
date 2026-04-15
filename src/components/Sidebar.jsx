@@ -48,7 +48,7 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside className="fixed left-0 top-0 bottom-0 w-[72px] bg-white border-r border-gray-100 flex flex-col items-center z-10">
+      <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-[72px] bg-white border-r border-gray-100 flex-col items-center z-10">
         {/* Logo */}
         <div className="pt-5 pb-4 cursor-pointer" onClick={() => window.location.reload()}>
           {settings.logo ? (
@@ -124,6 +124,58 @@ export default function Sidebar() {
           )}
         </div>
       </aside>
+
+      {/* Bottom nav — mobile/tablet only */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around z-20 lg:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)', minHeight: '4rem' }}
+      >
+        <NavLink to="/" end
+          className={({ isActive }) => `flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-150 ${isActive ? '' : 'text-gray-400'}`}
+          style={({ isActive }) => isActive ? { color: accent } : {}}
+        >
+          <LayoutDashboard size={22} />
+        </NavLink>
+
+        {appMode !== 'tasks' && (
+          <NavLink
+            to="/clients"
+            className={({ isActive }) => `flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-150 ${isActive ? '' : 'text-gray-400'}`}
+            style={({ isActive }) => isActive ? { color: accent } : {}}
+          >
+            <Users size={22} />
+          </NavLink>
+        )}
+
+        {appMode !== 'clients' && (
+          <NavLink to="/tasks"
+            className={({ isActive }) => `flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-150 ${isActive ? '' : 'text-gray-400'}`}
+            style={({ isActive }) => isActive ? { color: accent } : {}}
+          >
+            <ListTodo size={22} />
+          </NavLink>
+        )}
+
+        <NavLink to="/payments"
+          className={({ isActive }) => `flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-150 ${isActive ? '' : 'text-gray-400'}`}
+          style={({ isActive }) => isActive ? { color: accent } : {}}
+        >
+          <CreditCard size={22} />
+        </NavLink>
+
+        <NavLink to="/settings"
+          className={({ isActive }) => `relative flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-150 ${isActive ? '' : 'text-gray-400'}`}
+          style={({ isActive }) => isActive ? { color: accent } : {}}
+        >
+          <Settings size={22} />
+          {showBadge && (
+            <span
+              className="absolute top-1 right-1 w-2 h-2 rounded-full"
+              style={{ backgroundColor: accent }}
+            />
+          )}
+        </NavLink>
+      </nav>
 
       {whatsNewOpen && (
         <WhatsNewPopup open={whatsNewOpen} onClose={handlePopupClose} />

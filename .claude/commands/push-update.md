@@ -18,7 +18,7 @@ The changelog lives in the `app_settings` table under `key = 'changelog'`. Its `
 [
   {
     "version": "1.6.1",
-    "date": "April 2026",
+    "date": "15 Apr, 2026",
     "features": [],
     "improvements": [],
     "fixes": ["..."]
@@ -57,7 +57,7 @@ Prepend a new entry to the changelog array:
 ```json
 {
   "version": "<next version>",
-  "date": "<current month> <current year>",
+  "date": "<current day> <abbreviated month>, <current year>",
   "features": ["..."],
   "improvements": ["..."],
   "fixes": ["..."]

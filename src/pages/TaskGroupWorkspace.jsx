@@ -184,10 +184,10 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
     : PALETTE;
 
   return (
-    <div className="flex min-h-screen page-enter overflow-hidden max-w-full">
+    <div className="flex flex-col lg:flex-row min-h-screen page-enter overflow-hidden max-w-full">
 
       {/* ── Main content ── */}
-      <div className="flex-1 p-8 pr-4 min-w-0 overflow-y-auto overflow-x-hidden">
+      <div className="flex-1 p-4 lg:p-8 lg:pr-4 min-w-0 overflow-y-auto overflow-x-hidden">
 
         {/* Back link */}
         <button
@@ -200,7 +200,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
 
         {/* Hero header */}
         <div className="rounded-2xl p-6 mb-6" style={{ backgroundColor: group.color }}>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center bg-white/20 text-white flex-shrink-0"
             >
@@ -350,10 +350,10 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
       </div>
 
       {/* ── Right panel ── */}
-      <div className="w-[240px] flex-shrink-0 p-5 pl-2 overflow-y-auto overflow-x-hidden">
+      <div className="w-full lg:w-[240px] lg:flex-shrink-0 p-4 lg:p-5 lg:pl-2 overflow-y-auto overflow-x-hidden">
 
         {/* Overview */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm mb-4">
           <p className="text-sm font-semibold text-gray-700 mb-4">Overview</p>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
@@ -393,7 +393,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
         </div>
 
         {/* Completion card */}
-        <div className="rounded-2xl p-5" style={{ backgroundColor: group.color }}>
+        <div className="rounded-2xl p-4 sm:p-5" style={{ backgroundColor: group.color }}>
           <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: textColor, opacity: 0.6 }}>
             Completion
           </p>
@@ -414,8 +414,11 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
 
       {/* ── Edit Group Modal ── */}
       {editOpen && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 animate-fadeIn">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl animate-slideDown max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/30 flex items-end md:items-center justify-center z-50 animate-fadeIn">
+          <div
+            className="bg-white rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-md shadow-xl animate-slideUp md:animate-slideDown max-h-[85vh] overflow-y-auto"
+            style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+          >
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-display text-xl font-semibold">Edit Group</h2>
               <button onClick={() => setEditOpen(false)} className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">

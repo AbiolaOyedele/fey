@@ -52,10 +52,10 @@ export default function WhatsNewPopup({ open, onClose }) {
           closing ? 'animate-scale-out' : 'animate-scale-in'
         }`}
       >
-        <div className="flex min-h-[340px]">
+        <div className="flex flex-col md:flex-row min-h-[340px]">
           {/* Left column — accent background */}
           <div
-            className="w-[44%] p-6 flex flex-col"
+            className="w-full md:w-[44%] p-6 flex flex-col min-h-[200px] md:min-h-0"
             style={{ backgroundColor: 'var(--accent, #667EEA)' }}
           >
             {/* What's New badge — rotating seal, fixed text */}
@@ -106,12 +106,12 @@ export default function WhatsNewPopup({ open, onClose }) {
           </div>
 
           {/* Right column — white */}
-          <div className="flex-1 p-6 flex flex-col">
+          <div className="flex-1 p-6 flex flex-col min-h-[200px] md:min-h-0">
             {/* X close in top-right */}
             <div className="flex justify-end mb-3">
               <button
                 onClick={handleClose}
-                className="text-gray-300 hover:text-gray-500 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors"
               >
                 <X size={18} />
               </button>
@@ -174,7 +174,7 @@ export default function WhatsNewPopup({ open, onClose }) {
             {/* Primary close button */}
             <button
               onClick={handleClose}
-              className="mt-5 w-full py-2.5 rounded-xl text-white text-sm font-medium hover:opacity-90 transition-opacity"
+              className="mt-5 w-full py-3 rounded-xl text-white text-sm font-medium hover:opacity-90 transition-opacity"
               style={{ backgroundColor: 'var(--accent, #667EEA)' }}
             >
               Got it

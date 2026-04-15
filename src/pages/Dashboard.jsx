@@ -20,9 +20,9 @@ const ACCENT_TEXT = {
 };
 
 const CARD_COLS = {
-  small: 'grid-cols-3',
-  medium: 'grid-cols-2',
-  large: 'grid-cols-1',
+  small: 'lg:grid-cols-3',
+  medium: 'lg:grid-cols-2',
+  large: 'lg:grid-cols-1',
 };
 
 function formatDeadline(dateStr) {
@@ -163,16 +163,16 @@ export default function Dashboard({ clients, actions }) {
     .slice(0, 3);
 
   const heading = (settings.dashboard_heading || 'Track your\nwork & earnings').replace(/\\n/g, '\n');
-  const gridCols = CARD_COLS[settings.card_size] || 'grid-cols-2';
+  const gridColsDesktop = CARD_COLS[settings.card_size] || 'lg:grid-cols-2';
 
   return (
-    <div className="flex min-h-screen page-enter">
+    <div className="flex flex-col lg:flex-row min-h-screen page-enter">
       {/* Main Content */}
-      <div className="flex-1 p-8 pr-4 overflow-y-auto min-w-0">
+      <div className="flex-1 p-4 md:p-6 lg:p-8 lg:pr-4 overflow-y-auto min-w-0">
         {/* Hero heading */}
-        <div className="mb-8">
+        <div className="mb-6 lg:mb-8">
           <h1
-            className="font-display text-[2.75rem] leading-tight font-bold text-gray-900"
+            className="font-display text-2xl md:text-3xl lg:text-[2.75rem] leading-tight font-bold text-gray-900"
             style={{ whiteSpace: 'pre-wrap' }}
           >
             {heading}
@@ -188,7 +188,7 @@ export default function Dashboard({ clients, actions }) {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 flex-shrink-0 ${
                 filter === f
                   ? 'text-white shadow-sm'
                   : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
@@ -214,7 +214,7 @@ export default function Dashboard({ clients, actions }) {
         {filter === 'All' && (
           <>
             <p className="text-sm text-gray-500 font-medium mb-4">Clients</p>
-            <div className={`grid ${gridCols} gap-4`}>
+            <div className={`grid grid-cols-1 sm:grid-cols-2 ${gridColsDesktop} gap-4`}>
               {topClients.map((client) => {
                 const doneTasks = client.tasks.filter((t) => t.done).length;
                 const totalTasks = client.tasks.length;
@@ -228,7 +228,7 @@ export default function Dashboard({ clients, actions }) {
                   <Link
                     key={client.id}
                     to={`/clients/${client.id}`}
-                    className="group rounded-2xl p-5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
+                    className="group rounded-2xl p-4 sm:p-5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
                     style={{ backgroundColor: client.color }}
                   >
                     <div className="flex items-center justify-between mb-4">
@@ -384,7 +384,7 @@ export default function Dashboard({ clients, actions }) {
       </div>
 
       {/* Right Summary Panel */}
-      <div className="w-[260px] flex-shrink-0 p-4 pl-2 overflow-y-auto overflow-x-hidden">
+      <div className="w-full lg:w-[260px] lg:flex-shrink-0 p-4 lg:pl-2 overflow-y-auto overflow-x-hidden">
         {/* Top bar: overdue + bell + settings */}
         <div className="flex items-center justify-end gap-2 mb-6">
           {/* Overdue button — only shown when overdue tasks exist */}

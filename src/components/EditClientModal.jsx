@@ -38,11 +38,14 @@ export default function EditClientModal({ client, onSave, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 animate-fadeIn">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl animate-slideDown">
+    <div className="fixed inset-0 bg-black/30 flex items-end md:items-center justify-center z-50 animate-fadeIn">
+      <div
+        className="bg-white rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-md shadow-xl animate-slideUp md:animate-slideDown max-h-[85vh] overflow-y-auto"
+        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+      >
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display text-xl font-semibold">Edit {clientLabel}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -97,12 +100,12 @@ export default function EditClientModal({ client, onSave, onClose }) {
         {/* Color picker */}
         <div className="mb-4">
           <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Color</p>
-          <div className="flex gap-2 flex-wrap mb-3">
+          <div className="flex gap-1.5 sm:gap-2 flex-wrap mb-3">
             {PALETTE.map((color) => (
               <button
                 key={color}
                 onClick={() => { setSelectedColor(color); setCustomHex(''); }}
-                className="w-8 h-8 rounded-full transition-all duration-150 hover:scale-105"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full transition-all duration-150 hover:scale-105"
                 style={{
                   backgroundColor: color,
                   outline: selectedColor === color ? '3px solid #6B7280' : '3px solid transparent',

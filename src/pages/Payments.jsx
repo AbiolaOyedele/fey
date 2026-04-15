@@ -189,10 +189,10 @@ export default function Payments({ clients }) {
   const earnedThisMonth = thisMonthData?.earned || 0;
 
   return (
-    <div className="flex min-h-screen page-enter">
+    <div className="flex flex-col lg:flex-row min-h-screen page-enter">
       {/* Main content */}
-      <div className="flex-1 p-8 pr-4 min-w-0">
-        <h1 className="font-display text-[2.75rem] leading-tight font-bold text-gray-900 mb-8">
+      <div className="flex-1 p-4 md:p-6 lg:p-8 lg:pr-4 min-w-0">
+        <h1 className="font-display text-2xl lg:text-[2.75rem] leading-tight font-bold text-gray-900 mb-6 lg:mb-8">
           Payments
         </h1>
 
@@ -216,7 +216,7 @@ export default function Payments({ clients }) {
                 <div key={month} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                   <button
                     onClick={() => setExpandedMonth(isExpanded ? null : month)}
-                    className="w-full flex items-center gap-4 px-6 py-5 hover:bg-gray-50 transition-colors"
+                    className="w-full flex items-center gap-4 px-4 sm:px-6 py-4 sm:py-5 hover:bg-gray-50 transition-colors"
                   >
                     <div
                       className={`w-8 h-8 rounded-xl flex items-center justify-center ${isExpanded ? '' : 'bg-gray-100'}`}
@@ -259,7 +259,7 @@ export default function Payments({ clients }) {
                   </button>
 
                   {isExpanded && (
-                    <div className="border-t border-gray-100 px-6 py-4 animate-slideDown space-y-4">
+                    <div className="border-t border-gray-100 px-4 sm:px-6 py-4 animate-slideDown space-y-4">
                       {clientEntries.map((clientData) => {
                         const textColor = ACCENT_TEXT[clientData.color] || '#374151';
                         return (
@@ -308,7 +308,7 @@ export default function Payments({ clients }) {
                             )}
 
                             {/* Task/retainer breakdown */}
-                            <div className="pl-11 space-y-1.5">
+                            <div className="pl-8 sm:pl-11 space-y-1.5">
                               {clientData.retainer > 0 && (
                                 <div className="flex items-center justify-between text-xs text-gray-500">
                                   <span>Retainer fee</span>
@@ -347,9 +347,9 @@ export default function Payments({ clients }) {
       </div>
 
       {/* Right Summary Panel */}
-      <div className="w-[260px] flex-shrink-0 p-5 pl-2 overflow-y-auto">
+      <div className="w-full lg:w-[260px] lg:flex-shrink-0 p-4 lg:p-5 lg:pl-2 overflow-y-auto">
         {/* Total earned */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm mb-4">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-9 h-9 rounded-xl bg-success/10 flex items-center justify-center">
               <TrendingUp size={16} className="text-success" />
@@ -363,7 +363,7 @@ export default function Payments({ clients }) {
 
         {/* Pending */}
         {totalPending > 0 && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm mb-4">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-9 h-9 rounded-xl bg-pending/10 flex items-center justify-center">
                 <Clock size={16} className="text-pending" />
@@ -377,7 +377,7 @@ export default function Payments({ clients }) {
         )}
 
         {/* This month */}
-        <div className="rounded-2xl p-5 mb-4" style={{ backgroundColor: 'var(--accent, #667EEA)0D' }}>
+        <div className="rounded-2xl p-4 sm:p-5 mb-4" style={{ backgroundColor: 'var(--accent, #667EEA)0D' }}>
           <p className="text-sm font-semibold text-gray-700 mb-1">This Month</p>
           <p className="font-mono text-xl font-bold" style={{ color: 'var(--accent, #667EEA)' }}>
             {formatMoney(earnedThisMonth)}
@@ -388,7 +388,7 @@ export default function Payments({ clients }) {
         </div>
 
         {/* Top clients by earnings (active only) */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm">
           <p className="text-sm font-semibold text-gray-700 mb-4">Top Earners</p>
           <div className="space-y-3">
             {[...clients]

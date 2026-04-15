@@ -8,6 +8,7 @@ function transformClients(clients, tasks, retainerPayments) {
     name: c.name,
     color: c.color,
     logo: c.logo || '',
+    task_mode: c.task_mode || false,
     retainer: Number(c.retainer) || 0,
     retainerPaid: retainerPayments
       .filter((rp) => rp.client_id === c.id)
@@ -91,6 +92,7 @@ export function useSupabaseData() {
     if ('name' in updates) dbUpdates.name = updates.name;
     if ('color' in updates) dbUpdates.color = updates.color;
     if ('logo' in updates) dbUpdates.logo = updates.logo;
+    if ('task_mode' in updates) dbUpdates.task_mode = updates.task_mode;
 
     const { error: err } = await supabase
       .from('clients')

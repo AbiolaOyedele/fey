@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { X, Upload, Image } from 'lucide-react';
 import { PALETTE } from '../data/defaultClients';
+import { useSettings } from '../contexts/SettingsContext';
 
 const normalizeHex = (val) => {
   const trimmed = val.trim();
@@ -9,6 +10,8 @@ const normalizeHex = (val) => {
 const isValidHex = (val) => /^#[0-9A-Fa-f]{6}$/.test(normalizeHex(val));
 
 export default function EditClientModal({ client, onSave, onClose }) {
+  const { settings } = useSettings();
+  const clientLabel = settings.clients_label || 'Client';
   const [name, setName] = useState(client.name);
   const [selectedColor, setSelectedColor] = useState(client.color);
   const [customHex, setCustomHex] = useState('');
@@ -38,7 +41,7 @@ export default function EditClientModal({ client, onSave, onClose }) {
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 animate-fadeIn">
       <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl animate-slideDown">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-xl font-semibold">Edit Client</h2>
+          <h2 className="font-display text-xl font-semibold">Edit {clientLabel}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={20} />
           </button>
@@ -47,7 +50,7 @@ export default function EditClientModal({ client, onSave, onClose }) {
         <input
           autoFocus
           type="text"
-          placeholder="Client name"
+          placeholder={`${clientLabel} name`}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSave()}
@@ -56,7 +59,7 @@ export default function EditClientModal({ client, onSave, onClose }) {
 
         {/* Logo upload */}
         <div className="mb-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Client Logo</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">{clientLabel} Logo</p>
           <div className="flex items-center gap-3">
             {logo ? (
               <div className="relative group">

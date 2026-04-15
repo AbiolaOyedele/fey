@@ -353,7 +353,7 @@ export default function Clients({ clients, actions }) {
   return (
     <div className="p-8 page-enter">
       <h1 className="font-display text-[2.75rem] leading-tight font-bold text-gray-900 mb-8">
-        Clients
+        {settings.clients_label || 'Clients'}
       </h1>
 
       {/* Top bar */}
@@ -362,7 +362,7 @@ export default function Clients({ clients, actions }) {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search clients..."
+            placeholder={`Search ${(settings.clients_label || 'Clients').toLowerCase()}...`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 bg-white rounded-full border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/10 transition-all"
@@ -471,7 +471,7 @@ export default function Clients({ clients, actions }) {
             <input
               autoFocus
               type="text"
-              placeholder="Client name"
+              placeholder={`${settings.clients_label || 'Client'} name`}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddClient()}

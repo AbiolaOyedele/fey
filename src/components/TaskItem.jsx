@@ -17,7 +17,7 @@ function formatDeadline(dateStr) {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export default function TaskItem({ task, onUpdate, onDelete, dragListeners, dragAttributes }) {
+export default function TaskItem({ task, onUpdate, onDelete, dragListeners, dragAttributes, noMoney = false }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [deleting, setDeleting] = useState(false);
@@ -145,34 +145,38 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
       </div>
 
       {/* Paid dot indicator */}
-      {task.paid && <span className="w-2 h-2 rounded-full bg-success flex-shrink-0" />}
+      {!noMoney && task.paid && <span className="w-2 h-2 rounded-full bg-success flex-shrink-0" />}
 
       {/* Amount */}
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <span className="text-xs text-gray-400">{currencyLabel}</span>
-        <input
-          type="text"
-          inputMode="decimal"
-          value={amountInput}
-          onChange={handleAmountChange}
-          onFocus={() => setAmountEditing(true)}
-          onBlur={handleAmountBlur}
-          placeholder="0"
-          className="w-24 text-right text-sm font-mono bg-transparent outline-none text-gray-700 placeholder:text-gray-300"
-        />
-      </div>
+      {!noMoney && (
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className="text-xs text-gray-400">{currencyLabel}</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={amountInput}
+            onChange={handleAmountChange}
+            onFocus={() => setAmountEditing(true)}
+            onBlur={handleAmountBlur}
+            placeholder="0"
+            className="w-24 text-right text-sm font-mono bg-transparent outline-none text-gray-700 placeholder:text-gray-300"
+          />
+        </div>
+      )}
 
       {/* Paid toggle */}
-      <button
-        onClick={handlePaid}
-        className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 flex-shrink-0 ${
-          task.paid
-            ? 'bg-success text-white'
-            : 'bg-gray-100 text-gray-500 hover:bg-pending/20 hover:text-pending'
-        }`}
-      >
-        {task.paid ? 'Paid' : 'Unpaid'}
-      </button>
+      {!noMoney && (
+        <button
+          onClick={handlePaid}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 flex-shrink-0 ${
+            task.paid
+              ? 'bg-success text-white'
+              : 'bg-gray-100 text-gray-500 hover:bg-pending/20 hover:text-pending'
+          }`}
+        >
+          {task.paid ? 'Paid' : 'Unpaid'}
+        </button>
+      )}
 
       {/* Deadline calendar button */}
       <div className="relative flex-shrink-0">

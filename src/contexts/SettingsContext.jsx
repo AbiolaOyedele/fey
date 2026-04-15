@@ -3,6 +3,57 @@ import { supabase } from '../lib/supabase';
 
 const SettingsContext = createContext(null);
 
+const DEFAULT_CHANGELOG = [
+  {
+    version: '1.6.1', date: 'April 2026', features: [], improvements: [],
+    fixes: ['Syntax error fix in SettingsContext restoreFromTrash function'],
+  },
+  {
+    version: '1.6.0', date: 'April 2026',
+    features: ['Tasks page with standalone task list and task groups', 'Task group workspace with full task management', 'App mode switch (Clients Only, Tasks Only, Dual)', 'Clients section label rename in settings', 'Task mode toggle on client pages', 'Changelog popup'],
+    improvements: [], fixes: [],
+  },
+  {
+    version: '1.5.0', date: 'April 2026',
+    features: ['Task drag and drop with sort order persistence', 'Task filter dropdown (All, Overdue, Due Today, Due Tomorrow)', 'Sentence case auto-formatting on task save', 'Pastel color randomisation for new clients'],
+    improvements: [], fixes: [],
+  },
+  {
+    version: '1.4.2', date: 'April 2026', features: [], improvements: [],
+    fixes: ['Drag and drop click conflict on client cards', 'Task row icon alignment', 'Horizontal overflow layout fix'],
+  },
+  {
+    version: '1.4.1', date: 'April 2026', features: [],
+    improvements: ['Currency input decimal support and comma formatting'],
+    fixes: [],
+  },
+  {
+    version: '1.4.0', date: 'April 2026',
+    features: ['Deadline tracking on tasks with calendar picker', 'Overdue button with red badge in dashboard', 'Dashboard tab restructure with filter tabs', 'Currency conversion system (NGN / USD)'],
+    improvements: [], fixes: [],
+  },
+  {
+    version: '1.3.0', date: 'April 2026',
+    features: ['Font system with Google Fonts and custom font upload', 'Client logos support', 'Drag and drop client card reordering', 'Overdue indicators on client cards and workspace', 'Notification bell with upcoming deadlines'],
+    improvements: [], fixes: [],
+  },
+  {
+    version: '1.2.0', date: 'April 2026',
+    features: ['Settings page with full appearance controls', 'Trash with 45-day retention and one-click restore', 'Accent color theming applied globally'],
+    improvements: [], fixes: [],
+  },
+  {
+    version: '1.1.0', date: 'April 2026',
+    features: ['Migrated from localStorage to Supabase', 'Data persists across devices and sessions'],
+    improvements: [], fixes: [],
+  },
+  {
+    version: '1.0.0', date: 'April 2026',
+    features: ['Initial build with React, Vite, Tailwind CSS', 'Dashboard overview with earnings tracking', 'Clients management with task tracking', 'Payments history page', 'Data stored in localStorage'],
+    improvements: [], fixes: [],
+  },
+];
+
 const DEFAULTS = {
   username: 'Abiola',
   company_name: 'The Arc Company',
@@ -21,6 +72,11 @@ const DEFAULTS = {
   custom_heading_font: '',
   custom_heading_font_name: '',
   client_order: '',
+  clients_label: 'Clients',
+  app_mode: 'dual',
+  changelog: JSON.stringify(DEFAULT_CHANGELOG),
+  whats_new_active: 'false',
+  whats_new_version: '',
 };
 
 export function SettingsProvider({ children }) {
@@ -369,6 +425,27 @@ export function SettingsProvider({ children }) {
       await supabase.from('trash').delete().eq('id', trashItem.id);
       setTrash((prev) => prev.filter((t) => t.id !== trashItem.id));
       return { success: true };
+
+    } else if (trashItem.item_type === 'task_group') {
+      const { data: newGroup, error: gErr } = await supabase
+        .from('task_groups')
+        .insert({ name: itemData.name, color: itemData.color, icon: itemData.icon || '', sort_order: itemData.sort_order || 0 })
+        .select().single();
+      if (gErr) return { error: gErr.message };
+      if (itemData.tasks && itemData.tasks.length > 0) {
+        await supabase.from('standalone_tasks').insert(
+          itemData.tasks.map((t) => ({ task_group_id: newGroup.id, title: t.title, done: t.done, deadline: t.deadline || null, sort_order: t.sort_order || 0 }))
+        );
+      }
+      await supabase.from('trash').delete().eq('id', trashItem.id);
+      setTrash((prev) => prev.filter((t) => t.id !== trashItem.id));
+      return { success: true };
+
+    } else if (trashItem.item_type === 'standalone_task') {
+      await supabase.from('standalone_tasks').insert({ title: itemData.title, done: itemData.done, deadline: itemData.deadline || null, task_group_id: null, sort_order: itemData.sort_order || 0 });
+      await supabase.from('trash').delete().eq('id', trashItem.id);
+      setTrash((prev) => prev.filter((t) => t.id !== trashItem.id));
+      return { success: true };
     }
 
     // Fallback
@@ -376,6 +453,37 @@ export function SettingsProvider({ children }) {
     setTrash((prev) => prev.filter((t) => t.id !== trashItem.id));
     return { success: true };
   }, [trash]);
+
+  // Trash: move task group to trash
+  const trashGroup = useCallback(async (group) => {
+    const payload = {
+      item_type: 'task_group',
+      item_name: group.name,
+      item_data: JSON.stringify({ ...group }),
+      deleted_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+    await supabase.from('standalone_tasks').delete().eq('task_group_id', group.id);
+    await supabase.from('task_groups').delete().eq('id', group.id);
+    const { data } = await supabase.from('trash').insert(payload).select().single();
+    if (data) setTrash((prev) => [data, ...prev]);
+    return data;
+  }, []);
+
+  // Trash: move standalone task to trash
+  const trashStandaloneTask = useCallback(async (task) => {
+    const payload = {
+      item_type: 'standalone_task',
+      item_name: task.title,
+      item_data: JSON.stringify({ ...task }),
+      deleted_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+    await supabase.from('standalone_tasks').delete().eq('id', task.id);
+    const { data } = await supabase.from('trash').insert(payload).select().single();
+    if (data) setTrash((prev) => [data, ...prev]);
+    return data;
+  }, []);
 
   // Trash: delete forever
   const deleteForever = useCallback(async (trashId) => {
@@ -395,6 +503,8 @@ export function SettingsProvider({ children }) {
         trash,
         trashClient,
         trashTask,
+        trashGroup,
+        trashStandaloneTask,
         restoreFromTrash,
         deleteForever,
         toasts,

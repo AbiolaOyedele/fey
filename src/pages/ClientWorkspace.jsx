@@ -108,6 +108,9 @@ export default function ClientWorkspace({ clients, actions }) {
   const client = clients.find((c) => c.id === id);
   const [newTask, setNewTask] = useState('');
   const [retainerOpen, setRetainerOpen] = useState(false);
+  const [retainerInput, setRetainerInput] = useState(() =>
+    client.retainer ? client.retainer.toLocaleString() : ''
+  );
   const [editingClient, setEditingClient] = useState(false);
   const [taskFilter, setTaskFilter] = useState('all');
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
@@ -186,6 +189,16 @@ export default function ClientWorkspace({ clients, actions }) {
     await actions.updateRetainer(id, parseInt(amount) || 0);
   };
 
+  const handleRetainerInputChange = (val) => {
+    const digits = val.replace(/[^0-9]/g, '');
+    setRetainerInput(digits === '' ? '' : parseInt(digits, 10).toLocaleString());
+  };
+
+  const handleRetainerBlur = () => {
+    const raw = retainerInput.replace(/[^0-9]/g, '');
+    handleSetRetainer(raw || '0');
+  };
+
   const handleToggleRetainerPaid = async () => {
     const newPaid = !retainerPaidThisMonth;
     await actions.toggleRetainerPaid(id, currentMonth, newPaid);
@@ -220,7 +233,9 @@ export default function ClientWorkspace({ clients, actions }) {
   const completedTasks = filterTaskList(allTasks.filter((t) => t.done));
   const overdueTasks = allTasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr);
 
-  const totalEarned = client.tasks.filter((t) => t.paid).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
+  const paidRetainerMonths = Object.values(client.retainerPaid || {}).filter(Boolean).length;
+  const totalEarned = client.tasks.filter((t) => t.paid).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0)
+    + paidRetainerMonths * (client.retainer || 0);
   const totalPending = client.tasks.filter((t) => !t.paid && t.amount > 0).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
 
   const dndEnabled = taskFilter === 'all';
@@ -296,9 +311,11 @@ export default function ClientWorkspace({ clients, actions }) {
                   <div className="flex items-center gap-2 flex-1">
                     <span className="text-xs text-gray-400">NGN</span>
                     <input
-                      type="number"
-                      value={client.retainer || ''}
-                      onChange={(e) => handleSetRetainer(e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      value={retainerInput}
+                      onChange={(e) => handleRetainerInputChange(e.target.value)}
+                      onBlur={handleRetainerBlur}
                       placeholder="0"
                       className="w-32 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm font-mono outline-none focus:border-primary"
                     />

@@ -315,12 +315,15 @@ export default function Clients({ clients, actions }) {
 
   const handleAddClient = async () => {
     if (!newName.trim()) return;
+    const name = newName.trim();
     const color = selectedColor || getNextColor(clients);
-    await actions.addClient(newName.trim(), color, newLogo);
+    const logo = newLogo;
+    // Close modal immediately to prevent double submission
     setNewName('');
     setCustomHex('');
     setNewLogo('');
     setShowModal(false);
+    await actions.addClient(name, color, logo);
   };
 
   const handleLogoUpload = (e) => {
@@ -401,7 +404,7 @@ export default function Clients({ clients, actions }) {
           style={{ backgroundColor: 'var(--accent, #667EEA)' }}
         >
           <Plus size={16} />
-          Add Client
+          Add
         </button>
       </div>
 
@@ -566,7 +569,7 @@ export default function Clients({ clients, actions }) {
                 className="px-5 py-2 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all"
                 style={{ backgroundColor: 'var(--accent, #667EEA)' }}
               >
-                Add Client
+                Add
               </button>
             </div>
           </div>

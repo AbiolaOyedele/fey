@@ -133,12 +133,25 @@ export function useSupabaseData() {
 
   // Toggle retainer paid for a given month
   const toggleRetainerPaid = useCallback(async (clientId, month, paid) => {
-    const { error: err } = await supabase
+    // Check if a record already exists for this client+month
+    const { data: existing } = await supabase
       .from('retainer_payments')
-      .upsert(
-        { client_id: clientId, month, paid },
-        { onConflict: 'client_id,month' }
-      );
+      .select('id')
+      .eq('client_id', clientId)
+      .eq('month', month)
+      .maybeSingle();
+
+    let err;
+    if (existing) {
+      ({ error: err } = await supabase
+        .from('retainer_payments')
+        .update({ paid })
+        .eq('id', existing.id));
+    } else {
+      ({ error: err } = await supabase
+        .from('retainer_payments')
+        .insert({ client_id: clientId, month, paid }));
+    }
 
     if (err) { setError(err.message); return; }
 

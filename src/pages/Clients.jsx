@@ -54,13 +54,13 @@ const normalizeHex = (val) => {
 };
 const isValidHex = (val) => /^#[0-9A-Fa-f]{6}$/.test(normalizeHex(val));
 
-function SortableGridCard({ client, isDraggingRef, onDelete, formatMoney, todayStr }) {
+function SortableGridCard({ client, isDraggingRef, onDelete, formatMoney, convertAmount, todayStr }) {
   const navigate = useNavigate();
   const textColor = ACCENT_TEXT[client.color] || '#374151';
   const totalTasks = client.tasks.length;
   const doneTasks = client.tasks.filter((t) => t.done).length;
   const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
-  const paidAmount = client.tasks.filter((t) => t.paid).reduce((s, t) => s + t.amount, 0);
+  const paidAmount = client.tasks.filter((t) => t.paid).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
   const hasOverdue = client.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
 
   const {
@@ -267,7 +267,7 @@ export default function Clients({ clients, actions }) {
   const [sortBy, setSortBy] = useState('name');
   const logoInputRef = useRef(null);
   const isDraggingRef = useRef(false);
-  const { settings, formatMoney } = useSettings();
+  const { settings, formatMoney, convertAmount } = useSettings();
 
   const todayStr = (() => {
     const n = new Date();
@@ -425,6 +425,7 @@ export default function Clients({ clients, actions }) {
                   isDraggingRef={isDraggingRef}
                   onDelete={handleDeleteClient}
                   formatMoney={formatMoney}
+                  convertAmount={convertAmount}
                   todayStr={todayStr}
                 />
               ))}

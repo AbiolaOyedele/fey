@@ -108,9 +108,14 @@ export default function ClientWorkspace({ clients, actions }) {
   const client = clients.find((c) => c.id === id);
   const [newTask, setNewTask] = useState('');
   const [retainerOpen, setRetainerOpen] = useState(false);
-  const [retainerInput, setRetainerInput] = useState(() =>
-    client.retainer ? client.retainer.toLocaleString() : ''
-  );
+  const formatRetainerInput = (retainerNGN) => {
+    if (!retainerNGN) return '';
+    const val = convertAmount(retainerNGN, 'NGN');
+    return settings.currency === 'USD'
+      ? val.toFixed(2)
+      : Math.round(val).toLocaleString();
+  };
+  const [retainerInput, setRetainerInput] = useState(() => formatRetainerInput(client?.retainer));
   const [editingClient, setEditingClient] = useState(false);
   const [taskFilter, setTaskFilter] = useState('all');
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
@@ -122,6 +127,12 @@ export default function ClientWorkspace({ clients, actions }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
+
+  // Sync retainer input when currency or retainer value changes
+  useEffect(() => {
+    setRetainerInput(formatRetainerInput(client?.retainer));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client?.retainer, settings.currency]);
 
   // Close filter dropdown on outside click
   useEffect(() => {
@@ -190,13 +201,23 @@ export default function ClientWorkspace({ clients, actions }) {
   };
 
   const handleRetainerInputChange = (val) => {
-    const digits = val.replace(/[^0-9]/g, '');
-    setRetainerInput(digits === '' ? '' : parseInt(digits, 10).toLocaleString());
+    if (settings.currency === 'USD') {
+      // Allow decimals for USD
+      const cleaned = val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+      setRetainerInput(cleaned);
+    } else {
+      const digits = val.replace(/[^0-9]/g, '');
+      setRetainerInput(digits === '' ? '' : parseInt(digits, 10).toLocaleString());
+    }
   };
 
   const handleRetainerBlur = () => {
-    const raw = retainerInput.replace(/[^0-9]/g, '');
-    handleSetRetainer(raw || '0');
+    const parsed = parseFloat(retainerInput.replace(/[^0-9.]/g, '')) || 0;
+    // Always store retainer in NGN — back-convert if currently viewing in USD
+    const inNGN = settings.currency === 'USD'
+      ? Math.round(parsed * (Number(settings.exchange_rate) || 1357))
+      : Math.round(parsed);
+    handleSetRetainer(inNGN);
   };
 
   const handleToggleRetainerPaid = async () => {
@@ -235,7 +256,7 @@ export default function ClientWorkspace({ clients, actions }) {
 
   const paidRetainerMonths = Object.values(client.retainerPaid || {}).filter(Boolean).length;
   const totalEarned = client.tasks.filter((t) => t.paid).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0)
-    + paidRetainerMonths * (client.retainer || 0);
+    + paidRetainerMonths * convertAmount(client.retainer || 0, 'NGN');
   const totalPending = client.tasks.filter((t) => !t.paid && t.amount > 0).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
 
   const dndEnabled = taskFilter === 'all';
@@ -299,7 +320,7 @@ export default function ClientWorkspace({ clients, actions }) {
                 Monthly Retainer
                 {client.retainer > 0 && (
                   <span className="ml-2 font-mono" style={{ color: 'var(--accent, #667EEA)' }}>
-                    {formatMoney(client.retainer)}
+                    {formatMoney(convertAmount(client.retainer, 'NGN'))}
                   </span>
                 )}
               </span>
@@ -309,7 +330,7 @@ export default function ClientWorkspace({ clients, actions }) {
               <div className="px-6 pb-5 border-t border-gray-100 pt-4 animate-slideDown">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2 flex-1">
-                    <span className="text-xs text-gray-400">NGN</span>
+                    <span className="text-xs text-gray-400">{settings.currency || 'NGN'}</span>
                     <input
                       type="text"
                       inputMode="numeric"

@@ -69,9 +69,10 @@ export default function Payments({ clients }) {
         };
       }
       if (paid) {
-        monthlyData[month].clients[client.id].retainer = client.retainer;
-        monthlyData[month].clients[client.id].earned += client.retainer;
-        monthlyData[month].earned += client.retainer;
+        const convertedRetainer = convertAmount(client.retainer, 'NGN');
+        monthlyData[month].clients[client.id].retainer = convertedRetainer;
+        monthlyData[month].clients[client.id].earned += convertedRetainer;
+        monthlyData[month].earned += convertedRetainer;
       }
     });
   });
@@ -100,12 +101,13 @@ export default function Payments({ clients }) {
           };
         }
         const cd = monthlyData[month].clients[clientKey];
+        const convertedAmt = convertAmount(task.amount || 0, task.currency || 'NGN');
         if (task.paid) {
-          cd.earned += task.amount || 0;
-          monthlyData[month].earned += task.amount || 0;
+          cd.earned += convertedAmt;
+          monthlyData[month].earned += convertedAmt;
         } else {
-          cd.pending += task.amount || 0;
-          monthlyData[month].pending += task.amount || 0;
+          cd.pending += convertedAmt;
+          monthlyData[month].pending += convertedAmt;
         }
         cd.tasks.push(task);
       });
@@ -126,9 +128,10 @@ export default function Payments({ clients }) {
             isDeleted: true,
           };
         }
-        monthlyData[month].clients[clientKey].retainer = clientData.retainer;
-        monthlyData[month].clients[clientKey].earned += clientData.retainer;
-        monthlyData[month].earned += clientData.retainer;
+        const convertedTrashedRetainer = convertAmount(clientData.retainer, 'NGN');
+        monthlyData[month].clients[clientKey].retainer = convertedTrashedRetainer;
+        monthlyData[month].clients[clientKey].earned += convertedTrashedRetainer;
+        monthlyData[month].earned += convertedTrashedRetainer;
       });
     } catch {
       // ignore parse errors
@@ -161,12 +164,13 @@ export default function Payments({ clients }) {
         };
       }
       const cd = monthlyData[month].clients[clientId];
+      const convertedTaskAmt = convertAmount(taskData.amount || 0, taskData.currency || 'NGN');
       if (taskData.paid) {
-        cd.earned += taskData.amount || 0;
-        monthlyData[month].earned += taskData.amount || 0;
+        cd.earned += convertedTaskAmt;
+        monthlyData[month].earned += convertedTaskAmt;
       } else {
-        cd.pending += taskData.amount || 0;
-        monthlyData[month].pending += taskData.amount || 0;
+        cd.pending += convertedTaskAmt;
+        monthlyData[month].pending += convertedTaskAmt;
       }
       cd.tasks.push({ ...taskData, id: `trash_${trashItem.id}` });
     } catch {
@@ -324,7 +328,7 @@ export default function Payments({ clients }) {
                                       {task.title}
                                     </span>
                                     <span className={`font-mono ${task.paid ? 'text-success' : 'text-pending'}`}>
-                                      {formatMoney(task.amount)}
+                                      {formatMoney(convertAmount(task.amount, task.currency || 'NGN'))}
                                       {!task.paid && ' (pending)'}
                                     </span>
                                   </div>

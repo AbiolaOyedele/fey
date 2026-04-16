@@ -354,7 +354,7 @@ export default function Clients({ clients, actions }) {
   const paletteToShow = availablePalette.length > 0 ? availablePalette : PALETTE;
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 page-enter overflow-x-hidden">
+    <div className="p-4 md:p-6 lg:p-8 page-enter overflow-x-hidden min-h-screen">
       <h1 className="font-display text-2xl md:text-3xl lg:text-[2.75rem] leading-tight font-bold text-gray-900 mb-6 lg:mb-8">
         {settings.clients_label || 'Clients'}
       </h1>

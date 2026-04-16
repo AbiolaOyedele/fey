@@ -14,7 +14,9 @@
       "Bash(git remote:*)",
       "Bash(git push:*)",
       "Bash(gh auth:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)"
     ]
   }
 }

@@ -354,7 +354,7 @@ export default function Clients({ clients, actions }) {
   const paletteToShow = availablePalette.length > 0 ? availablePalette : PALETTE;
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 page-enter">
+    <div className="p-4 md:p-6 lg:p-8 page-enter overflow-x-hidden">
       <h1 className="font-display text-2xl md:text-3xl lg:text-[2.75rem] leading-tight font-bold text-gray-900 mb-6 lg:mb-8">
         {settings.clients_label || 'Clients'}
       </h1>
@@ -471,6 +471,8 @@ export default function Clients({ clients, actions }) {
             className="bg-white rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-md shadow-xl animate-slideUp md:animate-slideDown max-h-[85vh] overflow-y-auto"
             style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
           >
+            {/* Drag handle — mobile only */}
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mt-1 mb-3 md:hidden" />
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display text-xl font-semibold">New Client</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">

@@ -189,7 +189,7 @@ export default function Payments({ clients }) {
   const earnedThisMonth = thisMonthData?.earned || 0;
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen page-enter">
+    <div className="flex flex-col lg:flex-row min-h-screen page-enter overflow-x-hidden">
       {/* Main content */}
       <div className="flex-1 p-4 md:p-6 lg:p-8 lg:pr-4 min-w-0">
         <h1 className="font-display text-2xl lg:text-[2.75rem] leading-tight font-bold text-gray-900 mb-6 lg:mb-8">
@@ -216,10 +216,10 @@ export default function Payments({ clients }) {
                 <div key={month} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                   <button
                     onClick={() => setExpandedMonth(isExpanded ? null : month)}
-                    className="w-full flex items-center gap-4 px-4 sm:px-6 py-4 sm:py-5 hover:bg-gray-50 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 sm:px-6 py-4 sm:py-5 hover:bg-gray-50 transition-colors"
                   >
                     <div
-                      className={`w-8 h-8 rounded-xl flex items-center justify-center ${isExpanded ? '' : 'bg-gray-100'}`}
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${isExpanded ? '' : 'bg-gray-100'}`}
                       style={isExpanded ? { backgroundColor: 'var(--accent, #667EEA)15' } : {}}
                     >
                       {isExpanded ? (
@@ -228,23 +228,39 @@ export default function Payments({ clients }) {
                         <ChevronRight size={16} className="text-gray-400" />
                       )}
                     </div>
-                    <div className="flex-1 text-left">
-                      <span className="font-display font-semibold text-gray-900">
-                        {label}
-                      </span>
-                      {isCurrentMonth && (
-                        <span
-                          className="ml-2 text-xs px-2 py-0.5 rounded-full font-medium"
-                          style={{
-                            backgroundColor: 'var(--accent, #667EEA)15',
-                            color: 'var(--accent, #667EEA)',
-                          }}
-                        >
-                          Current
+                    <div className="flex-1 text-left min-w-0">
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className="font-display font-semibold text-gray-900">
+                          {label}
                         </span>
-                      )}
+                        {isCurrentMonth && (
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full font-medium"
+                            style={{
+                              backgroundColor: 'var(--accent, #667EEA)15',
+                              color: 'var(--accent, #667EEA)',
+                            }}
+                          >
+                            Current
+                          </span>
+                        )}
+                      </div>
+                      {/* Mobile: amounts stacked below label */}
+                      <div className="flex items-center gap-2 mt-1 sm:hidden flex-wrap">
+                        {data.earned > 0 && (
+                          <span className="text-xs font-mono font-semibold text-success bg-success/10 px-2 py-0.5 rounded-lg break-all">
+                            +{formatMoney(data.earned)}
+                          </span>
+                        )}
+                        {data.pending > 0 && (
+                          <span className="text-xs font-mono text-pending bg-pending/10 px-2 py-0.5 rounded-lg break-all">
+                            {formatMoney(data.pending)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    {/* Desktop: amounts inline */}
+                    <div className="hidden sm:flex items-center gap-4 flex-shrink-0">
                       {data.earned > 0 && (
                         <span className="text-sm font-mono font-semibold text-success bg-success/10 px-3 py-1 rounded-lg">
                           +{formatMoney(data.earned)}
@@ -266,21 +282,23 @@ export default function Payments({ clients }) {
                           <div key={clientData.id || clientData.name}>
                             {/* Client header row */}
                             {clientData.isDeleted ? (
-                              <div className="flex items-center gap-3 mb-2">
-                                <div
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                                  style={{ backgroundColor: clientData.color, color: textColor }}
-                                >
-                                  {clientData.name.charAt(0)}
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-2">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
+                                    style={{ backgroundColor: clientData.color, color: textColor }}
+                                  >
+                                    {clientData.name.charAt(0)}
+                                  </div>
+                                  <span className="text-sm font-semibold text-gray-800 truncate">
+                                    {clientData.name}
+                                  </span>
+                                  <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                                    deleted
+                                  </span>
                                 </div>
-                                <span className="text-sm font-semibold text-gray-800">
-                                  {clientData.name}
-                                </span>
-                                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                                  deleted
-                                </span>
                                 {clientData.earned > 0 && (
-                                  <span className="text-xs font-mono text-success ml-auto">
+                                  <span className="text-xs font-mono text-success sm:ml-auto break-all">
                                     +{formatMoney(clientData.earned)}
                                   </span>
                                 )}
@@ -288,19 +306,21 @@ export default function Payments({ clients }) {
                             ) : (
                               <Link
                                 to={`/clients/${clientData.id}`}
-                                className="flex items-center gap-3 mb-2 group"
+                                className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-2 group"
                               >
-                                <div
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                                  style={{ backgroundColor: clientData.color, color: textColor }}
-                                >
-                                  {clientData.name.charAt(0)}
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
+                                    style={{ backgroundColor: clientData.color, color: textColor }}
+                                  >
+                                    {clientData.name.charAt(0)}
+                                  </div>
+                                  <span className="text-sm font-semibold text-gray-800 group-hover:text-primary transition-colors truncate">
+                                    {clientData.name}
+                                  </span>
                                 </div>
-                                <span className="text-sm font-semibold text-gray-800 group-hover:text-primary transition-colors">
-                                  {clientData.name}
-                                </span>
                                 {clientData.earned > 0 && (
-                                  <span className="text-xs font-mono text-success ml-auto">
+                                  <span className="text-xs font-mono text-success sm:ml-auto break-all">
                                     +{formatMoney(clientData.earned)}
                                   </span>
                                 )}

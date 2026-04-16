@@ -32,7 +32,7 @@ export default function ChangelogPopup() {
         ref={btnRef}
         onClick={() => setOpen(!open)}
         title="Changelog"
-        className="fixed bottom-6 right-6 z-30 w-8 h-8 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-gray-300 hover:text-gray-500 hover:shadow-lg transition-all duration-150 opacity-40 hover:opacity-100"
+        className="fixed bottom-24 lg:bottom-6 right-6 z-30 w-8 h-8 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-gray-300 hover:text-gray-500 hover:shadow-lg transition-all duration-150 opacity-40 hover:opacity-100"
       >
         <History size={14} />
       </button>
@@ -40,7 +40,7 @@ export default function ChangelogPopup() {
       {open && (
         <div
           ref={popupRef}
-          className="fixed bottom-16 right-6 z-40 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-slideUp"
+          className="fixed bottom-36 lg:bottom-16 right-6 z-40 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-slideUp"
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <p className="text-sm font-semibold text-gray-700">Changelog</p>

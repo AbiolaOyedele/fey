@@ -2,9 +2,10 @@ import { useState, useRef } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import {
   Upload, RefreshCw, Trash2, RotateCcw, X, Palette, User, Image, Type,
-  Monitor, Sparkles,
+  Monitor, Sparkles, History,
 } from 'lucide-react';
 import WhatsNewPopup from '../components/WhatsNewPopup';
+import ChangelogPopup from '../components/ChangelogPopup';
 
 const THEME_COLORS = [
   '#667EEA', '#F56565', '#ED8936', '#38B2AC',
@@ -47,6 +48,7 @@ export default function Settings({ clients, refetch }) {
   const [accentHexInput, setAccentHexInput] = useState('');
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const changelogTriggerRef = useRef(null);
   const bodyFontFileRef = useRef(null);
   const headingFontFileRef = useRef(null);
 
@@ -130,7 +132,7 @@ export default function Settings({ clients, refetch }) {
 
   return (
     <>
-      <div className="p-4 md:p-6 lg:p-8 page-enter max-w-3xl">
+      <div className="p-4 md:p-6 lg:p-8 page-enter max-w-3xl overflow-x-hidden">
         <h1 className="font-display text-2xl lg:text-[2.75rem] leading-tight font-bold text-gray-900 mb-6 lg:mb-8">
           Settings
         </h1>
@@ -452,6 +454,27 @@ export default function Settings({ clients, refetch }) {
           </div>
         </section>
 
+        {/* Changelog Section */}
+        <section className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <History size={18} className="text-gray-400" />
+              <div>
+                <h2 className="font-display text-lg font-semibold text-gray-900">Changelog</h2>
+                <p className="text-xs text-gray-400 mt-0.5">View version history and release notes</p>
+              </div>
+            </div>
+            <button
+              onClick={() => changelogTriggerRef.current?.querySelector('button')?.click()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+            >
+              <History size={14} />
+              View Changelog
+            </button>
+          </div>
+        </section>
+
         {/* Trash Section */}
         <section className="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
@@ -507,6 +530,10 @@ export default function Settings({ clients, refetch }) {
       {whatsNewOpen && (
         <WhatsNewPopup open={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
       )}
+      {/* ChangelogPopup only on this page — hidden floating trigger, controlled via card button */}
+      <div ref={changelogTriggerRef}>
+        <ChangelogPopup />
+      </div>
     </>
   );
 }

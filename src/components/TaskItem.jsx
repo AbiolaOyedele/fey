@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Trash2, Check, Calendar, GripVertical } from 'lucide-react';
+import { Trash2, Check, Calendar, GripVertical, ChevronDown } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 
 function formatWithCommas(val) {
@@ -20,6 +20,7 @@ function formatDeadline(dateStr) {
 export default function TaskItem({ task, onUpdate, onDelete, dragListeners, dragAttributes, noMoney = false }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
+  const [expanded, setExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [bouncing, setBouncing] = useState(false);
   const [amountInput, setAmountInput] = useState('');
@@ -95,61 +96,174 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
 
   return (
     <div
-      className={`group flex items-center gap-3 py-3 px-4 rounded-xl hover:bg-gray-50 transition-all duration-150 ${
+      className={`group py-3 px-4 rounded-xl hover:bg-gray-50 transition-all duration-150 ${
         deleting ? 'animate-fadeOut' : 'animate-fadeIn'
       } ${isOverdue ? 'border-l-2 border-red-400 pl-3' : ''}`}
     >
-      {/* Done checkbox */}
-      <button
-        onClick={handleDone}
-        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-150 flex-shrink-0 ${
-          bouncing ? 'animate-scaleBounce' : ''
-        } ${task.done ? 'text-white' : 'border-gray-300'}`}
-        style={task.done
-          ? { backgroundColor: 'var(--accent, #667EEA)', borderColor: 'var(--accent, #667EEA)' }
-          : {}}
-        onMouseEnter={e => { if (!task.done) e.currentTarget.style.borderColor = 'var(--accent, #667EEA)'; }}
-        onMouseLeave={e => { if (!task.done) e.currentTarget.style.borderColor = ''; }}
-      >
-        {task.done && <Check size={12} strokeWidth={3} />}
-      </button>
+      {/* ── Mobile top row: checkbox + title + chevron ── */}
+      <div className="flex items-center gap-3">
+        {/* Done checkbox */}
+        <button
+          onClick={handleDone}
+          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-150 flex-shrink-0 ${
+            bouncing ? 'animate-scaleBounce' : ''
+          } ${task.done ? 'text-white' : 'border-gray-300'}`}
+          style={task.done
+            ? { backgroundColor: 'var(--accent, #667EEA)', borderColor: 'var(--accent, #667EEA)' }
+            : {}}
+          onMouseEnter={e => { if (!task.done) e.currentTarget.style.borderColor = 'var(--accent, #667EEA)'; }}
+          onMouseLeave={e => { if (!task.done) e.currentTarget.style.borderColor = ''; }}
+        >
+          {task.done && <Check size={12} strokeWidth={3} />}
+        </button>
 
-      {/* Title + deadline label */}
-      <div className="flex-1 min-w-0">
-        {editing ? (
-          <input
-            autoFocus
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={handleTitleBlur}
-            onKeyDown={(e) => e.key === 'Enter' && handleTitleBlur()}
-            className="w-full bg-transparent border-b border-primary/30 outline-none text-sm py-0.5 font-medium"
-          />
-        ) : (
-          <span
-            onClick={() => setEditing(true)}
-            className={`block text-sm font-medium cursor-text break-words whitespace-normal min-w-0 ${
-              task.done ? 'line-through text-gray-400' : 'text-gray-800'
+        {/* Title + deadline label */}
+        <div className="flex-1 min-w-0">
+          {editing ? (
+            <input
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={handleTitleBlur}
+              onKeyDown={(e) => e.key === 'Enter' && handleTitleBlur()}
+              className="w-full bg-transparent border-b border-primary/30 outline-none text-sm py-0.5 font-medium"
+            />
+          ) : (
+            <span
+              onClick={() => setEditing(true)}
+              className={`block text-sm font-medium cursor-text break-words whitespace-normal min-w-0 ${
+                task.done ? 'line-through text-gray-400' : 'text-gray-800'
+              }`}
+            >
+              {task.title}
+            </span>
+          )}
+          {task.deadline && (
+            <span className={`text-xs ${
+              isOverdue ? 'text-red-500 font-medium' : isToday ? 'text-amber-500 font-medium' : 'text-gray-400'
+            }`}>
+              Due: {formatDeadline(task.deadline)}
+            </span>
+          )}
+        </div>
+
+        {/* Desktop-only: paid dot + amount + paid toggle + trailing icons */}
+        {!noMoney && task.paid && <span className="hidden md:block w-2 h-2 rounded-full bg-success flex-shrink-0" />}
+
+        {!noMoney && (
+          <div className="hidden md:flex items-center gap-1 flex-shrink-0">
+            <span className="text-xs text-gray-400">{currencyLabel}</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amountInput}
+              onChange={handleAmountChange}
+              onFocus={() => setAmountEditing(true)}
+              onBlur={handleAmountBlur}
+              placeholder="0"
+              className="w-16 sm:w-24 text-right text-sm font-mono bg-transparent outline-none text-gray-700 placeholder:text-gray-300"
+            />
+          </div>
+        )}
+
+        {!noMoney && (
+          <button
+            onClick={handlePaid}
+            className={`hidden md:flex px-2 sm:px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 flex-shrink-0 ${
+              task.paid
+                ? 'bg-success text-white'
+                : 'bg-gray-100 text-gray-500 hover:bg-pending/20 hover:text-pending'
             }`}
           >
-            {task.title}
-          </span>
+            {task.paid ? 'Paid' : 'Unpaid'}
+          </button>
         )}
-        {task.deadline && (
-          <span className={`text-xs ${
-            isOverdue ? 'text-red-500 font-medium' : isToday ? 'text-amber-500 font-medium' : 'text-gray-400'
-          }`}>
-            Due: {formatDeadline(task.deadline)}
-          </span>
+
+        {/* Desktop trailing icons */}
+        <div className="hidden md:flex items-center gap-1.5 flex-shrink-0">
+          <div className="relative">
+            <button
+              onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
+              className={`flex items-center justify-center w-6 h-6 transition-colors ${
+                isOverdue
+                  ? 'text-red-400 hover:text-red-600'
+                  : task.deadline
+                  ? 'text-amber-400 hover:text-amber-600'
+                  : 'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-500'
+              }`}
+              title={task.deadline ? `Due: ${formatDeadline(task.deadline)}` : 'Set deadline'}
+            >
+              <Calendar size={14} />
+            </button>
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={task.deadline || ''}
+              onChange={handleDeadlineChange}
+              className="absolute inset-0 opacity-0 w-0 h-0 pointer-events-none"
+              tabIndex={-1}
+            />
+          </div>
+          <button
+            onClick={handleDelete}
+            className="flex items-center justify-center w-6 h-6 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-danger transition-all duration-150"
+          >
+            <Trash2 size={14} />
+          </button>
+          {dragListeners && (
+            <button
+              {...dragListeners}
+              {...dragAttributes}
+              className="flex items-center justify-center w-6 h-6 opacity-0 group-hover:opacity-40 hover:!opacity-70 transition-opacity cursor-grab active:cursor-grabbing touch-none text-gray-400"
+              tabIndex={-1}
+            >
+              <GripVertical size={14} />
+            </button>
+          )}
+        </div>
+
+        {/* Mobile-only: chevron expand button (hidden on md+) */}
+        {!noMoney && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="md:hidden flex items-center justify-center w-7 h-7 text-gray-400 flex-shrink-0 transition-colors"
+          >
+            <ChevronDown
+              size={16}
+              className="transition-transform duration-200"
+              style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            />
+          </button>
+        )}
+
+        {/* Mobile-only: show trailing icons when noMoney (no expand needed) */}
+        {noMoney && (
+          <div className="md:hidden flex items-center gap-1.5 flex-shrink-0">
+            <button
+              onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
+              className={`flex items-center justify-center w-6 h-6 transition-colors ${
+                isOverdue
+                  ? 'text-red-400 hover:text-red-600'
+                  : task.deadline
+                  ? 'text-amber-400 hover:text-amber-600'
+                  : 'text-gray-300'
+              }`}
+            >
+              <Calendar size={14} />
+            </button>
+            <button
+              onClick={handleDelete}
+              className="flex items-center justify-center w-6 h-6 text-gray-300 hover:text-danger transition-all duration-150"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
         )}
       </div>
 
-      {/* Paid dot indicator */}
-      {!noMoney && task.paid && <span className="w-2 h-2 rounded-full bg-success flex-shrink-0" />}
-
-      {/* Amount */}
-      {!noMoney && (
-        <div className="flex items-center gap-1 flex-shrink-0">
+      {/* ── Mobile expanded panel (hidden on md+, shown when expanded) ── */}
+      {!noMoney && expanded && (
+        <div className="md:hidden flex items-center gap-2 flex-wrap pt-2 pb-1 pl-8">
           <span className="text-xs text-gray-400">{currencyLabel}</span>
           <input
             type="text"
@@ -159,72 +273,38 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
             onFocus={() => setAmountEditing(true)}
             onBlur={handleAmountBlur}
             placeholder="0"
-            className="w-16 sm:w-24 text-right text-sm font-mono bg-transparent outline-none text-gray-700 placeholder:text-gray-300"
+            className="w-20 text-right text-sm font-mono bg-gray-50 rounded-lg px-2 py-1 border border-gray-200 outline-none text-gray-700 placeholder:text-gray-300"
           />
-        </div>
-      )}
-
-      {/* Paid toggle */}
-      {!noMoney && (
-        <button
-          onClick={handlePaid}
-          className={`px-2 sm:px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 flex-shrink-0 ${
-            task.paid
-              ? 'bg-success text-white'
-              : 'bg-gray-100 text-gray-500 hover:bg-pending/20 hover:text-pending'
-          }`}
-        >
-          {task.paid ? 'Paid' : 'Unpaid'}
-        </button>
-      )}
-
-      {/* Trailing icons — calendar, delete, drag — all baseline-aligned */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        {/* Deadline calendar button */}
-        <div className="relative">
+          <button
+            onClick={handlePaid}
+            className={`px-2 py-1 rounded-lg text-xs font-medium transition-all duration-200 flex-shrink-0 ${
+              task.paid
+                ? 'bg-success text-white'
+                : 'bg-gray-100 text-gray-500'
+            }`}
+          >
+            {task.paid ? 'Paid' : 'Unpaid'}
+          </button>
           <button
             onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
-            className={`flex items-center justify-center w-6 h-6 transition-colors ${
+            className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${
               isOverdue
-                ? 'text-red-400 hover:text-red-600'
+                ? 'text-red-400'
                 : task.deadline
-                ? 'text-amber-400 hover:text-amber-600'
-                : 'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-500'
+                ? 'text-amber-400'
+                : 'text-gray-300'
             }`}
-            title={task.deadline ? `Due: ${formatDeadline(task.deadline)}` : 'Set deadline'}
           >
             <Calendar size={14} />
           </button>
-          <input
-            ref={dateInputRef}
-            type="date"
-            value={task.deadline || ''}
-            onChange={handleDeadlineChange}
-            className="absolute inset-0 opacity-0 w-0 h-0 pointer-events-none"
-            tabIndex={-1}
-          />
-        </div>
-
-        {/* Delete */}
-        <button
-          onClick={handleDelete}
-          className="flex items-center justify-center w-6 h-6 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-danger transition-all duration-150"
-        >
-          <Trash2 size={14} />
-        </button>
-
-        {/* Drag handle */}
-        {dragListeners && (
           <button
-            {...dragListeners}
-            {...dragAttributes}
-            className="flex items-center justify-center w-6 h-6 opacity-0 group-hover:opacity-40 hover:!opacity-70 transition-opacity cursor-grab active:cursor-grabbing touch-none text-gray-400"
-            tabIndex={-1}
+            onClick={handleDelete}
+            className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-300 hover:text-danger transition-all duration-150"
           >
-            <GripVertical size={14} />
+            <Trash2 size={14} />
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

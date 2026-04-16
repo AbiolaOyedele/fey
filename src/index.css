@@ -133,20 +133,20 @@ h1, h2, h3, .font-display {
 }
 
 /* Prevent horizontal overflow */
-html, body { overflow-x: hidden; }
+html, body, #root { overflow-x: hidden; }
 
 /* Minimum touch target on mobile/tablet */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   button, a, [role="button"] { min-height: 44px; }
 
   /* Prevent iOS auto-zoom on input focus */
-  input, select, textarea { font-size: 16px; }
+  input, select, textarea { font-size: 16px !important; }
 }
 
 /* Ensure checkboxes stay small and native — not rounded squares */
 input[type="checkbox"] {
-  width: 1rem;
-  height: 1rem;
+  width: 18px;
+  height: 18px;
   border-radius: 4px;
   flex-shrink: 0;
   appearance: auto;

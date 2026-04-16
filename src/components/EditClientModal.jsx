@@ -43,6 +43,8 @@ export default function EditClientModal({ client, onSave, onClose }) {
         className="bg-white rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-md shadow-xl animate-slideUp md:animate-slideDown max-h-[85vh] overflow-y-auto"
         style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
       >
+        {/* Drag handle — mobile only */}
+        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mt-1 mb-3 md:hidden" />
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display text-xl font-semibold">Edit {clientLabel}</h2>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">

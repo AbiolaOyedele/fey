@@ -240,7 +240,7 @@ export default function Tasks({ taskGroupData }) {
   return (
     <>
       {/* Responsive layout: stacked on mobile, side-by-side on desktop */}
-      <div className="flex flex-col lg:flex-row lg:h-screen page-enter lg:overflow-hidden">
+      <div className="flex flex-col lg:flex-row lg:h-screen page-enter lg:overflow-hidden overflow-x-hidden">
 
         {/* ── Left column: standalone tasks ── */}
         <div className="lg:overflow-y-auto w-full lg:w-[60%] lg:flex-shrink-0">
@@ -373,6 +373,8 @@ export default function Tasks({ taskGroupData }) {
             className="bg-white rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-md shadow-xl animate-slideUp md:animate-slideDown max-h-[85vh] overflow-y-auto"
             style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
           >
+            {/* Drag handle — mobile only */}
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mt-1 mb-3 md:hidden" />
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-display text-xl font-semibold">New Group</h2>
               <button

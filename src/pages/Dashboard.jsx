@@ -166,7 +166,7 @@ export default function Dashboard({ clients, actions }) {
   const gridColsDesktop = CARD_COLS[settings.card_size] || 'lg:grid-cols-2';
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen page-enter">
+    <div className="flex flex-col lg:flex-row min-h-screen page-enter overflow-x-hidden">
       {/* Main Content */}
       <div className="flex-1 p-4 md:p-6 lg:p-8 lg:pr-4 overflow-y-auto min-w-0">
         {/* Hero heading */}
@@ -182,8 +182,8 @@ export default function Dashboard({ clients, actions }) {
           )}
         </div>
 
-        {/* Filter pills */}
-        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1 scrollbar-none">
+        {/* Filter pills — desktop */}
+        <div className="hidden md:flex items-center gap-2 mb-6 overflow-x-auto pb-1 scrollbar-none">
           {visibleFilters.map((f) => (
             <button
               key={f}
@@ -202,12 +202,26 @@ export default function Dashboard({ clients, actions }) {
               {f === 'Unpaid' && <CreditCard size={14} />}
               {f}
               {f === 'Overdue' && overdueBadge > 0 && filter !== 'Overdue' && (
-                <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
+                <span className="w-4 h-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
                   {overdueBadge}
                 </span>
               )}
             </button>
           ))}
+        </div>
+
+        {/* Filter dropdown — mobile */}
+        <div className="md:hidden mb-6">
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl outline-none"
+            style={{ color: 'var(--accent, #667EEA)' }}
+          >
+            {visibleFilters.map((f) => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
         </div>
 
         {/* All tab: client cards grid */}
@@ -329,7 +343,7 @@ export default function Dashboard({ clients, actions }) {
                       <img src={client.logo} alt={client.name} className="w-5 h-5 rounded-md object-cover" />
                     ) : (
                       <div
-                        className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold"
+                        className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold"
                         style={{ backgroundColor: client.color, color: textColor }}
                       >
                         {client.name.charAt(0)}
@@ -400,7 +414,7 @@ export default function Dashboard({ clients, actions }) {
                 className="relative w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 shadow-sm transition-colors"
               >
                 <TriangleAlert size={16} />
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
                   {overdueBadge > 9 ? '9+' : overdueBadge}
                 </span>
               </button>
@@ -449,7 +463,7 @@ export default function Dashboard({ clients, actions }) {
             >
               <Bell size={16} />
               {bellBadge > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] flex items-center justify-center font-bold">
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center font-bold">
                   {bellBadge > 9 ? '9+' : bellBadge}
                 </span>
               )}
@@ -535,17 +549,15 @@ export default function Dashboard({ clients, actions }) {
           <h3 className="font-display font-bold text-lg text-gray-900">{settings.username}</h3>
           <p className="text-xs text-gray-400 mt-0.5">{settings.company_name}</p>
 
-          <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-gray-100">
+          <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-100">
             <Link to="/clients" className="text-center hover:opacity-70 transition-opacity">
               <p className="font-mono font-semibold text-gray-900">{clients.length}</p>
               <p className="text-xs text-gray-400">Clients</p>
             </Link>
-            <div className="w-px h-8 bg-gray-100" />
             <Link to="/clients" className="text-center hover:opacity-70 transition-opacity">
               <p className="font-mono font-semibold text-gray-900">{tasksDone}</p>
               <p className="text-xs text-gray-400">Done</p>
             </Link>
-            <div className="w-px h-8 bg-gray-100" />
             <Link to="/clients" className="text-center hover:opacity-70 transition-opacity">
               <p className="font-mono font-semibold text-gray-900">{tasksPending}</p>
               <p className="text-xs text-gray-400">Pending</p>
@@ -553,8 +565,8 @@ export default function Dashboard({ clients, actions }) {
           </div>
         </div>
 
-        {/* Activity chart card */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+        {/* Activity chart card — hidden on mobile */}
+        <div className="hidden md:block bg-white rounded-2xl p-5 shadow-sm mb-4">
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-semibold text-gray-700">Activity</p>
             <span className="text-xs text-gray-400">6 months</span>
@@ -595,7 +607,7 @@ export default function Dashboard({ clients, actions }) {
                       )}
                     </div>
                     <span
-                      className={`text-[10px] ${isCurrentMonth ? 'font-semibold' : 'text-gray-400'}`}
+                      className={`text-xs ${isCurrentMonth ? 'font-semibold' : 'text-gray-400'}`}
                       style={isCurrentMonth ? { color: 'var(--accent, #667EEA)' } : {}}
                     >
                       {m.label}

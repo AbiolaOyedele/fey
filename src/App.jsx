@@ -12,7 +12,6 @@ import TaskGroupWorkspace from './pages/TaskGroupWorkspace';
 import Payments from './pages/Payments';
 import Settings from './pages/Settings';
 import ToastContainer from './components/Toast';
-import ChangelogPopup from './components/ChangelogPopup';
 
 export default function App() {
   const {
@@ -117,7 +116,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div className="flex min-h-screen bg-appbg">
+      <div className="flex min-h-screen bg-appbg overflow-x-hidden">
         <Sidebar />
         <main className="flex-1 ml-0 lg:ml-[72px] pb-16 lg:pb-0 page-enter">
           <Routes>
@@ -148,7 +147,6 @@ export default function App() {
           </Routes>
         </main>
         <ToastContainer />
-        <ChangelogPopup />
       </div>
     </BrowserRouter>
   );

@@ -171,15 +171,145 @@ export default function Dashboard({ clients, actions }) {
       <div className="flex-1 p-4 md:p-6 lg:p-8 lg:pr-4 overflow-y-auto min-w-0">
         {/* Hero heading */}
         <div className="mb-6 lg:mb-8">
-          <h1
-            className="font-display text-2xl md:text-3xl lg:text-[2.75rem] leading-tight font-bold text-gray-900"
-            style={{ whiteSpace: 'pre-wrap' }}
-          >
-            {heading}
-          </h1>
-          {settings.dashboard_subtitle && (
-            <p className="text-gray-500 text-sm mt-2">{settings.dashboard_subtitle}</p>
-          )}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1
+                className="font-display text-2xl md:text-3xl lg:text-[2.75rem] leading-tight font-bold text-gray-900"
+                style={{ whiteSpace: 'pre-wrap' }}
+              >
+                {heading}
+              </h1>
+              {settings.dashboard_subtitle && (
+                <p className="text-gray-500 text-sm mt-2">{settings.dashboard_subtitle}</p>
+              )}
+            </div>
+            {/* Action icons — mobile only (desktop shows them in right panel) */}
+            <div className="lg:hidden flex items-center gap-2 flex-shrink-0 pt-1">
+              {overdueBadge > 0 && (
+                <div ref={overdueRef}>
+                  <button
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setOverduePos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+                      setOverdueOpen(!overdueOpen);
+                      setBellOpen(false);
+                    }}
+                    className="relative w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 shadow-sm transition-colors"
+                  >
+                    <TriangleAlert size={16} />
+                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
+                      {overdueBadge > 9 ? '9+' : overdueBadge}
+                    </span>
+                  </button>
+                  {overdueOpen && (
+                    <div
+                      className="fixed w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-[9999] overflow-hidden"
+                      style={{ top: overduePos.top, right: overduePos.right }}
+                    >
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <p className="text-sm font-semibold text-red-600">Overdue Tasks</p>
+                      </div>
+                      <div className="max-h-72 overflow-y-auto">
+                        {overdueTasks.map((task) => (
+                          <Link
+                            key={task.id}
+                            to={`/clients/${task.clientId}`}
+                            onClick={() => setOverdueOpen(false)}
+                            className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                          >
+                            <AlertTriangle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-800 truncate">{task.title}</p>
+                              <p className="text-xs text-gray-400">{task.clientName}</p>
+                            </div>
+                            <span className="text-xs text-red-500 font-medium flex-shrink-0">
+                              {daysDiff(task.deadline)}d ago
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div ref={bellRef}>
+                <button
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setBellPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+                    setBellOpen(!bellOpen);
+                    setOverdueOpen(false);
+                  }}
+                  className="relative w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors"
+                >
+                  <Bell size={16} />
+                  {bellBadge > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center font-bold">
+                      {bellBadge > 9 ? '9+' : bellBadge}
+                    </span>
+                  )}
+                </button>
+                {bellOpen && (
+                  <div
+                    className="fixed w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-[9999] overflow-hidden"
+                    style={{ top: bellPos.top, right: bellPos.right }}
+                  >
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-semibold text-gray-700">Upcoming Deadlines</p>
+                    </div>
+                    {dueTodayTasks.length === 0 && upcomingTasks.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm text-gray-400">No upcoming deadlines</div>
+                    ) : (
+                      <div className="max-h-72 overflow-y-auto">
+                        {dueTodayTasks.length > 0 && (
+                          <>
+                            <p className="px-4 pt-3 pb-1 text-xs font-semibold text-amber-600 uppercase tracking-wider">Due Today</p>
+                            {dueTodayTasks.map((task) => (
+                              <Link
+                                key={task.id}
+                                to={`/clients/${task.clientId}`}
+                                onClick={() => setBellOpen(false)}
+                                className="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                              >
+                                <Calendar size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-800 truncate">{task.title}</p>
+                                  <p className="text-xs text-gray-400">{task.clientName}</p>
+                                </div>
+                              </Link>
+                            ))}
+                          </>
+                        )}
+                        {upcomingTasks.length > 0 && (
+                          <>
+                            <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Upcoming</p>
+                            {upcomingTasks.map((task) => (
+                              <Link
+                                key={task.id}
+                                to={`/clients/${task.clientId}`}
+                                onClick={() => setBellOpen(false)}
+                                className="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                              >
+                                <Calendar size={14} className="text-gray-300 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-800 truncate">{task.title}</p>
+                                  <p className="text-xs text-gray-400">{task.clientName}</p>
+                                </div>
+                                <span className="text-xs text-gray-400 flex-shrink-0">{formatDeadline(task.deadline)}</span>
+                              </Link>
+                            ))}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <Link to="/settings" className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors">
+                <Settings size={16} />
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* Filter pills — desktop */}
@@ -324,7 +454,7 @@ export default function Dashboard({ clients, actions }) {
 
         {/* Non-All tabs: flat task list grouped by client */}
         {filter !== 'All' && (
-          <div className="space-y-5">
+          <div className="space-y-5 overflow-hidden min-w-0">
             {tasksByClient.length === 0 && (
               <div className="text-center py-16 text-gray-400">
                 <p className="text-lg">No tasks</p>
@@ -334,39 +464,39 @@ export default function Dashboard({ clients, actions }) {
             {tasksByClient.map(({ client, tasks }) => {
               const textColor = ACCENT_TEXT[client.color] || '#374151';
               return (
-                <div key={client.id}>
+                <div key={client.id} className="overflow-hidden min-w-0">
                   <Link
                     to={`/clients/${client.id}`}
-                    className="flex items-center gap-2 mb-2 hover:opacity-70 transition-opacity"
+                    className="flex items-center gap-2 mb-2 hover:opacity-70 transition-opacity min-w-0"
                   >
                     {client.logo ? (
-                      <img src={client.logo} alt={client.name} className="w-5 h-5 rounded-md object-cover" />
+                      <img src={client.logo} alt={client.name} className="w-5 h-5 rounded-md object-cover flex-shrink-0" />
                     ) : (
                       <div
-                        className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold"
+                        className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0"
                         style={{ backgroundColor: client.color, color: textColor }}
                       >
                         {client.name.charAt(0)}
                       </div>
                     )}
-                    <span className="text-sm font-semibold text-gray-700">{client.name}</span>
-                    <span className="text-xs text-gray-400">{tasks.length} task{tasks.length !== 1 ? 's' : ''}</span>
+                    <span className="text-sm font-semibold text-gray-700 truncate">{client.name}</span>
+                    <span className="text-xs text-gray-400 flex-shrink-0">{tasks.length} task{tasks.length !== 1 ? 's' : ''}</span>
                   </Link>
-                  <div className="space-y-1.5 pl-1">
+                  <div className="space-y-1.5 pl-1 overflow-hidden min-w-0">
                     {tasks.map((task) => {
                       const isTaskOverdue = task.deadline && task.deadline < todayStr && !task.done;
                       return (
                         <div
                           key={task.id}
-                          className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border-l-4 shadow-sm"
+                          className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border-l-4 shadow-sm min-w-0 w-full"
                           style={{ borderLeftColor: client.color }}
                         >
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <p className={`text-sm font-medium truncate ${task.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
                               {task.title}
                             </p>
                             {task.deadline && (
-                              <p className={`text-xs ${isTaskOverdue ? 'text-red-500 font-medium' : task.deadline === todayStr ? 'text-amber-500' : 'text-gray-400'}`}>
+                              <p className={`text-xs truncate ${isTaskOverdue ? 'text-red-500 font-medium' : task.deadline === todayStr ? 'text-amber-500' : 'text-gray-400'}`}>
                                 {isTaskOverdue ? `${daysDiff(task.deadline)}d overdue` : `Due: ${formatDeadline(task.deadline)}`}
                               </p>
                             )}
@@ -399,9 +529,9 @@ export default function Dashboard({ clients, actions }) {
 
       {/* Right Summary Panel */}
       <div className="w-full lg:w-[260px] lg:flex-shrink-0 p-4 lg:pl-2 overflow-y-auto overflow-x-hidden">
-        {/* Top bar: overdue + bell + settings */}
-        <div className="flex items-center justify-end gap-2 mb-6">
-          {/* Overdue button — only shown when overdue tasks exist */}
+
+        {/* Top bar: overdue + bell + settings — desktop only */}
+        <div className="hidden lg:flex items-center justify-end gap-2 mb-6">
           {overdueBadge > 0 && (
             <div ref={overdueRef}>
               <button
@@ -449,8 +579,6 @@ export default function Dashboard({ clients, actions }) {
               )}
             </div>
           )}
-
-          {/* Bell */}
           <div ref={bellRef}>
             <button
               onClick={(e) => {
@@ -484,10 +612,7 @@ export default function Dashboard({ clients, actions }) {
                       <>
                         <p className="px-4 pt-3 pb-1 text-xs font-semibold text-amber-600 uppercase tracking-wider">Due Today</p>
                         {dueTodayTasks.map((task) => (
-                          <Link
-                            key={task.id}
-                            to={`/clients/${task.clientId}`}
-                            onClick={() => setBellOpen(false)}
+                          <Link key={task.id} to={`/clients/${task.clientId}`} onClick={() => setBellOpen(false)}
                             className="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
                           >
                             <Calendar size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
@@ -503,10 +628,7 @@ export default function Dashboard({ clients, actions }) {
                       <>
                         <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Upcoming</p>
                         {upcomingTasks.map((task) => (
-                          <Link
-                            key={task.id}
-                            to={`/clients/${task.clientId}`}
-                            onClick={() => setBellOpen(false)}
+                          <Link key={task.id} to={`/clients/${task.clientId}`} onClick={() => setBellOpen(false)}
                             className="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
                           >
                             <Calendar size={14} className="text-gray-300 flex-shrink-0 mt-0.5" />
@@ -524,7 +646,6 @@ export default function Dashboard({ clients, actions }) {
               </div>
             )}
           </div>
-
           <Link to="/settings" className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors">
             <Settings size={16} />
           </Link>

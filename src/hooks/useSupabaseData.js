@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
+const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
+
 // Transform Supabase rows into the app's data shape
 function transformClients(clients, tasks, retainerPayments) {
   return clients.map((c) => ({
@@ -34,7 +36,7 @@ function transformClients(clients, tasks, retainerPayments) {
 
 export function useSupabaseData() {
   const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!IS_DEMO); // false immediately in demo mode
   const [error, setError] = useState(null);
   const clientsRef = useRef([]);
 
@@ -45,6 +47,7 @@ export function useSupabaseData() {
 
   // Fetch all data
   const fetchData = useCallback(async () => {
+    if (IS_DEMO) return; // no Supabase reads in demo mode
     try {
       const [clientsRes, tasksRes, retainerRes] = await Promise.all([
         supabase.from('clients').select('*').order('created_at'),
@@ -72,6 +75,7 @@ export function useSupabaseData() {
 
   // Add a new client
   const addClient = useCallback(async (name, color, logo = '') => {
+    if (IS_DEMO) return;
     const { data, error: err } = await supabase
       .from('clients')
       .insert({ name, color, logo, retainer: 0 })
@@ -88,6 +92,7 @@ export function useSupabaseData() {
 
   // Update a client's name, color, and/or logo
   const updateClient = useCallback(async (clientId, updates) => {
+    if (IS_DEMO) return;
     const dbUpdates = {};
     if ('name' in updates) dbUpdates.name = updates.name;
     if ('color' in updates) dbUpdates.color = updates.color;
@@ -108,6 +113,7 @@ export function useSupabaseData() {
 
   // Delete a client (cascades to tasks and retainer_payments via DB)
   const deleteClient = useCallback(async (clientId) => {
+    if (IS_DEMO) return;
     await supabase.from('tasks').delete().eq('client_id', clientId);
     await supabase.from('retainer_payments').delete().eq('client_id', clientId);
     const { error: err } = await supabase.from('clients').delete().eq('id', clientId);
@@ -119,6 +125,7 @@ export function useSupabaseData() {
 
   // Update client retainer amount
   const updateRetainer = useCallback(async (clientId, retainer) => {
+    if (IS_DEMO) return;
     const { error: err } = await supabase
       .from('clients')
       .update({ retainer })
@@ -133,6 +140,7 @@ export function useSupabaseData() {
 
   // Toggle retainer paid for a given month
   const toggleRetainerPaid = useCallback(async (clientId, month, paid) => {
+    if (IS_DEMO) return;
     // Check if a record already exists for this client+month
     const { data: existing } = await supabase
       .from('retainer_payments')
@@ -165,6 +173,7 @@ export function useSupabaseData() {
 
   // Add a task
   const addTask = useCallback(async (clientId, title, currency = 'NGN') => {
+    if (IS_DEMO) return;
     // Compute sort_order as max existing + 1 so new tasks go to the end
     const existingClient = clientsRef.current.find((c) => c.id === clientId);
     const maxSort = existingClient && existingClient.tasks.length > 0
@@ -198,6 +207,7 @@ export function useSupabaseData() {
 
   // Update a task
   const updateTask = useCallback(async (clientId, taskId, updates) => {
+    if (IS_DEMO) return;
     const dbUpdates = {};
     if ('title' in updates) dbUpdates.title = updates.title;
     if ('done' in updates) dbUpdates.done = updates.done;
@@ -227,6 +237,7 @@ export function useSupabaseData() {
 
   // Reorder tasks within a client — saves sort_order to DB
   const reorderTasks = useCallback(async (clientId, orderedIds) => {
+    if (IS_DEMO) return;
     // Optimistic update
     setClients((prev) =>
       prev.map((c) => {
@@ -248,6 +259,7 @@ export function useSupabaseData() {
 
   // Delete a task
   const deleteTask = useCallback(async (clientId, taskId) => {
+    if (IS_DEMO) return;
     const { error: err } = await supabase.from('tasks').delete().eq('id', taskId);
 
     if (err) { setError(err.message); return; }

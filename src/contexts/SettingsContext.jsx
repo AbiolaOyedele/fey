@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
-const SettingsContext = createContext(null);
+export const SettingsContext = createContext(null);
 
 const DEFAULT_CHANGELOG = [
   {

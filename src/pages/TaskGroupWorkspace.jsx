@@ -203,12 +203,13 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
         <div className="rounded-2xl p-6 mb-6" style={{ backgroundColor: group.color }}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center bg-white/20 text-white flex-shrink-0"
+              className="w-14 h-14 rounded-2xl flex items-center justify-center bg-white/50 flex-shrink-0 font-display font-bold text-2xl"
+              style={{ color: textColor }}
             >
               {group.icon ? (
                 <TaskGroupIcon name={group.icon} size={22} />
               ) : (
-                <span className="text-2xl font-display font-bold">{group.name.charAt(0)}</span>
+                <span>{group.name.charAt(0)}</span>
               )}
             </div>
             <div className="flex-1 min-w-0">

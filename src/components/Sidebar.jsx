@@ -4,6 +4,8 @@ import { LayoutDashboard, Users, CreditCard, Settings, ListTodo } from 'lucide-r
 import { useSettings } from '../contexts/SettingsContext';
 import WhatsNewPopup from './WhatsNewPopup';
 
+const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
+
 export default function Sidebar() {
   const { settings } = useSettings();
   const accent = settings.accent_color || '#667EEA';
@@ -48,7 +50,7 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-[72px] bg-white border-r border-gray-100 flex-col items-center z-10">
+      <aside className={`hidden lg:flex fixed left-0 ${IS_DEMO ? 'top-8' : 'top-0'} bottom-0 w-[72px] bg-white border-r border-gray-100 flex-col items-center z-10`}>
         {/* Logo */}
         <div className="pt-5 pb-4 cursor-pointer" onClick={() => window.location.reload()}>
           {settings.logo ? (

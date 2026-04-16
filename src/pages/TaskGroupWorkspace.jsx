@@ -58,7 +58,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
   const navigate = useNavigate();
   const { trashStandaloneTask, showToast } = useSettings();
 
-  const { groups, updateGroup, addGroupTask, updateGroupTask, reorderGroupTasks } = taskGroupData;
+  const { groups, updateGroup, addGroupTask, updateGroupTask, removeGroupTask, reorderGroupTasks } = taskGroupData;
   const group = groups.find((g) => g.id === id);
 
   const [newTask, setNewTask] = useState('');
@@ -115,7 +115,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
 
   const handleAddTask = async () => {
     if (!newTask.trim()) return;
-    const title = newTask.trim().charAt(0).toUpperCase() + newTask.trim().slice(1).toLowerCase();
+    const title = newTask.trim();
     await addGroupTask(id, title);
     setNewTask('');
   };
@@ -131,6 +131,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
   const handleDeleteTask = async (taskId) => {
     const task = group.tasks.find((t) => t.id === taskId);
     if (!task) return;
+    removeGroupTask(id, taskId);
     const trashItem = await trashStandaloneTask({ ...task, task_group_id: id });
     if (trashItem) showToast(`"${task.title}" moved to trash`);
   };
@@ -173,7 +174,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
 
   const handleSaveEdit = async () => {
     if (!editName.trim()) return;
-    const name = editName.trim().charAt(0).toUpperCase() + editName.trim().slice(1).toLowerCase();
+    const name = editName.trim();
     await updateGroup(id, { name, color: editColor, icon: editIcon });
     setEditOpen(false);
   };

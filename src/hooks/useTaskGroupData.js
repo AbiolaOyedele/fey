@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
+const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
+
 function transformGroups(groups, tasks) {
   return groups.map((g) => ({
     id: g.id,
@@ -26,7 +28,7 @@ function transformGroups(groups, tasks) {
 export function useTaskGroupData() {
   const [groups, setGroups] = useState([]);
   const [standaloneTasks, setStandaloneTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!IS_DEMO); // false immediately in demo mode
   const [error, setError] = useState(null);
   const groupsRef = useRef([]);
   const standaloneRef = useRef([]);
@@ -35,6 +37,7 @@ export function useTaskGroupData() {
   useEffect(() => { standaloneRef.current = standaloneTasks; }, [standaloneTasks]);
 
   const fetchData = useCallback(async () => {
+    if (IS_DEMO) return; // no Supabase reads in demo mode
     try {
       const [groupsRes, tasksRes] = await Promise.all([
         supabase.from('task_groups').select('*').order('sort_order', { ascending: true }).order('created_at'),
@@ -69,6 +72,7 @@ export function useTaskGroupData() {
   // ─── Groups ───────────────────────────────────────────────────────────────
 
   const addGroup = useCallback(async (name, color, icon = '') => {
+    if (IS_DEMO) return;
     const maxSort = groupsRef.current.length > 0
       ? Math.max(...groupsRef.current.map((g) => g.sort_order ?? 0)) + 1
       : 0;
@@ -84,6 +88,7 @@ export function useTaskGroupData() {
   }, []);
 
   const updateGroup = useCallback(async (groupId, updates) => {
+    if (IS_DEMO) return;
     const dbUpdates = {};
     if ('name' in updates) dbUpdates.name = updates.name;
     if ('color' in updates) dbUpdates.color = updates.color;
@@ -98,6 +103,7 @@ export function useTaskGroupData() {
   }, []);
 
   const reorderGroups = useCallback(async (orderedIds) => {
+    if (IS_DEMO) return;
     setGroups((prev) => {
       const map = new Map(prev.map((g) => [g.id, g]));
       return orderedIds.map((id, i) => ({ ...map.get(id), sort_order: i }));
@@ -110,6 +116,7 @@ export function useTaskGroupData() {
   // ─── Standalone tasks ────────────────────────────────────────────────────
 
   const addStandaloneTask = useCallback(async (title) => {
+    if (IS_DEMO) return;
     const maxSort = standaloneRef.current.length > 0
       ? Math.max(...standaloneRef.current.map((t) => t.sort_order ?? 0)) + 1
       : 0;
@@ -125,6 +132,7 @@ export function useTaskGroupData() {
   }, []);
 
   const updateStandaloneTask = useCallback(async (taskId, updates) => {
+    if (IS_DEMO) return;
     const dbUpdates = {};
     if ('title' in updates) dbUpdates.title = updates.title;
     if ('done' in updates) dbUpdates.done = updates.done;
@@ -140,6 +148,7 @@ export function useTaskGroupData() {
   }, []);
 
   const reorderStandaloneTasks = useCallback(async (orderedIds) => {
+    if (IS_DEMO) return;
     setStandaloneTasks((prev) => {
       const map = new Map(prev.map((t) => [t.id, t]));
       return orderedIds.map((id, i) => ({ ...map.get(id), sort_order: i }));
@@ -152,6 +161,7 @@ export function useTaskGroupData() {
   // ─── Group tasks ──────────────────────────────────────────────────────────
 
   const addGroupTask = useCallback(async (groupId, title) => {
+    if (IS_DEMO) return;
     const group = groupsRef.current.find((g) => g.id === groupId);
     const maxSort = group && group.tasks.length > 0
       ? Math.max(...group.tasks.map((t) => t.sort_order ?? 0)) + 1
@@ -171,6 +181,7 @@ export function useTaskGroupData() {
   }, []);
 
   const updateGroupTask = useCallback(async (groupId, taskId, updates) => {
+    if (IS_DEMO) return;
     const dbUpdates = {};
     if ('title' in updates) dbUpdates.title = updates.title;
     if ('done' in updates) dbUpdates.done = updates.done;
@@ -184,7 +195,14 @@ export function useTaskGroupData() {
     }));
   }, []);
 
+  const removeGroupTask = useCallback((groupId, taskId) => {
+    setGroups((prev) => prev.map((g) =>
+      g.id === groupId ? { ...g, tasks: g.tasks.filter((t) => t.id !== taskId) } : g
+    ));
+  }, []);
+
   const reorderGroupTasks = useCallback(async (groupId, orderedIds) => {
+    if (IS_DEMO) return;
     setGroups((prev) => prev.map((g) => {
       if (g.id !== groupId) return g;
       const taskMap = new Map(g.tasks.map((t) => [t.id, t]));
@@ -211,6 +229,7 @@ export function useTaskGroupData() {
     reorderStandaloneTasks,
     addGroupTask,
     updateGroupTask,
+    removeGroupTask,
     reorderGroupTasks,
   };
 }

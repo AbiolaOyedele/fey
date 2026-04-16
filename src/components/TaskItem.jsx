@@ -56,15 +56,12 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
     onUpdate({ ...task, paid: !task.paid });
   };
 
-  const toSentenceCase = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-
   const handleTitleBlur = () => {
     setEditing(false);
     const trimmed = title.trim();
     if (trimmed && trimmed !== task.title) {
-      const cased = toSentenceCase(trimmed);
-      setTitle(cased);
-      onUpdate({ ...task, title: cased });
+      setTitle(trimmed);
+      onUpdate({ ...task, title: trimmed });
     } else {
       setTitle(task.title);
     }

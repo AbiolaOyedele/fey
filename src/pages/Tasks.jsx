@@ -166,7 +166,7 @@ export default function Tasks({ taskGroupData }) {
   const handleAddTask = async () => {
     const trimmed = newTaskInput.trim();
     if (!trimmed) return;
-    await addStandaloneTask(trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase());
+    await addStandaloneTask(trimmed);
     setNewTaskInput('');
   };
 
@@ -224,7 +224,7 @@ export default function Tasks({ taskGroupData }) {
 
   const handleAddGroup = async () => {
     if (!groupName.trim()) return;
-    const name = groupName.trim().charAt(0).toUpperCase() + groupName.trim().slice(1).toLowerCase();
+    const name = groupName.trim();
     await addGroup(name, groupColor, groupIcon);
     setShowGroupModal(false);
   };

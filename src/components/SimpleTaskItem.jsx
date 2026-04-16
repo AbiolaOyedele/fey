@@ -7,7 +7,6 @@ function formatDeadline(dateStr) {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
 }
 
-const toSentenceCase = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 
 export default function SimpleTaskItem({ task, onUpdate, onDelete, dragListeners, dragAttributes }) {
   const [editing, setEditing] = useState(false);
@@ -33,9 +32,8 @@ export default function SimpleTaskItem({ task, onUpdate, onDelete, dragListeners
     setEditing(false);
     const trimmed = title.trim();
     if (trimmed && trimmed !== task.title) {
-      const cased = toSentenceCase(trimmed);
-      setTitle(cased);
-      onUpdate({ ...task, title: cased });
+      setTitle(trimmed);
+      onUpdate({ ...task, title: trimmed });
     } else {
       setTitle(task.title);
     }
@@ -127,7 +125,7 @@ export default function SimpleTaskItem({ task, onUpdate, onDelete, dragListeners
                 ? 'text-red-400 hover:bg-red-50'
                 : task.deadline
                 ? 'text-amber-400 hover:bg-amber-50'
-                : 'opacity-0 group-hover:opacity-100 text-gray-300 hover:bg-gray-100 hover:text-gray-500'
+                : 'sm:opacity-0 sm:group-hover:opacity-100 text-gray-300 hover:bg-gray-100 hover:text-gray-500'
             }`}
             title={task.deadline ? `Due: ${formatDeadline(task.deadline)}` : 'Set deadline'}
           >
@@ -146,7 +144,7 @@ export default function SimpleTaskItem({ task, onUpdate, onDelete, dragListeners
         {/* Delete */}
         <button
           onClick={handleDelete}
-          className="w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 text-gray-300 hover:bg-red-50 hover:text-red-400 transition-all"
+          className="w-7 h-7 rounded-lg flex items-center justify-center sm:opacity-0 sm:group-hover:opacity-100 text-gray-300 hover:bg-red-50 hover:text-red-400 transition-all"
         >
           <Trash2 size={13} />
         </button>
@@ -156,7 +154,7 @@ export default function SimpleTaskItem({ task, onUpdate, onDelete, dragListeners
           <button
             {...dragListeners}
             {...dragAttributes}
-            className="w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-40 hover:!opacity-70 cursor-grab active:cursor-grabbing touch-none text-gray-300 transition-opacity"
+            className="w-7 h-7 rounded-lg flex items-center justify-center sm:opacity-0 sm:group-hover:opacity-40 hover:!opacity-70 cursor-grab active:cursor-grabbing touch-none text-gray-300 transition-opacity"
             tabIndex={-1}
           >
             <GripVertical size={13} />

@@ -34,7 +34,7 @@ function transformClients(clients, tasks, retainerPayments) {
   }));
 }
 
-export function useSupabaseData() {
+export function useSupabaseData(userId) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(!IS_DEMO); // false immediately in demo mode
   const [error, setError] = useState(null);
@@ -48,11 +48,12 @@ export function useSupabaseData() {
   // Fetch all data
   const fetchData = useCallback(async () => {
     if (IS_DEMO) return; // no Supabase reads in demo mode
+    if (!userId) return;  // wait until we know who the user is
     try {
       const [clientsRes, tasksRes, retainerRes] = await Promise.all([
-        supabase.from('clients').select('*').order('created_at'),
-        supabase.from('tasks').select('*').order('sort_order', { ascending: true }).order('created_at'),
-        supabase.from('retainer_payments').select('*'),
+        supabase.from('clients').select('*').eq('user_id', userId).order('created_at'),
+        supabase.from('tasks').select('*').eq('user_id', userId).order('sort_order', { ascending: true }).order('created_at'),
+        supabase.from('retainer_payments').select('*').eq('user_id', userId),
       ]);
 
       if (clientsRes.error) throw clientsRes.error;
@@ -67,7 +68,7 @@ export function useSupabaseData() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchData();
@@ -75,10 +76,10 @@ export function useSupabaseData() {
 
   // Add a new client
   const addClient = useCallback(async (name, color, logo = '') => {
-    if (IS_DEMO) return;
+    if (IS_DEMO || !userId) return;
     const { data, error: err } = await supabase
       .from('clients')
-      .insert({ name, color, logo, retainer: 0 })
+      .insert({ name, color, logo, retainer: 0, user_id: userId })
       .select()
       .single();
 
@@ -88,11 +89,11 @@ export function useSupabaseData() {
       ...prev,
       { id: data.id, name: data.name, color: data.color, logo: data.logo || '', retainer: 0, retainerPaid: {}, tasks: [] },
     ]);
-  }, []);
+  }, [userId]);
 
   // Update a client's name, color, and/or logo
   const updateClient = useCallback(async (clientId, updates) => {
-    if (IS_DEMO) return;
+    if (IS_DEMO || !userId) return;
     const dbUpdates = {};
     if ('name' in updates) dbUpdates.name = updates.name;
     if ('color' in updates) dbUpdates.color = updates.color;
@@ -102,51 +103,54 @@ export function useSupabaseData() {
     const { error: err } = await supabase
       .from('clients')
       .update(dbUpdates)
-      .eq('id', clientId);
+      .eq('id', clientId)
+      .eq('user_id', userId);
 
     if (err) { setError(err.message); return; }
 
     setClients((prev) =>
       prev.map((c) => (c.id === clientId ? { ...c, ...updates } : c))
     );
-  }, []);
+  }, [userId]);
 
   // Delete a client (cascades to tasks and retainer_payments via DB)
   const deleteClient = useCallback(async (clientId) => {
-    if (IS_DEMO) return;
-    await supabase.from('tasks').delete().eq('client_id', clientId);
-    await supabase.from('retainer_payments').delete().eq('client_id', clientId);
-    const { error: err } = await supabase.from('clients').delete().eq('id', clientId);
+    if (IS_DEMO || !userId) return;
+    await supabase.from('tasks').delete().eq('client_id', clientId).eq('user_id', userId);
+    await supabase.from('retainer_payments').delete().eq('client_id', clientId).eq('user_id', userId);
+    const { error: err } = await supabase.from('clients').delete().eq('id', clientId).eq('user_id', userId);
 
     if (err) { setError(err.message); return; }
 
     setClients((prev) => prev.filter((c) => c.id !== clientId));
-  }, []);
+  }, [userId]);
 
   // Update client retainer amount
   const updateRetainer = useCallback(async (clientId, retainer) => {
-    if (IS_DEMO) return;
+    if (IS_DEMO || !userId) return;
     const { error: err } = await supabase
       .from('clients')
       .update({ retainer })
-      .eq('id', clientId);
+      .eq('id', clientId)
+      .eq('user_id', userId);
 
     if (err) { setError(err.message); return; }
 
     setClients((prev) =>
       prev.map((c) => (c.id === clientId ? { ...c, retainer } : c))
     );
-  }, []);
+  }, [userId]);
 
   // Toggle retainer paid for a given month
   const toggleRetainerPaid = useCallback(async (clientId, month, paid) => {
-    if (IS_DEMO) return;
+    if (IS_DEMO || !userId) return;
     // Check if a record already exists for this client+month
     const { data: existing } = await supabase
       .from('retainer_payments')
       .select('id')
       .eq('client_id', clientId)
       .eq('month', month)
+      .eq('user_id', userId)
       .maybeSingle();
 
     let err;
@@ -154,11 +158,12 @@ export function useSupabaseData() {
       ({ error: err } = await supabase
         .from('retainer_payments')
         .update({ paid })
-        .eq('id', existing.id));
+        .eq('id', existing.id)
+        .eq('user_id', userId));
     } else {
       ({ error: err } = await supabase
         .from('retainer_payments')
-        .insert({ client_id: clientId, month, paid }));
+        .insert({ client_id: clientId, month, paid, user_id: userId }));
     }
 
     if (err) { setError(err.message); return; }
@@ -169,11 +174,11 @@ export function useSupabaseData() {
         return { ...c, retainerPaid: { ...c.retainerPaid, [month]: paid } };
       })
     );
-  }, []);
+  }, [userId]);
 
   // Add a task
   const addTask = useCallback(async (clientId, title, currency = 'NGN') => {
-    if (IS_DEMO) return;
+    if (IS_DEMO || !userId) return;
     // Compute sort_order as max existing + 1 so new tasks go to the end
     const existingClient = clientsRef.current.find((c) => c.id === clientId);
     const maxSort = existingClient && existingClient.tasks.length > 0
@@ -182,7 +187,7 @@ export function useSupabaseData() {
 
     const { data, error: err } = await supabase
       .from('tasks')
-      .insert({ client_id: clientId, title, done: false, paid: false, amount: 0, currency, sort_order: maxSort })
+      .insert({ client_id: clientId, title, done: false, paid: false, amount: 0, currency, sort_order: maxSort, user_id: userId })
       .select()
       .single();
 
@@ -203,11 +208,11 @@ export function useSupabaseData() {
     setClients((prev) =>
       prev.map((c) => (c.id === clientId ? { ...c, tasks: [...c.tasks, newTask] } : c))
     );
-  }, []);
+  }, [userId]);
 
   // Update a task
   const updateTask = useCallback(async (clientId, taskId, updates) => {
-    if (IS_DEMO) return;
+    if (IS_DEMO || !userId) return;
     const dbUpdates = {};
     if ('title' in updates) dbUpdates.title = updates.title;
     if ('done' in updates) dbUpdates.done = updates.done;
@@ -220,7 +225,8 @@ export function useSupabaseData() {
     const { error: err } = await supabase
       .from('tasks')
       .update(dbUpdates)
-      .eq('id', taskId);
+      .eq('id', taskId)
+      .eq('user_id', userId);
 
     if (err) { setError(err.message); return; }
 
@@ -233,11 +239,11 @@ export function useSupabaseData() {
         };
       })
     );
-  }, []);
+  }, [userId]);
 
   // Reorder tasks within a client — saves sort_order to DB
   const reorderTasks = useCallback(async (clientId, orderedIds) => {
-    if (IS_DEMO) return;
+    if (IS_DEMO || !userId) return;
     // Optimistic update
     setClients((prev) =>
       prev.map((c) => {
@@ -252,15 +258,15 @@ export function useSupabaseData() {
     // Persist
     await Promise.all(
       orderedIds.map((id, i) =>
-        supabase.from('tasks').update({ sort_order: i }).eq('id', id)
+        supabase.from('tasks').update({ sort_order: i }).eq('id', id).eq('user_id', userId)
       )
     );
-  }, []);
+  }, [userId]);
 
   // Delete a task
   const deleteTask = useCallback(async (clientId, taskId) => {
-    if (IS_DEMO) return;
-    const { error: err } = await supabase.from('tasks').delete().eq('id', taskId);
+    if (IS_DEMO || !userId) return;
+    const { error: err } = await supabase.from('tasks').delete().eq('id', taskId).eq('user_id', userId);
 
     if (err) { setError(err.message); return; }
 
@@ -270,7 +276,7 @@ export function useSupabaseData() {
         return { ...c, tasks: c.tasks.filter((t) => t.id !== taskId) };
       })
     );
-  }, []);
+  }, [userId]);
 
   return {
     clients,

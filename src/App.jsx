@@ -4,6 +4,7 @@ import { useSupabaseData } from './hooks/useSupabaseData';
 import { useTaskGroupData } from './hooks/useTaskGroupData';
 import { useSettings } from './contexts/SettingsContext';
 import { useDemoDataCtx } from './contexts/DemoContext';
+import { useAuth } from './contexts/AuthContext';
 import Sidebar from './components/Sidebar';
 import DemoBanner from './components/DemoBanner';
 import Dashboard from './pages/Dashboard';
@@ -13,14 +14,25 @@ import Tasks from './pages/Tasks';
 import TaskGroupWorkspace from './pages/TaskGroupWorkspace';
 import Payments from './pages/Payments';
 import Settings from './pages/Settings';
+import Login from './pages/Login';
 import ToastContainer from './components/Toast';
 
 const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
 
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!IS_DEMO && !user) return <Navigate to="/login" replace />;
+  return children;
+}
+
 export default function App() {
+  const { user } = useAuth();
+
   // Always call both hooks — each guards itself with IS_DEMO internally
-  const supabaseData      = useSupabaseData();
-  const supabaseTaskGroup = useTaskGroupData();
+  // Pass user?.id so queries are scoped to the authenticated user
+  const supabaseData      = useSupabaseData(user?.id);
+  const supabaseTaskGroup = useTaskGroupData(user?.id);
 
   // In demo mode this reads from DemoDataContext (provided by DemoProvider).
   // In normal mode DemoDataContext is null (DemoProvider is not rendered).
@@ -130,43 +142,49 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      {/* Outer wrapper: flex-col so DemoBanner sits above sidebar+content */}
-      <div className="flex flex-col min-h-screen bg-appbg overflow-x-hidden">
-        {IS_DEMO && <DemoBanner />}
+      <Routes>
+        {/* Public route */}
+        <Route path="/login" element={<Login />} />
 
-        <div className="flex flex-1 overflow-x-hidden">
-          <Sidebar />
-          <main className="flex-1 min-w-0 ml-0 lg:ml-[72px] pb-16 lg:pb-0 page-enter">
-            <Routes>
-              <Route path="/" element={<Dashboard clients={orderedClients} actions={actions} />} />
+        {/* Protected routes */}
+        <Route path="/*" element={
+          <ProtectedRoute>
+            <div className="flex flex-col min-h-screen bg-appbg overflow-x-hidden">
+              {IS_DEMO && <DemoBanner />}
+              <div className="flex flex-1 overflow-x-hidden">
+                <Sidebar />
+                <main className="flex-1 min-w-0 ml-0 lg:ml-[72px] pb-16 lg:pb-0 page-enter">
+                  <Routes>
+                    <Route path="/" element={<Dashboard clients={orderedClients} actions={actions} />} />
 
-              {/* Clients routes — hidden when Tasks Only mode */}
-              {appMode !== 'tasks' ? (
-                <>
-                  <Route path="/clients" element={<Clients clients={orderedClients} actions={actions} />} />
-                  <Route path="/clients/:id" element={<ClientWorkspace clients={orderedClients} actions={actions} />} />
-                </>
-              ) : (
-                <Route path="/clients/*" element={<Navigate to="/" replace />} />
-              )}
+                    {appMode !== 'tasks' ? (
+                      <>
+                        <Route path="/clients" element={<Clients clients={orderedClients} actions={actions} />} />
+                        <Route path="/clients/:id" element={<ClientWorkspace clients={orderedClients} actions={actions} />} />
+                      </>
+                    ) : (
+                      <Route path="/clients/*" element={<Navigate to="/" replace />} />
+                    )}
 
-              {/* Task routes — hidden when Clients Only mode */}
-              {appMode !== 'clients' ? (
-                <>
-                  <Route path="/tasks" element={<Tasks taskGroupData={taskGroupData} />} />
-                  <Route path="/tasks/:id" element={<TaskGroupWorkspace taskGroupData={taskGroupData} />} />
-                </>
-              ) : (
-                <Route path="/tasks/*" element={<Navigate to="/" replace />} />
-              )}
+                    {appMode !== 'clients' ? (
+                      <>
+                        <Route path="/tasks" element={<Tasks taskGroupData={taskGroupData} />} />
+                        <Route path="/tasks/:id" element={<TaskGroupWorkspace taskGroupData={taskGroupData} />} />
+                      </>
+                    ) : (
+                      <Route path="/tasks/*" element={<Navigate to="/" replace />} />
+                    )}
 
-              <Route path="/payments" element={<Payments clients={orderedClients} />} />
-              <Route path="/settings" element={<Settings clients={orderedClients} refetch={refetch} />} />
-            </Routes>
-          </main>
-        </div>
-      </div>
-      <ToastContainer />
+                    <Route path="/payments" element={<Payments clients={orderedClients} />} />
+                    <Route path="/settings" element={<Settings clients={orderedClients} refetch={refetch} />} />
+                  </Routes>
+                </main>
+              </div>
+            </div>
+            <ToastContainer />
+          </ProtectedRoute>
+        } />
+      </Routes>
     </BrowserRouter>
   );
 }

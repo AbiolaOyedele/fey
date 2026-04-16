@@ -55,8 +55,8 @@ const DEFAULT_CHANGELOG = [
 ];
 
 const DEFAULTS = {
-  username: 'Abiola',
-  company_name: 'The Arc Company',
+  username: '',
+  company_name: '',
   logo: '',
   dashboard_heading: 'Track your\nwork & earnings',
   dashboard_subtitle: '',
@@ -84,12 +84,30 @@ export function SettingsProvider({ children }) {
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [trash, setTrash] = useState([]);
   const [toasts, setToasts] = useState([]);
+  const [userId, setUserId] = useState(null);
 
-  // Load settings from app_settings
+  // Get current user id
   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Load settings when userId is known
+  useEffect(() => {
+    if (userId === null) return; // not authenticated yet
+
     (async () => {
+      setSettingsLoading(true);
       try {
-        const { data, error } = await supabase.from('app_settings').select('*');
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('*')
+          .eq('user_id', userId);
         if (error) throw error;
         if (data && data.length > 0) {
           const merged = { ...DEFAULTS };
@@ -98,6 +116,9 @@ export function SettingsProvider({ children }) {
           });
           merged.exchange_rate = Number(merged.exchange_rate) || 1;
           setSettings(merged);
+        } else {
+          // New user — use defaults
+          setSettings(DEFAULTS);
         }
       } catch {
         // Use defaults silently
@@ -105,7 +126,11 @@ export function SettingsProvider({ children }) {
 
       // Load trash
       try {
-        const { data } = await supabase.from('trash').select('*').order('deleted_at', { ascending: false });
+        const { data } = await supabase
+          .from('trash')
+          .select('*')
+          .eq('user_id', userId)
+          .order('deleted_at', { ascending: false });
         if (data) {
           const now = new Date();
           const expired = data.filter((t) => new Date(t.expires_at) <= now);
@@ -119,31 +144,16 @@ export function SettingsProvider({ children }) {
         // Ignore
       }
 
-      // Check exchange rate freshness
-      try {
-        const { data } = await supabase.from('app_settings').select('*').eq('key', 'exchange_rate_updated_at').single();
-        if (data?.value) {
-          const lastUpdated = new Date(data.value);
-          const weekAgo = new Date();
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          if (lastUpdated < weekAgo) {
-            await refreshExchangeRate();
-          }
-        }
-      } catch {
-        // Ignore
-      }
-
       setSettingsLoading(false);
     })();
-  }, []);
+  }, [userId]);
 
   // Apply accent color as CSS variable
   useEffect(() => {
     document.documentElement.style.setProperty('--accent', settings.accent_color);
   }, [settings.accent_color]);
 
-  // Apply body font via --body-font CSS variable (inherited by all children including font-mono)
+  // Apply body font via --body-font CSS variable
   useEffect(() => {
     if (!settings.font_family) {
       document.documentElement.style.setProperty('--body-font', "'DM Sans', 'Noto Sans', sans-serif");
@@ -201,11 +211,14 @@ export function SettingsProvider({ children }) {
     }
   }, [settings.heading_font, settings.custom_heading_font, settings.custom_heading_font_name]);
 
-  // Save a single setting
+  // Save a single setting scoped to user
   const saveSetting = useCallback(async (key, value) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
-    await supabase.from('app_settings').upsert({ key, value: String(value) }, { onConflict: 'key' });
-  }, []);
+    if (!userId) return;
+    await supabase
+      .from('app_settings')
+      .upsert({ key, value: String(value), user_id: userId }, { onConflict: 'key,user_id' });
+  }, [userId]);
 
   // Refresh exchange rate
   const refreshExchangeRate = useCallback(async () => {
@@ -224,7 +237,6 @@ export function SettingsProvider({ children }) {
     }
   }, [saveSetting]);
 
-  // Convert amount from its stored currency to the currently selected viewing currency
   const convertAmount = useCallback((amount, storedCurrency) => {
     const n = Number(amount) || 0;
     const sc = storedCurrency || 'NGN';
@@ -235,7 +247,6 @@ export function SettingsProvider({ children }) {
     return n;
   }, [settings.currency, settings.exchange_rate]);
 
-  // Format money based on currency setting (amount must already be in viewing currency)
   const formatMoney = useCallback((amount) => {
     const n = Number(amount) || 0;
     if (settings.currency === 'USD') {
@@ -244,7 +255,6 @@ export function SettingsProvider({ children }) {
     return `₦${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }, [settings.currency]);
 
-  // Toast system — returns toast id so callers can dismiss early
   const showToast = useCallback((message, action) => {
     const id = Date.now();
     setToasts((prev) => [...prev, { id, message, action }]);
@@ -258,79 +268,65 @@ export function SettingsProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Trash: move client to trash
+  // Trash helpers — all include user_id
   const trashClient = useCallback(async (client) => {
+    if (!userId) return null;
     const payload = {
       item_type: 'client',
       item_name: client.name,
       item_data: JSON.stringify({ ...client }),
       deleted_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+      user_id: userId,
     };
-
     await supabase.from('tasks').delete().eq('client_id', client.id);
     await supabase.from('retainer_payments').delete().eq('client_id', client.id);
     await supabase.from('clients').delete().eq('id', client.id);
-
     const { data } = await supabase.from('trash').insert(payload).select().single();
     if (data) setTrash((prev) => [data, ...prev]);
-
     return data;
-  }, []);
+  }, [userId]);
 
-  // Trash: move task to trash
   const trashTask = useCallback(async (task, clientId, clientName) => {
+    if (!userId) return null;
     const payload = {
       item_type: 'task',
       item_name: task.title,
       item_data: JSON.stringify({ ...task, client_id: clientId, client_name: clientName }),
       deleted_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+      user_id: userId,
     };
-
     await supabase.from('tasks').delete().eq('id', task.id);
-
     const { data } = await supabase.from('trash').insert(payload).select().single();
     if (data) setTrash((prev) => [data, ...prev]);
-
     return data;
-  }, []);
+  }, [userId]);
 
-  // Trash: restore item — enhanced with auto-restore of deleted parent
   const restoreFromTrash = useCallback(async (trashItem, clients) => {
+    if (!userId) return { error: 'Not authenticated' };
     const itemData = JSON.parse(trashItem.item_data);
 
     if (trashItem.item_type === 'client') {
-      // Re-insert client
       const { data: newClient, error: cErr } = await supabase
         .from('clients')
-        .insert({ name: itemData.name, color: itemData.color, retainer: itemData.retainer || 0 })
-        .select()
-        .single();
-
+        .insert({ name: itemData.name, color: itemData.color, retainer: itemData.retainer || 0, user_id: userId })
+        .select().single();
       if (cErr) return { error: cErr.message };
-
-      // Re-insert tasks
       if (itemData.tasks && itemData.tasks.length > 0) {
-        const taskRows = itemData.tasks.map((t) => ({
-          client_id: newClient.id,
-          title: t.title,
-          done: t.done,
-          paid: t.paid,
-          amount: t.amount,
-          created_at: t.createdAt || new Date().toISOString(),
-        }));
-        await supabase.from('tasks').insert(taskRows);
+        await supabase.from('tasks').insert(
+          itemData.tasks.map((t) => ({
+            client_id: newClient.id, title: t.title, done: t.done, paid: t.paid,
+            amount: t.amount, created_at: t.createdAt || new Date().toISOString(), user_id: userId,
+          }))
+        );
       }
-
-      // Re-insert retainer payments
       if (itemData.retainerPaid) {
         const rpRows = Object.entries(itemData.retainerPaid)
           .filter(([, paid]) => paid)
-          .map(([month]) => ({ client_id: newClient.id, month, paid: true }));
+          .map(([month]) => ({ client_id: newClient.id, month, paid: true, user_id: userId }));
         if (rpRows.length > 0) await supabase.from('retainer_payments').insert(rpRows);
       }
-
       await supabase.from('trash').delete().eq('id', trashItem.id);
       setTrash((prev) => prev.filter((t) => t.id !== trashItem.id));
       return { success: true };
@@ -340,88 +336,55 @@ export function SettingsProvider({ children }) {
       const parentExists = clients?.some((c) => c.id === parentId);
 
       if (!parentExists) {
-        // Look for parent client in current trash state
         const parentTrashItem = trash.find((t) => {
           if (t.item_type !== 'client') return false;
-          try {
-            return JSON.parse(t.item_data).id === parentId;
-          } catch { return false; }
+          try { return JSON.parse(t.item_data).id === parentId; } catch { return false; }
         });
 
         if (parentTrashItem) {
-          // Restore the full parent client (includes all its tasks)
           const parentData = JSON.parse(parentTrashItem.item_data);
-
           const { data: newClient, error: cErr } = await supabase
             .from('clients')
-            .insert({ name: parentData.name, color: parentData.color, retainer: parentData.retainer || 0 })
-            .select()
-            .single();
-
+            .insert({ name: parentData.name, color: parentData.color, retainer: parentData.retainer || 0, user_id: userId })
+            .select().single();
           if (cErr) return { error: cErr.message };
-
           if (parentData.tasks && parentData.tasks.length > 0) {
             await supabase.from('tasks').insert(
               parentData.tasks.map((t) => ({
-                client_id: newClient.id,
-                title: t.title,
-                done: t.done,
-                paid: t.paid,
-                amount: t.amount,
-                created_at: t.createdAt || new Date().toISOString(),
+                client_id: newClient.id, title: t.title, done: t.done, paid: t.paid,
+                amount: t.amount, created_at: t.createdAt || new Date().toISOString(), user_id: userId,
               }))
             );
           }
-
           if (parentData.retainerPaid) {
             const rpRows = Object.entries(parentData.retainerPaid)
               .filter(([, paid]) => paid)
-              .map(([month]) => ({ client_id: newClient.id, month, paid: true }));
+              .map(([month]) => ({ client_id: newClient.id, month, paid: true, user_id: userId }));
             if (rpRows.length > 0) await supabase.from('retainer_payments').insert(rpRows);
           }
-
-          // Remove both the parent client and this task from trash
           await supabase.from('trash').delete().in('id', [parentTrashItem.id, trashItem.id]);
           setTrash((prev) => prev.filter((t) => t.id !== parentTrashItem.id && t.id !== trashItem.id));
-
           return { success: true, autoRestoredClient: true, clientName: parentData.name };
-
         } else {
-          // Parent not in trash — create placeholder client
           const { data: newClient, error: cErr } = await supabase
             .from('clients')
-            .insert({ name: itemData.client_name || 'Restored Client', color: '#F0FDF4', retainer: 0 })
-            .select()
-            .single();
-
+            .insert({ name: itemData.client_name || 'Restored Client', color: '#F0FDF4', retainer: 0, user_id: userId })
+            .select().single();
           if (cErr) return { error: cErr.message };
-
           await supabase.from('tasks').insert({
-            client_id: newClient.id,
-            title: itemData.title,
-            done: itemData.done,
-            paid: itemData.paid,
-            amount: itemData.amount,
-            created_at: itemData.createdAt || new Date().toISOString(),
+            client_id: newClient.id, title: itemData.title, done: itemData.done, paid: itemData.paid,
+            amount: itemData.amount, created_at: itemData.createdAt || new Date().toISOString(), user_id: userId,
           });
-
           await supabase.from('trash').delete().eq('id', trashItem.id);
           setTrash((prev) => prev.filter((t) => t.id !== trashItem.id));
-
           return { success: true, autoRestoredClient: true, createdPlaceholder: true, clientName: itemData.client_name };
         }
       }
 
-      // Normal task restore — parent client exists
       await supabase.from('tasks').insert({
-        client_id: parentId,
-        title: itemData.title,
-        done: itemData.done,
-        paid: itemData.paid,
-        amount: itemData.amount,
-        created_at: itemData.createdAt || new Date().toISOString(),
+        client_id: parentId, title: itemData.title, done: itemData.done, paid: itemData.paid,
+        amount: itemData.amount, created_at: itemData.createdAt || new Date().toISOString(), user_id: userId,
       });
-
       await supabase.from('trash').delete().eq('id', trashItem.id);
       setTrash((prev) => prev.filter((t) => t.id !== trashItem.id));
       return { success: true };
@@ -429,12 +392,15 @@ export function SettingsProvider({ children }) {
     } else if (trashItem.item_type === 'task_group') {
       const { data: newGroup, error: gErr } = await supabase
         .from('task_groups')
-        .insert({ name: itemData.name, color: itemData.color, icon: itemData.icon || '', sort_order: itemData.sort_order || 0 })
+        .insert({ name: itemData.name, color: itemData.color, icon: itemData.icon || '', sort_order: itemData.sort_order || 0, user_id: userId })
         .select().single();
       if (gErr) return { error: gErr.message };
       if (itemData.tasks && itemData.tasks.length > 0) {
         await supabase.from('standalone_tasks').insert(
-          itemData.tasks.map((t) => ({ task_group_id: newGroup.id, title: t.title, done: t.done, deadline: t.deadline || null, sort_order: t.sort_order || 0 }))
+          itemData.tasks.map((t) => ({
+            task_group_id: newGroup.id, title: t.title, done: t.done,
+            deadline: t.deadline || null, sort_order: t.sort_order || 0, user_id: userId,
+          }))
         );
       }
       await supabase.from('trash').delete().eq('id', trashItem.id);
@@ -442,50 +408,53 @@ export function SettingsProvider({ children }) {
       return { success: true };
 
     } else if (trashItem.item_type === 'standalone_task') {
-      await supabase.from('standalone_tasks').insert({ title: itemData.title, done: itemData.done, deadline: itemData.deadline || null, task_group_id: null, sort_order: itemData.sort_order || 0 });
+      await supabase.from('standalone_tasks').insert({
+        title: itemData.title, done: itemData.done, deadline: itemData.deadline || null,
+        task_group_id: null, sort_order: itemData.sort_order || 0, user_id: userId,
+      });
       await supabase.from('trash').delete().eq('id', trashItem.id);
       setTrash((prev) => prev.filter((t) => t.id !== trashItem.id));
       return { success: true };
     }
 
-    // Fallback
     await supabase.from('trash').delete().eq('id', trashItem.id);
     setTrash((prev) => prev.filter((t) => t.id !== trashItem.id));
     return { success: true };
-  }, [trash]);
+  }, [trash, userId]);
 
-  // Trash: move task group to trash
   const trashGroup = useCallback(async (group) => {
+    if (!userId) return null;
     const payload = {
       item_type: 'task_group',
       item_name: group.name,
       item_data: JSON.stringify({ ...group }),
       deleted_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+      user_id: userId,
     };
     await supabase.from('standalone_tasks').delete().eq('task_group_id', group.id);
     await supabase.from('task_groups').delete().eq('id', group.id);
     const { data } = await supabase.from('trash').insert(payload).select().single();
     if (data) setTrash((prev) => [data, ...prev]);
     return data;
-  }, []);
+  }, [userId]);
 
-  // Trash: move standalone task to trash
   const trashStandaloneTask = useCallback(async (task) => {
+    if (!userId) return null;
     const payload = {
       item_type: 'standalone_task',
       item_name: task.title,
       item_data: JSON.stringify({ ...task }),
       deleted_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+      user_id: userId,
     };
     await supabase.from('standalone_tasks').delete().eq('id', task.id);
     const { data } = await supabase.from('trash').insert(payload).select().single();
     if (data) setTrash((prev) => [data, ...prev]);
     return data;
-  }, []);
+  }, [userId]);
 
-  // Trash: delete forever
   const deleteForever = useCallback(async (trashId) => {
     await supabase.from('trash').delete().eq('id', trashId);
     setTrash((prev) => prev.filter((t) => t.id !== trashId));

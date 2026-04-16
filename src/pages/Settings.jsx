@@ -1,11 +1,15 @@
 import { useState, useRef } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Upload, RefreshCw, Trash2, RotateCcw, X, Palette, User, Image, Type,
-  Monitor, Sparkles, History,
+  Monitor, Sparkles, History, Database, LogOut,
 } from 'lucide-react';
 import WhatsNewPopup from '../components/WhatsNewPopup';
 import ChangelogPopup from '../components/ChangelogPopup';
+import { supabase } from '../lib/supabase';
+
+const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
 
 const THEME_COLORS = [
   '#667EEA', '#F56565', '#ED8936', '#38B2AC',
@@ -25,6 +29,32 @@ const normalizeHex = (val) => {
 };
 const isValidHex = (val) => /^#[0-9A-Fa-f]{6}$/.test(normalizeHex(val));
 
+function downloadCSV(filename, csvContent) {
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function escapeCsvField(val) {
+  const s = val == null ? '' : String(val);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+function rowToCSV(fields) {
+  return fields.map(escapeCsvField).join(',');
+}
+
 export default function Settings({ clients, refetch }) {
   const {
     settings,
@@ -37,6 +67,8 @@ export default function Settings({ clients, refetch }) {
     dismissToast,
   } = useSettings();
 
+  const { user, signOut } = useAuth();
+
   const cl = settings.clients_label || 'Clients';
   const APP_MODES = [
     { value: 'dual',    label: 'Dual',         description: `Both ${cl} and Tasks visible` },
@@ -44,10 +76,13 @@ export default function Settings({ clients, refetch }) {
     { value: 'tasks',   label: 'Tasks Only',   description: `${cl} hidden from sidebar` },
   ];
 
+  const [clientsLabelInput, setClientsLabelInput] = useState(settings.clients_label || 'Clients');
   const [refreshing, setRefreshing] = useState(false);
   const [accentHexInput, setAccentHexInput] = useState('');
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
+  const importFileRef = useRef(null);
   const changelogTriggerRef = useRef(null);
   const bodyFontFileRef = useRef(null);
   const headingFontFileRef = useRef(null);
@@ -126,6 +161,200 @@ export default function Settings({ clients, refetch }) {
   const handleDeleteForever = async (item) => {
     await deleteForever(item.id);
     showToast(`"${item.item_name}" permanently deleted`);
+  };
+
+  // ── Export Data ──
+  const handleExportData = () => {
+    const headers = 'client_name,client_color,retainer_amount,task_title,task_done,task_paid,task_amount,task_currency,task_deadline,task_created_at';
+    const rows = [];
+    (clients || []).forEach((client) => {
+      if (!client.tasks || client.tasks.length === 0) {
+        rows.push(rowToCSV([
+          client.name,
+          client.color || '',
+          client.retainer || 0,
+          '', '', '', '', '', '', '',
+        ]));
+      } else {
+        client.tasks.forEach((task) => {
+          rows.push(rowToCSV([
+            client.name,
+            client.color || '',
+            client.retainer || 0,
+            task.title || '',
+            task.done ? 'true' : 'false',
+            task.paid ? 'true' : 'false',
+            task.amount || 0,
+            task.currency || 'NGN',
+            task.deadline || '',
+            task.createdAt || '',
+          ]));
+        });
+      }
+    });
+    const csv = [headers, ...rows].join('\n');
+    downloadCSV(`workboard-export-${todayStr()}.csv`, csv);
+  };
+
+  // ── Export Payments ──
+  const handleExportPayments = () => {
+    const headers = 'client_name,task_title,amount,currency,type,month,paid_at';
+    const rows = [];
+    (clients || []).forEach((client) => {
+      // Task payments
+      (client.tasks || []).forEach((task) => {
+        if (task.paid) {
+          rows.push(rowToCSV([
+            client.name,
+            task.title || '',
+            task.amount || 0,
+            task.currency || 'NGN',
+            'task',
+            '',
+            '',
+          ]));
+        }
+      });
+      // Retainer payments
+      if (client.retainerPaid && typeof client.retainerPaid === 'object') {
+        Object.entries(client.retainerPaid).forEach(([month, paid]) => {
+          if (paid) {
+            rows.push(rowToCSV([
+              client.name,
+              '',
+              client.retainer || 0,
+              'NGN',
+              'retainer',
+              month,
+              '',
+            ]));
+          }
+        });
+      }
+    });
+    const csv = [headers, ...rows].join('\n');
+    downloadCSV(`workboard-payments-${todayStr()}.csv`, csv);
+  };
+
+  // ── Import Data ──
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset file input so same file can be re-imported if needed
+    e.target.value = '';
+
+    if (IS_DEMO) {
+      showToast('Import is disabled in demo mode');
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter((l) => l.trim());
+      if (lines.length < 2) throw new Error('CSV appears to be empty or has no data rows');
+
+      const headerLine = lines[0];
+      const expectedHeaders = 'client_name,client_color,retainer_amount,task_title,task_done,task_paid,task_amount,task_currency,task_deadline,task_created_at';
+      if (headerLine.trim() !== expectedHeaders) {
+        throw new Error('CSV headers do not match the expected WorkBoard export format');
+      }
+
+      // Parse rows
+      const dataRows = lines.slice(1).map((line) => {
+        // Simple CSV parse — split by comma, handle quoted fields
+        const fields = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+            else { inQuotes = !inQuotes; }
+          } else if (ch === ',' && !inQuotes) {
+            fields.push(current);
+            current = '';
+          } else {
+            current += ch;
+          }
+        }
+        fields.push(current);
+        return {
+          client_name: fields[0] || '',
+          client_color: fields[1] || '#667EEA',
+          retainer_amount: fields[2] || '0',
+          task_title: fields[3] || '',
+          task_done: fields[4] || 'false',
+          task_paid: fields[5] || 'false',
+          task_amount: fields[6] || '0',
+          task_currency: fields[7] || 'NGN',
+          task_deadline: fields[8] || '',
+          task_created_at: fields[9] || '',
+        };
+      });
+
+      // Group by client name
+      const grouped = {};
+      dataRows.forEach((row) => {
+        if (!row.client_name) return;
+        if (!grouped[row.client_name]) grouped[row.client_name] = [];
+        grouped[row.client_name].push(row);
+      });
+
+      let clientsImported = 0;
+      let tasksImported = 0;
+
+      for (const [clientName, rows] of Object.entries(grouped)) {
+        // Check if client already exists
+        const existing = (clients || []).find(
+          (c) => c.name.toLowerCase() === clientName.toLowerCase()
+        );
+
+        let clientId;
+        if (existing) {
+          clientId = existing.id;
+        } else {
+          const firstRow = rows[0];
+          const { data: newClient, error: cErr } = await supabase
+            .from('clients')
+            .insert({
+              name: clientName,
+              color: firstRow.client_color || '#667EEA',
+              retainer: parseFloat(firstRow.retainer_amount) || 0,
+              user_id: user?.id,
+            })
+            .select()
+            .single();
+          if (cErr) throw cErr;
+          clientId = newClient.id;
+          clientsImported++;
+        }
+
+        // Insert tasks
+        for (const row of rows) {
+          if (!row.task_title) continue;
+          const { error: tErr } = await supabase.from('tasks').insert({
+            client_id: clientId,
+            title: row.task_title,
+            done: row.task_done === 'true',
+            paid: row.task_paid === 'true',
+            amount: parseFloat(row.task_amount) || 0,
+            currency: row.task_currency || 'NGN',
+            deadline: row.task_deadline || null,
+            user_id: user?.id,
+          });
+          if (tErr) throw tErr;
+          tasksImported++;
+        }
+      }
+
+      showToast(`Import complete. ${clientsImported} client${clientsImported !== 1 ? 's' : ''} and ${tasksImported} task${tasksImported !== 1 ? 's' : ''} imported.`);
+      if (refetch) await refetch();
+    } catch (err) {
+      showToast(`Import failed: ${err.message}`);
+    } finally {
+      setImporting(false);
+    }
   };
 
   const currentMode = settings.app_mode || 'dual';
@@ -214,8 +443,9 @@ export default function Settings({ clients, refetch }) {
               </label>
               <input
                 type="text"
-                value={settings.clients_label || 'Clients'}
-                onChange={(e) => saveSetting('clients_label', e.target.value)}
+                value={clientsLabelInput}
+                onChange={(e) => setClientsLabelInput(e.target.value)}
+                onBlur={(e) => saveSetting('clients_label', e.target.value.trim() || 'Clients')}
                 placeholder="Clients"
                 className="w-56 px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all"
               />
@@ -433,6 +663,67 @@ export default function Settings({ clients, refetch }) {
           </div>
         </section>
 
+        {/* ── Data section ── */}
+        <section className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Database size={16} className="text-gray-400" />
+            <h2 className="font-display text-lg font-semibold text-gray-800">Data</h2>
+          </div>
+          <div className="space-y-4">
+            {/* Export buttons row */}
+            <div className="flex gap-3 flex-wrap">
+              <button
+                onClick={handleExportData}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors hover:bg-gray-50"
+                style={{ borderColor: 'var(--accent, #667EEA)', color: 'var(--accent, #667EEA)' }}
+              >
+                <Upload size={14} />
+                Export Data
+              </button>
+              <button
+                onClick={handleExportPayments}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors hover:bg-gray-50"
+                style={{ borderColor: 'var(--accent, #667EEA)', color: 'var(--accent, #667EEA)' }}
+              >
+                <Upload size={14} />
+                Export Payments
+              </button>
+            </div>
+
+            {/* Import button + note */}
+            <div>
+              <button
+                onClick={() => importFileRef.current?.click()}
+                disabled={importing}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ borderColor: 'var(--accent, #667EEA)', color: 'var(--accent, #667EEA)' }}
+              >
+                {importing ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    Importing…
+                  </>
+                ) : (
+                  <>
+                    <Database size={14} />
+                    Import Data
+                  </>
+                )}
+              </button>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".csv"
+                onChange={handleImportFile}
+                className="hidden"
+              />
+              <p className="text-xs text-gray-400 mt-2 text-center">
+                Import expects the same format as the WorkBoard export file.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* What's New Section */}
         <section className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 mb-4">
           <div className="flex items-center justify-between">
@@ -474,6 +765,29 @@ export default function Settings({ clients, refetch }) {
             </button>
           </div>
         </section>
+
+        {/* Account Section */}
+        {!IS_DEMO && user && (
+          <section className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 mb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <User size={18} className="text-gray-400" />
+              <h2 className="font-display text-lg font-semibold text-gray-900">Account</h2>
+            </div>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <p className="text-sm text-gray-700 font-medium">{user.email}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Signed in</p>
+              </div>
+              <button
+                onClick={signOut}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-danger text-danger hover:bg-danger/5 transition-colors"
+              >
+                <LogOut size={14} />
+                Sign Out
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* Trash Section */}
         <section className="bg-white rounded-2xl shadow-sm p-4 sm:p-6">

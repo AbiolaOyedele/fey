@@ -323,7 +323,7 @@ export default function Dashboard({ clients, actions }) {
                   ? 'text-white shadow-sm'
                   : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
               }`}
-              style={filter === f ? { backgroundColor: f === 'Overdue' ? '#EF4444' : 'var(--accent, #667EEA)' } : {}}
+              style={filter === f ? { backgroundColor: f === 'Overdue' ? '#EF4444' : 'var(--accent, #ED64A6)' } : {}}
             >
               {f === 'All' && <Users size={14} />}
               {f === 'Active' && <Clock size={14} />}
@@ -346,7 +346,7 @@ export default function Dashboard({ clients, actions }) {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl outline-none"
-            style={{ color: 'var(--accent, #667EEA)' }}
+            style={{ color: 'var(--accent, #ED64A6)' }}
           >
             {visibleFilters.map((f) => (
               <option key={f} value={f}>{f}</option>
@@ -444,7 +444,7 @@ export default function Dashboard({ clients, actions }) {
               <Link
                 to="/clients"
                 className="flex items-center gap-1.5 text-sm font-medium mt-4 hover:gap-2.5 transition-all"
-                style={{ color: 'var(--accent, #667EEA)' }}
+                style={{ color: 'var(--accent, #ED64A6)' }}
               >
                 View all clients <ArrowRight size={14} />
               </Link>
@@ -662,7 +662,7 @@ export default function Dashboard({ clients, actions }) {
           ) : (
             <div
               className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center text-white text-xl font-display font-bold"
-              style={{ background: `linear-gradient(135deg, var(--accent, #667EEA)99, var(--accent, #667EEA))` }}
+              style={{ background: `linear-gradient(135deg, var(--accent, #ED64A6)99, var(--accent, #ED64A6))` }}
             >
               {(settings.username || 'A').charAt(0).toUpperCase()}
             </div>
@@ -696,7 +696,7 @@ export default function Dashboard({ clients, actions }) {
             <p className="font-mono text-xl font-bold text-gray-900 mb-1 truncate">
               {formatMoney(earnedThisMonth)}
             </p>
-            <p className="text-xs font-medium mb-4" style={{ color: 'var(--accent, #667EEA)' }}>This month</p>
+            <p className="text-xs font-medium mb-4" style={{ color: 'var(--accent, #ED64A6)' }}>This month</p>
 
             <div className="flex items-end gap-1.5 h-24">
               {monthlyActivity.map((m) => {
@@ -723,13 +723,13 @@ export default function Dashboard({ clients, actions }) {
                       {isCurrentMonth && (
                         <div
                           className="absolute inset-0 ring-2 rounded-md"
-                          style={{ '--tw-ring-color': `var(--accent, #667EEA)40` }}
+                          style={{ '--tw-ring-color': `var(--accent, #ED64A6)40` }}
                         />
                       )}
                     </div>
                     <span
                       className={`text-xs ${isCurrentMonth ? 'font-semibold' : 'text-gray-400'}`}
-                      style={isCurrentMonth ? { color: 'var(--accent, #667EEA)' } : {}}
+                      style={isCurrentMonth ? { color: 'var(--accent, #ED64A6)' } : {}}
                     >
                       {m.label}
                     </span>
@@ -744,7 +744,7 @@ export default function Dashboard({ clients, actions }) {
         <div className="bg-white rounded-2xl p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-semibold text-gray-700">My clients</p>
-            <Link to="/clients" className="text-xs hover:underline" style={{ color: 'var(--accent, #667EEA)' }}>
+            <Link to="/clients" className="text-xs hover:underline" style={{ color: 'var(--accent, #ED64A6)' }}>
               View all
             </Link>
           </div>

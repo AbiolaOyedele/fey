@@ -2,9 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── NoirPro fonts ── */
+@font-face {
+  font-family: 'NoirPro';
+  src: url('/fonts/NoirPro-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'NoirPro';
+  src: url('/fonts/NoirPro-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --body-font: 'DM Sans', 'Noto Sans', sans-serif;
-  --heading-font: 'Fraunces', 'Noto Sans', serif;
+  --body-font: 'NoirPro', sans-serif;
+  --heading-font: 'NoirPro', sans-serif;
 }
 
 * {
@@ -15,6 +32,7 @@
 
 body {
   font-family: var(--body-font);
+  font-weight: 300; /* NoirPro Light */
   background-color: #F7F8FA;
   color: #1a1a2e;
   -webkit-font-smoothing: antialiased;
@@ -122,9 +140,10 @@ body {
   animation: fadeIn 200ms ease forwards;
 }
 
-/* Heading font — uses CSS variable with Noto Sans fallback for missing glyphs */
+/* Headings use NoirPro Regular (400) */
 h1, h2, h3, .font-display {
   font-family: var(--heading-font);
+  font-weight: 400;
 }
 
 /* Monospace utility uses body font — removes DM Mono, keeps everything consistent */

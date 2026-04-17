@@ -271,7 +271,7 @@ export default function Tasks({ taskGroupData }) {
                 onClick={handleAddTask}
                 disabled={!newTaskInput.trim()}
                 className="flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-30 transition-all flex-shrink-0"
-                style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
               >
                 <Plus size={15} />
                 Add
@@ -326,7 +326,7 @@ export default function Tasks({ taskGroupData }) {
               <button
                 onClick={openGroupModal}
                 className="flex items-center gap-1.5 px-3.5 py-2 text-white rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex-shrink-0"
-                style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
               >
                 <Plus size={14} />
                 New Group
@@ -450,7 +450,7 @@ export default function Tasks({ taskGroupData }) {
                       className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
                         groupIcon === name ? 'text-white' : 'text-gray-400 hover:text-gray-600 hover:bg-white'
                       }`}
-                      style={groupIcon === name ? { backgroundColor: 'var(--accent, #667EEA)' } : {}}
+                      style={groupIcon === name ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
                     >
                       <IconComp size={15} />
                     </button>
@@ -470,7 +470,7 @@ export default function Tasks({ taskGroupData }) {
                 onClick={handleAddGroup}
                 disabled={!groupName.trim()}
                 className="px-5 py-2 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all"
-                style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
               >
                 Create Group
               </button>

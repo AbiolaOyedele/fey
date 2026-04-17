@@ -102,7 +102,7 @@ export default function Login() {
               type="submit"
               disabled={loading}
               className="w-full py-2.5 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60 transition-all"
-              style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
             >
               {loading && <Loader2 size={15} className="animate-spin" />}
               {mode === 'signin' ? 'Sign In' : 'Create Account'}

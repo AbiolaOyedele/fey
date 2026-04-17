@@ -319,7 +319,7 @@ export default function ClientWorkspace({ clients, actions }) {
               <span>
                 Monthly Retainer
                 {client.retainer > 0 && (
-                  <span className="ml-2 font-mono" style={{ color: 'var(--accent, #667EEA)' }}>
+                  <span className="ml-2 font-mono" style={{ color: 'var(--accent, #ED64A6)' }}>
                     {formatMoney(convertAmount(client.retainer, 'NGN'))}
                   </span>
                 )}
@@ -376,7 +376,7 @@ export default function ClientWorkspace({ clients, actions }) {
               className={`w-full sm:w-auto h-full flex items-center gap-2 px-4 py-3 bg-white rounded-2xl shadow-sm text-sm font-medium whitespace-nowrap transition-colors ${
                 taskFilter !== 'all' ? 'text-white' : 'text-gray-600 hover:bg-gray-50'
               }`}
-              style={taskFilter !== 'all' ? { backgroundColor: 'var(--accent, #667EEA)' } : {}}
+              style={taskFilter !== 'all' ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
             >
               {currentFilterLabel}
               <ChevronDown size={14} />
@@ -396,7 +396,7 @@ export default function ClientWorkspace({ clients, actions }) {
                         ? 'font-medium'
                         : 'text-gray-700 hover:bg-gray-50'
                     }`}
-                    style={taskFilter === opt.value ? { color: 'var(--accent, #667EEA)' } : {}}
+                    style={taskFilter === opt.value ? { color: 'var(--accent, #ED64A6)' } : {}}
                   >
                     {opt.label}
                   </button>
@@ -471,7 +471,7 @@ export default function ClientWorkspace({ clients, actions }) {
               onClick={handleAddTask}
               disabled={!newTask.trim()}
               className="flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all flex-shrink-0"
-              style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
             >
               <Plus size={16} />
               Add

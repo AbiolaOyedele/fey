@@ -402,7 +402,7 @@ export default function Clients({ clients, actions }) {
           <button
             onClick={openModal}
             className="flex items-center gap-2 px-5 py-2.5 text-white rounded-full text-sm font-medium hover:opacity-90 transition-opacity flex-shrink-0"
-            style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             <Plus size={16} />
             Add
@@ -575,7 +575,7 @@ export default function Clients({ clients, actions }) {
                 onClick={handleAddClient}
                 disabled={!newName.trim()}
                 className="px-5 py-2 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all"
-                style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
               >
                 Add
               </button>

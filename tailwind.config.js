@@ -7,12 +7,12 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['DM Sans', 'Noto Sans', 'sans-serif'],
-        display: ['Fraunces', 'Noto Sans', 'serif'],
+        sans: ['NoirPro', 'sans-serif'],
+        display: ['NoirPro', 'sans-serif'],
         mono: ['inherit'],
       },
       colors: {
-        primary: '#667EEA',
+        primary: '#ED64A6',
         success: '#48BB78',
         pending: '#F6AD55',
         danger: '#FC8181',

@@ -145,7 +145,7 @@ export default function EditClientModal({ client, onSave, onClose }) {
             onClick={handleSave}
             disabled={!name.trim()}
             className="px-5 py-2 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all"
-            style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             Save Changes
           </button>

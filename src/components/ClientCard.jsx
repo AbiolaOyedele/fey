@@ -32,7 +32,7 @@ export default function ClientCard({ client, onDelete, viewMode = 'grid' }) {
           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-300"
-              style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#48BB78' : '#667EEA' }}
+              style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#48BB78' : '#ED64A6' }}
             />
           </div>
         </div>
@@ -71,7 +71,7 @@ export default function ClientCard({ client, onDelete, viewMode = 'grid' }) {
       <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-300"
-          style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#48BB78' : '#667EEA' }}
+          style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#48BB78' : '#ED64A6' }}
         />
       </div>
       <span className="text-xs font-mono text-gray-400 mt-1.5 inline-block">{pct}%</span>

@@ -60,7 +60,7 @@ const DEFAULTS = {
   logo: '',
   dashboard_heading: 'Track your\nwork & earnings',
   dashboard_subtitle: '',
-  accent_color: '#667EEA',
+  accent_color: '#ED64A6',
   card_size: 'medium',
   currency: 'NGN',
   exchange_rate: 1,

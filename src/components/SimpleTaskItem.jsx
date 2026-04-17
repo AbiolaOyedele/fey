@@ -67,10 +67,10 @@ export default function SimpleTaskItem({ task, onUpdate, onDelete, dragListeners
         } ${task.done ? 'text-white' : 'border-gray-200'}`}
         style={
           task.done
-            ? { backgroundColor: 'var(--accent, #667EEA)', borderColor: 'var(--accent, #667EEA)' }
+            ? { backgroundColor: 'var(--accent, #ED64A6)', borderColor: 'var(--accent, #ED64A6)' }
             : {}
         }
-        onMouseEnter={(e) => { if (!task.done) e.currentTarget.style.borderColor = 'var(--accent, #667EEA)'; }}
+        onMouseEnter={(e) => { if (!task.done) e.currentTarget.style.borderColor = 'var(--accent, #ED64A6)'; }}
         onMouseLeave={(e) => { if (!task.done) e.currentTarget.style.borderColor = ''; }}
       >
         {task.done && <Check size={10} strokeWidth={3} />}

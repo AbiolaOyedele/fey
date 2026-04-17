@@ -220,10 +220,10 @@ export default function Payments({ clients }) {
                   >
                     <div
                       className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${isExpanded ? '' : 'bg-gray-100'}`}
-                      style={isExpanded ? { backgroundColor: 'var(--accent, #667EEA)15' } : {}}
+                      style={isExpanded ? { backgroundColor: 'var(--accent, #ED64A6)15' } : {}}
                     >
                       {isExpanded ? (
-                        <ChevronDown size={16} style={{ color: 'var(--accent, #667EEA)' }} />
+                        <ChevronDown size={16} style={{ color: 'var(--accent, #ED64A6)' }} />
                       ) : (
                         <ChevronRight size={16} className="text-gray-400" />
                       )}
@@ -237,8 +237,8 @@ export default function Payments({ clients }) {
                           <span
                             className="text-xs px-2 py-0.5 rounded-full font-medium"
                             style={{
-                              backgroundColor: 'var(--accent, #667EEA)15',
-                              color: 'var(--accent, #667EEA)',
+                              backgroundColor: 'var(--accent, #ED64A6)15',
+                              color: 'var(--accent, #ED64A6)',
                             }}
                           >
                             Current
@@ -397,9 +397,9 @@ export default function Payments({ clients }) {
         )}
 
         {/* This month */}
-        <div className="rounded-2xl p-4 sm:p-5 mb-4" style={{ backgroundColor: 'var(--accent, #667EEA)0D' }}>
+        <div className="rounded-2xl p-4 sm:p-5 mb-4" style={{ backgroundColor: 'var(--accent, #ED64A6)0D' }}>
           <p className="text-sm font-semibold text-gray-700 mb-1">This Month</p>
-          <p className="font-mono text-xl font-bold" style={{ color: 'var(--accent, #667EEA)' }}>
+          <p className="font-mono text-xl font-bold" style={{ color: 'var(--accent, #ED64A6)' }}>
             {formatMoney(earnedThisMonth)}
           </p>
           <p className="text-xs text-gray-400 mt-1">

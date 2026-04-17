@@ -3,7 +3,7 @@ import { useSettings } from '../contexts/SettingsContext';
 
 export default function ToastContainer() {
   const { toasts, dismissToast, settings } = useSettings();
-  const accent = settings.accent_color || '#667EEA';
+  const accent = settings.accent_color || '#ED64A6';
 
   if (toasts.length === 0) return null;
 

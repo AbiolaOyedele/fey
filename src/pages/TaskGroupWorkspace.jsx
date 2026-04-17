@@ -93,7 +93,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
     return (
       <div className="p-8 page-enter text-center py-20">
         <p className="text-gray-400 text-lg">Group not found</p>
-        <button onClick={() => navigate('/tasks')} className="text-sm mt-2 hover:underline" style={{ color: 'var(--accent, #667EEA)' }}>
+        <button onClick={() => navigate('/tasks')} className="text-sm mt-2 hover:underline" style={{ color: 'var(--accent, #ED64A6)' }}>
           Back to Tasks
         </button>
       </div>
@@ -252,7 +252,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
                   ? 'text-white'
                   : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
               }`}
-              style={taskFilter !== 'all' ? { backgroundColor: 'var(--accent, #667EEA)' } : {}}
+              style={taskFilter !== 'all' ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
             >
               {currentFilterLabel}
               <ChevronDown size={13} />
@@ -270,7 +270,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
                     className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                       taskFilter === opt.value ? 'font-medium' : 'text-gray-600 hover:bg-gray-50'
                     }`}
-                    style={taskFilter === opt.value ? { color: 'var(--accent, #667EEA)' } : {}}
+                    style={taskFilter === opt.value ? { color: 'var(--accent, #ED64A6)' } : {}}
                   >
                     {opt.label}
                   </button>
@@ -342,7 +342,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
               onClick={handleAddTask}
               disabled={!newTask.trim()}
               className="flex items-center gap-1 px-3 py-2 text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-30 transition-all flex-shrink-0"
-              style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
             >
               <Plus size={14} />
               Add
@@ -494,7 +494,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
                       className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
                         editIcon === name ? 'text-white' : 'text-gray-400 hover:text-gray-600 hover:bg-white'
                       }`}
-                      style={editIcon === name ? { backgroundColor: 'var(--accent, #667EEA)' } : {}}
+                      style={editIcon === name ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
                     >
                       <IconComp size={15} />
                     </button>
@@ -511,7 +511,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
                 onClick={handleSaveEdit}
                 disabled={!editName.trim()}
                 className="px-5 py-2 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all"
-                style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
               >
                 Save Changes
               </button>

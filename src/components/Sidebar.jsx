@@ -8,7 +8,7 @@ const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
 
 export default function Sidebar() {
   const { settings } = useSettings();
-  const accent = settings.accent_color || '#667EEA';
+  const accent = settings.accent_color || '#ED64A6';
   const appMode = settings.app_mode || 'dual';
 
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
@@ -106,7 +106,7 @@ export default function Sidebar() {
               <svg
                 viewBox="0 0 295 295"
                 className="absolute inset-0 w-full h-full animate-slow-rotate"
-                style={{ fill: 'var(--accent, #667EEA)' }}
+                style={{ fill: 'var(--accent, #ED64A6)' }}
               >
                 <path d="M280.977,118.478c-13.619-10.807-20.563-27.57-18.574-44.845c1.3-11.3-2.566-22.393-10.607-30.432
                   c-8.044-8.043-19.136-11.909-30.434-10.607c-17.281,1.986-34.037-4.954-44.844-18.573C169.449,5.11,158.872,0,147.499,0

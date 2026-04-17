@@ -106,9 +106,9 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
             bouncing ? 'animate-scaleBounce' : ''
           } ${task.done ? 'text-white' : 'border-gray-300'}`}
           style={task.done
-            ? { backgroundColor: 'var(--accent, #667EEA)', borderColor: 'var(--accent, #667EEA)' }
+            ? { backgroundColor: 'var(--accent, #ED64A6)', borderColor: 'var(--accent, #ED64A6)' }
             : {}}
-          onMouseEnter={e => { if (!task.done) e.currentTarget.style.borderColor = 'var(--accent, #667EEA)'; }}
+          onMouseEnter={e => { if (!task.done) e.currentTarget.style.borderColor = 'var(--accent, #ED64A6)'; }}
           onMouseLeave={e => { if (!task.done) e.currentTarget.style.borderColor = ''; }}
         >
           {task.done && <Check size={12} strokeWidth={3} />}

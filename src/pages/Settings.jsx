@@ -12,7 +12,7 @@ import { supabase } from '../lib/supabase';
 const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
 
 const THEME_COLORS = [
-  '#667EEA', '#F56565', '#ED8936', '#38B2AC',
+  '#ED64A6', '#F56565', '#ED8936', '#38B2AC',
   '#9F7AEA', '#ED64A6', '#48BB78', '#4299E1',
 ];
 
@@ -281,7 +281,7 @@ export default function Settings({ clients, refetch }) {
         fields.push(current);
         return {
           client_name: fields[0] || '',
-          client_color: fields[1] || '#667EEA',
+          client_color: fields[1] || '#ED64A6',
           retainer_amount: fields[2] || '0',
           task_title: fields[3] || '',
           task_done: fields[4] || 'false',
@@ -319,7 +319,7 @@ export default function Settings({ clients, refetch }) {
             .from('clients')
             .insert({
               name: clientName,
-              color: firstRow.client_color || '#667EEA',
+              color: firstRow.client_color || '#ED64A6',
               retainer: parseFloat(firstRow.retainer_amount) || 0,
               user_id: user?.id,
             })
@@ -412,13 +412,13 @@ export default function Settings({ clients, refetch }) {
                 }`}
                 style={
                   currentMode === value
-                    ? { borderColor: 'var(--accent, #667EEA)', backgroundColor: 'var(--accent, #667EEA)08' }
+                    ? { borderColor: 'var(--accent, #ED64A6)', backgroundColor: 'var(--accent, #ED64A6)08' }
                     : {}
                 }
               >
                 <p
                   className="text-sm font-semibold mb-1"
-                  style={currentMode === value ? { color: 'var(--accent, #667EEA)' } : { color: '#374151' }}
+                  style={currentMode === value ? { color: 'var(--accent, #ED64A6)' } : { color: '#374151' }}
                 >
                   {label}
                 </p>
@@ -553,7 +553,7 @@ export default function Settings({ clients, refetch }) {
                     className={`flex-1 py-2.5 text-sm font-medium transition-all duration-150 ${
                       settings.card_size === value ? 'text-white' : 'text-gray-500 hover:text-gray-700'
                     }`}
-                    style={settings.card_size === value ? { backgroundColor: 'var(--accent, #667EEA)' } : {}}
+                    style={settings.card_size === value ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
                   >
                     {label}
                   </button>
@@ -629,7 +629,7 @@ export default function Settings({ clients, refetch }) {
                     className={`px-5 py-2.5 text-sm font-medium transition-all duration-150 ${
                       settings.currency === 'NGN' ? 'text-white' : 'text-gray-500 hover:text-gray-700'
                     }`}
-                    style={settings.currency === 'NGN' ? { backgroundColor: 'var(--accent, #667EEA)' } : {}}
+                    style={settings.currency === 'NGN' ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
                   >
                     ₦ NGN
                   </button>
@@ -638,7 +638,7 @@ export default function Settings({ clients, refetch }) {
                     className={`px-5 py-2.5 text-sm font-medium transition-all duration-150 ${
                       settings.currency === 'USD' ? 'text-white' : 'text-gray-500 hover:text-gray-700'
                     }`}
-                    style={settings.currency === 'USD' ? { backgroundColor: 'var(--accent, #667EEA)' } : {}}
+                    style={settings.currency === 'USD' ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
                   >
                     $ USD
                   </button>
@@ -675,7 +675,7 @@ export default function Settings({ clients, refetch }) {
               <button
                 onClick={handleExportData}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors hover:bg-gray-50"
-                style={{ borderColor: 'var(--accent, #667EEA)', color: 'var(--accent, #667EEA)' }}
+                style={{ borderColor: 'var(--accent, #ED64A6)', color: 'var(--accent, #ED64A6)' }}
               >
                 <Upload size={14} />
                 Export Data
@@ -683,7 +683,7 @@ export default function Settings({ clients, refetch }) {
               <button
                 onClick={handleExportPayments}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors hover:bg-gray-50"
-                style={{ borderColor: 'var(--accent, #667EEA)', color: 'var(--accent, #667EEA)' }}
+                style={{ borderColor: 'var(--accent, #ED64A6)', color: 'var(--accent, #ED64A6)' }}
               >
                 <Upload size={14} />
                 Export Payments
@@ -696,7 +696,7 @@ export default function Settings({ clients, refetch }) {
                 onClick={() => importFileRef.current?.click()}
                 disabled={importing}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
-                style={{ borderColor: 'var(--accent, #667EEA)', color: 'var(--accent, #667EEA)' }}
+                style={{ borderColor: 'var(--accent, #ED64A6)', color: 'var(--accent, #ED64A6)' }}
               >
                 {importing ? (
                   <>
@@ -737,7 +737,7 @@ export default function Settings({ clients, refetch }) {
             <button
               onClick={() => setWhatsNewOpen(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
             >
               <Sparkles size={14} />
               What's New
@@ -758,7 +758,7 @@ export default function Settings({ clients, refetch }) {
             <button
               onClick={() => changelogTriggerRef.current?.querySelector('button')?.click()}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
             >
               <History size={14} />
               View Changelog
@@ -821,7 +821,7 @@ export default function Settings({ clients, refetch }) {
                     <button
                       onClick={() => handleRestore(item)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
-                      style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+                      style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
                     >
                       <RotateCcw size={12} />
                       Restore

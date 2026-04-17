@@ -59,7 +59,7 @@ export default function ChangelogPopup() {
                     <div className="flex items-center gap-2 mb-2">
                       <span
                         className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
-                        style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+                        style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
                       >
                         v{entry.version}
                       </span>

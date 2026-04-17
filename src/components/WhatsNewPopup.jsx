@@ -56,7 +56,7 @@ export default function WhatsNewPopup({ open, onClose }) {
           {/* Left column — accent background */}
           <div
             className="w-full md:w-[44%] p-6 flex flex-col min-h-[200px] md:min-h-0"
-            style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             {/* What's New badge — rotating seal, fixed text */}
             <div className="mb-5">
@@ -161,7 +161,7 @@ export default function WhatsNewPopup({ open, onClose }) {
                       onClick={() => setCarouselIndex(i)}
                       className="w-1.5 h-1.5 rounded-full transition-all"
                       style={{
-                        backgroundColor: i === carouselIndex ? 'var(--accent, #667EEA)' : '#D1D5DB',
+                        backgroundColor: i === carouselIndex ? 'var(--accent, #ED64A6)' : '#D1D5DB',
                         width: i === carouselIndex ? '6px' : '5px',
                         height: i === carouselIndex ? '6px' : '5px',
                       }}
@@ -175,7 +175,7 @@ export default function WhatsNewPopup({ open, onClose }) {
             <button
               onClick={handleClose}
               className="mt-5 w-full py-3 rounded-xl text-white text-sm font-medium hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: 'var(--accent, #667EEA)' }}
+              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
             >
               Got it
             </button>

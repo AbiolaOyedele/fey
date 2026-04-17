@@ -174,7 +174,7 @@ export default function Dashboard({ clients, actions }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1
-                className="font-display text-2xl md:text-3xl lg:text-[2.75rem] leading-tight font-bold text-gray-900"
+                className="font-display text-2xl md:text-3xl lg:text-[2.75rem] leading-snug font-bold text-gray-900"
                 style={{ whiteSpace: 'pre-wrap' }}
               >
                 {heading}

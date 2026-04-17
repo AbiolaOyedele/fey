@@ -54,23 +54,6 @@ const NERD_CARDS = [
   { id: 'welcome', color: '#F0F9FF', canSkip: false },
 ];
 
-// Same ACCENT_TEXT map used across the app — pastel bg → contrasting dark text
-const ACCENT_TEXT = {
-  '#FDE8E8': '#92400E',
-  '#FEF3C7': '#78350F',
-  '#D1FAE5': '#065F46',
-  '#DBEAFE': '#1E3A8A',
-  '#EDE9FE': '#5B21B6',
-  '#FCE7F3': '#9D174D',
-  '#E0F2FE': '#0C4A6E',
-  '#FEF9C3': '#713F12',
-  '#DCFCE7': '#166534',
-  '#F3E8FF': '#6B21A8',
-  '#FFE4E6': '#9F1239',
-  '#ECFDF5': '#047857',
-  '#FFF7ED': '#9A3412',
-  '#F0F9FF': '#0C4A6E',
-};
 
 const normalizeHex = (v) => v.trim().startsWith('#') ? v.trim() : `#${v.trim()}`;
 const isValidHex = (v) => /^#[0-9A-Fa-f]{6}$/.test(normalizeHex(v));
@@ -99,14 +82,11 @@ function FolderGraphic({ count, isNerd, fading }) {
           />
         ))}
         {/* Folder body */}
-        <rect x="0" y="36" width="240" height="124" rx="10" fill={isNerd ? '#3D3456' : '#E8D5B7'} />
+        <rect x="0" y="36" width="240" height="124" rx="10" fill={isNerd ? '#1A1A1A' : '#E8D5B7'} />
         {/* Folder tab */}
-        <path d="M0,36 L0,18 Q0,12 8,12 L90,12 Q98,12 102,18 L108,36 Z" fill={isNerd ? '#4A3F6B' : '#D4B896'} />
+        <path d="M0,36 L0,18 Q0,12 8,12 L90,12 Q98,12 102,18 L108,36 Z" fill={isNerd ? '#2A2A2A' : '#D4B896'} />
         {/* Folder highlight */}
-        <rect x="0" y="36" width="240" height="8" rx="0" fill={isNerd ? '#4A3F6B' : '#F0DFC0'} opacity="0.5" />
-        {isNerd && (
-          <text x="120" y="108" textAnchor="middle" fontSize="32">🤓</text>
-        )}
+        <rect x="0" y="36" width="240" height="8" rx="0" fill={isNerd ? '#2A2A2A' : '#F0DFC0'} opacity="0.5" />
       </svg>
     </div>
   );
@@ -302,10 +282,8 @@ export default function Onboarding() {
     ? !!(appMode && currency)
     : true;
 
-  // Derive text color from the card's pastel background — same logic as the app
-  const textColor = ACCENT_TEXT[currentCard.color] || '#374151';
-  // Subtle/muted variant at ~60% opacity for helper text
-  const mutedColor = textColor + '99';
+  const textColor = '#111111';
+  const mutedColor = '#6B7280';
 
   const continueStyle = {
     width: '100%',
@@ -326,23 +304,23 @@ export default function Onboarding() {
     width: '100%',
     padding: '14px 16px',
     borderRadius: '12px',
-    border: `2px solid ${textColor}22`,
-    background: 'rgba(255,255,255,0.7)',
+    border: '2px solid rgba(0,0,0,0.10)',
+    background: '#fff',
     fontSize: '16px',
     outline: 'none',
     marginBottom: '20px',
     minHeight: '44px',
     boxSizing: 'border-box',
     fontFamily: 'inherit',
-    color: textColor,
+    color: '#111',
   };
 
   const pillStyle = (active) => ({
     padding: '10px 16px',
     borderRadius: '50px',
-    border: active ? '2px solid var(--accent, #ED64A6)' : `2px solid ${textColor}22`,
-    background: active ? 'var(--accent, #ED64A6)' : 'rgba(255,255,255,0.7)',
-    color: active ? '#fff' : textColor,
+    border: active ? '2px solid var(--accent, #ED64A6)' : '2px solid rgba(0,0,0,0.10)',
+    background: active ? 'var(--accent, #ED64A6)' : '#fff',
+    color: active ? '#fff' : '#111',
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: active ? 500 : 400,
@@ -651,7 +629,7 @@ export default function Onboarding() {
                       width: '100%',
                       padding: '10px 12px',
                       borderRadius: '10px',
-                      border: `2px dashed ${textColor}22`,
+                      border: '2px dashed rgba(0,0,0,0.12)',
                       background: 'rgba(255,255,255,0.5)',
                       color: mutedColor,
                       fontSize: '12px',
@@ -677,7 +655,7 @@ export default function Onboarding() {
                       width: '100%',
                       padding: '10px 12px',
                       borderRadius: '10px',
-                      border: `2px dashed ${textColor}22`,
+                      border: '2px dashed rgba(0,0,0,0.12)',
                       background: 'rgba(255,255,255,0.5)',
                       color: mutedColor,
                       fontSize: '12px',
@@ -860,7 +838,7 @@ export default function Onboarding() {
                     padding: '16px 8px 12px',
                     borderRadius: '14px',
                     border: cardSize === size.value ? '2px solid var(--accent, #ED64A6)' : '2px solid rgba(0,0,0,0.08)',
-                    background: cardSize === size.value ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
+                    background: '#fff',
                     cursor: 'pointer',
                     display: 'flex',
                     flexDirection: 'column',
@@ -981,7 +959,7 @@ export default function Onboarding() {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: isNerd ? '#2D2640' : '#F7F8FA',
+        backgroundColor: isNerd ? '#000' : '#F7F8FA',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -1038,13 +1016,13 @@ export default function Onboarding() {
           ref={cardRef}
           key={`${isNerd ? 'nerd' : 'reg'}-${cardIndex}`}
           style={{
-            backgroundColor: currentCard.color,
+            backgroundColor: '#fff',
             borderRadius: '20px',
             width: '100%',
             maxWidth: '440px',
             padding: '32px',
             boxShadow: isNerd
-              ? `0 0 40px ${currentCard.color}60, 0 8px 32px rgba(0,0,0,0.3)`
+              ? '0 8px 40px rgba(255,255,255,0.08)'
               : '0 8px 32px rgba(0,0,0,0.10)',
             boxSizing: 'border-box',
           }}

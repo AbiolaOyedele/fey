@@ -15,7 +15,7 @@ function GoogleIcon() {
 }
 
 export default function Login() {
-  const { user, signIn, signUp, signInWithGoogle } = useAuth();
+  const { user, loading: authLoading, signIn, signUp, signInWithGoogle } = useAuth();
 
   const [showEmail, setShowEmail]  = useState(false);
   const [mode, setMode]            = useState('signin');
@@ -26,6 +26,9 @@ export default function Login() {
   const [info, setInfo]            = useState('');
   const [loading, setLoading]      = useState(false);
 
+  // Wait for auth to resolve before deciding — prevents flash of login page
+  if (authLoading) return null;
+  // Already logged in — skip login and go straight to the app
   if (user) return <Navigate to="/" replace />;
 
   const handleGoogle = async () => {

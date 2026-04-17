@@ -156,7 +156,7 @@ export function SettingsProvider({ children }) {
   // Apply body font via --body-font CSS variable
   useEffect(() => {
     if (!settings.font_family) {
-      document.documentElement.style.setProperty('--body-font', "'DM Sans', 'Noto Sans', sans-serif");
+      document.documentElement.style.setProperty('--body-font', "'NoirPro', sans-serif");
       return;
     }
     if (settings.font_family === 'custom') {
@@ -185,7 +185,7 @@ export function SettingsProvider({ children }) {
   // Apply heading font via --heading-font CSS variable
   useEffect(() => {
     if (!settings.heading_font) {
-      document.documentElement.style.setProperty('--heading-font', "'Fraunces', 'Noto Sans', serif");
+      document.documentElement.style.setProperty('--heading-font', "'NoirPro', sans-serif");
       return;
     }
     if (settings.heading_font === 'custom') {

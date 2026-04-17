@@ -54,6 +54,24 @@ const NERD_CARDS = [
   { id: 'welcome', color: '#F0F9FF', canSkip: false },
 ];
 
+// Same ACCENT_TEXT map used across the app — pastel bg → contrasting dark text
+const ACCENT_TEXT = {
+  '#FDE8E8': '#92400E',
+  '#FEF3C7': '#78350F',
+  '#D1FAE5': '#065F46',
+  '#DBEAFE': '#1E3A8A',
+  '#EDE9FE': '#5B21B6',
+  '#FCE7F3': '#9D174D',
+  '#E0F2FE': '#0C4A6E',
+  '#FEF9C3': '#713F12',
+  '#DCFCE7': '#166534',
+  '#F3E8FF': '#6B21A8',
+  '#FFE4E6': '#9F1239',
+  '#ECFDF5': '#047857',
+  '#FFF7ED': '#9A3412',
+  '#F0F9FF': '#0C4A6E',
+};
+
 const normalizeHex = (v) => v.trim().startsWith('#') ? v.trim() : `#${v.trim()}`;
 const isValidHex = (v) => /^#[0-9A-Fa-f]{6}$/.test(normalizeHex(v));
 
@@ -284,6 +302,11 @@ export default function Onboarding() {
     ? !!(appMode && currency)
     : true;
 
+  // Derive text color from the card's pastel background — same logic as the app
+  const textColor = ACCENT_TEXT[currentCard.color] || '#374151';
+  // Subtle/muted variant at ~60% opacity for helper text
+  const mutedColor = textColor + '99';
+
   const continueStyle = {
     width: '100%',
     padding: '14px',
@@ -303,7 +326,7 @@ export default function Onboarding() {
     width: '100%',
     padding: '14px 16px',
     borderRadius: '12px',
-    border: '2px solid rgba(0,0,0,0.08)',
+    border: `2px solid ${textColor}22`,
     background: 'rgba(255,255,255,0.7)',
     fontSize: '16px',
     outline: 'none',
@@ -311,14 +334,15 @@ export default function Onboarding() {
     minHeight: '44px',
     boxSizing: 'border-box',
     fontFamily: 'inherit',
+    color: textColor,
   };
 
   const pillStyle = (active) => ({
     padding: '10px 16px',
     borderRadius: '50px',
-    border: active ? '2px solid var(--accent, #ED64A6)' : '2px solid rgba(0,0,0,0.08)',
+    border: active ? '2px solid var(--accent, #ED64A6)' : `2px solid ${textColor}22`,
     background: active ? 'var(--accent, #ED64A6)' : 'rgba(255,255,255,0.7)',
-    color: active ? '#fff' : '#374151',
+    color: active ? '#fff' : textColor,
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: active ? 500 : 400,
@@ -333,16 +357,15 @@ export default function Onboarding() {
     fontFamily: 'var(--heading-font)',
     fontSize: '1.5rem',
     fontWeight: 400,
-    marginBottom: '24px',
-    color: '#111',
     lineHeight: 1.3,
     margin: '0 0 24px 0',
+    color: textColor,
   };
 
   const labelStyle = {
     fontSize: '13px',
     fontWeight: 500,
-    color: '#6B7280',
+    color: mutedColor,
     marginBottom: '10px',
     display: 'block',
     textTransform: 'uppercase',
@@ -407,7 +430,7 @@ export default function Onboarding() {
         return (
           <>
             <h2 style={headingStyle}>Upload your logo</h2>
-            <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', marginTop: 0 }}>
+            <p style={{ fontSize: '14px', color: mutedColor, marginBottom: '20px', marginTop: 0 }}>
               Optional — you can skip this for now.
             </p>
 
@@ -446,8 +469,8 @@ export default function Onboarding() {
               ) : (
                 <>
                   <div style={{ fontSize: '32px' }}>🖼️</div>
-                  <div style={{ fontSize: '14px', color: '#6B7280' }}>Click to upload image</div>
-                  <div style={{ fontSize: '12px', color: '#9CA3AF' }}>Max 2MB</div>
+                  <div style={{ fontSize: '14px', color: mutedColor }}>Click to upload image</div>
+                  <div style={{ fontSize: '12px', color: mutedColor, opacity: 0.7 }}>Max 2MB</div>
                 </>
               )}
             </div>
@@ -462,7 +485,7 @@ export default function Onboarding() {
                     borderRadius: '50px',
                     border: '2px solid rgba(0,0,0,0.10)',
                     background: 'rgba(255,255,255,0.6)',
-                    color: '#6B7280',
+                    color: mutedColor,
                     fontSize: '15px',
                     cursor: 'pointer',
                     minHeight: '44px',
@@ -482,7 +505,7 @@ export default function Onboarding() {
         return (
           <>
             <h2 style={headingStyle}>Pick your accent color</h2>
-            <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', marginTop: 0 }}>
+            <p style={{ fontSize: '14px', color: mutedColor, marginBottom: '20px', marginTop: 0 }}>
               This color will be used for buttons and highlights across the app.
             </p>
 
@@ -559,7 +582,7 @@ export default function Onboarding() {
         return (
           <>
             <h2 style={headingStyle}>Choose your fonts</h2>
-            <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', marginTop: 0 }}>
+            <p style={{ fontSize: '14px', color: mutedColor, marginBottom: '20px', marginTop: 0 }}>
               Customize the typography of your workspace.
             </p>
 
@@ -628,9 +651,9 @@ export default function Onboarding() {
                       width: '100%',
                       padding: '10px 12px',
                       borderRadius: '10px',
-                      border: '2px dashed rgba(0,0,0,0.12)',
+                      border: `2px dashed ${textColor}22`,
                       background: 'rgba(255,255,255,0.5)',
-                      color: '#6B7280',
+                      color: mutedColor,
                       fontSize: '12px',
                       cursor: 'pointer',
                       minHeight: '44px',
@@ -654,9 +677,9 @@ export default function Onboarding() {
                       width: '100%',
                       padding: '10px 12px',
                       borderRadius: '10px',
-                      border: '2px dashed rgba(0,0,0,0.12)',
+                      border: `2px dashed ${textColor}22`,
                       background: 'rgba(255,255,255,0.5)',
-                      color: '#6B7280',
+                      color: mutedColor,
                       fontSize: '12px',
                       cursor: 'pointer',
                       minHeight: '44px',
@@ -679,7 +702,7 @@ export default function Onboarding() {
                     borderRadius: '50px',
                     border: '2px solid rgba(0,0,0,0.10)',
                     background: 'rgba(255,255,255,0.6)',
-                    color: '#6B7280',
+                    color: mutedColor,
                     fontSize: '15px',
                     cursor: 'pointer',
                     minHeight: '44px',
@@ -746,7 +769,7 @@ export default function Onboarding() {
         return (
           <>
             <h2 style={headingStyle}>Customize your dashboard</h2>
-            <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '16px', marginTop: 0 }}>
+            <p style={{ fontSize: '14px', color: mutedColor, marginBottom: '16px', marginTop: 0 }}>
               Set a personal greeting for your dashboard.
             </p>
 
@@ -779,14 +802,14 @@ export default function Onboarding() {
                   border: '1px solid rgba(0,0,0,0.06)',
                 }}
               >
-                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Preview</div>
+                <div style={{ fontSize: '11px', color: mutedColor, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Preview</div>
                 {dashboardHeading && (
-                  <div style={{ fontFamily: 'var(--heading-font)', fontSize: '1.1rem', fontWeight: 500, color: '#111', marginBottom: '4px' }}>
+                  <div style={{ fontFamily: 'var(--heading-font)', fontSize: '1.1rem', fontWeight: 400, color: textColor, marginBottom: '4px' }}>
                     {dashboardHeading}
                   </div>
                 )}
                 {dashboardSubtitle && (
-                  <div style={{ fontSize: '14px', color: '#6B7280' }}>
+                  <div style={{ fontSize: '14px', color: mutedColor }}>
                     {dashboardSubtitle}
                   </div>
                 )}
@@ -803,7 +826,7 @@ export default function Onboarding() {
                     borderRadius: '50px',
                     border: '2px solid rgba(0,0,0,0.10)',
                     background: 'rgba(255,255,255,0.6)',
-                    color: '#6B7280',
+                    color: mutedColor,
                     fontSize: '15px',
                     cursor: 'pointer',
                     minHeight: '44px',
@@ -823,7 +846,7 @@ export default function Onboarding() {
         return (
           <>
             <h2 style={headingStyle}>How big should your cards be?</h2>
-            <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', marginTop: 0 }}>
+            <p style={{ fontSize: '14px', color: mutedColor, marginBottom: '20px', marginTop: 0 }}>
               Choose how cards appear across your workspace.
             </p>
 
@@ -871,7 +894,7 @@ export default function Onboarding() {
                   <span style={{
                     fontSize: '13px',
                     fontWeight: cardSize === size.value ? 600 : 400,
-                    color: cardSize === size.value ? '#111' : '#6B7280',
+                    color: cardSize === size.value ? textColor : mutedColor,
                   }}>
                     {size.label}
                   </span>
@@ -893,7 +916,7 @@ export default function Onboarding() {
               <h2 style={{ ...headingStyle, fontSize: '1.8rem', marginBottom: '12px' }}>
                 Welcome, {name || 'there'}!
               </h2>
-              <p style={{ fontSize: '15px', color: '#374151', margin: 0, lineHeight: 1.6 }}>
+              <p style={{ fontSize: '15px', color: mutedColor, margin: 0, lineHeight: 1.6 }}>
                 {company ? `${company} is all set.` : 'You\'re all set.'} Let's build something great.
               </p>
             </div>
@@ -911,24 +934,24 @@ export default function Onboarding() {
                 }}
               >
                 {name && (
-                  <div style={{ fontSize: '13px', color: '#374151' }}>
-                    <span style={{ color: '#9CA3AF' }}>Name: </span>{name}
+                  <div style={{ fontSize: '13px', color: textColor }}>
+                    <span style={{ color: mutedColor }}>Name: </span>{name}
                   </div>
                 )}
                 {company && (
-                  <div style={{ fontSize: '13px', color: '#374151' }}>
-                    <span style={{ color: '#9CA3AF' }}>Company: </span>{company}
+                  <div style={{ fontSize: '13px', color: textColor }}>
+                    <span style={{ color: mutedColor }}>Company: </span>{company}
                   </div>
                 )}
                 {appMode && (
-                  <div style={{ fontSize: '13px', color: '#374151' }}>
-                    <span style={{ color: '#9CA3AF' }}>Mode: </span>
+                  <div style={{ fontSize: '13px', color: textColor }}>
+                    <span style={{ color: mutedColor }}>Mode: </span>
                     {APP_MODES_OPTS.find(m => m.value === appMode)?.label || appMode}
                   </div>
                 )}
                 {currency && (
-                  <div style={{ fontSize: '13px', color: '#374151' }}>
-                    <span style={{ color: '#9CA3AF' }}>Currency: </span>
+                  <div style={{ fontSize: '13px', color: textColor }}>
+                    <span style={{ color: mutedColor }}>Currency: </span>
                     {CURRENCIES.find(c => c.code === currency)?.label || currency}
                   </div>
                 )}

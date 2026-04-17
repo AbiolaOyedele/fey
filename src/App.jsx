@@ -15,6 +15,7 @@ import TaskGroupWorkspace from './pages/TaskGroupWorkspace';
 import Payments from './pages/Payments';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
+import Onboarding from './pages/Onboarding';
 import ToastContainer from './components/Toast';
 
 const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
@@ -23,6 +24,15 @@ function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!IS_DEMO && !user) return <Navigate to="/login" replace />;
+  return children;
+}
+
+// Redirects new users to /onboarding until they complete it
+function OnboardingGate({ children }) {
+  const { settings } = useSettings();
+  if (!IS_DEMO && settings.onboarding_complete !== 'true') {
+    return <Navigate to="/onboarding" replace />;
+  }
   return children;
 }
 
@@ -151,9 +161,17 @@ export default function App() {
         {/* Public route */}
         <Route path="/login" element={<Login />} />
 
-        {/* Protected routes */}
+        {/* Onboarding — protected but no sidebar/shell */}
+        <Route path="/onboarding" element={
+          <ProtectedRoute>
+            <Onboarding />
+          </ProtectedRoute>
+        } />
+
+        {/* Protected routes — gated behind onboarding */}
         <Route path="/*" element={
           <ProtectedRoute>
+            <OnboardingGate>
             <div className="flex flex-col min-h-screen bg-appbg overflow-x-hidden">
               {IS_DEMO && <DemoBanner />}
               <div className="flex flex-1 overflow-x-hidden">
@@ -187,6 +205,7 @@ export default function App() {
               </div>
             </div>
             <ToastContainer />
+            </OnboardingGate>
           </ProtectedRoute>
         } />
       </Routes>

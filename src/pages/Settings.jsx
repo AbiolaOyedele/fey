@@ -619,45 +619,52 @@ export default function Settings({ clients, refetch }) {
               </div>
             </div>
 
-            {/* Currency Toggle */}
+            {/* Currency */}
             <div>
               <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Currency</label>
-              <div className="flex items-center gap-4">
-                <div className="flex bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                {[
+                  { code: 'NGN', label: '₦ NGN' },
+                  { code: 'USD', label: '$ USD' },
+                  { code: 'GBP', label: '£ GBP' },
+                  { code: 'EUR', label: '€ EUR' },
+                ].map(({ code, label }) => (
                   <button
-                    onClick={() => saveSetting('currency', 'NGN')}
-                    className={`px-5 py-2.5 text-sm font-medium transition-all duration-150 ${
-                      settings.currency === 'NGN' ? 'text-white' : 'text-gray-500 hover:text-gray-700'
+                    key={code}
+                    onClick={() => saveSetting('currency', code)}
+                    className={`py-2.5 rounded-xl text-sm font-medium transition-all duration-150 border ${
+                      settings.currency === code
+                        ? 'text-white border-transparent'
+                        : 'text-gray-500 border-gray-200 hover:border-gray-300 bg-gray-50'
                     }`}
-                    style={settings.currency === 'NGN' ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
+                    style={settings.currency === code ? { backgroundColor: 'var(--accent, #ED64A6)', borderColor: 'var(--accent, #ED64A6)' } : {}}
                   >
-                    ₦ NGN
+                    {label}
                   </button>
-                  <button
-                    onClick={() => saveSetting('currency', 'USD')}
-                    className={`px-5 py-2.5 text-sm font-medium transition-all duration-150 ${
-                      settings.currency === 'USD' ? 'text-white' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                    style={settings.currency === 'USD' ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
-                  >
-                    $ USD
-                  </button>
-                </div>
-                {settings.currency === 'USD' && (
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <span className="font-mono">1 USD = ₦{Number(settings.exchange_rate).toLocaleString()}</span>
-                    <button
-                      onClick={handleRefreshRate}
-                      disabled={refreshing}
-                      className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors disabled:opacity-50"
-                    >
-                      <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
-                    </button>
-                    {settings.exchange_rate_updated_at && (
-                      <span className="text-xs text-gray-400">Updated {settings.exchange_rate_updated_at}</span>
-                    )}
-                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
+                <button
+                  onClick={handleRefreshRate}
+                  disabled={refreshing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-xs text-gray-500 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw size={11} className={refreshing ? 'animate-spin' : ''} />
+                  Refresh rates
+                </button>
+                {settings.exchange_rate_updated_at && (
+                  <span className="text-xs text-gray-400">Updated {settings.exchange_rate_updated_at}</span>
                 )}
+                {(() => {
+                  let rates = null;
+                  try { rates = JSON.parse(settings.exchange_rates); } catch { /* ignore */ }
+                  if (!rates) return null;
+                  return (
+                    <span className="text-xs text-gray-400 font-mono">
+                      1 USD = ₦{(rates.NGN || 0).toLocaleString()} · £{(rates.GBP || 0).toFixed(2)} · €{(rates.EUR || 0).toFixed(2)}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>

@@ -63,7 +63,8 @@ const DEFAULTS = {
   accent_color: '#ED64A6',
   card_size: 'medium',
   currency: 'NGN',
-  exchange_rate: 1,
+  exchange_rate: 1500,
+  exchange_rates: '{"USD":1,"NGN":1500,"GBP":0.78,"EUR":0.92}',
   exchange_rate_updated_at: '',
   font_family: '',
   custom_font: '',
@@ -77,6 +78,7 @@ const DEFAULTS = {
   changelog: JSON.stringify(DEFAULT_CHANGELOG),
   whats_new_active: 'false',
   whats_new_version: '',
+  onboarding_complete: 'false',
 };
 
 export function SettingsProvider({ children }) {
@@ -220,40 +222,61 @@ export function SettingsProvider({ children }) {
       .upsert({ key, value: String(value), user_id: userId }, { onConflict: 'key,user_id' });
   }, [userId]);
 
-  // Refresh exchange rate
+  // Refresh exchange rates for all 4 currencies (base: USD)
   const refreshExchangeRate = useCallback(async () => {
     try {
       const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
       const data = await res.json();
-      if (data?.rates?.NGN) {
-        const rate = data.rates.NGN;
+      if (data?.rates) {
+        const rates = {
+          USD: 1,
+          NGN: data.rates.NGN || 1500,
+          GBP: data.rates.GBP || 0.78,
+          EUR: data.rates.EUR || 0.92,
+        };
         const now = new Date().toISOString().split('T')[0];
-        await saveSetting('exchange_rate', rate);
+        const ratesJson = JSON.stringify(rates);
+        await saveSetting('exchange_rates', ratesJson);
+        await saveSetting('exchange_rate', rates.NGN); // legacy compat
         await saveSetting('exchange_rate_updated_at', now);
-        setSettings((prev) => ({ ...prev, exchange_rate: rate, exchange_rate_updated_at: now }));
+        setSettings((prev) => ({
+          ...prev,
+          exchange_rates: ratesJson,
+          exchange_rate: rates.NGN,
+          exchange_rate_updated_at: now,
+        }));
       }
     } catch {
       // Fail silently
     }
   }, [saveSetting]);
 
+  // Convert amount from storedCurrency to display currency
+  // All rates are relative to USD (e.g. {USD:1, NGN:1500, GBP:0.78, EUR:0.92})
   const convertAmount = useCallback((amount, storedCurrency) => {
     const n = Number(amount) || 0;
     const sc = storedCurrency || 'NGN';
-    if (sc === settings.currency) return n;
-    const rate = Number(settings.exchange_rate) || 1;
-    if (sc === 'NGN' && settings.currency === 'USD') return n / rate;
-    if (sc === 'USD' && settings.currency === 'NGN') return n * rate;
+    const dc = settings.currency || 'NGN';
+    if (sc === dc) return n;
+    let rates;
+    try { rates = JSON.parse(settings.exchange_rates); } catch { rates = null; }
+    if (rates && rates[sc] && rates[dc]) {
+      return n * (rates[dc] / rates[sc]);
+    }
+    // Legacy fallback: NGN <-> USD only
+    const rate = Number(settings.exchange_rate) || 1500;
+    if (sc === 'NGN' && dc === 'USD') return n / rate;
+    if (sc === 'USD' && dc === 'NGN') return n * rate;
     return n;
-  }, [settings.currency, settings.exchange_rate]);
+  }, [settings.currency, settings.exchange_rates, settings.exchange_rate]);
+
+  const CURRENCY_SYMBOLS = { NGN: '₦', USD: '$', GBP: '£', EUR: '€' };
 
   const formatMoney = useCallback((amount) => {
     const n = Number(amount) || 0;
-    if (settings.currency === 'USD') {
-      return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-    return `₦${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }, [settings.currency]);
+    const symbol = CURRENCY_SYMBOLS[settings.currency] || '₦';
+    return `${symbol}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }, [settings.currency]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const showToast = useCallback((message, action) => {
     const id = Date.now();

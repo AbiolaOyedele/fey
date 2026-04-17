@@ -29,7 +29,9 @@ function ProtectedRoute({ children }) {
 
 // Redirects new users to /onboarding until they complete it
 function OnboardingGate({ children }) {
-  const { settings } = useSettings();
+  const { settings, settingsLoading } = useSettings();
+  // Wait for settings to load from Supabase before deciding — avoids false redirect
+  if (!IS_DEMO && settingsLoading) return null;
   if (!IS_DEMO && settings.onboarding_complete !== 'true') {
     return <Navigate to="/onboarding" replace />;
   }

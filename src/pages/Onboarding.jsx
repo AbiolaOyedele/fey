@@ -58,39 +58,6 @@ const NERD_CARDS = [
 const normalizeHex = (v) => v.trim().startsWith('#') ? v.trim() : `#${v.trim()}`;
 const isValidHex = (v) => /^#[0-9A-Fa-f]{6}$/.test(normalizeHex(v));
 
-function FolderGraphic({ count, isNerd, fading }) {
-  return (
-    <div
-      style={{
-        transition: 'opacity 0.3s ease',
-        opacity: fading ? 0 : 1,
-        display: 'flex',
-        justifyContent: 'center',
-      }}
-    >
-      <svg viewBox="0 0 240 160" width="240" height="160">
-        {count > 0 && Array.from({ length: Math.min(count, 3) }).map((_, i) => (
-          <rect
-            key={i}
-            x={24 + i * 8}
-            y={14 - i * 5}
-            width={192 - i * 16}
-            height={28}
-            rx="6"
-            fill={i === 0 ? '#fff' : '#f5f5f5'}
-            opacity={1 - i * 0.25}
-          />
-        ))}
-        {/* Folder body */}
-        <rect x="0" y="36" width="240" height="124" rx="10" fill={isNerd ? '#1A1A1A' : '#E8D5B7'} />
-        {/* Folder tab */}
-        <path d="M0,36 L0,18 Q0,12 8,12 L90,12 Q98,12 102,18 L108,36 Z" fill={isNerd ? '#2A2A2A' : '#D4B896'} />
-        {/* Folder highlight */}
-        <rect x="0" y="36" width="240" height="8" rx="0" fill={isNerd ? '#2A2A2A' : '#F0DFC0'} opacity="0.5" />
-      </svg>
-    </div>
-  );
-}
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -127,7 +94,6 @@ export default function Onboarding() {
   const cards = isNerd ? NERD_CARDS : REGULAR_CARDS;
   const totalCards = cards.length;
   const currentCard = cards[cardIndex];
-  const remainingInFolder = totalCards - cardIndex - 1;
 
   // Animate card in on mount / card change
   useEffect(() => {
@@ -1031,10 +997,6 @@ export default function Onboarding() {
         </div>
       </div>
 
-      {/* Folder at bottom */}
-      <div style={{ marginTop: 'auto', paddingBottom: 0 }}>
-        <FolderGraphic count={remainingInFolder} isNerd={isNerd} />
-      </div>
 
       {/* Bottom-left action buttons */}
       <div

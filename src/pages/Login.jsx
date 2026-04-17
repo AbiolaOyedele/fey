@@ -17,18 +17,19 @@ function GoogleIcon() {
 export default function Login() {
   const { user, loading: authLoading, signIn, signUp, signInWithGoogle } = useAuth();
 
-  const [showEmail, setShowEmail]  = useState(false);
-  const [mode, setMode]            = useState('signin');
-  const [email, setEmail]          = useState('');
-  const [password, setPassword]    = useState('');
-  const [confirm, setConfirm]      = useState('');
-  const [error, setError]          = useState('');
-  const [info, setInfo]            = useState('');
-  const [loading, setLoading]      = useState(false);
+  // 'signup' by default — new users land here first
+  const [mode, setMode]         = useState('signup');
+  const [showEmail, setShowEmail] = useState(false);
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm]   = useState('');
+  const [error, setError]       = useState('');
+  const [info, setInfo]         = useState('');
+  const [loading, setLoading]   = useState(false);
 
-  // Wait for auth to resolve before deciding — prevents flash of login page
+  // Hold until auth is resolved — prevents any flash of this page for logged-in users
   if (authLoading) return null;
-  // Already logged in — skip login and go straight to the app
+  // Already authenticated — go straight to the app, no login needed
   if (user) return <Navigate to="/" replace />;
 
   const handleGoogle = async () => {
@@ -36,6 +37,14 @@ export default function Login() {
     setError('');
     const { error: err } = await signInWithGoogle();
     if (err) { setError(err.message); setLoading(false); }
+  };
+
+  const switchMode = (next) => {
+    setMode(next);
+    setError('');
+    setInfo('');
+    setPassword('');
+    setConfirm('');
   };
 
   const handleSubmit = async (e) => {
@@ -50,7 +59,7 @@ export default function Login() {
       const { error: err } = await signUp(email, password);
       setLoading(false);
       if (err) { setError(err.message); return; }
-      setInfo('Check your email to confirm your account before signing in.');
+      setInfo('Check your email to confirm your account, then sign in.');
       return;
     }
 
@@ -88,7 +97,7 @@ export default function Login() {
           onClick={() => { setShowEmail((v) => !v); setError(''); setInfo(''); }}
           className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-3"
         >
-          Sign in with email
+          {mode === 'signup' ? 'Sign up with email' : 'Sign in with email'}
           <ChevronDown
             size={15}
             className="transition-transform duration-200"
@@ -96,7 +105,7 @@ export default function Login() {
           />
         </button>
 
-        {/* Email / password form — collapsible */}
+        {/* Email / password form */}
         {showEmail && (
           <form onSubmit={handleSubmit} className="w-full space-y-2.5 animate-slideUp">
             <input
@@ -136,21 +145,34 @@ export default function Login() {
               style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
             >
               {loading && <Loader2 size={15} className="animate-spin" />}
-              {mode === 'signin' ? 'Sign In' : 'Create Account'}
+              {mode === 'signup' ? 'Create Account' : 'Sign In'}
             </button>
 
             <p className="text-center text-xs text-gray-400 pt-1">
-              {mode === 'signin' ? (
-                <>Don&apos;t have an account?{' '}
-                  <button type="button" onClick={() => { setMode('signup'); setError(''); setInfo(''); }} className="underline text-gray-600 hover:text-gray-900">Sign up</button>
+              {mode === 'signup' ? (
+                <>Already have an account?{' '}
+                  <button type="button" onClick={() => switchMode('signin')} className="underline text-gray-600 hover:text-gray-900">Sign in</button>
                 </>
               ) : (
-                <>Already have an account?{' '}
-                  <button type="button" onClick={() => { setMode('signin'); setError(''); setInfo(''); }} className="underline text-gray-600 hover:text-gray-900">Sign in</button>
+                <>Don&apos;t have an account?{' '}
+                  <button type="button" onClick={() => switchMode('signup')} className="underline text-gray-600 hover:text-gray-900">Sign up</button>
                 </>
               )}
             </p>
           </form>
+        )}
+
+        {/* Already have an account? — visible when not showing email form */}
+        {!showEmail && (
+          <p className="text-xs text-gray-400 mt-2">
+            Already have an account?{' '}
+            <button
+              onClick={() => { setShowEmail(true); switchMode('signin'); }}
+              className="underline text-gray-600 hover:text-gray-900"
+            >
+              Sign in
+            </button>
+          </p>
         )}
 
         {/* Footer */}

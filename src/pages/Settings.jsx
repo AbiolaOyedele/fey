@@ -787,7 +787,8 @@ export default function Settings({ clients, refetch }) {
               </div>
               <button
                 onClick={signOut}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-danger text-danger hover:bg-danger/5 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
               >
                 <LogOut size={14} />
                 Sign Out

@@ -117,13 +117,29 @@ export function SettingsProvider({ children }) {
             if (row.key in merged) merged[row.key] = row.value;
           });
           merged.exchange_rate = Number(merged.exchange_rate) || 1;
+          // localStorage fallback — if user has ever completed onboarding on this
+          // device, honour that even if the DB row is missing (RLS / network / etc.)
+          if (merged.onboarding_complete !== 'true') {
+            const localFlag = localStorage.getItem(`wb:onboarding_complete:${userId}`);
+            if (localFlag === 'true') merged.onboarding_complete = 'true';
+          }
           setSettings(merged);
         } else {
-          // New user — use defaults
-          setSettings(DEFAULTS);
+          // No rows returned — still honour localStorage fallback if present
+          const localFlag = localStorage.getItem(`wb:onboarding_complete:${userId}`);
+          setSettings({
+            ...DEFAULTS,
+            onboarding_complete: localFlag === 'true' ? 'true' : 'false',
+          });
         }
-      } catch {
-        // Use defaults silently
+      } catch (err) {
+        console.warn('[settings] load failed', err);
+        // On error, still honour local onboarding flag
+        const localFlag = localStorage.getItem(`wb:onboarding_complete:${userId}`);
+        setSettings({
+          ...DEFAULTS,
+          onboarding_complete: localFlag === 'true' ? 'true' : 'false',
+        });
       }
 
       // Load trash
@@ -216,10 +232,17 @@ export function SettingsProvider({ children }) {
   // Save a single setting scoped to user
   const saveSetting = useCallback(async (key, value) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
+    // Mirror onboarding_complete to localStorage as a resilience fallback —
+    // guarantees the user never sees onboarding twice even if the DB write fails.
+    if (key === 'onboarding_complete' && userId) {
+      try { localStorage.setItem(`wb:onboarding_complete:${userId}`, String(value)); }
+      catch { /* storage unavailable */ }
+    }
     if (!userId) return;
-    await supabase
+    const { error } = await supabase
       .from('app_settings')
       .upsert({ key, value: String(value), user_id: userId }, { onConflict: 'key,user_id' });
+    if (error) console.warn('[settings] save failed', key, error);
   }, [userId]);
 
   // Refresh exchange rates for all 4 currencies (base: USD)

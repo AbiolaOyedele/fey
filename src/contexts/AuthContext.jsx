@@ -11,20 +11,17 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    // Resolve the initial session first — this is the source of truth for loading
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // onAuthStateChange fires INITIAL_SESSION once Supabase has fully resolved
+    // the session — including processing OAuth hash tokens from the URL.
+    // This is the only reliable way to handle both normal loads and OAuth redirects.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Handle subsequent auth changes (sign-in, sign-out, token refresh)
-    // Do NOT drive loading state from here — it can fire before getSession resolves
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
+      // INITIAL_SESSION fires exactly once after the client initialises
+      if (event === 'INITIAL_SESSION') {
+        setLoading(false);
+      }
     });
 
     return () => {

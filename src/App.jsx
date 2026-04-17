@@ -27,7 +27,7 @@ function ProtectedRoute({ children }) {
 }
 
 export default function App() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   // Always call both hooks — each guards itself with IS_DEMO internally
   // Pass user?.id so queries are scoped to the authenticated user
@@ -82,7 +82,12 @@ export default function App() {
     await saveSetting('client_order', JSON.stringify(ids));
   }, [saveSetting]);
 
-  if (loading || settingsLoading || taskGroupData.loading) {
+  // Only wait for data when auth has resolved and a user is actually logged in.
+  // If auth is still resolving OR if there's no user yet, skip data loading so
+  // the router can render and ProtectedRoute can redirect to /login.
+  const dataLoading = !IS_DEMO && !!user && (loading || settingsLoading || taskGroupData.loading);
+
+  if (authLoading || dataLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-appbg">
         <div className="text-center">

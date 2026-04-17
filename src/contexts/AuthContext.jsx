@@ -10,26 +10,40 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let mounted = true;
+    let resolved = false;
 
-    // onAuthStateChange keeps session in sync for all live events
-    // (sign-in, sign-out, token refresh, OAuth callback)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-    });
-
-    // getSession() is the reliable source for the persisted session on load.
-    // We call it AFTER subscribing so any concurrent auth events are captured.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
+    const finishLoading = (nextSession) => {
+      if (!mounted || resolved) return;
+      resolved = true;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
       setLoading(false);
+    };
+
+    // Subscribe first so we never miss an auth event. INITIAL_SESSION fires once
+    // Supabase has resolved the session from storage OR processed any OAuth
+    // callback hash/code in the URL. SIGNED_IN also marks auth as ready.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!mounted) return;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        finishLoading(nextSession);
+      }
     });
+
+    // Safety net: if INITIAL_SESSION doesn't fire (edge case), resolve via
+    // getSession() after a short delay. This also catches persisted sessions
+    // where the library has already fired its events before our subscribe.
+    const fallback = setTimeout(async () => {
+      if (resolved) return;
+      const { data: { session: fallbackSession } } = await supabase.auth.getSession();
+      finishLoading(fallbackSession);
+    }, 500);
 
     return () => {
       mounted = false;
+      clearTimeout(fallback);
       subscription.unsubscribe();
     };
   }, []);
@@ -45,7 +59,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    const redirectTo = `${window.location.origin}/dashboard`;
+    // Redirect to app root — the dashboard lives at "/", there is no "/dashboard" route
+    const redirectTo = `${window.location.origin}/`;
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },

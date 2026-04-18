@@ -213,7 +213,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="font-display text-3xl font-bold truncate" style={{ color: textColor }}>
+              <h1 className="font-display text-3xl leading-tight font-bold truncate" style={{ color: textColor }}>
                 {group.name}
               </h1>
               <p className="text-sm mt-0.5" style={{ color: textColor, opacity: 0.65 }}>

@@ -8,6 +8,7 @@ import { useAuth } from './contexts/AuthContext';
 import Sidebar from './components/Sidebar';
 import DemoBanner from './components/DemoBanner';
 import Dashboard from './pages/Dashboard';
+import TaskDashboard from './pages/TaskDashboard';
 import Clients from './pages/Clients';
 import ClientWorkspace from './pages/ClientWorkspace';
 import Tasks from './pages/Tasks';
@@ -181,7 +182,11 @@ export default function App() {
                 <Sidebar />
                 <main className="flex-1 min-w-0 ml-0 lg:ml-[72px] pb-16 lg:pb-0 page-enter">
                   <Routes>
-                    <Route path="/" element={<Dashboard clients={orderedClients} actions={actions} />} />
+                    <Route path="/" element={
+                      appMode === 'tasks'
+                        ? <TaskDashboard groups={taskGroupData.groups || []} standaloneTasks={taskGroupData.standaloneTasks || []} />
+                        : <Dashboard clients={orderedClients} actions={actions} />
+                    } />
 
                     {appMode !== 'tasks' ? (
                       <>

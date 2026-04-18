@@ -357,7 +357,7 @@ export default function Dashboard({ clients, actions }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1
-                className="font-display text-2xl md:text-3xl lg:text-[2.75rem] leading-relaxed font-bold text-gray-900"
+                className="font-display text-2xl md:text-3xl lg:text-[2.75rem] leading-tight font-bold text-gray-900"
                 style={{ whiteSpace: 'pre-wrap' }}
               >
                 {heading}
@@ -844,7 +844,7 @@ export default function Dashboard({ clients, actions }) {
             />
           ) : (
             <div
-              className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center text-white text-xl font-display font-bold"
+              className="w-20 h-20 rounded-2xl mx-auto mt-2 mb-2 flex items-center justify-center text-white text-2xl font-display font-bold"
               style={{ background: `linear-gradient(135deg, var(--accent, #ED64A6)99, var(--accent, #ED64A6))` }}
             >
               {(settings.username || 'A').charAt(0).toUpperCase()}

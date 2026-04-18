@@ -840,7 +840,7 @@ export default function Dashboard({ clients, actions }) {
             <img
               src={settings.logo}
               alt="Logo"
-              className="w-20 h-20 rounded-2xl mx-auto mt-2 mb-4 object-contain bg-white p-1"
+              className="w-20 h-20 rounded-2xl mx-auto mt-2 mb-2 object-contain bg-white p-1"
             />
           ) : (
             <div

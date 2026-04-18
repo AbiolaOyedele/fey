@@ -43,6 +43,152 @@ function daysDiff(dateStr) {
   return Math.round((today - d) / 86400000);
 }
 
+// ── Swipeable Activity / Task-tracker card ──────────────────────────────────
+function SwipeCard({ allTasks, tasksDone, tasksPending, earnedThisMonth, monthlyActivity, maxEarned, currentMonth, formatMoney, todayStr }) {
+  const [panel, setPanel] = useState(0); // 0 = Activity, 1 = Tasks
+  const touchStartX = useRef(null);
+
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) setPanel(diff > 0 ? 1 : 0);
+    touchStartX.current = null;
+  };
+
+  const totalTasks = allTasks.length;
+  const overdueTasks = allTasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr);
+  const dueTodayTasks = allTasks.filter((t) => !t.done && t.deadline === todayStr);
+  const completionPct = totalTasks > 0 ? Math.round((tasksDone / totalTasks) * 100) : 0;
+  // SVG ring
+  const r = 28, circ = 2 * Math.PI * r;
+  const dash = (completionPct / 100) * circ;
+
+  return (
+    <div
+      className="hidden md:block bg-white rounded-2xl shadow-sm mb-4 overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Slide track */}
+      <div
+        className="flex transition-transform duration-300 ease-in-out"
+        style={{ transform: `translateX(-${panel * 100}%)` }}
+      >
+        {/* ── Panel 0: Activity ── */}
+        <div className="min-w-full p-5">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-sm font-semibold text-gray-700">Activity</p>
+            <span className="text-xs text-gray-400">6 months</span>
+          </div>
+          <Link to="/payments" className="block">
+            <p className="font-mono text-xl font-bold text-gray-900 mb-1 truncate">{formatMoney(earnedThisMonth)}</p>
+            <p className="text-xs font-medium mb-4" style={{ color: 'var(--accent, #ED64A6)' }}>This month</p>
+            <div className="flex items-end gap-1.5 h-24">
+              {monthlyActivity.map((m) => {
+                const isCurrentMonth = m.key === currentMonth;
+                const height = m.earned > 0 ? Math.max((m.earned / maxEarned) * 100, 8) : 4;
+                const colors = ['#FDE8E8', '#D1FAE5', '#DBEAFE', '#EDE9FE', '#FEF3C7'];
+                return (
+                  <div key={m.key} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="w-full rounded-md transition-all duration-300 relative overflow-hidden" style={{ height: `${height}%` }}>
+                      {colors.map((color, ci) => (
+                        <div key={ci} className="w-full" style={{ height: `${100 / colors.length}%`, backgroundColor: color, opacity: m.earned > 0 ? 1 : 0.3 }} />
+                      ))}
+                      {isCurrentMonth && <div className="absolute inset-0 ring-2 rounded-md" style={{ '--tw-ring-color': `var(--accent, #ED64A6)40` }} />}
+                    </div>
+                    <span className={`text-xs ${isCurrentMonth ? 'font-semibold' : 'text-gray-400'}`} style={isCurrentMonth ? { color: 'var(--accent, #ED64A6)' } : {}}>
+                      {m.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </Link>
+        </div>
+
+        {/* ── Panel 1: Task tracker ── */}
+        <div className="min-w-full p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-gray-700">Tasks</p>
+            <span className="text-xs text-gray-400">{totalTasks} total</span>
+          </div>
+          {totalTasks === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-8">No tasks yet</p>
+          ) : (
+            <div className="flex items-center gap-4">
+              {/* Progress ring */}
+              <div className="relative flex-shrink-0">
+                <svg width="72" height="72" viewBox="0 0 72 72" className="-rotate-90">
+                  <circle cx="36" cy="36" r={r} fill="none" stroke="#F3F4F6" strokeWidth="7" />
+                  <circle
+                    cx="36" cy="36" r={r} fill="none"
+                    stroke="var(--accent, #ED64A6)" strokeWidth="7"
+                    strokeLinecap="round"
+                    strokeDasharray={`${dash} ${circ}`}
+                    style={{ transition: 'stroke-dasharray 0.4s ease' }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="font-mono text-sm font-bold text-gray-800">{completionPct}%</span>
+                </div>
+              </div>
+              {/* Breakdown */}
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />Done
+                  </span>
+                  <span className="text-xs font-mono font-semibold text-gray-800">{tasksDone}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />Pending
+                  </span>
+                  <span className="text-xs font-mono font-semibold text-gray-800">{tasksPending}</span>
+                </div>
+                {dueTodayTasks.length > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-amber-500 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />Due today
+                    </span>
+                    <span className="text-xs font-mono font-semibold text-amber-600">{dueTodayTasks.length}</span>
+                  </div>
+                )}
+                {overdueTasks.length > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-red-500 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />Overdue
+                    </span>
+                    <span className="text-xs font-mono font-semibold text-red-500">{overdueTasks.length}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Dot nav */}
+      <div className="flex items-center justify-center gap-1.5 pb-3">
+        {[0, 1].map((i) => (
+          <span
+            key={i}
+            onClick={() => setPanel(i)}
+            className="rounded-full cursor-pointer transition-all duration-200"
+            style={{
+              display: 'block',
+              width: i === panel ? '14px' : '5px',
+              height: '5px',
+              backgroundColor: i === panel ? 'var(--accent, #ED64A6)' : '#D1D5DB',
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard({ clients, actions }) {
   const [filter, setFilter] = useState('All');
   const [bellOpen, setBellOpen] = useState(false);
@@ -686,59 +832,18 @@ export default function Dashboard({ clients, actions }) {
           </div>
         </div>
 
-        {/* Activity chart card — hidden on mobile */}
-        <div className="hidden md:block bg-white rounded-2xl p-5 shadow-sm mb-4">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-sm font-semibold text-gray-700">Activity</p>
-            <span className="text-xs text-gray-400">6 months</span>
-          </div>
-          <Link to="/payments" className="block">
-            <p className="font-mono text-xl font-bold text-gray-900 mb-1 truncate">
-              {formatMoney(earnedThisMonth)}
-            </p>
-            <p className="text-xs font-medium mb-4" style={{ color: 'var(--accent, #ED64A6)' }}>This month</p>
-
-            <div className="flex items-end gap-1.5 h-24">
-              {monthlyActivity.map((m) => {
-                const isCurrentMonth = m.key === currentMonth;
-                const height = m.earned > 0 ? Math.max((m.earned / maxEarned) * 100, 8) : 4;
-                const colors = ['#FDE8E8', '#D1FAE5', '#DBEAFE', '#EDE9FE', '#FEF3C7'];
-                return (
-                  <div key={m.key} className="flex-1 flex flex-col items-center gap-1">
-                    <div
-                      className="w-full rounded-md transition-all duration-300 relative overflow-hidden"
-                      style={{ height: `${height}%` }}
-                    >
-                      {colors.map((color, ci) => (
-                        <div
-                          key={ci}
-                          className="w-full"
-                          style={{
-                            height: `${100 / colors.length}%`,
-                            backgroundColor: color,
-                            opacity: m.earned > 0 ? 1 : 0.3,
-                          }}
-                        />
-                      ))}
-                      {isCurrentMonth && (
-                        <div
-                          className="absolute inset-0 ring-2 rounded-md"
-                          style={{ '--tw-ring-color': `var(--accent, #ED64A6)40` }}
-                        />
-                      )}
-                    </div>
-                    <span
-                      className={`text-xs ${isCurrentMonth ? 'font-semibold' : 'text-gray-400'}`}
-                      style={isCurrentMonth ? { color: 'var(--accent, #ED64A6)' } : {}}
-                    >
-                      {m.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </Link>
-        </div>
+        {/* Activity / Task tracker — swipeable card, hidden on mobile */}
+        <SwipeCard
+          allTasks={allTasks}
+          tasksDone={tasksDone}
+          tasksPending={tasksPending}
+          earnedThisMonth={earnedThisMonth}
+          monthlyActivity={monthlyActivity}
+          maxEarned={maxEarned}
+          currentMonth={currentMonth}
+          formatMoney={formatMoney}
+          todayStr={todayStr}
+        />
 
         {/* My clients list */}
         <div className="bg-white rounded-2xl p-5 shadow-sm">

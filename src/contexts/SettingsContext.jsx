@@ -5,7 +5,23 @@ export const SettingsContext = createContext(null);
 
 const DEFAULT_CHANGELOG = [
   {
-    version: '1.6.1', date: 'April 2026', features: [], improvements: [],
+    version: '1.7.0', date: '18 April 2026',
+    features: [
+      'Client workspace sharing with one-click shareable links',
+      'Public shared workspace for recipients (no account needed)',
+      'Per-member view/edit permission controls',
+      'Members panel in client workspace right sidebar',
+      'Task-only dashboard with completion rings and group cards',
+      'Tick off tasks directly from the task dashboard',
+    ],
+    improvements: [
+      'All modals and popups now always center on screen (fixed stacking context bug)',
+      'Sidebar logo navigates to dashboard instead of full page reload',
+    ],
+    fixes: ['Share link RLS bypass — cached client info in shared_clients table'],
+  },
+  {
+    version: '1.6.1', date: '15 April 2026', features: [], improvements: [],
     fixes: ['Syntax error fix in SettingsContext restoreFromTrash function'],
   },
   {

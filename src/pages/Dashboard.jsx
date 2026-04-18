@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Bell, Settings, ArrowRight,
+  Bell, Settings, ArrowRight, ChevronLeft, ChevronRight,
   CheckCircle2, Clock, Users, CreditCard,
   AlertTriangle, TriangleAlert, Calendar,
 } from 'lucide-react';
@@ -46,15 +46,30 @@ function daysDiff(dateStr) {
 // ── Swipeable Activity / Task-tracker card ──────────────────────────────────
 function SwipeCard({ allTasks, tasksDone, tasksPending, earnedThisMonth, monthlyActivity, maxEarned, currentMonth, formatMoney, todayStr }) {
   const [panel, setPanel] = useState(0); // 0 = Activity, 1 = Tasks
+  const PANELS = 2;
   const touchStartX = useRef(null);
+  const mouseStartX = useRef(null);
+  const isDragging = useRef(false);
 
+  // Touch (mobile)
   const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
   const handleTouchEnd = (e) => {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 40) setPanel(diff > 0 ? 1 : 0);
+    if (Math.abs(diff) > 40) setPanel((p) => diff > 0 ? Math.min(p + 1, PANELS - 1) : Math.max(p - 1, 0));
     touchStartX.current = null;
   };
+
+  // Mouse drag (desktop)
+  const handleMouseDown = (e) => { mouseStartX.current = e.clientX; isDragging.current = true; };
+  const handleMouseUp = (e) => {
+    if (!isDragging.current || mouseStartX.current === null) return;
+    const diff = mouseStartX.current - e.clientX;
+    if (Math.abs(diff) > 40) setPanel((p) => diff > 0 ? Math.min(p + 1, PANELS - 1) : Math.max(p - 1, 0));
+    mouseStartX.current = null;
+    isDragging.current = false;
+  };
+  const handleMouseLeave = () => { mouseStartX.current = null; isDragging.current = false; };
 
   const totalTasks = allTasks.length;
   const overdueTasks = allTasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr);
@@ -66,9 +81,13 @@ function SwipeCard({ allTasks, tasksDone, tasksPending, earnedThisMonth, monthly
 
   return (
     <div
-      className="hidden md:block bg-white rounded-2xl shadow-sm mb-4 overflow-hidden"
+      className="hidden md:block bg-white rounded-2xl shadow-sm mb-4 overflow-hidden select-none"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
+      style={{ cursor: isDragging.current ? 'grabbing' : 'grab' }}
     >
       {/* Slide track */}
       <div
@@ -169,21 +188,39 @@ function SwipeCard({ allTasks, tasksDone, tasksPending, earnedThisMonth, monthly
         </div>
       </div>
 
-      {/* Dot nav */}
-      <div className="flex items-center justify-center gap-1.5 pb-3">
-        {[0, 1].map((i) => (
-          <span
-            key={i}
-            onClick={() => setPanel(i)}
-            className="rounded-full cursor-pointer transition-all duration-200"
-            style={{
-              display: 'block',
-              width: i === panel ? '14px' : '5px',
-              height: '5px',
-              backgroundColor: i === panel ? 'var(--accent, #ED64A6)' : '#D1D5DB',
-            }}
-          />
-        ))}
+      {/* Nav row: arrow ← dots → arrow */}
+      <div className="flex items-center justify-center gap-3 pb-3" onMouseDown={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => setPanel((p) => Math.max(p - 1, 0))}
+          disabled={panel === 0}
+          className="w-5 h-5 flex items-center justify-center rounded-full transition-colors disabled:opacity-20 text-gray-400 hover:text-gray-600 disabled:cursor-default"
+        >
+          <ChevronLeft size={14} />
+        </button>
+
+        <div className="flex items-center gap-1.5">
+          {[0, 1].map((i) => (
+            <span
+              key={i}
+              onClick={() => setPanel(i)}
+              className="rounded-full cursor-pointer transition-all duration-200"
+              style={{
+                display: 'block',
+                width: i === panel ? '14px' : '5px',
+                height: '5px',
+                backgroundColor: i === panel ? 'var(--accent, #ED64A6)' : '#D1D5DB',
+              }}
+            />
+          ))}
+        </div>
+
+        <button
+          onClick={() => setPanel((p) => Math.min(p + 1, PANELS - 1))}
+          disabled={panel === PANELS - 1}
+          className="w-5 h-5 flex items-center justify-center rounded-full transition-colors disabled:opacity-20 text-gray-400 hover:text-gray-600 disabled:cursor-default"
+        >
+          <ChevronRight size={14} />
+        </button>
       </div>
     </div>
   );

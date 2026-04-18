@@ -500,84 +500,8 @@ export default function ClientWorkspace({ clients, actions }) {
           </div>
         </div>
 
-        {/* Tab switcher */}
-        <div className="flex items-center gap-1.5 mb-4">
-          <button
-            onClick={() => setActiveTab('tasks')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'tasks' ? 'text-white' : 'bg-white text-gray-500 shadow-sm hover:text-gray-800'
-            }`}
-            style={activeTab === 'tasks' ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
-          >
-            Tasks
-            <span className={`text-xs font-mono px-1.5 py-0.5 rounded-md ${activeTab === 'tasks' ? 'bg-white/20' : 'bg-gray-100 text-gray-400'}`}>
-              {client.tasks.length}
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab('members')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'members' ? 'text-white' : 'bg-white text-gray-500 shadow-sm hover:text-gray-800'
-            }`}
-            style={activeTab === 'members' ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
-          >
-            <Users size={13} />
-            Members
-            {members.length > 0 && (
-              <span className={`text-xs font-mono px-1.5 py-0.5 rounded-md ${activeTab === 'members' ? 'bg-white/20' : 'bg-gray-100 text-gray-400'}`}>
-                {members.length}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Members Panel */}
-        {activeTab === 'members' && (
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-lg font-semibold text-gray-900">Members</h2>
-              <button
-                onClick={() => setShareModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white"
-                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
-              >
-                <Share2 size={12} />
-                Share Link
-              </button>
-            </div>
-            {membersLoading ? (
-              <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
-            ) : members.length === 0 ? (
-              <div className="text-center py-10">
-                <Users size={28} className="mx-auto text-gray-200 mb-3" />
-                <p className="text-sm text-gray-400 font-medium">No members yet</p>
-                <p className="text-xs text-gray-300 mt-1">Share this page to invite collaborators</p>
-              </div>
-            ) : (
-              <div className="space-y-0">
-                {members.map((m) => (
-                  <div key={m.id} className="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-                      style={{ backgroundColor: client.color, color: textColor }}
-                    >
-                      {m.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{m.name}</p>
-                      <p className="text-xs text-gray-400">
-                        Joined {new Date(m.joined_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Task List */}
-        {activeTab === 'tasks' && (
+        {(
         <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden">
           <h2 className="font-display text-lg font-semibold text-gray-900 mb-4">
             Tasks
@@ -649,7 +573,7 @@ export default function ClientWorkspace({ clients, actions }) {
             </button>
           </div>
         </div>
-        )} {/* end activeTab === 'tasks' */}
+        )}
       </div>
 
       {/* Right Summary Panel */}
@@ -712,7 +636,7 @@ export default function ClientWorkspace({ clients, actions }) {
         </div>
 
         {/* Completion */}
-        <div className="rounded-2xl p-5" style={{ backgroundColor: client.color }}>
+        <div className="rounded-2xl p-5 mb-4" style={{ backgroundColor: client.color }}>
           <p className="text-sm font-semibold mb-3" style={{ color: textColor }}>
             Completion
           </p>
@@ -733,6 +657,76 @@ export default function ClientWorkspace({ clients, actions }) {
               }}
             />
           </div>
+        </div>
+
+        {/* Members panel */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-gray-700">Members</p>
+              {members.length > 0 && (
+                <span className="text-xs font-mono bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-md">{members.length}</span>
+              )}
+            </div>
+            <button
+              onClick={() => setShareModalOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            >
+              <Share2 size={11} />
+              Share
+            </button>
+          </div>
+
+          {membersLoading ? (
+            <p className="text-xs text-gray-400 text-center py-4">Loading…</p>
+          ) : members.length === 0 ? (
+            <div className="text-center py-5">
+              <Users size={22} className="mx-auto text-gray-200 mb-2" />
+              <p className="text-xs text-gray-400">No members yet</p>
+              <p className="text-xs text-gray-300 mt-0.5">Share this page to invite collaborators</p>
+            </div>
+          ) : (
+            <div>
+              {members.map((m) => (
+                <div key={m.id} className="flex items-center gap-2.5 py-2.5 border-b border-gray-50 last:border-0">
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                    style={{ backgroundColor: client.color, color: textColor }}
+                  >
+                    {m.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-gray-900 truncate">{m.name}</p>
+                    <p className="text-[10px] text-gray-400">
+                      {new Date(m.joined_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                  {/* Per-member permission toggle */}
+                  <button
+                    onClick={async () => {
+                      const newPerm = (m.permission || 'view') === 'view' ? 'edit' : 'view';
+                      await supabase
+                        .from('shared_client_members')
+                        .update({ permission: newPerm })
+                        .eq('id', m.id);
+                      setMembers((prev) =>
+                        prev.map((mem) => mem.id === m.id ? { ...mem, permission: newPerm } : mem)
+                      );
+                    }}
+                    className={`flex-shrink-0 text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors ${
+                      (m.permission || 'view') === 'edit'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
+                    title={`Click to change to ${(m.permission || 'view') === 'view' ? 'Edit' : 'View'}`}
+                  >
+                    {(m.permission || 'view') === 'edit' ? 'Edit' : 'View'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

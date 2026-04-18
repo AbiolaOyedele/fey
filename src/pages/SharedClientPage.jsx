@@ -414,14 +414,14 @@ export default function SharedClientPage() {
   const [client, setClient] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [member, setMember] = useState(null);
+  const [memberPermission, setMemberPermission] = useState('view');
 
   useEffect(() => {
     async function init() {
-      // Check for existing membership in localStorage
       const stored = localStorage.getItem(`workboard_member_${token}`);
       const storedMember = stored ? JSON.parse(stored) : null;
 
-      // Fetch share record
+      // Fetch share record — no auth required (RLS disabled)
       const { data: share, error: shareErr } = await supabase
         .from('shared_clients')
         .select('*')
@@ -432,17 +432,17 @@ export default function SharedClientPage() {
       if (shareErr || !share) { setPhase('error'); return; }
       setShareRecord(share);
 
-      // Fetch client
-      const { data: clientData, error: clientErr } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', share.client_id)
-        .maybeSingle();
+      // Build client object from cached fields in shared_clients
+      // (avoids needing to read the clients table which has RLS enabled)
+      const clientObj = {
+        id: share.client_id,
+        name: share.client_name || 'Shared Workspace',
+        color: share.client_color || '#D1FAE5',
+        logo: share.client_logo || '',
+      };
+      setClient(clientObj);
 
-      if (clientErr || !clientData) { setPhase('error'); return; }
-      setClient(clientData);
-
-      // Fetch tasks
+      // Fetch tasks — requires tasks table RLS to be disabled
       const { data: tasksData } = await supabase
         .from('tasks')
         .select('*')
@@ -463,6 +463,13 @@ export default function SharedClientPage() {
 
       if (storedMember) {
         setMember(storedMember);
+        // Fetch per-member permission if set
+        const { data: memberRow } = await supabase
+          .from('shared_client_members')
+          .select('permission')
+          .eq('id', storedMember.id)
+          .maybeSingle();
+        setMemberPermission(memberRow?.permission || share.permission || 'view');
         setPhase('dashboard');
       } else {
         setPhase('welcome');
@@ -486,7 +493,11 @@ export default function SharedClientPage() {
       <WelcomePage
         shareRecord={shareRecord}
         clientName={client?.name || ''}
-        onAccept={(m) => { setMember(m); setPhase('dashboard'); }}
+        onAccept={(m) => {
+          setMember(m);
+          setMemberPermission(shareRecord?.permission || 'view');
+          setPhase('dashboard');
+        }}
       />
     );
   }
@@ -498,7 +509,7 @@ export default function SharedClientPage() {
       tasks={tasks}
       setTasks={setTasks}
       member={member}
-      permission={shareRecord.permission}
+      permission={memberPermission}
     />
   );
 }

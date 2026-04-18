@@ -119,14 +119,15 @@ export default function WelcomeGuide() {
           {/* Dots */}
           <div className="flex items-center gap-1">
             {STEPS.map((_, i) => (
-              <button
+              <span
                 key={i}
                 onClick={() => setStep(i)}
-                className="rounded-full transition-all duration-200"
+                className="rounded-full transition-all duration-200 cursor-pointer flex-shrink-0"
                 style={{
-                  width: i === step ? '12px' : '5px',
+                  display: 'block',
+                  width: i === step ? '14px' : '5px',
                   height: '5px',
-                  backgroundColor: i === step ? 'var(--accent, #ED64A6)' : '#E5E7EB',
+                  backgroundColor: i === step ? 'var(--accent, #ED64A6)' : '#D1D5DB',
                 }}
               />
             ))}

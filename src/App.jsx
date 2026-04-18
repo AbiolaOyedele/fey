@@ -17,6 +17,7 @@ import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Onboarding from './pages/Onboarding';
 import ToastContainer from './components/Toast';
+import WelcomeGuide from './components/WelcomeGuide';
 
 const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -207,6 +208,7 @@ export default function App() {
               </div>
             </div>
             <ToastContainer />
+            <WelcomeGuide />
             </OnboardingGate>
           </ProtectedRoute>
         } />

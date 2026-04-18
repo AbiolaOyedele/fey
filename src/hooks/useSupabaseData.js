@@ -12,6 +12,7 @@ function transformClients(clients, tasks, retainerPayments) {
     logo: c.logo || '',
     task_mode: c.task_mode || false,
     retainer: Number(c.retainer) || 0,
+    retainer_currency: c.retainer_currency || 'NGN',
     retainerPaid: retainerPayments
       .filter((rp) => rp.client_id === c.id)
       .reduce((acc, rp) => {
@@ -125,19 +126,21 @@ export function useSupabaseData(userId) {
     setClients((prev) => prev.filter((c) => c.id !== clientId));
   }, [userId]);
 
-  // Update client retainer amount
-  const updateRetainer = useCallback(async (clientId, retainer) => {
+  // Update client retainer amount (and optionally currency)
+  const updateRetainer = useCallback(async (clientId, retainer, retainer_currency) => {
     if (IS_DEMO || !userId) return;
+    const updates = { retainer };
+    if (retainer_currency) updates.retainer_currency = retainer_currency;
     const { error: err } = await supabase
       .from('clients')
-      .update({ retainer })
+      .update(updates)
       .eq('id', clientId)
       .eq('user_id', userId);
 
     if (err) { setError(err.message); return; }
 
     setClients((prev) =>
-      prev.map((c) => (c.id === clientId ? { ...c, retainer } : c))
+      prev.map((c) => (c.id === clientId ? { ...c, retainer, ...(retainer_currency ? { retainer_currency } : {}) } : c))
     );
   }, [userId]);
 

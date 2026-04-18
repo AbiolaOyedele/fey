@@ -69,7 +69,7 @@ export default function Payments({ clients }) {
         };
       }
       if (paid) {
-        const convertedRetainer = convertAmount(client.retainer, 'NGN');
+        const convertedRetainer = convertAmount(client.retainer, client.retainer_currency || 'NGN');
         monthlyData[month].clients[client.id].retainer = convertedRetainer;
         monthlyData[month].clients[client.id].earned += convertedRetainer;
         monthlyData[month].earned += convertedRetainer;
@@ -128,7 +128,7 @@ export default function Payments({ clients }) {
             isDeleted: true,
           };
         }
-        const convertedTrashedRetainer = convertAmount(clientData.retainer, 'NGN');
+        const convertedTrashedRetainer = convertAmount(clientData.retainer, clientData.retainer_currency || 'NGN');
         monthlyData[month].clients[clientKey].retainer = convertedTrashedRetainer;
         monthlyData[month].clients[clientKey].earned += convertedTrashedRetainer;
         monthlyData[month].earned += convertedTrashedRetainer;

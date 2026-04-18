@@ -60,21 +60,24 @@ export default function SimpleTaskItem({ task, onUpdate, onDelete, dragListeners
       )}
 
       {/* Checkbox */}
-      <button
+      <span
         onClick={handleDone}
-        className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-150 ${
+        role="checkbox"
+        aria-checked={task.done}
+        className={`rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-150 cursor-pointer ${
           bouncing ? 'animate-scaleBounce' : ''
         } ${task.done ? 'text-white' : 'border-gray-200'}`}
-        style={
-          task.done
+        style={{
+          width: 18, height: 18, display: 'flex',
+          ...(task.done
             ? { backgroundColor: 'var(--accent, #ED64A6)', borderColor: 'var(--accent, #ED64A6)' }
-            : {}
-        }
+            : {}),
+        }}
         onMouseEnter={(e) => { if (!task.done) e.currentTarget.style.borderColor = 'var(--accent, #ED64A6)'; }}
         onMouseLeave={(e) => { if (!task.done) e.currentTarget.style.borderColor = ''; }}
       >
         {task.done && <Check size={10} strokeWidth={3} />}
-      </button>
+      </span>
 
       {/* Title */}
       <div className="flex-1 min-w-0">

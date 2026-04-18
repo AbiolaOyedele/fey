@@ -669,6 +669,19 @@ export default function Settings({ clients, refetch }) {
             <Trash2 size={17} className="text-gray-400" />
             <h2 className="font-display text-base font-semibold text-gray-900">Trash</h2>
             <span className="text-xs text-gray-400 ml-1">· deleted after 45 days</span>
+            {trash.length > 0 && (
+              <button
+                onClick={async () => {
+                  if (!window.confirm(`Permanently delete all ${trash.length} item${trash.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+                  await Promise.all(trash.map((item) => deleteForever(item.id)));
+                  showToast('Trash cleared');
+                }}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
+              >
+                <Trash2 size={11} />
+                Clear all
+              </button>
+            )}
           </div>
           {trash.length === 0 ? (
             <p className="text-sm text-gray-400 py-4 text-center">Trash is empty</p>

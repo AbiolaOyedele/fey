@@ -99,7 +99,7 @@ export default function Dashboard({ clients, actions }) {
     const taskEarnings = client.tasks
       .filter((t) => t.paid && t.createdAt.startsWith(currentMonth))
       .reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
-    const retainerEarning = client.retainerPaid?.[currentMonth] ? convertAmount(client.retainer, 'NGN') : 0;
+    const retainerEarning = client.retainerPaid?.[currentMonth] ? convertAmount(client.retainer, client.retainer_currency || 'NGN') : 0;
     return sum + taskEarnings + retainerEarning;
   }, 0);
 
@@ -143,7 +143,7 @@ export default function Dashboard({ clients, actions }) {
       const te = client.tasks
         .filter((t) => t.paid && t.createdAt.startsWith(key))
         .reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
-      const re = client.retainerPaid?.[key] ? convertAmount(client.retainer, 'NGN') : 0;
+      const re = client.retainerPaid?.[key] ? convertAmount(client.retainer, client.retainer_currency || 'NGN') : 0;
       return sum + te + re;
     }, 0);
     monthlyActivity.push({ label, earned, key });

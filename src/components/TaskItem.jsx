@@ -100,19 +100,24 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
       {/* ── Mobile top row: checkbox + title + chevron ── */}
       <div className="flex items-center gap-3">
         {/* Done checkbox */}
-        <button
+        <span
           onClick={handleDone}
-          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-150 flex-shrink-0 ${
+          role="checkbox"
+          aria-checked={task.done}
+          className={`rounded-md border-2 flex items-center justify-center transition-all duration-150 flex-shrink-0 cursor-pointer ${
             bouncing ? 'animate-scaleBounce' : ''
           } ${task.done ? 'text-white' : 'border-gray-300'}`}
-          style={task.done
-            ? { backgroundColor: 'var(--accent, #ED64A6)', borderColor: 'var(--accent, #ED64A6)' }
-            : {}}
+          style={{
+            width: 18, height: 18, display: 'flex',
+            ...(task.done
+              ? { backgroundColor: 'var(--accent, #ED64A6)', borderColor: 'var(--accent, #ED64A6)' }
+              : {}),
+          }}
           onMouseEnter={e => { if (!task.done) e.currentTarget.style.borderColor = 'var(--accent, #ED64A6)'; }}
           onMouseLeave={e => { if (!task.done) e.currentTarget.style.borderColor = ''; }}
         >
-          {task.done && <Check size={12} strokeWidth={3} />}
-        </button>
+          {task.done && <Check size={11} strokeWidth={3} />}
+        </span>
 
         {/* Title + deadline label */}
         <div className="flex-1 min-w-0">

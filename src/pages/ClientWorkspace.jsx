@@ -108,14 +108,14 @@ export default function ClientWorkspace({ clients, actions }) {
   const client = clients.find((c) => c.id === id);
   const [newTask, setNewTask] = useState('');
   const [retainerOpen, setRetainerOpen] = useState(false);
-  const formatRetainerInput = (retainerNGN) => {
-    if (!retainerNGN) return '';
-    const val = convertAmount(retainerNGN, 'NGN');
-    return settings.currency === 'USD'
-      ? val.toFixed(2)
-      : Math.round(val).toLocaleString();
+  // Retainer is stored in client.retainer_currency — display as-is (no conversion for input)
+  const formatRetainerInput = (amount) => {
+    if (!amount) return '';
+    const n = Number(amount);
+    return isNaN(n) ? '' : n.toLocaleString(undefined, { maximumFractionDigits: 2 });
   };
   const [retainerInput, setRetainerInput] = useState(() => formatRetainerInput(client?.retainer));
+  const [retainerCurrency, setRetainerCurrency] = useState(client?.retainer_currency || 'NGN');
   const [editingClient, setEditingClient] = useState(false);
   const [taskFilter, setTaskFilter] = useState('all');
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
@@ -128,11 +128,12 @@ export default function ClientWorkspace({ clients, actions }) {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
-  // Sync retainer input when currency or retainer value changes
+  // Sync retainer input when retainer value or currency changes
   useEffect(() => {
     setRetainerInput(formatRetainerInput(client?.retainer));
+    setRetainerCurrency(client?.retainer_currency || 'NGN');
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client?.retainer, settings.currency]);
+  }, [client?.retainer, client?.retainer_currency]);
 
   // Close filter dropdown on outside click
   useEffect(() => {
@@ -196,28 +197,23 @@ export default function ClientWorkspace({ clients, actions }) {
     await actions.deleteTask(id, taskId);
   };
 
-  const handleSetRetainer = async (amount) => {
-    await actions.updateRetainer(id, parseInt(amount) || 0);
-  };
-
   const handleRetainerInputChange = (val) => {
-    if (settings.currency === 'USD') {
-      // Allow decimals for USD
-      const cleaned = val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-      setRetainerInput(cleaned);
-    } else {
-      const digits = val.replace(/[^0-9]/g, '');
-      setRetainerInput(digits === '' ? '' : parseInt(digits, 10).toLocaleString());
-    }
+    // Allow decimals for all currencies
+    const cleaned = val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+    setRetainerInput(cleaned);
   };
 
   const handleRetainerBlur = () => {
     const parsed = parseFloat(retainerInput.replace(/[^0-9.]/g, '')) || 0;
-    // Always store retainer in NGN — back-convert if currently viewing in USD
-    const inNGN = settings.currency === 'USD'
-      ? Math.round(parsed * (Number(settings.exchange_rate) || 1357))
-      : Math.round(parsed);
-    handleSetRetainer(inNGN);
+    // Store retainer in the chosen retainer currency (no conversion — raw amount)
+    actions.updateRetainer(id, parsed, retainerCurrency);
+  };
+
+  const handleRetainerCurrencyChange = (newCurrency) => {
+    setRetainerCurrency(newCurrency);
+    // Persist the currency change immediately (keep existing amount)
+    const parsed = parseFloat(retainerInput.replace(/[^0-9.]/g, '')) || 0;
+    if (parsed > 0) actions.updateRetainer(id, parsed, newCurrency);
   };
 
   const handleToggleRetainerPaid = async () => {
@@ -256,7 +252,7 @@ export default function ClientWorkspace({ clients, actions }) {
 
   const paidRetainerMonths = Object.values(client.retainerPaid || {}).filter(Boolean).length;
   const totalEarned = client.tasks.filter((t) => t.paid).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0)
-    + paidRetainerMonths * convertAmount(client.retainer || 0, 'NGN');
+    + paidRetainerMonths * convertAmount(client.retainer || 0, client.retainer_currency || 'NGN');
   const totalPending = client.tasks.filter((t) => !t.paid && t.amount > 0).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
 
   const dndEnabled = taskFilter === 'all';
@@ -320,7 +316,7 @@ export default function ClientWorkspace({ clients, actions }) {
                 Monthly Retainer
                 {client.retainer > 0 && (
                   <span className="ml-2 font-mono" style={{ color: 'var(--accent, #ED64A6)' }}>
-                    {formatMoney(convertAmount(client.retainer, 'NGN'))}
+                    {formatMoney(convertAmount(client.retainer, client.retainer_currency || 'NGN'))}
                   </span>
                 )}
               </span>
@@ -328,17 +324,27 @@ export default function ClientWorkspace({ clients, actions }) {
             </button>
             {retainerOpen && (
               <div className="px-6 pb-5 border-t border-gray-100 pt-4 animate-slideDown">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 flex-1">
-                    <span className="text-xs text-gray-400">{settings.currency || 'NGN'}</span>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    {/* Retainer currency dropdown */}
+                    <select
+                      value={retainerCurrency}
+                      onChange={(e) => handleRetainerCurrencyChange(e.target.value)}
+                      className="px-2 py-1.5 bg-gray-50 rounded-lg border border-gray-200 text-xs font-medium outline-none focus:border-primary cursor-pointer"
+                    >
+                      <option value="NGN">₦ NGN</option>
+                      <option value="USD">$ USD</option>
+                      <option value="GBP">£ GBP</option>
+                      <option value="EUR">€ EUR</option>
+                    </select>
                     <input
                       type="text"
-                      inputMode="numeric"
+                      inputMode="decimal"
                       value={retainerInput}
                       onChange={(e) => handleRetainerInputChange(e.target.value)}
                       onBlur={handleRetainerBlur}
                       placeholder="0"
-                      className="w-32 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm font-mono outline-none focus:border-primary"
+                      className="w-28 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm font-mono outline-none focus:border-primary"
                     />
                   </div>
                   <div className="flex items-center gap-2">

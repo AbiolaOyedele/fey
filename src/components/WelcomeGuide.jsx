@@ -124,8 +124,12 @@ export default function WelcomeGuide() {
               <button
                 key={i}
                 onClick={() => setStep(i)}
-                className="w-1.5 h-1.5 rounded-full transition-all duration-200"
-                style={{ backgroundColor: i === step ? 'var(--accent, #ED64A6)' : '#E5E7EB' }}
+                className="rounded-full transition-all duration-200"
+                style={{
+                  width: i === step ? '12px' : '5px',
+                  height: '5px',
+                  backgroundColor: i === step ? 'var(--accent, #ED64A6)' : '#E5E7EB',
+                }}
               />
             ))}
           </div>

@@ -198,13 +198,16 @@ export default function ClientWorkspace({ clients, actions }) {
   };
 
   const handleRetainerInputChange = (val) => {
-    // Allow decimals for all currencies
-    const cleaned = val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-    setRetainerInput(cleaned);
+    // Strip everything except digits and one decimal point
+    const raw = val.replace(/,/g, '').replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+    // Format integer part with commas
+    const parts = raw.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    setRetainerInput(parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0]);
   };
 
   const handleRetainerBlur = () => {
-    const parsed = parseFloat(retainerInput.replace(/[^0-9.]/g, '')) || 0;
+    const parsed = parseFloat(retainerInput.replace(/,/g, '').replace(/[^0-9.]/g, '')) || 0;
     // Store retainer in the chosen retainer currency (no conversion — raw amount)
     actions.updateRetainer(id, parsed, retainerCurrency);
   };
@@ -212,7 +215,7 @@ export default function ClientWorkspace({ clients, actions }) {
   const handleRetainerCurrencyChange = (newCurrency) => {
     setRetainerCurrency(newCurrency);
     // Persist the currency change immediately (keep existing amount)
-    const parsed = parseFloat(retainerInput.replace(/[^0-9.]/g, '')) || 0;
+    const parsed = parseFloat(retainerInput.replace(/,/g, '').replace(/[^0-9.]/g, '')) || 0;
     if (parsed > 0) actions.updateRetainer(id, parsed, newCurrency);
   };
 

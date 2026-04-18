@@ -280,7 +280,7 @@ export default function ClientWorkspace({ clients, actions }) {
         <div className="rounded-2xl p-6 mb-6 overflow-hidden" style={{ backgroundColor: client.color }}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             {client.logo ? (
-              <img src={client.logo} alt={client.name} className="w-14 h-14 rounded-2xl object-cover bg-white/50 flex-shrink-0" />
+              <img src={client.logo} alt={client.name} className="w-14 h-14 rounded-2xl object-contain bg-white p-1 flex-shrink-0" />
             ) : (
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-display font-bold bg-white/50 flex-shrink-0"

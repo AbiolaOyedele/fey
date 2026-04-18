@@ -54,7 +54,7 @@ export default function Sidebar() {
         {/* Logo */}
         <div className="pt-5 pb-4 cursor-pointer" onClick={() => window.location.reload()}>
           {settings.logo ? (
-            <img src={settings.logo} alt="Logo" className="w-10 h-10 rounded-xl object-cover" />
+            <img src={settings.logo} alt="Logo" className="w-10 h-10 rounded-xl object-contain bg-white p-0.5" />
           ) : (
             <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center">
               <span className="text-white font-display font-bold text-sm">W</span>

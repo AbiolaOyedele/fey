@@ -300,7 +300,7 @@ export default function Settings({ clients, refetch }) {
               <div className="flex items-center gap-4">
                 {settings.logo ? (
                   <div className="relative group flex-shrink-0">
-                    <img src={settings.logo} alt="Logo" className="w-12 h-12 rounded-xl object-cover border border-gray-200" />
+                    <img src={settings.logo} alt="Logo" className="w-12 h-12 rounded-xl object-contain bg-white border border-gray-200" />
                     <button
                       onClick={handleRemoveLogo}
                       className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"

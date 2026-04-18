@@ -68,7 +68,7 @@ export default function EditClientModal({ client, onSave, onClose }) {
           <div className="flex items-center gap-3">
             {logo ? (
               <div className="relative group">
-                <img src={logo} alt="Logo" className="w-10 h-10 rounded-xl object-cover border border-gray-200" />
+                <img src={logo} alt="Logo" className="w-10 h-10 rounded-xl object-contain bg-white border border-gray-200" />
                 <button
                   onClick={() => setLogo('')}
                   className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"

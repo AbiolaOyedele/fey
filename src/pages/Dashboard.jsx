@@ -424,7 +424,7 @@ export default function Dashboard({ clients, actions }) {
                       </div>
                       <div className="flex items-center gap-2">
                         {client.logo ? (
-                          <img src={client.logo} alt={client.name} className="w-8 h-8 rounded-full object-cover bg-white/50" />
+                          <img src={client.logo} alt={client.name} className="w-8 h-8 rounded-full object-contain bg-white p-0.5" />
                         ) : (
                           <div
                             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50"
@@ -470,7 +470,7 @@ export default function Dashboard({ clients, actions }) {
                     className="flex items-center gap-2 mb-2 hover:opacity-70 transition-opacity min-w-0"
                   >
                     {client.logo ? (
-                      <img src={client.logo} alt={client.name} className="w-5 h-5 rounded-md object-cover flex-shrink-0" />
+                      <img src={client.logo} alt={client.name} className="w-5 h-5 rounded-md object-contain bg-white flex-shrink-0" />
                     ) : (
                       <div
                         className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0"
@@ -657,7 +657,7 @@ export default function Dashboard({ clients, actions }) {
             <img
               src={settings.logo}
               alt="Logo"
-              className="w-16 h-16 rounded-2xl mx-auto mb-3 object-cover"
+              className="w-16 h-16 rounded-2xl mx-auto mb-3 object-contain bg-white p-1"
             />
           ) : (
             <div
@@ -756,7 +756,7 @@ export default function Dashboard({ clients, actions }) {
                 className="flex items-center gap-3 p-2 -mx-2 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 {client.logo ? (
-                  <img src={client.logo} alt={client.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
+                  <img src={client.logo} alt={client.name} className="w-10 h-10 rounded-xl object-contain bg-white p-1 flex-shrink-0" />
                 ) : (
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"

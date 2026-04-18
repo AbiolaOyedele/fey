@@ -152,7 +152,7 @@ function SortableGridCard({ client, isDraggingRef, onDelete, formatMoney, conver
             <Trash2 size={12} />
           </button>
           {client.logo ? (
-            <img src={client.logo} alt={client.name} className="w-8 h-8 rounded-full object-cover bg-white/50" />
+            <img src={client.logo} alt={client.name} className="w-8 h-8 rounded-full object-contain bg-white p-0.5" />
           ) : (
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50"
@@ -204,7 +204,7 @@ function SortableListRow({ client, isDraggingRef, onDelete, todayStr }) {
       onClick={handleRowClick}
     >
       {client.logo ? (
-        <img src={client.logo} alt={client.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0 bg-white/50" />
+        <img src={client.logo} alt={client.name} className="w-10 h-10 rounded-xl object-contain bg-white p-1 flex-shrink-0" />
       ) : (
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 bg-white/50"
@@ -495,7 +495,7 @@ export default function Clients({ clients, actions }) {
               <div className="flex items-center gap-3">
                 {newLogo ? (
                   <div className="relative group">
-                    <img src={newLogo} alt="Logo" className="w-10 h-10 rounded-xl object-cover border border-gray-200" />
+                    <img src={newLogo} alt="Logo" className="w-10 h-10 rounded-xl object-contain bg-white border border-gray-200" />
                     <button
                       onClick={() => setNewLogo('')}
                       className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"

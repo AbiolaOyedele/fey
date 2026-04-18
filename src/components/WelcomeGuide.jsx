@@ -53,12 +53,10 @@ export default function WelcomeGuide() {
     if (!user?.id) return;
     // Only show after onboarding is complete and guide hasn't been dismissed
     if (settings.onboarding_complete !== 'true') return;
-    const seen = localStorage.getItem(STORAGE_KEY(user.id));
-    if (!seen) {
-      // Small delay so the dashboard has time to render first
-      const t = setTimeout(() => setVisible(true), 800);
-      return () => clearTimeout(t);
-    }
+    // Always show for preview — remove this line after testing
+    localStorage.removeItem(STORAGE_KEY(user.id));
+    const t = setTimeout(() => setVisible(true), 800);
+    return () => clearTimeout(t);
   }, [user?.id, settings.onboarding_complete]);
 
   const dismiss = () => {

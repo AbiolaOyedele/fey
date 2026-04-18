@@ -52,7 +52,7 @@ export default function Sidebar() {
     <>
       <aside className={`hidden lg:flex fixed left-0 ${IS_DEMO ? 'top-8' : 'top-0'} bottom-0 w-[72px] bg-white border-r border-gray-100 flex-col items-center z-10`}>
         {/* Logo */}
-        <div className="pt-5 pb-4 cursor-pointer" onClick={() => window.location.reload()}>
+        <NavLink to="/" end className="pt-5 pb-4">
           {settings.logo ? (
             <img src={settings.logo} alt="Logo" className="w-10 h-10 rounded-xl object-contain bg-white p-0.5" />
           ) : (
@@ -60,7 +60,7 @@ export default function Sidebar() {
               <span className="text-white font-display font-bold text-sm">W</span>
             </div>
           )}
-        </div>
+        </NavLink>
 
         {/* Main nav */}
         <nav className="flex-1 flex flex-col items-center gap-2 pt-2">

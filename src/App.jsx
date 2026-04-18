@@ -17,6 +17,7 @@ import Payments from './pages/Payments';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Onboarding from './pages/Onboarding';
+import SharedClientPage from './pages/SharedClientPage';
 import ToastContainer from './components/Toast';
 import WelcomeGuide from './components/WelcomeGuide';
 
@@ -162,8 +163,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public route */}
+        {/* Fully public routes — no auth required */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Login />} />
+        <Route path="/share/:token" element={<SharedClientPage />} />
 
         {/* Onboarding — protected but no sidebar/shell */}
         <Route path="/onboarding" element={
@@ -184,7 +187,12 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={
                       appMode === 'tasks'
-                        ? <TaskDashboard groups={taskGroupData.groups || []} standaloneTasks={taskGroupData.standaloneTasks || []} />
+                        ? <TaskDashboard
+                            groups={taskGroupData.groups || []}
+                            standaloneTasks={taskGroupData.standaloneTasks || []}
+                            onToggleGroupTask={taskGroupData.updateGroupTask}
+                            onToggleStandaloneTask={taskGroupData.updateStandaloneTask}
+                          />
                         : <Dashboard clients={orderedClients} actions={actions} />
                     } />
 

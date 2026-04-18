@@ -63,25 +63,49 @@ function CompletionRing({ pct, done, total, size = 80, strokeWidth = 7 }) {
 }
 
 // ── Task row ──────────────────────────────────────────────────────────────────
-function TaskRow({ task, todayStr }) {
+function TaskRow({ task, todayStr, onToggle }) {
+  const [pending, setPending] = useState(false);
   const isOverdue = !task.done && task.deadline && task.deadline < todayStr;
   const isDueToday = !task.done && task.deadline === todayStr;
   const daysOver = isOverdue ? daysDiff(task.deadline) : 0;
 
+  const handleToggle = async (e) => {
+    e.stopPropagation();
+    if (!onToggle || pending) return;
+    setPending(true);
+    await onToggle(!task.done);
+    setPending(false);
+  };
+
   return (
-    <div className={`flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-0 ${task.done ? 'opacity-50' : ''}`}>
-      <div className="mt-0.5 flex-shrink-0">
-        {task.done
-          ? <CheckCircle2 size={16} className="text-green-500" />
-          : isOverdue
-            ? <AlertTriangle size={16} className="text-red-400" />
-            : isDueToday
-              ? <Clock size={16} className="text-amber-500" />
-              : <div className="w-4 h-4 rounded-full border-2 border-gray-200" />}
-      </div>
-      <p className={`flex-1 text-sm min-w-0 ${task.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+    <div className={`flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-0 transition-opacity ${task.done ? 'opacity-50' : ''}`}>
+      {/* Checkbox */}
+      <span
+        role="checkbox"
+        aria-checked={task.done}
+        onClick={handleToggle}
+        className={`mt-0.5 flex-shrink-0 rounded-md border-2 flex items-center justify-center cursor-pointer transition-colors ${
+          task.done
+            ? 'border-green-500 bg-green-500'
+            : isOverdue
+              ? 'border-red-300 hover:border-red-400'
+              : isDueToday
+                ? 'border-amber-400 hover:border-amber-500'
+                : 'border-gray-200 hover:border-gray-400'
+        } ${pending ? 'opacity-50' : ''}`}
+        style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+      >
+        {task.done && (
+          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+            <path d="M1 3.5L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+
+      <p className={`flex-1 text-sm min-w-0 select-none ${task.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
         {task.title}
       </p>
+
       {task.deadline && !task.done && (
         <span className={`text-xs flex-shrink-0 font-medium px-1.5 py-0.5 rounded-md ${
           isOverdue ? 'bg-red-50 text-red-500' : isDueToday ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'
@@ -94,7 +118,7 @@ function TaskRow({ task, todayStr }) {
 }
 
 // ── Group card ────────────────────────────────────────────────────────────────
-function GroupCard({ group, todayStr, expanded, onToggle }) {
+function GroupCard({ group, todayStr, expanded, onToggle, onToggleTask }) {
   const textColor = ACCENT_TEXT[group.color] || '#374151';
   const total = group.tasks.length;
   const done = group.tasks.filter((t) => t.done).length;
@@ -175,7 +199,12 @@ function GroupCard({ group, todayStr, expanded, onToggle }) {
             <p className="text-sm text-gray-400 text-center py-4">No tasks yet</p>
           ) : (
             sortedTasks.map((task) => (
-              <TaskRow key={task.id} task={task} todayStr={todayStr} />
+              <TaskRow
+                key={task.id}
+                task={task}
+                todayStr={todayStr}
+                onToggle={onToggleTask ? (done) => onToggleTask(group.id, task.id, { done }) : null}
+              />
             ))
           )}
           <Link
@@ -192,7 +221,7 @@ function GroupCard({ group, todayStr, expanded, onToggle }) {
 }
 
 // ── Standalone tasks panel ────────────────────────────────────────────────────
-function StandalonePanel({ tasks, todayStr }) {
+function StandalonePanel({ tasks, todayStr, onToggleTask }) {
   if (!tasks || tasks.length === 0) return null;
   const sorted = [...tasks].sort((a, b) => {
     const rank = (t) => {
@@ -211,7 +240,12 @@ function StandalonePanel({ tasks, todayStr }) {
       </div>
       <div className="px-4 pb-3">
         {sorted.map((task) => (
-          <TaskRow key={task.id} task={task} todayStr={todayStr} />
+          <TaskRow
+            key={task.id}
+            task={task}
+            todayStr={todayStr}
+            onToggle={onToggleTask ? (done) => onToggleTask(task.id, { done }) : null}
+          />
         ))}
       </div>
     </div>
@@ -219,7 +253,7 @@ function StandalonePanel({ tasks, todayStr }) {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function TaskDashboard({ groups = [], standaloneTasks = [] }) {
+export default function TaskDashboard({ groups = [], standaloneTasks = [], onToggleGroupTask, onToggleStandaloneTask }) {
   const { settings } = useSettings();
   const todayStr = getTodayStr();
   const [filter, setFilter] = useState('All');
@@ -477,13 +511,14 @@ export default function TaskDashboard({ groups = [], standaloneTasks = [] }) {
                   todayStr={todayStr}
                   expanded={expandedId === group.id}
                   onToggle={() => setExpandedId(expandedId === group.id ? null : group.id)}
+                  onToggleTask={onToggleGroupTask}
                 />
               ))
             )}
 
             {/* Standalone tasks shown only in All/Active filter */}
             {(filter === 'All' || filter === 'Active') && (
-              <StandalonePanel tasks={standaloneTasks} todayStr={todayStr} />
+              <StandalonePanel tasks={standaloneTasks} todayStr={todayStr} onToggleTask={onToggleStandaloneTask} />
             )}
           </div>
         )}

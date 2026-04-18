@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Loader2, ChevronDown } from 'lucide-react';
 
@@ -16,9 +16,21 @@ function GoogleIcon() {
 
 export default function Login() {
   const { user, loading: authLoading, signIn, signUp, signInWithGoogle } = useAuth();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
 
-  // 'signup' by default — new users land here first
-  const [mode, setMode]         = useState('signup');
+  // On /register with from_share, store the token and show signup
+  useEffect(() => {
+    const fromShare = searchParams.get('from_share');
+    const token = searchParams.get('token');
+    if (fromShare === 'true' && token) {
+      localStorage.setItem('workboard_pending_share', token);
+    }
+  }, [searchParams]);
+
+  // Default to signup on /register, signin on /login
+  const defaultMode = location.pathname === '/register' ? 'signup' : 'signup';
+  const [mode, setMode]         = useState(defaultMode);
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');

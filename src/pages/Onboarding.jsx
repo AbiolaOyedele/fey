@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../contexts/SettingsContext';
+import { supabase } from '../lib/supabase';
 
 const CURRENCIES = [
   { code: 'NGN', label: 'NGN ₦' },
@@ -63,13 +64,17 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const { saveSetting, settings } = useSettings();
 
+  // Check if user came from a share link
+  const pendingShareToken = localStorage.getItem('workboard_pending_share') || null;
+
   const [isNerd, setIsNerd] = useState(false);
   const [cardIndex, setCardIndex] = useState(0);
   const [animPhase, setAnimPhase] = useState('idle');
 
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
-  const [appMode, setAppMode] = useState('');
+  // Default to 'dual' if coming from share link
+  const [appMode, setAppMode] = useState(pendingShareToken ? 'dual' : '');
   const [currency, setCurrency] = useState('');
   const [logo, setLogo] = useState('');
   const [accentColor, setAccentColor] = useState('#ED64A6');
@@ -110,8 +115,78 @@ export default function Onboarding() {
     return () => clearTimeout(t);
   }, [cardIndex, isNerd]);
 
-  const completeOnboarding = useCallback(() => {
+  const completeOnboarding = useCallback(async () => {
     saveSetting('onboarding_complete', 'true');
+
+    // Handle pending share link — copy client + tasks to new user
+    const token = localStorage.getItem('workboard_pending_share');
+    if (token) {
+      try {
+        // Get the current user id from supabase session
+        const { data: sessionData } = await supabase.auth.getSession();
+        const newUserId = sessionData?.session?.user?.id;
+
+        if (newUserId) {
+          // Fetch share record
+          const { data: share } = await supabase
+            .from('shared_clients')
+            .select('*')
+            .eq('token', token)
+            .eq('active', true)
+            .maybeSingle();
+
+          if (share) {
+            // Fetch original client
+            const { data: origClient } = await supabase
+              .from('clients')
+              .select('*')
+              .eq('id', share.client_id)
+              .maybeSingle();
+
+            if (origClient) {
+              // Copy client to new user
+              const { data: newClient } = await supabase
+                .from('clients')
+                .insert({
+                  name: origClient.name,
+                  color: origClient.color,
+                  logo: origClient.logo || '',
+                  retainer: 0,
+                  user_id: newUserId,
+                })
+                .select()
+                .single();
+
+              if (newClient) {
+                // Copy tasks
+                const { data: origTasks } = await supabase
+                  .from('tasks')
+                  .select('*')
+                  .eq('client_id', origClient.id);
+
+                if (origTasks && origTasks.length > 0) {
+                  await supabase.from('tasks').insert(
+                    origTasks.map((t) => ({
+                      client_id: newClient.id,
+                      user_id: newUserId,
+                      title: t.title,
+                      done: t.done,
+                      paid: false,
+                      amount: t.amount || 0,
+                      currency: t.currency || 'NGN',
+                      deadline: t.deadline || null,
+                      sort_order: t.sort_order ?? 0,
+                    }))
+                  );
+                }
+              }
+            }
+          }
+        }
+      } catch { /* silently fail — not critical */ }
+      localStorage.removeItem('workboard_pending_share');
+    }
+
     navigate('/', { replace: true });
   }, [saveSetting, navigate]);
 
@@ -665,21 +740,23 @@ export default function Onboarding() {
       case 'mode_currency':
         return (
           <>
-            <h2 style={headingStyle}>How will you use WorkBoard?</h2>
+            <h2 style={headingStyle}>{pendingShareToken ? 'Your currency' : 'How will you use WorkBoard?'}</h2>
 
-            <div style={{ marginBottom: '24px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {APP_MODES_OPTS.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setAppMode(opt.value)}
-                    style={pillStyle(appMode === opt.value)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+            {!pendingShareToken && (
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {APP_MODES_OPTS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setAppMode(opt.value)}
+                      style={pillStyle(appMode === opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <div style={{ marginBottom: '24px' }}>
               <label style={labelStyle}>Your currency</label>

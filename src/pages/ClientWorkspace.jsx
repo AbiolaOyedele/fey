@@ -2,8 +2,11 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ChevronDown, ChevronUp, Plus, CheckCircle2, Clock,
-  AlertTriangle, GripVertical, Edit2,
+  AlertTriangle, GripVertical, Edit2, Share2, Users,
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import ShareModal from '../components/ShareModal';
+import { useAuth } from '../contexts/AuthContext';
 import {
   DndContext,
   closestCenter,
@@ -105,6 +108,7 @@ export default function ClientWorkspace({ clients, actions }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { formatMoney, convertAmount, settings } = useSettings();
+  const { user } = useAuth();
   const client = clients.find((c) => c.id === id);
   const [newTask, setNewTask] = useState('');
   const [retainerOpen, setRetainerOpen] = useState(false);
@@ -117,6 +121,11 @@ export default function ClientWorkspace({ clients, actions }) {
   const [retainerInput, setRetainerInput] = useState(() => formatRetainerInput(client?.retainer));
   const [retainerCurrency, setRetainerCurrency] = useState(client?.retainer_currency || 'NGN');
   const [editingClient, setEditingClient] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('tasks'); // 'tasks' | 'members'
+  const [members, setMembers] = useState([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [shareRecordId, setShareRecordId] = useState(null);
   const [taskFilter, setTaskFilter] = useState('all');
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [filterPos, setFilterPos] = useState({ top: 0, left: 0 });
@@ -148,6 +157,72 @@ export default function ClientWorkspace({ clients, actions }) {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Fetch members and set up realtime subscription
+  useEffect(() => {
+    if (!user || !id) return;
+    let channel;
+
+    async function fetchShareAndMembers() {
+      setMembersLoading(true);
+      // Get the share record for this client
+      const { data: share } = await supabase
+        .from('shared_clients')
+        .select('id')
+        .eq('client_id', id)
+        .eq('owner_id', user.id)
+        .eq('active', true)
+        .maybeSingle();
+
+      if (!share) { setMembersLoading(false); return; }
+      setShareRecordId(share.id);
+
+      // Fetch members
+      const { data: mems } = await supabase
+        .from('shared_client_members')
+        .select('*')
+        .eq('shared_client_id', share.id)
+        .order('joined_at', { ascending: false });
+      setMembers(mems || []);
+      setMembersLoading(false);
+
+      // Realtime subscription
+      channel = supabase
+        .channel(`members-${share.id}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'shared_client_members', filter: `shared_client_id=eq.${share.id}` },
+          (payload) => {
+            setMembers((prev) => [payload.new, ...prev]);
+          }
+        )
+        .subscribe();
+    }
+
+    fetchShareAndMembers();
+    return () => { if (channel) supabase.removeChannel(channel); };
+  }, [user, id]);
+
+  // Re-fetch members when share modal closes (user may have created/revoked)
+  const handleShareModalClose = useCallback(async () => {
+    setShareModalOpen(false);
+    if (!user || !id) return;
+    const { data: share } = await supabase
+      .from('shared_clients')
+      .select('id')
+      .eq('client_id', id)
+      .eq('owner_id', user.id)
+      .eq('active', true)
+      .maybeSingle();
+    if (!share) { setShareRecordId(null); setMembers([]); return; }
+    setShareRecordId(share.id);
+    const { data: mems } = await supabase
+      .from('shared_client_members')
+      .select('*')
+      .eq('shared_client_id', share.id)
+      .order('joined_at', { ascending: false });
+    setMembers(mems || []);
+  }, [user, id]);
 
   if (!client) {
     return (
@@ -296,15 +371,25 @@ export default function ClientWorkspace({ clients, actions }) {
                 {client.tasks.length} task{client.tasks.length !== 1 ? 's' : ''} total
               </p>
             </div>
-            {/* Edit button in banner */}
-            <button
-              onClick={() => setEditingClient(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/40 hover:bg-white/60 transition-colors text-xs font-medium flex-shrink-0"
-              style={{ color: textColor }}
-            >
-              <Edit2 size={13} />
-              Edit
-            </button>
+            {/* Buttons in banner */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => setShareModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/40 hover:bg-white/60 transition-colors text-xs font-medium"
+                style={{ color: textColor }}
+              >
+                <Share2 size={13} />
+                Share
+              </button>
+              <button
+                onClick={() => setEditingClient(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/40 hover:bg-white/60 transition-colors text-xs font-medium"
+                style={{ color: textColor }}
+              >
+                <Edit2 size={13} />
+                Edit
+              </button>
+            </div>
           </div>
         </div>
 
@@ -415,7 +500,84 @@ export default function ClientWorkspace({ clients, actions }) {
           </div>
         </div>
 
+        {/* Tab switcher */}
+        <div className="flex items-center gap-1.5 mb-4">
+          <button
+            onClick={() => setActiveTab('tasks')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              activeTab === 'tasks' ? 'text-white' : 'bg-white text-gray-500 shadow-sm hover:text-gray-800'
+            }`}
+            style={activeTab === 'tasks' ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
+          >
+            Tasks
+            <span className={`text-xs font-mono px-1.5 py-0.5 rounded-md ${activeTab === 'tasks' ? 'bg-white/20' : 'bg-gray-100 text-gray-400'}`}>
+              {client.tasks.length}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('members')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              activeTab === 'members' ? 'text-white' : 'bg-white text-gray-500 shadow-sm hover:text-gray-800'
+            }`}
+            style={activeTab === 'members' ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
+          >
+            <Users size={13} />
+            Members
+            {members.length > 0 && (
+              <span className={`text-xs font-mono px-1.5 py-0.5 rounded-md ${activeTab === 'members' ? 'bg-white/20' : 'bg-gray-100 text-gray-400'}`}>
+                {members.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Members Panel */}
+        {activeTab === 'members' && (
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-lg font-semibold text-gray-900">Members</h2>
+              <button
+                onClick={() => setShareModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white"
+                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+              >
+                <Share2 size={12} />
+                Share Link
+              </button>
+            </div>
+            {membersLoading ? (
+              <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+            ) : members.length === 0 ? (
+              <div className="text-center py-10">
+                <Users size={28} className="mx-auto text-gray-200 mb-3" />
+                <p className="text-sm text-gray-400 font-medium">No members yet</p>
+                <p className="text-xs text-gray-300 mt-1">Share this page to invite collaborators</p>
+              </div>
+            ) : (
+              <div className="space-y-0">
+                {members.map((m) => (
+                  <div key={m.id} className="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                      style={{ backgroundColor: client.color, color: textColor }}
+                    >
+                      {m.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{m.name}</p>
+                      <p className="text-xs text-gray-400">
+                        Joined {new Date(m.joined_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Task List */}
+        {activeTab === 'tasks' && (
         <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden">
           <h2 className="font-display text-lg font-semibold text-gray-900 mb-4">
             Tasks
@@ -487,6 +649,7 @@ export default function ClientWorkspace({ clients, actions }) {
             </button>
           </div>
         </div>
+        )} {/* end activeTab === 'tasks' */}
       </div>
 
       {/* Right Summary Panel */}
@@ -581,6 +744,14 @@ export default function ClientWorkspace({ clients, actions }) {
             await actions.updateClient(client.id, updates);
             setEditingClient(false);
           }}
+        />
+      )}
+
+      {shareModalOpen && user && (
+        <ShareModal
+          client={client}
+          userId={user.id}
+          onClose={handleShareModalClose}
         />
       )}
     </div>

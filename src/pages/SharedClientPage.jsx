@@ -138,13 +138,6 @@ function WelcomePage({ shareRecord, clientName, onAccept }) {
       .update({ status: 'used', member_id: member.id, member_name: name.trim() })
       .eq('id', invite.id);
 
-    // Notify owner
-    const workspaceName = shareRecord.client_name || clientName || 'a shared workspace';
-    await supabase.from('notifications').insert({
-      user_id: shareRecord.owner_id,
-      message: `${name.trim()} joined ${workspaceName}`,
-    });
-
     // Persist membership + code ID in localStorage
     localStorage.setItem(
       `workboard_member_${shareRecord.token}`,

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Bell, Settings, ArrowRight, ChevronLeft, ChevronRight,
   CheckCircle2, Clock, Users, CreditCard,
-  AlertTriangle, TriangleAlert, Calendar, UserPlus,
+  AlertTriangle, TriangleAlert, Calendar,
 } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -234,7 +234,6 @@ export default function Dashboard({ clients, actions }) {
   const [overdueOpen, setOverdueOpen] = useState(false);
   const [bellPos, setBellPos] = useState({ top: 0, right: 0 });
   const [overduePos, setOverduePos] = useState({ top: 0, right: 0 });
-  const [notifications, setNotifications] = useState([]);
   const bellRef = useRef(null);
   const overdueRef = useRef(null);
   const { settings, formatMoney, convertAmount } = useSettings();
@@ -243,25 +242,6 @@ export default function Dashboard({ clients, actions }) {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const todayStr = getTodayStr();
-
-  // Fetch unread notifications (new member joins)
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('read', false)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => setNotifications(data || []));
-  }, [user]);
-
-  const markNotificationsRead = async () => {
-    if (!user || notifications.length === 0) return;
-    const ids = notifications.map((n) => n.id);
-    await supabase.from('notifications').update({ read: true }).in('id', ids);
-    setNotifications([]);
-  };
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -288,7 +268,7 @@ export default function Dashboard({ clients, actions }) {
   const overdueTasks = allTasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr)
     .sort((a, b) => a.deadline.localeCompare(b.deadline));
 
-  const bellBadge = notifications.length;
+  const bellBadge = dueTodayTasks.length;
   const overdueBadge = overdueTasks.length;
 
   // Only show Overdue tab when there are overdue tasks
@@ -445,7 +425,6 @@ export default function Dashboard({ clients, actions }) {
                     setBellPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
                     setBellOpen(!bellOpen);
                     setOverdueOpen(false);
-                    if (!bellOpen) markNotificationsRead();
                   }}
                   className="relative w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors"
                 >
@@ -462,24 +441,12 @@ export default function Dashboard({ clients, actions }) {
                     style={{ top: bellPos.top, right: bellPos.right }}
                   >
                     <div className="px-4 py-3 border-b border-gray-100">
-                      <p className="text-sm font-semibold text-gray-700">Notifications</p>
+                      <p className="text-sm font-semibold text-gray-700">Upcoming Deadlines</p>
                     </div>
-                    {notifications.length === 0 && dueTodayTasks.length === 0 && upcomingTasks.length === 0 ? (
-                      <div className="px-4 py-6 text-center text-sm text-gray-400">Nothing new</div>
+                    {dueTodayTasks.length === 0 && upcomingTasks.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm text-gray-400">No upcoming deadlines</div>
                     ) : (
                       <div className="max-h-72 overflow-y-auto">
-                        {/* Member join notifications */}
-                        {notifications.length > 0 && (
-                          <>
-                            <p className="px-4 pt-3 pb-1 text-xs font-semibold text-purple-600 uppercase tracking-wider">New Members</p>
-                            {notifications.map((n) => (
-                              <div key={n.id} className="flex items-start gap-3 px-4 py-2.5 bg-purple-50/50 border-b border-gray-50">
-                                <UserPlus size={14} className="text-purple-400 flex-shrink-0 mt-0.5" />
-                                <p className="text-sm text-gray-700">{n.message}</p>
-                              </div>
-                            ))}
-                          </>
-                        )}
                         {dueTodayTasks.length > 0 && (
                           <>
                             <p className="px-4 pt-3 pb-1 text-xs font-semibold text-amber-600 uppercase tracking-wider">Due Today</p>

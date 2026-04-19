@@ -107,7 +107,7 @@ function DraggableTaskItem({ task, onUpdate, onDelete }) {
 export default function ClientWorkspace({ clients, actions }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { formatMoney, convertAmount, settings } = useSettings();
+  const { formatMoney, convertAmount, settings, showToast } = useSettings();
   const { user } = useAuth();
   const client = clients.find((c) => c.id === id);
   const [newTask, setNewTask] = useState('');
@@ -207,6 +207,8 @@ export default function ClientWorkspace({ clients, actions }) {
           { event: 'INSERT', schema: 'public', table: 'shared_client_members', filter: `shared_client_id=eq.${share.id}` },
           (payload) => {
             setMembers((prev) => [payload.new, ...prev]);
+            const memberName = payload.new.name || 'Someone';
+            showToast(`${memberName} joined ${client?.name || 'the workspace'}`);
           }
         )
         .subscribe();

@@ -88,32 +88,68 @@ function ErrorPage({ message = 'This link is no longer available.' }) {
 // ── Welcome page ──────────────────────────────────────────────────────────────
 function WelcomePage({ shareRecord, clientName, onAccept }) {
   const [name, setName] = useState('');
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleAccept = async () => {
     if (!name.trim()) { setError('Please enter your name'); return; }
+    if (!code.trim()) { setError('Please enter your invite code'); return; }
     setLoading(true);
     setError('');
-    const { data, error: err } = await supabase
+
+    const normalized = code.trim().toUpperCase();
+
+    // Validate invite code
+    const { data: invite, error: inviteErr } = await supabase
+      .from('shared_client_invites')
+      .select('*')
+      .eq('shared_client_id', shareRecord.id)
+      .eq('code', normalized)
+      .maybeSingle();
+
+    if (inviteErr || !invite) {
+      setError('Invalid invite code. Please check and try again.');
+      setLoading(false);
+      return;
+    }
+    if (invite.status === 'revoked') {
+      setError('This invite code has been revoked. Please request a new one.');
+      setLoading(false);
+      return;
+    }
+    if (invite.status === 'used') {
+      setError('This invite code has already been used.');
+      setLoading(false);
+      return;
+    }
+
+    // Create member row
+    const { data: member, error: memberErr } = await supabase
       .from('shared_client_members')
       .insert({ shared_client_id: shareRecord.id, name: name.trim() })
       .select()
       .single();
-    if (err) { setError(err.message); setLoading(false); return; }
+    if (memberErr) { setError(memberErr.message); setLoading(false); return; }
 
-    // Insert notification for owner
+    // Mark invite code as used
+    await supabase
+      .from('shared_client_invites')
+      .update({ status: 'used', member_id: member.id, member_name: name.trim() })
+      .eq('id', invite.id);
+
+    // Notify owner
     await supabase.from('notifications').insert({
       user_id: shareRecord.owner_id,
       message: `${name.trim()} joined ${clientName}`,
     });
 
-    // Persist membership in localStorage
+    // Persist membership + code ID in localStorage
     localStorage.setItem(
       `workboard_member_${shareRecord.token}`,
-      JSON.stringify({ id: data.id, name: data.name })
+      JSON.stringify({ id: member.id, name: member.name, codeId: invite.id })
     );
-    onAccept({ id: data.id, name: data.name });
+    onAccept({ id: member.id, name: member.name });
     setLoading(false);
   };
 
@@ -127,9 +163,6 @@ function WelcomePage({ shareRecord, clientName, onAccept }) {
         <p className="font-display text-2xl font-bold text-center mb-8" style={{ color: 'var(--accent, #ED64A6)' }}>
           {clientName}
         </p>
-        <p className="text-sm text-gray-500 text-center mb-6">
-          Enter your name to access the shared workspace.
-        </p>
 
         <div className="space-y-3">
           <input
@@ -141,16 +174,27 @@ function WelcomePage({ shareRecord, clientName, onAccept }) {
             onKeyDown={(e) => e.key === 'Enter' && handleAccept()}
             className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm outline-none focus:border-gray-400 transition-all"
           />
+          <input
+            type="text"
+            placeholder="Invite code (e.g. ABCD-EFGH)"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === 'Enter' && handleAccept()}
+            className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm outline-none focus:border-gray-400 transition-all font-mono tracking-widest uppercase"
+          />
           {error && <p className="text-xs text-red-500 text-center">{error}</p>}
           <button
             onClick={handleAccept}
-            disabled={loading || !name.trim()}
+            disabled={loading || !name.trim() || !code.trim()}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-white text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
             style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             {loading && <Loader2 size={15} className="animate-spin" />}
             Accept & View
           </button>
+          <p className="text-xs text-gray-400 text-center">
+            You need an invite code from the workspace owner to join.
+          </p>
         </div>
       </div>
     </div>
@@ -533,7 +577,22 @@ export default function SharedClientPage() {
       })));
 
       if (storedMember) {
-        // Verify member still exists in DB (not kicked out)
+        // 1. Verify invite code is still valid (not revoked)
+        if (storedMember.codeId) {
+          const { data: codeRow } = await supabase
+            .from('shared_client_invites')
+            .select('status')
+            .eq('id', storedMember.codeId)
+            .maybeSingle();
+
+          if (!codeRow || codeRow.status === 'revoked') {
+            localStorage.removeItem(`workboard_member_${token}`);
+            setPhase('revoked');
+            return;
+          }
+        }
+
+        // 2. Verify member row still exists
         const { data: memberRow } = await supabase
           .from('shared_client_members')
           .select('id, permission')
@@ -541,7 +600,6 @@ export default function SharedClientPage() {
           .maybeSingle();
 
         if (!memberRow) {
-          // Member was removed — clear localStorage and show revoked screen
           localStorage.removeItem(`workboard_member_${token}`);
           setPhase('revoked');
           return;
@@ -551,7 +609,7 @@ export default function SharedClientPage() {
         setMemberPermission(memberRow.permission || 'view');
         setPhase('dashboard');
 
-        // Realtime: detect if owner kicks this member while they're viewing
+        // Realtime: detect kick while actively viewing (invite code revoked)
         realtimeChannel = supabase
           .channel(`member-revoke-${storedMember.id}`)
           .on(

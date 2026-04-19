@@ -763,6 +763,12 @@ export default function ClientWorkspace({ clients, actions }) {
                           <div className="border-t border-gray-100 mx-2" />
                           <button
                             onClick={async () => {
+                              // Revoke their invite code first (blocks re-entry)
+                              await supabase
+                                .from('shared_client_invites')
+                                .update({ status: 'revoked' })
+                                .eq('member_id', m.id);
+                              // Then remove the member row (triggers realtime on their page)
                               await supabase.from('shared_client_members').delete().eq('id', m.id);
                               setMembers((prev) => prev.filter((mem) => mem.id !== m.id));
                               setOpenMemberMenu(null);

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 
 const ACCENT_TEXT = {
   '#FDE8E8': '#92400E', '#FEF3C7': '#78350F', '#D1FAE5': '#065F46',
@@ -159,7 +159,6 @@ function WelcomePage({ shareRecord, clientName, onAccept }) {
 
 // ── Shared dashboard ──────────────────────────────────────────────────────────
 function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permission }) {
-  const { token } = useParams();
   const navigate = useNavigate();
   const [newTask, setNewTask] = useState('');
   const [addingTask, setAddingTask] = useState(false);
@@ -169,18 +168,21 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
   const textColor = ACCENT_TEXT[client.color] || '#374151';
   const totalTasks = tasks.length;
   const doneTasks = tasks.filter((t) => t.done).length;
+  const pendingCount = tasks.filter((t) => !t.done).length;
   const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  const overdueTasks = tasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr);
+  const totalEarned = tasks.filter((t) => t.paid).reduce((s, t) => s + (t.amount || 0), 0);
+  const totalPending = tasks.filter((t) => !t.paid && (t.amount || 0) > 0).reduce((s, t) => s + (t.amount || 0), 0);
 
-  const filteredTasks = tasks.filter((t) => {
+  const canEdit = permission === 'edit';
+
+  const allFiltered = tasks.filter((t) => {
     if (filter === 'pending') return !t.done;
     if (filter === 'done') return t.done;
     return true;
   });
-
-  const pendingTasks = filteredTasks.filter((t) => !t.done);
-  const completedTasks = filteredTasks.filter((t) => t.done);
-
-  const canEdit = permission === 'edit';
+  const pendingTasks = allFiltered.filter((t) => !t.done);
+  const completedTasks = allFiltered.filter((t) => t.done);
 
   const handleToggleDone = async (task) => {
     const newDone = !task.done;
@@ -197,15 +199,8 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
 
   const handleTogglePaid = async (task) => {
     const newPaid = !task.paid;
-    const { error } = await supabase
-      .from('tasks')
-      .update({ paid: newPaid })
-      .eq('id', task.id);
-    if (!error) {
-      setTasks((prev) =>
-        prev.map((t) => t.id === task.id ? { ...t, paid: newPaid } : t)
-      );
-    }
+    const { error } = await supabase.from('tasks').update({ paid: newPaid }).eq('id', task.id);
+    if (!error) setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, paid: newPaid } : t));
   };
 
   const handleAddTask = async () => {
@@ -218,23 +213,13 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
         client_id: client.id,
         user_id: shareRecord.owner_id,
         title: newTask.trim(),
-        done: false,
-        paid: false,
-        amount: 0,
-        currency: 'NGN',
-        sort_order: maxSort,
+        done: false, paid: false, amount: 0, currency: 'NGN', sort_order: maxSort,
       })
-      .select()
-      .single();
+      .select().single();
     if (!error && data) {
       setTasks((prev) => [...prev, {
-        id: data.id,
-        title: data.title,
-        done: data.done,
-        paid: data.paid,
-        amount: data.amount,
-        currency: data.currency,
-        deadline: data.deadline || null,
+        id: data.id, title: data.title, done: data.done, paid: data.paid,
+        amount: data.amount, currency: data.currency, deadline: data.deadline || null,
         sort_order: data.sort_order ?? maxSort,
       }]);
       setNewTask('');
@@ -242,126 +227,101 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
     setAddingTask(false);
   };
 
-  const totalEarned = tasks.filter((t) => t.paid).reduce((s, t) => s + (t.amount || 0), 0);
-
   return (
-    <div className="min-h-screen bg-[#F5F5F7]">
-      {/* Header banner */}
-      <div className="w-full p-4 sm:p-6" style={{ backgroundColor: client.color }}>
-        <div className="max-w-2xl mx-auto">
-          {/* Logo + member name */}
-          <div className="flex items-center justify-between mb-4">
-            <img src="/favicon.svg" alt="WorkBoard" className="w-7 h-7 rounded-lg opacity-80" />
-            <p className="text-xs font-medium opacity-60" style={{ color: textColor }}>
-              Viewing as {member.name}
-            </p>
-          </div>
+    <div className="flex flex-col lg:flex-row min-h-screen bg-[#F7F8FA] overflow-hidden max-w-full">
 
-          {/* Client info */}
-          <div className="flex items-center gap-3">
+      {/* ── Main column ── */}
+      <div className="flex-1 p-4 lg:p-8 lg:pr-4 min-w-0 overflow-y-auto overflow-x-hidden">
+
+        {/* Top bar — WorkBoard logo + "Viewing as" */}
+        <div className="flex items-center justify-between mb-6">
+          <img src="/favicon.svg" alt="WorkBoard" className="w-8 h-8 rounded-xl opacity-80" />
+          <span className="text-xs text-gray-400">
+            Viewing as <span className="font-medium text-gray-600">{member.name}</span>
+          </span>
+        </div>
+
+        {/* Hero banner — identical style to ClientWorkspace */}
+        <div className="rounded-2xl p-6 mb-6 overflow-hidden" style={{ backgroundColor: client.color }}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             {client.logo ? (
-              <img src={client.logo} alt={client.name} className="w-10 h-10 rounded-xl object-contain bg-white p-0.5 flex-shrink-0" />
+              <img src={client.logo} alt={client.name} className="w-14 h-14 rounded-2xl object-contain bg-white p-1 flex-shrink-0" />
             ) : (
               <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold bg-white/40 flex-shrink-0"
+                className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-display font-bold bg-white/50 flex-shrink-0"
                 style={{ color: textColor }}
               >
                 {client.name.charAt(0)}
               </div>
             )}
-            <div>
-              <h1 className="font-display text-xl font-bold leading-tight" style={{ color: textColor }}>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-display text-3xl leading-tight font-bold truncate" style={{ color: textColor }}>
                 {client.name}
               </h1>
-              <p className="text-xs opacity-60" style={{ color: textColor }}>
-                Shared by {shareRecord.owner_name}
+              <p className="text-sm mt-0.5 opacity-70" style={{ color: textColor }}>
+                {totalTasks} task{totalTasks !== 1 ? 's' : ''} total · shared by {shareRecord.owner_name}
               </p>
             </div>
-          </div>
-
-          {/* Progress */}
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-medium opacity-60" style={{ color: textColor }}>
-                {doneTasks} of {totalTasks} tasks complete
-              </span>
-              <span className="text-xs font-mono font-bold" style={{ color: textColor }}>{pct}%</span>
-            </div>
-            <div className="h-1.5 bg-white/30 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${pct}%`, backgroundColor: textColor, opacity: 0.6 }}
-              />
-            </div>
-          </div>
-
-          {/* Earnings — edit only */}
-          {canEdit && totalEarned > 0 && (
-            <p className="text-xs mt-3 font-medium opacity-60" style={{ color: textColor }}>
-              Total earned: {totalEarned.toLocaleString()}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Task list */}
-      <div className="max-w-2xl mx-auto p-4 sm:p-6">
-        {/* Filter + view-only label */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex gap-1.5">
-            {['all', 'pending', 'done'].map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                  filter === f ? 'text-white' : 'bg-white text-gray-500 shadow-sm'
-                }`}
-                style={filter === f ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
-              >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
-          </div>
-          {!canEdit && (
-            <span className="text-xs text-gray-400 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block" />
-              View only
+            {/* Permission badge */}
+            <span
+              className="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/40"
+              style={{ color: textColor }}
+            >
+              {canEdit ? '✏️ Can edit' : '👁 View only'}
             </span>
-          )}
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        {/* Filter bar */}
+        <div className="flex items-center gap-1.5 mb-4">
+          {[
+            { value: 'all', label: 'All Tasks' },
+            { value: 'pending', label: 'Pending' },
+            { value: 'done', label: 'Completed' },
+          ].map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setFilter(f.value)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                filter === f.value ? 'text-white' : 'bg-white text-gray-500 shadow-sm hover:bg-gray-50'
+              }`}
+              style={filter === f.value ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Task card */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden">
+          <h2 className="font-display text-lg font-semibold text-gray-900 mb-4">
+            Tasks
+            <span className="text-sm font-sans font-normal text-gray-400 ml-2">{totalTasks} total</span>
+          </h2>
+
           {pendingTasks.length === 0 && completedTasks.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               <CheckCircle2 size={32} className="mx-auto mb-3 opacity-20" />
-              <p className="text-sm">No tasks</p>
+              <p className="text-sm">{filter !== 'all' ? 'No tasks in this filter' : 'No tasks yet.'}</p>
             </div>
           ) : (
             <>
               {pendingTasks.length > 0 && (
-                <div className="py-2">
+                <div className="mb-4">
                   {pendingTasks.map((task) => (
-                    <SharedTaskRow
-                      key={task.id}
-                      task={task}
-                      permission={permission}
+                    <SharedTaskRow key={task.id} task={task} permission={permission}
                       onToggleDone={() => handleToggleDone(task)}
-                      onTogglePaid={() => handleTogglePaid(task)}
-                    />
+                      onTogglePaid={() => handleTogglePaid(task)} />
                   ))}
                 </div>
               )}
               {completedTasks.length > 0 && (
-                <div className={`py-2 ${pendingTasks.length > 0 ? 'border-t border-gray-100' : ''}`}>
-                  <p className="text-xs text-gray-400 uppercase tracking-wider px-4 py-2">Completed</p>
+                <div className={pendingTasks.length > 0 ? 'border-t border-gray-100 pt-3' : ''}>
+                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 px-4">Completed</p>
                   {completedTasks.map((task) => (
-                    <SharedTaskRow
-                      key={task.id}
-                      task={task}
-                      permission={permission}
+                    <SharedTaskRow key={task.id} task={task} permission={permission}
                       onToggleDone={() => handleToggleDone(task)}
-                      onTogglePaid={() => handleTogglePaid(task)}
-                    />
+                      onTogglePaid={() => handleTogglePaid(task)} />
                   ))}
                 </div>
               )}
@@ -370,22 +330,22 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
 
           {/* Add task — edit only */}
           {canEdit && (
-            <div className="border-t border-gray-100 flex items-center gap-2 px-4 py-3">
+            <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
               <input
                 type="text"
-                placeholder="Add a task..."
+                placeholder="Add a new task..."
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder:text-gray-300"
+                className="flex-1 px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all min-w-0"
               />
               <button
                 onClick={handleAddTask}
                 disabled={!newTask.trim() || addingTask}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-40"
+                className="flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all flex-shrink-0"
                 style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
               >
-                {addingTask ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                {addingTask ? <Loader2 size={14} className="animate-spin" /> : <Plus size={16} />}
                 Add
               </button>
             </div>
@@ -393,15 +353,98 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
         </div>
       </div>
 
-      {/* Try WorkBoard FAB */}
-      <button
-        onClick={() => navigate(`/register?from_share=true&token=${shareRecord.token}`)}
-        className="fixed bottom-5 right-5 flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-xs font-semibold shadow-lg hover:opacity-90 transition-opacity"
-        style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
-      >
-        <Sparkles size={13} />
-        Try WorkBoard free
-      </button>
+      {/* ── Right sidebar — mirrors ClientWorkspace exactly ── */}
+      <div className="w-full lg:w-[260px] lg:flex-shrink-0 p-4 lg:p-5 lg:pl-2 space-y-4 overflow-y-auto overflow-x-hidden">
+
+        {/* Overview */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm">
+          <p className="text-sm font-semibold text-gray-700 mb-4">Overview</p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 size={16} className="text-green-500" />
+              </div>
+              <div>
+                <p className="font-mono font-semibold text-gray-900">{doneTasks}</p>
+                <p className="text-xs text-gray-400">Completed</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+                <Clock size={16} className="text-amber-500" />
+              </div>
+              <div>
+                <p className="font-mono font-semibold text-gray-900">{pendingCount}</p>
+                <p className="text-xs text-gray-400">Pending</p>
+              </div>
+            </div>
+            {overdueTasks.length > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle size={16} className="text-red-500" />
+                </div>
+                <div>
+                  <p className="font-mono font-semibold text-red-600">{overdueTasks.length}</p>
+                  <p className="text-xs text-red-400">Overdue</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Earnings — only shown to editors with paid tasks */}
+        {canEdit && (totalEarned > 0 || totalPending > 0) && (
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm">
+            <p className="text-sm font-semibold text-gray-700 mb-3">Earnings</p>
+            <div className="space-y-3">
+              {totalEarned > 0 && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Total earned</p>
+                  <p className="font-mono text-xl font-bold text-green-600">
+                    {totalEarned.toLocaleString()}
+                  </p>
+                </div>
+              )}
+              {totalPending > 0 && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Pending</p>
+                  <p className="font-mono text-lg font-semibold text-amber-500">
+                    {totalPending.toLocaleString()}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Completion — colored, same as ClientWorkspace */}
+        <div className="rounded-2xl p-5" style={{ backgroundColor: client.color }}>
+          <p className="text-sm font-semibold mb-3" style={{ color: textColor }}>Completion</p>
+          <div className="flex items-end gap-2 mb-2">
+            <span className="font-mono text-3xl font-bold" style={{ color: textColor }}>{pct}%</span>
+          </div>
+          <div className="h-2 bg-white/40 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${pct}%`, backgroundColor: textColor, opacity: 0.6 }}
+            />
+          </div>
+        </div>
+
+        {/* Try WorkBoard CTA */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm text-center">
+          <Sparkles size={20} className="mx-auto mb-2" style={{ color: 'var(--accent, #ED64A6)' }} />
+          <p className="text-sm font-semibold text-gray-800 mb-1">Like what you see?</p>
+          <p className="text-xs text-gray-400 mb-3">Track your own clients & tasks with WorkBoard.</p>
+          <button
+            onClick={() => navigate(`/register?from_share=true&token=${shareRecord.token}`)}
+            className="w-full py-2.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+          >
+            Try WorkBoard free
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

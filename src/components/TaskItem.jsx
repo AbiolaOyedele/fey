@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Trash2, Check, Calendar, GripVertical, ChevronDown } from 'lucide-react';
+import { Trash2, Check, Calendar, GripVertical, ChevronDown, ChevronUp } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 
 function formatWithCommas(val) {
@@ -25,7 +25,16 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
   const [bouncing, setBouncing] = useState(false);
   const [amountInput, setAmountInput] = useState('');
   const [amountEditing, setAmountEditing] = useState(false);
+  const [paidMenuOpen, setPaidMenuOpen] = useState(false);
   const dateInputRef = useRef(null);
+  const paidMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!paidMenuOpen) return;
+    const handler = (e) => { if (paidMenuRef.current && !paidMenuRef.current.contains(e.target)) setPaidMenuOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [paidMenuOpen]);
   const { settings, convertAmount } = useSettings();
 
   const currencyLabel = settings.currency === 'USD' ? 'USD' : 'NGN';
@@ -169,16 +178,37 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
         )}
 
         {!noMoney && (
-          <button
-            onClick={handlePaid}
-            className={`hidden md:flex px-2 sm:px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 flex-shrink-0 ${
-              task.paid
-                ? 'bg-success text-white'
-                : 'bg-gray-100 text-gray-500 hover:bg-pending/20 hover:text-pending'
-            }`}
-          >
-            {task.paid ? 'Paid' : 'Unpaid'}
-          </button>
+          <div className="hidden md:block relative flex-shrink-0" ref={paidMenuRef}>
+            <button
+              onClick={() => setPaidMenuOpen((v) => !v)}
+              className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 ${
+                task.paid ? 'bg-success text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              {task.paid ? 'Paid' : 'Unpaid'}
+              {paidMenuOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+            </button>
+            {paidMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 min-w-[100px]">
+                <button
+                  onClick={() => { if (!task.paid) handlePaid(); setPaidMenuOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-gray-50 transition-colors ${task.paid ? 'text-success font-semibold' : 'text-gray-600'}`}
+                >
+                  {task.paid && <Check size={10} className="text-success" />}
+                  {!task.paid && <span className="w-[10px]" />}
+                  Paid
+                </button>
+                <button
+                  onClick={() => { if (task.paid) handlePaid(); setPaidMenuOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-gray-50 transition-colors ${!task.paid ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}
+                >
+                  {!task.paid && <Check size={10} className="text-gray-500" />}
+                  {task.paid && <span className="w-[10px]" />}
+                  Unpaid
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Desktop trailing icons */}
@@ -277,16 +307,37 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
             placeholder="0"
             className="w-20 text-right text-sm font-mono bg-gray-50 rounded-lg px-2 py-1 border border-gray-200 outline-none text-gray-700 placeholder:text-gray-300"
           />
-          <button
-            onClick={handlePaid}
-            className={`px-2 py-1 rounded-lg text-xs font-medium transition-all duration-200 flex-shrink-0 ${
-              task.paid
-                ? 'bg-success text-white'
-                : 'bg-gray-100 text-gray-500'
-            }`}
-          >
-            {task.paid ? 'Paid' : 'Unpaid'}
-          </button>
+          <div className="relative flex-shrink-0" ref={paidMenuRef}>
+            <button
+              onClick={() => setPaidMenuOpen((v) => !v)}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all duration-200 ${
+                task.paid ? 'bg-success text-white' : 'bg-gray-100 text-gray-500'
+              }`}
+            >
+              {task.paid ? 'Paid' : 'Unpaid'}
+              {paidMenuOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+            </button>
+            {paidMenuOpen && (
+              <div className="absolute left-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 min-w-[100px]">
+                <button
+                  onClick={() => { if (!task.paid) handlePaid(); setPaidMenuOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-gray-50 transition-colors ${task.paid ? 'text-success font-semibold' : 'text-gray-600'}`}
+                >
+                  {task.paid && <Check size={10} className="text-success" />}
+                  {!task.paid && <span className="w-[10px]" />}
+                  Paid
+                </button>
+                <button
+                  onClick={() => { if (task.paid) handlePaid(); setPaidMenuOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-gray-50 transition-colors ${!task.paid ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}
+                >
+                  {!task.paid && <Check size={10} className="text-gray-500" />}
+                  {task.paid && <span className="w-[10px]" />}
+                  Unpaid
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
             className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${

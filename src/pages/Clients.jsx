@@ -466,13 +466,10 @@ export default function Clients({ clients, actions }) {
 
       {/* Add Client Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-end md:items-center justify-center z-50 animate-fadeIn">
-          <div
-            className="bg-white rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-md shadow-xl animate-slideUp md:animate-slideDown max-h-[90vh] overflow-y-auto"
-            style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
-          >
-            {/* Drag handle — mobile only */}
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mt-1 mb-3 md:hidden" />
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 animate-fadeIn p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
+            {/* spacer was drag handle */}
+            <div className="hidden" />
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display text-xl font-semibold">New Client</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">

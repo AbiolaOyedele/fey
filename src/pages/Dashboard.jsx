@@ -921,7 +921,7 @@ export default function Dashboard({ clients, actions }) {
         {/* My clients list */}
         <div className="bg-white rounded-2xl p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-semibold text-gray-700">My clients</p>
+            <p className="text-sm font-semibold text-gray-700">My {(settings.clients_label || 'Clients').toLowerCase()}</p>
             <Link to="/clients" className="text-xs hover:underline" style={{ color: 'var(--accent, #ED64A6)' }}>
               View all
             </Link>

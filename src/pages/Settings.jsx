@@ -379,21 +379,21 @@ export default function Settings({ clients, refetch }) {
             {/* Accent Color */}
             <div>
               <Label>Accent Color</Label>
-              <div className="flex items-center gap-2 flex-wrap mb-3">
+              <div className="flex items-center gap-1.5 flex-wrap mb-3">
                 {THEME_COLORS.map((color) => (
                   <button
                     key={color}
                     onClick={() => { saveSetting('accent_color', color); setAccentHexInput(''); }}
-                    className="w-8 h-8 rounded-full transition-all duration-150 hover:scale-110"
+                    className="w-6 h-6 rounded-full transition-all duration-150 hover:scale-110"
                     style={{
                       backgroundColor: color,
-                      outline: settings.accent_color === color ? `3px solid ${color}` : '3px solid transparent',
+                      outline: settings.accent_color === color ? `2px solid ${color}` : '2px solid transparent',
                       outlineOffset: '2px',
                     }}
                   />
                 ))}
                 {/* Color picker swatch */}
-                <label className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors relative overflow-hidden" title="Custom color">
+                <label className="w-6 h-6 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors relative overflow-hidden" title="Custom color">
                   <input
                     type="color"
                     className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"

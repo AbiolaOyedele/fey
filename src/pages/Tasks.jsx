@@ -370,8 +370,8 @@ export default function Tasks({ taskGroupData }) {
       {showGroupModal && (
         <div className="fixed inset-0 bg-black/30 flex items-end md:items-center justify-center z-50 animate-fadeIn">
           <div
-            className="bg-white rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-md shadow-xl animate-slideUp md:animate-slideDown max-h-[85vh] overflow-y-auto"
-            style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+            className="bg-white rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-md shadow-xl animate-slideUp md:animate-slideDown max-h-[90vh] overflow-y-auto"
+            style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
           >
             {/* Drag handle — mobile only */}
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mt-1 mb-3 md:hidden" />
@@ -398,15 +398,15 @@ export default function Tasks({ taskGroupData }) {
             {/* Color */}
             <div className="mb-5">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2.5">Color</p>
-              <div className="flex gap-2 flex-wrap mb-3">
+              <div className="flex gap-1.5 flex-wrap mb-3">
                 {paletteToShow.map((color) => (
                   <button
                     key={color}
                     onClick={() => { setGroupColor(color); setGroupCustomHex(''); }}
-                    className="w-7 h-7 rounded-full transition-all duration-150 hover:scale-110"
+                    className="w-6 h-6 rounded-full transition-all duration-150 hover:scale-110"
                     style={{
                       backgroundColor: color,
-                      outline: groupColor === color ? '3px solid #9CA3AF' : '3px solid transparent',
+                      outline: groupColor === color ? '2px solid #9CA3AF' : '2px solid transparent',
                       outlineOffset: '2px',
                     }}
                   />

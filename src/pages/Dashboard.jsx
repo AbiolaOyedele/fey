@@ -576,7 +576,7 @@ export default function Dashboard({ clients, actions }) {
         {/* All tab: client cards grid */}
         {filter === 'All' && (
           <>
-            <p className="text-sm text-gray-500 font-medium mb-4">Clients</p>
+            <p className="text-sm text-gray-500 font-medium mb-4">{settings.clients_label || 'Clients'}</p>
             <div className={`grid grid-cols-1 sm:grid-cols-2 ${gridColsDesktop} gap-4`}>
               {topClients.map((client) => {
                 const doneTasks = client.tasks.filter((t) => t.done).length;
@@ -892,7 +892,7 @@ export default function Dashboard({ clients, actions }) {
           <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-100">
             <Link to="/clients" className="text-center hover:opacity-70 transition-opacity">
               <p className="font-mono font-semibold text-gray-900">{clients.length}</p>
-              <p className="text-xs text-gray-400">Clients</p>
+              <p className="text-xs text-gray-400">{settings.clients_label || 'Clients'}</p>
             </Link>
             <Link to="/clients" className="text-center hover:opacity-70 transition-opacity">
               <p className="font-mono font-semibold text-gray-900">{tasksDone}</p>

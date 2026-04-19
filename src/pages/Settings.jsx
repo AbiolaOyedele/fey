@@ -94,10 +94,9 @@ function NavItem({ label, active, onClick }) {
 }
 
 const NAV = [
-  { group: 'Main',       items: ['General', 'Workspace'] },
-  { group: 'Appearance', items: ['Theme & Colors', 'Typography', 'Dashboard'] },
-  { group: 'Data',       items: ['Currency', 'Import & Export'] },
-  { group: 'Other',      items: ['Updates', 'Trash', 'Account'] },
+  { group: null, items: ['Workspace'] },
+  { group: null, items: ['Branding'] },
+  { group: null, items: ['Others'] },
 ];
 
 export default function Settings({ clients, refetch }) {
@@ -121,7 +120,7 @@ export default function Settings({ clients, refetch }) {
     { value: 'tasks',   label: 'Tasks Only',     description: `${cl} hidden` },
   ];
 
-  const [activeSection, setActiveSection] = useState('General');
+  const [activeSection, setActiveSection] = useState('Workspace');
   const [clientsLabelInput, setClientsLabelInput] = useState(settings.clients_label || 'Clients');
   const [refreshing, setRefreshing] = useState(false);
   const [accentHexInput, setAccentHexInput] = useState('');
@@ -293,76 +292,67 @@ export default function Settings({ clients, refetch }) {
   const renderSection = () => {
     switch (activeSection) {
 
-      case 'General':
-        return (
-          <SectionGroup title="General">
-            <SettingRow
-              icon={Edit3}
-              title="Your Name"
-              description="How you appear across the app"
-              action={
-                <input
-                  type="text"
-                  value={settings.username}
-                  onChange={(e) => saveSetting('username', e.target.value)}
-                  placeholder="e.g. Alex Johnson"
-                  className="w-44 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all text-right"
-                />
-              }
-            />
-            <SettingRow
-              icon={Monitor}
-              title="Company Name"
-              description="Shown on your profile and shared pages"
-              action={
-                <input
-                  type="text"
-                  value={settings.company_name}
-                  onChange={(e) => saveSetting('company_name', e.target.value)}
-                  placeholder="e.g. Studio Co."
-                  className="w-44 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all text-right"
-                />
-              }
-            />
-            <SettingRow
-              icon={Image}
-              title="Workspace Logo"
-              description="PNG or JPG · max 500 KB"
-              border={false}
-              action={
-                <div className="flex items-center gap-2">
-                  {settings.logo && (
-                    <div className="relative group">
-                      <img src={settings.logo} alt="Logo" className="w-9 h-9 rounded-xl object-contain bg-white border border-gray-200" />
-                      <button onClick={handleRemoveLogo} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X size={8} />
-                      </button>
-                    </div>
-                  )}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
-                  >
-                    <Upload size={12} />
-                    Upload
-                  </button>
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                </div>
-              }
-            />
-          </SectionGroup>
-        );
-
+      // ── WORKSPACE: General + App Mode + Dashboard + Currency ──────────────
       case 'Workspace':
         return (
           <>
+            {/* General */}
+            <SectionGroup title="General">
+              <SettingRow
+                icon={Edit3}
+                title="Your Name"
+                description="How you appear across the app"
+                action={
+                  <input type="text" value={settings.username} onChange={(e) => saveSetting('username', e.target.value)} placeholder="e.g. Alex Johnson"
+                    className="w-40 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all text-right" />
+                }
+              />
+              <SettingRow
+                icon={Monitor}
+                title="Company Name"
+                description="Shown on your profile and shared pages"
+                action={
+                  <input type="text" value={settings.company_name} onChange={(e) => saveSetting('company_name', e.target.value)} placeholder="e.g. Studio Co."
+                    className="w-40 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all text-right" />
+                }
+              />
+              <SettingRow
+                icon={Image}
+                title="Workspace Logo"
+                description="PNG or JPG · max 500 KB"
+                action={
+                  <div className="flex items-center gap-2">
+                    {settings.logo && (
+                      <div className="relative group">
+                        <img src={settings.logo} alt="Logo" className="w-9 h-9 rounded-xl object-contain bg-white border border-gray-200" />
+                        <button onClick={handleRemoveLogo} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X size={8} /></button>
+                      </div>
+                    )}
+                    <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors">
+                      <Upload size={12} />Upload
+                    </button>
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                  </div>
+                }
+              />
+              <SettingRow
+                icon={Edit3}
+                title={`${cl} Section Label`}
+                description={`Renames "${cl}" throughout the app`}
+                border={false}
+                action={
+                  <input type="text" value={clientsLabelInput} onChange={(e) => setClientsLabelInput(e.target.value)} onBlur={(e) => saveSetting('clients_label', e.target.value.trim() || 'Clients')} placeholder="Clients"
+                    className="w-36 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all text-right" />
+                }
+              />
+            </SectionGroup>
+
+            {/* App Mode */}
             <SectionGroup title="App Mode">
               <div className="py-4">
                 <div className="grid grid-cols-3 gap-2">
                   {APP_MODES.map(({ value, label, description }) => (
-                    <button
-                      key={value}
-                      onClick={() => saveSetting('app_mode', value)}
+                    <button key={value} onClick={() => saveSetting('app_mode', value)}
                       className={`rounded-xl p-3 text-left border-2 transition-all ${currentMode === value ? 'border-transparent' : 'border-gray-100 hover:border-gray-200'}`}
                       style={currentMode === value ? { borderColor: 'var(--accent)', backgroundColor: 'color-mix(in srgb, var(--accent) 8%, white)' } : {}}
                     >
@@ -373,322 +363,232 @@ export default function Settings({ clients, refetch }) {
                 </div>
               </div>
             </SectionGroup>
-            <SectionGroup title="Labels">
-              <SettingRow
-                icon={Edit3}
-                title={`${cl} Section Label`}
-                description={`Renames "${cl}" everywhere in the app`}
-                border={false}
-                action={
-                  <input
-                    type="text"
-                    value={clientsLabelInput}
-                    onChange={(e) => setClientsLabelInput(e.target.value)}
-                    onBlur={(e) => saveSetting('clients_label', e.target.value.trim() || 'Clients')}
-                    placeholder="Clients"
-                    className="w-36 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all text-right"
-                  />
-                }
-              />
+
+            {/* Dashboard text */}
+            <SectionGroup title="Dashboard">
+              <div className="py-4 space-y-4">
+                <div>
+                  <p className="text-xs text-gray-400 mb-1.5">Heading</p>
+                  <textarea value={settings.dashboard_heading} onChange={(e) => saveSetting('dashboard_heading', e.target.value)} rows={2}
+                    className="w-full px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all resize-none"
+                    placeholder={`Track your\nwork & earnings`} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 mb-1.5">Subtitle <span className="italic">(optional)</span></p>
+                  <input type="text" value={settings.dashboard_subtitle} onChange={(e) => saveSetting('dashboard_subtitle', e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all"
+                    placeholder="A short tagline or welcome message" />
+                </div>
+              </div>
+            </SectionGroup>
+
+            {/* Currency */}
+            <SectionGroup title="Currency">
+              <div className="py-4 space-y-4">
+                <div className="grid grid-cols-4 gap-2">
+                  {[{ code: 'NGN', label: '₦ NGN' }, { code: 'USD', label: '$ USD' }, { code: 'GBP', label: '£ GBP' }, { code: 'EUR', label: '€ EUR' }].map(({ code, label }) => (
+                    <button key={code} onClick={() => saveSetting('currency', code)}
+                      className={`py-2.5 rounded-xl text-sm font-medium transition-all border ${settings.currency === code ? 'text-white border-transparent' : 'text-gray-500 border-gray-200 hover:border-gray-300 bg-gray-50'}`}
+                      style={settings.currency === code ? { backgroundColor: 'var(--accent)', borderColor: 'var(--accent)' } : {}}
+                    >{label}</button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button onClick={handleRefreshRate} disabled={refreshing} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-xs text-gray-500 hover:bg-gray-200 transition-colors disabled:opacity-50">
+                    <RefreshCw size={11} className={refreshing ? 'animate-spin' : ''} />Refresh rates
+                  </button>
+                  {settings.exchange_rate_updated_at && <span className="text-xs text-gray-400">Updated {settings.exchange_rate_updated_at}</span>}
+                  {(() => {
+                    let rates = null;
+                    try { rates = JSON.parse(settings.exchange_rates); } catch { /* ignore */ }
+                    if (!rates) return null;
+                    return <span className="text-xs text-gray-400 font-mono">1 USD = ₦{(rates.NGN || 0).toLocaleString()} · £{(rates.GBP || 0).toFixed(2)} · €{(rates.EUR || 0).toFixed(2)}</span>;
+                  })()}
+                </div>
+              </div>
             </SectionGroup>
           </>
         );
 
-      case 'Theme & Colors':
+      // ── BRANDING: Theme & Colors + Typography ─────────────────────────────
+      case 'Branding':
         return (
-          <SectionGroup title="Accent Color">
-            <div className="py-4 space-y-4">
-              <div>
-                <p className="text-xs text-gray-400 mb-3">Choose a color</p>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {THEME_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => { saveSetting('accent_color', color); setAccentHexInput(''); }}
-                      className="w-7 h-7 rounded-full transition-all duration-150 hover:scale-110"
-                      style={{ backgroundColor: color, outline: settings.accent_color === color ? `2px solid ${color}` : '2px solid transparent', outlineOffset: '2px' }}
-                    />
-                  ))}
-                  <label className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors relative overflow-hidden" title="Custom color">
-                    <input type="color" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" value={settings.accent_color} onChange={(e) => { saveSetting('accent_color', e.target.value); setAccentHexInput(e.target.value); }} />
-                    <span className="text-gray-400 text-xs font-bold pointer-events-none">+</span>
-                  </label>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-lg border border-gray-200 flex-shrink-0" style={{ backgroundColor: settings.accent_color }} />
-                <input
-                  type="text"
-                  placeholder="#ED64A6"
-                  value={accentHexInput}
-                  onChange={(e) => handleAccentHexChange(e.target.value)}
-                  maxLength={7}
-                  className="w-32 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm font-mono outline-none focus:border-gray-400 transition-all"
-                />
-                <span className="text-xs text-gray-400">Custom hex</span>
-              </div>
-              <div>
-                <p className="text-xs text-gray-400 mb-2">Card size</p>
-                <div className="relative w-48">
-                  <select value={settings.card_size || 'medium'} onChange={(e) => saveSetting('card_size', e.target.value)} className={selectClass}>
-                    <option value="small">Small</option>
-                    <option value="medium">Medium</option>
-                    <option value="large">Large</option>
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
-            </div>
-          </SectionGroup>
-        );
-
-      case 'Typography':
-        return (
-          <SectionGroup title="Fonts">
-            <div className="py-4 space-y-5">
-              {/* Body Font */}
-              <div>
-                <p className="text-xs font-medium text-gray-500 mb-2">Body Font</p>
-                <div className="flex items-center gap-3">
-                  <div className="relative flex-1 max-w-xs">
-                    <select value={settings.font_family || ''} onChange={(e) => saveSetting('font_family', e.target.value)} className={selectClass}>
-                      <option value="">Default (NoirPro)</option>
-                      {settings.custom_font_name && <option value="custom">Custom: {settings.custom_font_name}</option>}
-                      <option value="Lato">Lato</option>
-                      <option value="Urbanist">Urbanist</option>
-                      <option value="Spectral">Spectral</option>
-                      <option value="Spectral SC">Spectral SC</option>
-                      <option value="Playfair Display">Playfair Display</option>
-                    </select>
-                    <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <>
+            <SectionGroup title="Accent Color">
+              <div className="py-4 space-y-4">
+                <div>
+                  <p className="text-xs text-gray-400 mb-3">Choose a color</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {THEME_COLORS.map((color) => (
+                      <button key={color} onClick={() => { saveSetting('accent_color', color); setAccentHexInput(''); }}
+                        className="w-7 h-7 rounded-full transition-all duration-150 hover:scale-110"
+                        style={{ backgroundColor: color, outline: settings.accent_color === color ? `2px solid ${color}` : '2px solid transparent', outlineOffset: '2px' }} />
+                    ))}
+                    <label className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors relative overflow-hidden" title="Custom color">
+                      <input type="color" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" value={settings.accent_color} onChange={(e) => { saveSetting('accent_color', e.target.value); setAccentHexInput(e.target.value); }} />
+                      <span className="text-gray-400 text-xs font-bold pointer-events-none">+</span>
+                    </label>
                   </div>
-                  <button onClick={() => bodyFontFileRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors">
-                    <Upload size={12} />
-                    Upload
-                  </button>
-                  <input ref={bodyFontFileRef} type="file" accept=".ttf,.otf,.woff2" onChange={handleBodyFontUpload} className="hidden" />
                 </div>
-              </div>
-              {/* Heading Font */}
-              <div className="border-t border-gray-100 pt-5">
-                <p className="text-xs font-medium text-gray-500 mb-2">Heading Font</p>
                 <div className="flex items-center gap-3">
-                  <div className="relative flex-1 max-w-xs">
-                    <select value={settings.heading_font || ''} onChange={(e) => saveSetting('heading_font', e.target.value)} className={selectClass}>
-                      <option value="">Default (NoirPro)</option>
-                      {settings.custom_heading_font_name && <option value="custom">Custom: {settings.custom_heading_font_name}</option>}
-                      <option value="Lato">Lato</option>
-                      <option value="Urbanist">Urbanist</option>
-                      <option value="Spectral">Spectral</option>
-                      <option value="Spectral SC">Spectral SC</option>
-                      <option value="Playfair Display">Playfair Display</option>
+                  <div className="w-7 h-7 rounded-lg border border-gray-200 flex-shrink-0" style={{ backgroundColor: settings.accent_color }} />
+                  <input type="text" placeholder="#ED64A6" value={accentHexInput} onChange={(e) => handleAccentHexChange(e.target.value)} maxLength={7}
+                    className="w-32 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm font-mono outline-none focus:border-gray-400 transition-all" />
+                  <span className="text-xs text-gray-400">Custom hex</span>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 mb-2">Card size</p>
+                  <div className="relative w-48">
+                    <select value={settings.card_size || 'medium'} onChange={(e) => saveSetting('card_size', e.target.value)} className={selectClass}>
+                      <option value="small">Small</option>
+                      <option value="medium">Medium</option>
+                      <option value="large">Large</option>
                     </select>
-                    <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                   </div>
-                  <button onClick={() => headingFontFileRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors">
-                    <Upload size={12} />
-                    Upload
-                  </button>
-                  <input ref={headingFontFileRef} type="file" accept=".ttf,.otf,.woff2" onChange={handleHeadingFontUpload} className="hidden" />
                 </div>
               </div>
-            </div>
-          </SectionGroup>
-        );
+            </SectionGroup>
 
-      case 'Dashboard':
-        return (
-          <SectionGroup title="Dashboard Text">
-            <div className="py-4 space-y-4">
-              <div>
-                <p className="text-xs text-gray-400 mb-1.5">Heading</p>
-                <textarea
-                  value={settings.dashboard_heading}
-                  onChange={(e) => saveSetting('dashboard_heading', e.target.value)}
-                  rows={2}
-                  className="w-full px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all resize-none"
-                  placeholder={`Track your\nwork & earnings`}
-                />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400 mb-1.5">Subtitle <span className="italic">(optional)</span></p>
-                <input
-                  type="text"
-                  value={settings.dashboard_subtitle}
-                  onChange={(e) => saveSetting('dashboard_subtitle', e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all"
-                  placeholder="A short tagline or welcome message"
-                />
-              </div>
-            </div>
-          </SectionGroup>
-        );
-
-      case 'Currency':
-        return (
-          <SectionGroup title="Currency">
-            <div className="py-4 space-y-4">
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { code: 'NGN', label: '₦ NGN' },
-                  { code: 'USD', label: '$ USD' },
-                  { code: 'GBP', label: '£ GBP' },
-                  { code: 'EUR', label: '€ EUR' },
-                ].map(({ code, label }) => (
-                  <button
-                    key={code}
-                    onClick={() => saveSetting('currency', code)}
-                    className={`py-2.5 rounded-xl text-sm font-medium transition-all border ${settings.currency === code ? 'text-white border-transparent' : 'text-gray-500 border-gray-200 hover:border-gray-300 bg-gray-50'}`}
-                    style={settings.currency === code ? { backgroundColor: 'var(--accent)', borderColor: 'var(--accent)' } : {}}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2 flex-wrap pt-1">
-                <button
-                  onClick={handleRefreshRate}
-                  disabled={refreshing}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-xs text-gray-500 hover:bg-gray-200 transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw size={11} className={refreshing ? 'animate-spin' : ''} />
-                  Refresh rates
-                </button>
-                {settings.exchange_rate_updated_at && (
-                  <span className="text-xs text-gray-400">Updated {settings.exchange_rate_updated_at}</span>
-                )}
-                {(() => {
-                  let rates = null;
-                  try { rates = JSON.parse(settings.exchange_rates); } catch { /* ignore */ }
-                  if (!rates) return null;
-                  return <span className="text-xs text-gray-400 font-mono">1 USD = ₦{(rates.NGN || 0).toLocaleString()} · £{(rates.GBP || 0).toFixed(2)} · €{(rates.EUR || 0).toFixed(2)}</span>;
-                })()}
-              </div>
-            </div>
-          </SectionGroup>
-        );
-
-      case 'Import & Export':
-        return (
-          <SectionGroup title="Data">
-            <SettingRow
-              icon={Upload}
-              title="Export Data"
-              description="Download all clients and tasks as CSV"
-              action={<button onClick={handleExportData} className="px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors">Export</button>}
-            />
-            <SettingRow
-              icon={CreditCard}
-              title="Export Payments"
-              description="Download paid task and retainer records"
-              action={<button onClick={handleExportPayments} className="px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors">Export</button>}
-            />
-            <SettingRow
-              icon={Database}
-              title="Import Data"
-              description="Import from a WorkBoard-format CSV"
-              border={false}
-              action={
-                <>
-                  <button onClick={() => importFileRef.current?.click()} disabled={importing} className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-60">
-                    {importing ? <><RefreshCw size={12} className="animate-spin" />Importing…</> : <><Upload size={12} />Choose file</>}
-                  </button>
-                  <input ref={importFileRef} type="file" accept=".csv" onChange={handleImportFile} className="hidden" />
-                </>
-              }
-            />
-          </SectionGroup>
-        );
-
-      case 'Updates':
-        return (
-          <SectionGroup title="Updates">
-            <SettingRow
-              icon={Sparkles}
-              title="What's New"
-              description="Latest release highlights"
-              action={<button onClick={() => setWhatsNewOpen(true)} className="px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors">View</button>}
-            />
-            <SettingRow
-              icon={History}
-              title="Changelog"
-              description="Full version history"
-              border={false}
-              action={<button onClick={() => setChangelogOpen(true)} className="px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors">View</button>}
-            />
-          </SectionGroup>
-        );
-
-      case 'Trash':
-        return (
-          <SectionGroup title={`Trash · deleted after 45 days`}>
-            <div className="py-2">
-              {trash.length === 0 ? (
-                <p className="text-sm text-gray-400 py-6 text-center">Trash is empty</p>
-              ) : (
-                <>
-                  <div className="flex justify-end py-2">
-                    <button
-                      onClick={async () => {
-                        if (!window.confirm(`Permanently delete all ${trash.length} item${trash.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
-                        await Promise.all(trash.map((item) => deleteForever(item.id)));
-                        showToast('Trash cleared');
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
-                    >
-                      <Trash2 size={11} />
-                      Clear all
+            <SectionGroup title="Typography">
+              <div className="py-4 space-y-5">
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2">Body Font</p>
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1 max-w-xs">
+                      <select value={settings.font_family || ''} onChange={(e) => saveSetting('font_family', e.target.value)} className={selectClass}>
+                        <option value="">Default (NoirPro)</option>
+                        {settings.custom_font_name && <option value="custom">Custom: {settings.custom_font_name}</option>}
+                        <option value="Lato">Lato</option>
+                        <option value="Urbanist">Urbanist</option>
+                        <option value="Spectral">Spectral</option>
+                        <option value="Spectral SC">Spectral SC</option>
+                        <option value="Playfair Display">Playfair Display</option>
+                      </select>
+                      <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                    <button onClick={() => bodyFontFileRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors">
+                      <Upload size={12} />Upload
                     </button>
+                    <input ref={bodyFontFileRef} type="file" accept=".ttf,.otf,.woff2" onChange={handleBodyFontUpload} className="hidden" />
                   </div>
-                  <div className="space-y-2 pb-2">
-                    {trash.map((item) => {
-                      const daysLeft = Math.ceil((new Date(item.expires_at) - new Date()) / (1000 * 60 * 60 * 24));
-                      return (
-                        <div key={item.id} className="flex items-center gap-3 py-2.5 px-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-800 truncate">{item.item_name}</p>
-                            <p className="text-xs text-gray-400">
-                              {item.item_type === 'client' ? (settings.clients_label || 'Client') : item.item_type === 'task_group' ? 'Task Group' : item.item_type === 'standalone_task' ? 'Standalone Task' : 'Task'} · {daysLeft}d left
-                            </p>
-                          </div>
-                          <button onClick={() => handleRestore(item)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors" style={{ backgroundColor: 'var(--accent)' }}>
-                            <RotateCcw size={11} />
-                            Restore
-                          </button>
-                          <button onClick={() => handleDeleteForever(item)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 bg-red-50 hover:bg-red-100 transition-colors">
-                            <Trash2 size={11} />
-                            Delete
-                          </button>
-                        </div>
-                      );
-                    })}
+                </div>
+                <div className="border-t border-gray-100 pt-5">
+                  <p className="text-xs font-medium text-gray-500 mb-2">Heading Font</p>
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1 max-w-xs">
+                      <select value={settings.heading_font || ''} onChange={(e) => saveSetting('heading_font', e.target.value)} className={selectClass}>
+                        <option value="">Default (NoirPro)</option>
+                        {settings.custom_heading_font_name && <option value="custom">Custom: {settings.custom_heading_font_name}</option>}
+                        <option value="Lato">Lato</option>
+                        <option value="Urbanist">Urbanist</option>
+                        <option value="Spectral">Spectral</option>
+                        <option value="Spectral SC">Spectral SC</option>
+                        <option value="Playfair Display">Playfair Display</option>
+                      </select>
+                      <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                    <button onClick={() => headingFontFileRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors">
+                      <Upload size={12} />Upload
+                    </button>
+                    <input ref={headingFontFileRef} type="file" accept=".ttf,.otf,.woff2" onChange={handleHeadingFontUpload} className="hidden" />
                   </div>
-                </>
-              )}
-            </div>
-          </SectionGroup>
+                </div>
+              </div>
+            </SectionGroup>
+          </>
         );
 
-      case 'Account':
+      // ── OTHERS: Data + Updates + Trash + Account ──────────────────────────
+      case 'Others':
         return (
-          <SectionGroup title="Account">
-            {!IS_DEMO && user ? (
-              <SettingRow
-                icon={User}
-                title={user.email}
-                description="Signed in"
-                border={false}
+          <>
+            <SectionGroup title="Data">
+              <SettingRow icon={Upload} title="Export Data" description="Download all clients and tasks as CSV"
+                action={<button onClick={handleExportData} className="px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors">Export</button>}
+              />
+              <SettingRow icon={CreditCard} title="Export Payments" description="Download paid task and retainer records"
+                action={<button onClick={handleExportPayments} className="px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors">Export</button>}
+              />
+              <SettingRow icon={Database} title="Import Data" description="Import from a WorkBoard-format CSV" border={false}
                 action={
-                  <button onClick={signOut} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--accent)' }}>
-                    <LogOut size={13} />
-                    Sign Out
-                  </button>
+                  <>
+                    <button onClick={() => importFileRef.current?.click()} disabled={importing} className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-60">
+                      {importing ? <><RefreshCw size={12} className="animate-spin" />Importing…</> : <><Upload size={12} />Choose file</>}
+                    </button>
+                    <input ref={importFileRef} type="file" accept=".csv" onChange={handleImportFile} className="hidden" />
+                  </>
                 }
               />
-            ) : (
-              <p className="text-sm text-gray-400 py-6 text-center">Not signed in</p>
-            )}
-          </SectionGroup>
+            </SectionGroup>
+
+            <SectionGroup title="Updates">
+              <SettingRow icon={Sparkles} title="What's New" description="Latest release highlights"
+                action={<button onClick={() => setWhatsNewOpen(true)} className="px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors">View</button>}
+              />
+              <SettingRow icon={History} title="Changelog" description="Full version history" border={false}
+                action={<button onClick={() => setChangelogOpen(true)} className="px-3 py-2 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors">View</button>}
+              />
+            </SectionGroup>
+
+            <SectionGroup title="Trash · deleted after 45 days">
+              <div className="py-2">
+                {trash.length === 0 ? (
+                  <p className="text-sm text-gray-400 py-6 text-center">Trash is empty</p>
+                ) : (
+                  <>
+                    <div className="flex justify-end py-2">
+                      <button
+                        onClick={async () => {
+                          if (!window.confirm(`Permanently delete all ${trash.length} item${trash.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+                          await Promise.all(trash.map((item) => deleteForever(item.id)));
+                          showToast('Trash cleared');
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
+                      >
+                        <Trash2 size={11} />Clear all
+                      </button>
+                    </div>
+                    <div className="space-y-2 pb-2">
+                      {trash.map((item) => {
+                        const daysLeft = Math.ceil((new Date(item.expires_at) - new Date()) / (1000 * 60 * 60 * 24));
+                        return (
+                          <div key={item.id} className="flex items-center gap-3 py-2.5 px-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-800 truncate">{item.item_name}</p>
+                              <p className="text-xs text-gray-400">
+                                {item.item_type === 'client' ? (settings.clients_label || 'Client') : item.item_type === 'task_group' ? 'Task Group' : item.item_type === 'standalone_task' ? 'Standalone Task' : 'Task'} · {daysLeft}d left
+                              </p>
+                            </div>
+                            <button onClick={() => handleRestore(item)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors" style={{ backgroundColor: 'var(--accent)' }}>
+                              <RotateCcw size={11} />Restore
+                            </button>
+                            <button onClick={() => handleDeleteForever(item)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 bg-red-50 hover:bg-red-100 transition-colors">
+                              <Trash2 size={11} />Delete
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            </SectionGroup>
+
+            <SectionGroup title="Account">
+              {!IS_DEMO && user ? (
+                <SettingRow icon={User} title={user.email} description="Signed in" border={false}
+                  action={
+                    <button onClick={signOut} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--accent)' }}>
+                      <LogOut size={13} />Sign Out
+                    </button>
+                  }
+                />
+              ) : (
+                <p className="text-sm text-gray-400 py-6 text-center">Not signed in</p>
+              )}
+            </SectionGroup>
+          </>
         );
 
       default:
@@ -703,15 +603,12 @@ export default function Settings({ clients, refetch }) {
         {/* ── Left nav (desktop) ── */}
         <div className="hidden md:flex flex-col w-52 flex-shrink-0 p-6 pt-8 border-r border-gray-100 bg-white/50">
           <h1 className="font-display text-xl font-bold text-gray-900 mb-6">Settings</h1>
-          <div className="space-y-4">
-            {NAV.map(({ group, items }) => (
-              <div key={group}>
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-1">{group}</p>
-                {items.map((item) => (
-                  <NavItem key={item} label={item} active={activeSection === item} onClick={() => setActiveSection(item)} />
-                ))}
-              </div>
-            ))}
+          <div className="space-y-1">
+            {NAV.map(({ items }) =>
+              items.map((item) => (
+                <NavItem key={item} label={item} active={activeSection === item} onClick={() => setActiveSection(item)} />
+              ))
+            )}
           </div>
         </div>
 

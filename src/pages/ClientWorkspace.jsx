@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, ChevronDown, ChevronUp, Plus, CheckCircle2, Clock,
+  ArrowLeft, ChevronDown, ChevronUp, Plus, Check, CheckCircle2, Clock,
   AlertTriangle, GripVertical, Edit2, Share2, Users,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -518,7 +518,7 @@ export default function ClientWorkspace({ clients, actions }) {
         <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden">
           <h2 className="font-display text-lg font-semibold text-gray-900 mb-4">
             Tasks
-            <span className="text-sm font-sans font-normal text-gray-400 ml-2">
+            <span className="text-sm font-normal text-gray-400 ml-2">
               {client.tasks.length} total
             </span>
           </h2>
@@ -744,7 +744,7 @@ export default function ClientWorkspace({ clients, actions }) {
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
                             View only
-                            {perm === 'view' && <span className="ml-auto text-gray-400">✓</span>}
+                            {perm === 'view' && <Check size={10} className="ml-auto text-gray-400" />}
                           </button>
                           {/* Edit */}
                           <button
@@ -757,7 +757,7 @@ export default function ClientWorkspace({ clients, actions }) {
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
                             Can edit
-                            {perm === 'edit' && <span className="ml-auto text-gray-400">✓</span>}
+                            {perm === 'edit' && <Check size={10} className="ml-auto text-gray-400" />}
                           </button>
                           {/* Divider + Remove */}
                           <div className="border-t border-gray-100 mx-2" />

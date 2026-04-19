@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle, Edit2, Eye, Ban } from 'lucide-react';
 
 const ACCENT_TEXT = {
   '#FDE8E8': '#92400E', '#FEF3C7': '#78350F', '#D1FAE5': '#065F46',
@@ -311,7 +311,10 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
               className="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/40"
               style={{ color: textColor }}
             >
-              {canEdit ? '✏️ Can edit' : '👁 View only'}
+              <span className="flex items-center gap-1.5">
+                {canEdit ? <Edit2 size={12} /> : <Eye size={12} />}
+                {canEdit ? 'Can edit' : 'View only'}
+              </span>
             </span>
           </div>
         </div>
@@ -340,7 +343,7 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
         <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden">
           <h2 className="font-display text-lg font-semibold text-gray-900 mb-4">
             Tasks
-            <span className="text-sm font-sans font-normal text-gray-400 ml-2">{totalTasks} total</span>
+            <span className="text-sm font-normal text-gray-400 ml-2">{totalTasks} total</span>
           </h2>
 
           {pendingTasks.length === 0 && completedTasks.length === 0 ? (
@@ -501,9 +504,7 @@ function AccessRevokedPage({ token }) {
       <div className="w-full max-w-xs">
         {/* Icon */}
         <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-6">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
-          </svg>
+          <Ban size={28} className="text-red-400" />
         </div>
         <h1 className="font-display text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1>
         <p className="text-sm text-gray-500 mb-8 leading-relaxed">

@@ -524,9 +524,6 @@ export default function Dashboard({ clients, actions }) {
                   </div>
                 )}
               </div>
-              <Link to="/settings" className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors">
-                <Settings size={16} />
-              </Link>
             </div>
           </div>
         </div>
@@ -947,7 +944,7 @@ export default function Dashboard({ clients, actions }) {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{client.name}</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{client.name}</p>
                   <p className="text-xs text-gray-400">
                     {client.tasks.length} task{client.tasks.length !== 1 ? 's' : ''}
                   </p>

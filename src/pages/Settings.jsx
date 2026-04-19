@@ -447,7 +447,7 @@ export default function Settings({ clients, refetch }) {
                       onChange={(e) => saveSetting('font_family', e.target.value)}
                       className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400 appearance-none cursor-pointer pr-7"
                     >
-                      <option value="">Default (DM Sans)</option>
+                      <option value="">Default (NoirPro)</option>
                       {settings.custom_font_name && <option value="custom">Custom: {settings.custom_font_name}</option>}
                       <option value="Lato">Lato</option>
                       <option value="Urbanist">Urbanist</option>
@@ -476,7 +476,7 @@ export default function Settings({ clients, refetch }) {
                       onChange={(e) => saveSetting('heading_font', e.target.value)}
                       className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400 appearance-none cursor-pointer pr-7"
                     >
-                      <option value="">Default (Fraunces)</option>
+                      <option value="">Default (NoirPro)</option>
                       {settings.custom_heading_font_name && <option value="custom">Custom: {settings.custom_heading_font_name}</option>}
                       <option value="Lato">Lato</option>
                       <option value="Urbanist">Urbanist</option>

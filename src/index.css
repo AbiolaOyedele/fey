@@ -145,10 +145,11 @@ body {
   to   { opacity: 1; }
 }
 
-/* Headings use NoirPro Regular (400) */
+/* Headings use NoirPro Regular (400) with tighter kerning */
 h1, h2, h3, .font-display {
   font-family: var(--heading-font);
   font-weight: 400;
+  letter-spacing: -0.02em;
 }
 
 /* Monospace utility uses body font — removes DM Mono, keeps everything consistent */

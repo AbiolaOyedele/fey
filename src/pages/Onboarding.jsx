@@ -568,7 +568,7 @@ export default function Onboarding() {
                   ...inputStyle,
                   marginBottom: 0,
                   flex: 1,
-                  fontFamily: 'monospace',
+                  fontFamily: 'var(--body-font)',
                 }}
               />
               {/* Live preview pill */}

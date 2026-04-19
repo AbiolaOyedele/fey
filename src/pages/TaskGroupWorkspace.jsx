@@ -235,7 +235,7 @@ export default function TaskGroupWorkspace({ taskGroupData }) {
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display text-lg font-semibold text-gray-800">
             Tasks
-            <span className="text-sm font-sans font-normal text-gray-400 ml-2">{group.tasks.length}</span>
+            <span className="text-sm font-normal text-gray-400 ml-2">{group.tasks.length}</span>
           </h2>
 
           {/* Filter button */}

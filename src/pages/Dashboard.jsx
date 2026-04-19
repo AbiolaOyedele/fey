@@ -288,7 +288,7 @@ export default function Dashboard({ clients, actions }) {
   const overdueTasks = allTasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr)
     .sort((a, b) => a.deadline.localeCompare(b.deadline));
 
-  const bellBadge = dueTodayTasks.length + notifications.length;
+  const bellBadge = notifications.length;
   const overdueBadge = overdueTasks.length;
 
   // Only show Overdue tab when there are overdue tasks

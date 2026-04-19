@@ -126,6 +126,8 @@ export default function ClientWorkspace({ clients, actions }) {
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [shareRecordId, setShareRecordId] = useState(null);
+  const [openMemberMenu, setOpenMemberMenu] = useState(null); // member id whose dropdown is open
+  const memberMenuRef = useRef(null);
   const [taskFilter, setTaskFilter] = useState('all');
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [filterPos, setFilterPos] = useState({ top: 0, left: 0 });
@@ -152,6 +154,17 @@ export default function ClientWorkspace({ clients, actions }) {
         filterBtnRef.current && !filterBtnRef.current.contains(e.target)
       ) {
         setFilterDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Close member permission dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (memberMenuRef.current && !memberMenuRef.current.contains(e.target)) {
+        setOpenMemberMenu(null);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -687,44 +700,84 @@ export default function ClientWorkspace({ clients, actions }) {
               <p className="text-xs text-gray-300 mt-0.5">Share this page to invite collaborators</p>
             </div>
           ) : (
-            <div>
-              {members.map((m) => (
-                <div key={m.id} className="flex items-center gap-2.5 py-2.5 border-b border-gray-50 last:border-0">
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                    style={{ backgroundColor: client.color, color: textColor }}
-                  >
-                    {m.name.charAt(0).toUpperCase()}
+            <div ref={memberMenuRef}>
+              {members.map((m) => {
+                const perm = m.permission || 'view';
+                const isOpen = openMemberMenu === m.id;
+                return (
+                  <div key={m.id} className="flex items-center gap-2.5 py-2.5 border-b border-gray-50 last:border-0">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                      style={{ backgroundColor: client.color, color: textColor }}
+                    >
+                      {m.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-900 truncate">{m.name}</p>
+                      <p className="text-[10px] text-gray-400">
+                        {new Date(m.joined_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+
+                    {/* Permission dropdown */}
+                    <div className="relative flex-shrink-0">
+                      <button
+                        onClick={() => setOpenMemberMenu(isOpen ? null : m.id)}
+                        className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors ${
+                          perm === 'edit' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'
+                        }`}
+                      >
+                        {perm === 'edit' ? 'Edit' : 'View'}
+                        <ChevronDown size={9} />
+                      </button>
+
+                      {isOpen && (
+                        <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden animate-fadeIn">
+                          {/* View */}
+                          <button
+                            onClick={async () => {
+                              await supabase.from('shared_client_members').update({ permission: 'view' }).eq('id', m.id);
+                              setMembers((prev) => prev.map((mem) => mem.id === m.id ? { ...mem, permission: 'view' } : mem));
+                              setOpenMemberMenu(null);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-gray-50 transition-colors ${perm === 'view' ? 'font-semibold text-gray-900' : 'text-gray-600'}`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
+                            View only
+                            {perm === 'view' && <span className="ml-auto text-gray-400">✓</span>}
+                          </button>
+                          {/* Edit */}
+                          <button
+                            onClick={async () => {
+                              await supabase.from('shared_client_members').update({ permission: 'edit' }).eq('id', m.id);
+                              setMembers((prev) => prev.map((mem) => mem.id === m.id ? { ...mem, permission: 'edit' } : mem));
+                              setOpenMemberMenu(null);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-gray-50 transition-colors ${perm === 'edit' ? 'font-semibold text-gray-900' : 'text-gray-600'}`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                            Can edit
+                            {perm === 'edit' && <span className="ml-auto text-gray-400">✓</span>}
+                          </button>
+                          {/* Divider + Remove */}
+                          <div className="border-t border-gray-100 mx-2" />
+                          <button
+                            onClick={async () => {
+                              await supabase.from('shared_client_members').delete().eq('id', m.id);
+                              setMembers((prev) => prev.filter((mem) => mem.id !== m.id));
+                              setOpenMemberMenu(null);
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 text-red-500 hover:bg-red-50 transition-colors"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
+                            Remove member
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-gray-900 truncate">{m.name}</p>
-                    <p className="text-[10px] text-gray-400">
-                      {new Date(m.joined_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </p>
-                  </div>
-                  {/* Per-member permission toggle */}
-                  <button
-                    onClick={async () => {
-                      const newPerm = (m.permission || 'view') === 'view' ? 'edit' : 'view';
-                      await supabase
-                        .from('shared_client_members')
-                        .update({ permission: newPerm })
-                        .eq('id', m.id);
-                      setMembers((prev) =>
-                        prev.map((mem) => mem.id === m.id ? { ...mem, permission: newPerm } : mem)
-                      );
-                    }}
-                    className={`flex-shrink-0 text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors ${
-                      (m.permission || 'view') === 'edit'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                    }`}
-                    title={`Click to change to ${(m.permission || 'view') === 'view' ? 'Edit' : 'View'}`}
-                  >
-                    {(m.permission || 'view') === 'edit' ? 'Edit' : 'View'}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -449,10 +449,42 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
   );
 }
 
+// ── Access revoked page ───────────────────────────────────────────────────────
+function AccessRevokedPage({ token }) {
+  const navigate = useNavigate();
+  return (
+    <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center px-6 text-center">
+      <div className="w-full max-w-xs">
+        {/* Icon */}
+        <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-6">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+          </svg>
+        </div>
+        <h1 className="font-display text-2xl font-bold text-gray-900 mb-2">Access Revoked</h1>
+        <p className="text-sm text-gray-500 mb-8 leading-relaxed">
+          Your access to this workspace has been removed by the owner.
+        </p>
+        <button
+          onClick={() => navigate(`/register?from_share=true&token=${token}`)}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+          style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+        >
+          <Sparkles size={15} />
+          Try WorkBoard free
+        </button>
+        <p className="text-xs text-gray-400 mt-4">
+          Create your own workspace and invite your clients.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function SharedClientPage() {
   const { token } = useParams();
-  const [phase, setPhase] = useState('loading'); // loading | error | welcome | dashboard
+  const [phase, setPhase] = useState('loading'); // loading | error | welcome | dashboard | revoked
   const [shareRecord, setShareRecord] = useState(null);
   const [client, setClient] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -460,6 +492,8 @@ export default function SharedClientPage() {
   const [memberPermission, setMemberPermission] = useState('view');
 
   useEffect(() => {
+    let realtimeChannel;
+
     async function init() {
       const stored = localStorage.getItem(`workboard_member_${token}`);
       const storedMember = stored ? JSON.parse(stored) : null;
@@ -476,7 +510,6 @@ export default function SharedClientPage() {
       setShareRecord(share);
 
       // Build client object from cached fields in shared_clients
-      // (avoids needing to read the clients table which has RLS enabled)
       const clientObj = {
         id: share.client_id,
         name: share.client_name || 'Shared Workspace',
@@ -494,31 +527,54 @@ export default function SharedClientPage() {
         .order('created_at', { ascending: true });
 
       setTasks((tasksData || []).map((t) => ({
-        id: t.id,
-        title: t.title,
-        done: t.done,
-        paid: t.paid,
-        amount: t.amount || 0,
-        currency: t.currency || 'NGN',
-        deadline: t.deadline || null,
-        sort_order: t.sort_order ?? 0,
+        id: t.id, title: t.title, done: t.done, paid: t.paid,
+        amount: t.amount || 0, currency: t.currency || 'NGN',
+        deadline: t.deadline || null, sort_order: t.sort_order ?? 0,
       })));
 
       if (storedMember) {
-        setMember(storedMember);
-        // Fetch per-member permission if set
+        // Verify member still exists in DB (not kicked out)
         const { data: memberRow } = await supabase
           .from('shared_client_members')
-          .select('permission')
+          .select('id, permission')
           .eq('id', storedMember.id)
           .maybeSingle();
-        setMemberPermission(memberRow?.permission || share.permission || 'view');
+
+        if (!memberRow) {
+          // Member was removed — clear localStorage and show revoked screen
+          localStorage.removeItem(`workboard_member_${token}`);
+          setPhase('revoked');
+          return;
+        }
+
+        setMember(storedMember);
+        setMemberPermission(memberRow.permission || 'view');
         setPhase('dashboard');
+
+        // Realtime: detect if owner kicks this member while they're viewing
+        realtimeChannel = supabase
+          .channel(`member-revoke-${storedMember.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'shared_client_members',
+              filter: `id=eq.${storedMember.id}`,
+            },
+            () => {
+              localStorage.removeItem(`workboard_member_${token}`);
+              setPhase('revoked');
+            }
+          )
+          .subscribe();
       } else {
         setPhase('welcome');
       }
     }
+
     init();
+    return () => { if (realtimeChannel) supabase.removeChannel(realtimeChannel); };
   }, [token]);
 
   if (phase === 'loading') {
@@ -530,6 +586,8 @@ export default function SharedClientPage() {
   }
 
   if (phase === 'error') return <ErrorPage />;
+
+  if (phase === 'revoked') return <AccessRevokedPage token={token} />;
 
   if (phase === 'welcome') {
     return (

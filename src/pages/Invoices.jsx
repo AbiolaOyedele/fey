@@ -77,16 +77,14 @@ CREATE POLICY "Public shared invoices viewable"
   ON invoices FOR SELECT
   USING (share_enabled = TRUE);`;
 
-function StatCard({ icon: Icon, label, value, color }) {
+function StatCard({ icon: Icon, label, value, iconColor }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-5 flex items-center gap-4">
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
-        <Icon size={18} className="text-white" />
+    <div className="bg-white rounded-2xl border border-gray-100 px-5 py-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-400 font-medium">{label}</p>
+        <Icon size={14} className={iconColor} />
       </div>
-      <div>
-        <p className="text-xs text-gray-400 mb-0.5">{label}</p>
-        <p className="text-lg font-bold text-gray-900">{value}</p>
-      </div>
+      <p className="text-xl font-bold text-gray-900 tracking-tight">{value}</p>
     </div>
   );
 }
@@ -184,10 +182,10 @@ export default function Invoices({ clients = [] }) {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <StatCard icon={DollarSign} label="Total Revenue" value={fmtMoney(totalRevenue, defCurrency)} color="bg-emerald-500" />
-        <StatCard icon={Clock}      label="Open"          value={fmtMoney(openAmount,   defCurrency)} color="bg-blue-500" />
-        <StatCard icon={CheckCircle2} label="Paid"        value={`${paidCount} invoice${paidCount !== 1 ? 's' : ''}`} color="bg-purple-500" />
-        <StatCard icon={AlertCircle}  label="Overdue"     value={`${overdueCount} invoice${overdueCount !== 1 ? 's' : ''}`} color="bg-red-500" />
+        <StatCard icon={DollarSign}   label="Total Revenue" value={fmtMoney(totalRevenue, defCurrency)} iconColor="text-emerald-500" />
+        <StatCard icon={Clock}        label="Open"          value={fmtMoney(openAmount,   defCurrency)} iconColor="text-blue-400" />
+        <StatCard icon={CheckCircle2} label="Paid"          value={`${paidCount} invoice${paidCount !== 1 ? 's' : ''}`} iconColor="text-purple-400" />
+        <StatCard icon={AlertCircle}  label="Overdue"       value={`${overdueCount} invoice${overdueCount !== 1 ? 's' : ''}`} iconColor="text-red-400" />
       </div>
 
       {/* Filter bar */}

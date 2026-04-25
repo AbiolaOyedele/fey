@@ -95,6 +95,53 @@ const DEFAULTS = {
   whats_new_active: 'false',
   whats_new_version: '',
   onboarding_complete: 'false',
+  // Profile
+  avatar_url: '',
+  hourly_rate: '',
+  // Branding
+  cover_image: '',
+  invoice_layout: 'left_aligned',
+  invoice_font_color: '#1a1a1a',
+  invoice_bg_color: '#ffffff',
+  page_bg_type: 'color',
+  page_bg_color: '#f9fafb',
+  page_bg_image: '',
+  // Business Info
+  business_email: '',
+  business_phone: '',
+  business_website: '',
+  business_address: '',
+  tax_id: '',
+  // Payments
+  payment_templates: '[]',
+  show_payment_on_docs: 'true',
+  // General
+  invoice_language: 'English',
+  default_tax_rate: '',
+  invoice_prefix: 'INV-',
+  invoice_next: '001',
+  quote_prefix: 'QT-',
+  quote_next: '001',
+  receipt_prefix: 'REC-',
+  receipt_next: '001',
+  include_date_in_number: 'false',
+  payment_terms_days: '14',
+  quote_valid_days: '30',
+  date_format: 'MM/DD/YYYY',
+  default_invoice_notes: '',
+  auto_generate_receipt: 'false',
+  revoke_link_on_payment: 'false',
+  // Emails
+  email_acceptance: 'true',
+  email_payment_received: 'true',
+  email_stripe: 'true',
+  email_project_activity: 'false',
+  email_chat_from: 'true',
+  email_chat_to: 'true',
+  email_auto_reminders: 'false',
+  // Onboarding checklist
+  checklist_dismissed: 'false',
+  checklist_steps: '{}',
 };
 
 export function SettingsProvider({ children }) {

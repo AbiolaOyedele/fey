@@ -20,6 +20,7 @@ import Onboarding from './pages/Onboarding';
 import SharedClientPage from './pages/SharedClientPage';
 import ToastContainer from './components/Toast';
 import WelcomeGuide from './components/WelcomeGuide';
+import GettingStartedChecklist from './components/GettingStartedChecklist';
 
 const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -222,6 +223,7 @@ export default function App() {
             </div>
             <ToastContainer />
             <WelcomeGuide />
+            <GettingStartedChecklist clients={orderedClients} />
             </OnboardingGate>
           </ProtectedRoute>
         } />

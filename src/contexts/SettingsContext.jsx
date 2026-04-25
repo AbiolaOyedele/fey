@@ -5,6 +5,25 @@ export const SettingsContext = createContext(null);
 
 const DEFAULT_CHANGELOG = [
   {
+    version: '1.8.0', date: '25 April 2026',
+    features: [
+      'Full invoicing system — create, send, and track invoices',
+      'Invoice builder with 4 layouts and inline editing',
+      'Three creation paths: from tasks, from client, or blank',
+      'Shareable invoice links — clients can view without an account',
+      'PDF export via browser print dialog',
+      'Settings expanded to 8 tabs: Profile, Branding, Business Info, Payments, General, Emails, Integrations, Billing',
+      'Avatar and cover image upload in Profile settings',
+      'Payment template builder in Payments settings',
+      'Getting Started checklist widget with auto-completion detection',
+    ],
+    improvements: [
+      'Invoices nav item added to sidebar (desktop and mobile)',
+      'Business info in settings feeds directly into invoice FROM section',
+    ],
+    fixes: [],
+  },
+  {
     version: '1.7.0', date: '18 April 2026',
     features: [
       'Client workspace sharing with one-click shareable links',

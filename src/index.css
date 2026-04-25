@@ -180,17 +180,18 @@ input[type="checkbox"] {
 
 /* PDF / print styles — show only the invoice document */
 @media print {
-  body > * { display: none !important; }
+  body * { visibility: hidden; }
+  #invoice-document,
+  #invoice-document * { visibility: visible; }
   #invoice-document {
-    display: block !important;
-    position: fixed;
-    inset: 0;
-    margin: 0;
-    padding: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
     border-radius: 0;
     box-shadow: none;
-    background: white;
-    overflow: visible;
+    padding: 40px;
   }
-  #invoice-document * { visibility: visible !important; }
+  .no-print { display: none !important; }
 }

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { X, Mail, Link2, FileDown, Copy, Check, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { X, Mail, Link2, FileDown, Copy, Check, Eye, EyeOff } from 'lucide-react';
 
 export default function InvoiceSendModal({ invoice, onShareUpdate, onSaveShare, userId, onClose }) {
   const [notice, setNotice] = useState(null);
@@ -12,7 +12,6 @@ export default function InvoiceSendModal({ invoice, onShareUpdate, onSaveShare, 
   const [emailBody, setEmailBody] = useState(
     `Hi ${invoice?.bill_to?.name || 'there'},\n\nPlease find attached invoice ${invoice?.invoice_number || ''} for your review.\n\nThank you for your business!\n\n${invoice?.from_details?.name || ''}`
   );
-  const [sendingEmail, setSendingEmail] = useState(false);
 
   // Link tab state
   const [shareEnabled, setShareEnabled] = useState(invoice?.share_enabled || false);
@@ -59,12 +58,11 @@ export default function InvoiceSendModal({ invoice, onShareUpdate, onSaveShare, 
     });
   };
 
-  const handleSendEmail = async () => {
-    if (!emailTo) { showToast('Enter a recipient email', 'error'); return; }
-    setSendingEmail(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setSendingEmail(false);
-    showToast('Email sending coming soon — use the shareable link for now');
+  const handleSendEmail = () => {
+    if (!emailTo) { showToast('Enter a recipient email'); return; }
+    const subject = encodeURIComponent(emailSubject);
+    const body = encodeURIComponent(emailBody);
+    window.open(`mailto:${emailTo}?subject=${subject}&body=${body}`, '_blank');
   };
 
   const handlePrint = () => {
@@ -139,12 +137,10 @@ export default function InvoiceSendModal({ invoice, onShareUpdate, onSaveShare, 
             </div>
             <button
               onClick={handleSendEmail}
-              disabled={sendingEmail}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-60"
+              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2"
               style={{ backgroundColor: 'var(--accent)' }}
             >
-              {sendingEmail ? <Loader2 size={15} className="animate-spin" /> : <Mail size={15} />}
-              {sendingEmail ? 'Sending…' : 'Send Email'}
+              <Mail size={15} />Open in Email App
             </button>
           </div>
         )}

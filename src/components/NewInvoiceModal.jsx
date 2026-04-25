@@ -59,8 +59,8 @@ export default function NewInvoiceModal({ clients = [], onClose }) {
       id: `task-${task.id}`,
       description: task.title,
       qty: 1,
-      price: task.amount || 0,
-      amount: task.amount || 0,
+      price: parseFloat(task.amount) || 0,
+      amount: parseFloat(task.amount) || 0,
       task_id: task.id,
     }));
 

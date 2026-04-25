@@ -180,6 +180,7 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
   const [fontFam,   setFontFam]   = useState(settings.font_family || '');
   const [showCover, setShowCover] = useState(false);
   const [logoSize,  setLogoSize]  = useState(60);
+  const [invAccent, setInvAccent] = useState(settings.accent_color || '#ED64A6');
 
   // Invoice settings panel
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
@@ -234,6 +235,7 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
       if (inv_s.currency) setInvCurrency(inv_s.currency);
       if (inv_s.show_payment !== undefined) setShowPayDet(inv_s.show_payment);
       if (inv_s.signature !== undefined) setShowSignSetting(inv_s.signature);
+      if (inv_s.accent) setInvAccent(inv_s.accent);
       setLayout(data.layout || 'left_aligned');
       setFontColor(data.font_color || '#1a1a1a');
       setBgColor(data.bg_color || '#ffffff');
@@ -327,7 +329,7 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
     bg_color: bgColor,
     font_family: fontFam,
     custom_sections: customSections,
-    invoice_settings: { language: invLang, currency: invCurrency, show_payment: showPayDet, signature: showSignSetting },
+    invoice_settings: { language: invLang, currency: invCurrency, show_payment: showPayDet, signature: showSignSetting, accent: invAccent },
     share_token: shareToken || null,
     share_enabled: shareEnabled,
   }), [invoiceNum, status, issueDate, dueDate, showSupply, supplyDate, billTo, from, lineItems, taskIds, payMethod, payFields, payLink, additions, showSig, subtotal, total, notes, invCurrency, layout, fontColor, bgColor, fontFam, customSections, invLang, showPayDet, showSignSetting, shareToken, shareEnabled]);
@@ -503,6 +505,29 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
                 </button>
               </div>
             ))}
+
+            {/* Colors — accessible on all screen sizes */}
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Colors</p>
+              <div className="space-y-3">
+                {[
+                  { label: 'Font color',   value: fontColor,  onChange: setFontColor  },
+                  { label: 'Background',   value: bgColor,    onChange: setBgColor    },
+                  { label: 'Header color', value: invAccent,  onChange: setInvAccent  },
+                ].map(({ label, value, onChange }) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">{label}</span>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <span className="text-xs font-mono text-gray-400">{value}</span>
+                      <div className="w-8 h-8 rounded-lg border border-gray-200 relative overflow-hidden flex-shrink-0">
+                        <div className="absolute inset-0" style={{ backgroundColor: value }} />
+                        <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                      </div>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -522,7 +547,7 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
               const coverImg = settings.cover_image;
 
               if (layout === 'bold_header') return (
-                <div className="rounded-xl overflow-hidden mb-8" style={{ backgroundColor: accent }}>
+                <div className="rounded-xl overflow-hidden mb-8" style={{ backgroundColor: invAccent }}>
                   {showCover && coverImg && <img src={coverImg} alt="Cover" className="w-full h-24 object-cover opacity-60" />}
                   <div className="px-6 py-5 flex items-center justify-between">
                     {logo && <img src={logo} alt="Logo" className="object-contain rounded-lg" style={{ height: logoSize, maxHeight: 80 }} />}
@@ -539,7 +564,7 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
               if (layout === 'classic') return (
                 <div className="text-center mb-8">
                   {logo && <img src={logo} alt="Logo" className="object-contain rounded-xl mx-auto mb-3" style={{ height: logoSize, maxHeight: 80 }} />}
-                  {!logo && <div className="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center text-white font-bold text-lg" style={{ backgroundColor: accent }}>{(from.name || 'W').slice(0, 1)}</div>}
+                  {!logo && <div className="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center text-white font-bold text-lg" style={{ backgroundColor: invAccent }}>{(from.name || 'W').slice(0, 1)}</div>}
                   <p className="text-xs uppercase tracking-widest text-gray-400 mb-1">Invoice</p>
                   <input value={invoiceNum} onChange={(e) => setInvoiceNum(e.target.value)} className="text-center font-bold text-xl w-full bg-transparent border-none outline-none hover:bg-black/5 rounded" placeholder="INV-0001" />
                 </div>
@@ -562,7 +587,7 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
                 <div className="flex items-start justify-between mb-8">
                   <div>
                     {logo && <img src={logo} alt="Logo" className="object-contain rounded-xl mb-2" style={{ height: logoSize, maxHeight: 80 }} />}
-                    {!logo && <div className="w-12 h-12 rounded-xl mb-2 flex items-center justify-center text-white font-bold text-lg" style={{ backgroundColor: accent }}>{(from.name || 'W').slice(0, 1)}</div>}
+                    {!logo && <div className="w-12 h-12 rounded-xl mb-2 flex items-center justify-center text-white font-bold text-lg" style={{ backgroundColor: invAccent }}>{(from.name || 'W').slice(0, 1)}</div>}
                   </div>
                   <div className="text-right">
                     <p className="text-xs uppercase tracking-widest opacity-50 mb-1">Invoice</p>

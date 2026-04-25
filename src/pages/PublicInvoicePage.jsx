@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchPublicInvoice } from '../hooks/useInvoiceData';
-import { FileDown, AlertCircle } from 'lucide-react';
+import { FileDown, AlertCircle, Loader2 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 function fmt(n, currency = 'USD') {
   return `${currency} ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -17,6 +19,25 @@ export default function PublicInvoicePage() {
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    const el = document.getElementById('invoice-document');
+    if (!el) return;
+    setDownloading(true);
+    try {
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const imgW = 210;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [imgW, imgH] });
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgW, imgH);
+      pdf.save(`invoice-${invoice?.invoice_number || 'download'}.pdf`);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   useEffect(() => {
     fetchPublicInvoice(token).then(({ data, error: err }) => {
@@ -80,11 +101,12 @@ export default function PublicInvoicePage() {
           <span>Sent via WorkBoard</span>
         </div>
         <button
-          onClick={() => window.print()}
-          className="flex items-center gap-1.5 px-4 py-2 bg-white rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+          onClick={handleDownload}
+          disabled={downloading}
+          className="flex items-center gap-1.5 px-4 py-2 bg-white rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-60"
         >
-          <FileDown size={14} />
-          Download PDF
+          {downloading ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+          {downloading ? 'Generating…' : 'Download PDF'}
         </button>
       </div>
 
@@ -195,7 +217,7 @@ export default function PublicInvoicePage() {
         )}
 
         {/* Footer */}
-        <div className="px-10 py-5 border-t border-gray-100 flex items-center justify-between">
+        <div className="mt-auto px-10 py-5 border-t border-gray-100 flex items-center justify-between">
           <p className="text-xs text-gray-300">Created with WorkBoard</p>
           <p className="text-xs text-gray-400 font-medium">{invoice.invoice_number}</p>
         </div>

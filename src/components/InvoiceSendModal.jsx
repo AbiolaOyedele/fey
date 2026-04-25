@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
-import { X, Mail, Link2, FileDown, Copy, Check, Eye, EyeOff } from 'lucide-react';
+import { X, Mail, Link2, FileDown, Copy, Check, Eye, EyeOff, Loader2 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 export default function InvoiceSendModal({ invoice, onShareUpdate, onSaveShare, userId, onClose }) {
   const [notice, setNotice] = useState(null);
@@ -65,12 +67,24 @@ export default function InvoiceSendModal({ invoice, onShareUpdate, onSaveShare, 
     window.open(`mailto:${emailTo}?subject=${subject}&body=${body}`, '_blank');
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    const el = document.getElementById('invoice-document');
+    if (!el) { showToast('Invoice not found — make sure it is visible'); return; }
     setPrinting(true);
-    setTimeout(() => {
-      window.print();
+    try {
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: null });
+      const imgW = 210; // A4 width mm
+      const imgH = (canvas.height * imgW) / canvas.width;
+      const pdf = new jsPDF({ orientation: imgH > imgW ? 'portrait' : 'landscape', unit: 'mm', format: [imgW, imgH] });
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgW, imgH);
+      const filename = `invoice-${invoice?.invoice_number || 'draft'}.pdf`;
+      pdf.save(filename);
+    } catch (err) {
+      showToast('Failed to generate PDF');
+      console.error(err);
+    } finally {
       setPrinting(false);
-    }, 200);
+    }
   };
 
   const tabs = [
@@ -203,7 +217,7 @@ export default function InvoiceSendModal({ invoice, onShareUpdate, onSaveShare, 
             <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-center">
               <FileDown size={28} className="mx-auto mb-2 text-gray-400" />
               <p className="text-sm font-medium text-gray-700 mb-1">Download as PDF</p>
-              <p className="text-xs text-gray-400">Opens your browser's print dialog — choose "Save as PDF" to download.</p>
+              <p className="text-xs text-gray-400">Generates a PDF file and downloads it directly — no print dialog.</p>
             </div>
             <button
               onClick={handlePrint}

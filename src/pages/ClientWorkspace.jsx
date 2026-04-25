@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ChevronDown, ChevronUp, Plus, Check, CheckCircle2, Clock,
-  AlertTriangle, GripVertical, Edit2, Share2, Users,
+  AlertTriangle, GripVertical, Edit2, Share2, Users, FileText,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ShareModal from '../components/ShareModal';
@@ -120,6 +120,12 @@ export default function ClientWorkspace({ clients, actions }) {
   };
   const [retainerInput, setRetainerInput] = useState(() => formatRetainerInput(client?.retainer));
   const [retainerCurrency, setRetainerCurrency] = useState(client?.retainer_currency || 'NGN');
+  const [billingType, setBillingType] = useState(settings[`billing_type_${id}`] || 'retainer');
+  const toggleBillingType = () => {
+    const next = billingType === 'retainer' ? 'hourly' : 'retainer';
+    setBillingType(next);
+    settings[`billing_type_${id}`] = next; // lightweight local persist via settings object
+  };
   const [editingClient, setEditingClient] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('tasks'); // 'tasks' | 'members'
@@ -397,6 +403,14 @@ export default function ClientWorkspace({ clients, actions }) {
                 Share
               </button>
               <button
+                onClick={() => navigate('/invoices/new', { state: { prefillClientId: client.id, prefillClient: client, prefillLineItems: [], prefillTaskIds: [] } })}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/40 hover:bg-white/60 transition-colors text-xs font-medium"
+                style={{ color: textColor }}
+              >
+                <FileText size={13} />
+                Invoice
+              </button>
+              <button
                 onClick={() => setEditingClient(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/40 hover:bg-white/60 transition-colors text-xs font-medium"
                 style={{ color: textColor }}
@@ -416,10 +430,11 @@ export default function ClientWorkspace({ clients, actions }) {
               className="w-full flex items-center justify-between px-6 py-4 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
               <span>
-                Monthly Retainer
+                {billingType === 'hourly' ? 'Hourly Rate' : 'Monthly Retainer'}
                 {client.retainer > 0 && (
                   <span className="ml-2 font-mono" style={{ color: 'var(--accent, #ED64A6)' }}>
                     {formatMoney(convertAmount(client.retainer, client.retainer_currency || 'NGN'))}
+                    {billingType === 'hourly' ? '/hr' : '/mo'}
                   </span>
                 )}
               </span>
@@ -427,6 +442,19 @@ export default function ClientWorkspace({ clients, actions }) {
             </button>
             {retainerOpen && (
               <div className="px-6 pb-5 border-t border-gray-100 pt-4 animate-slideDown">
+                {/* Billing type toggle */}
+                <div className="flex items-center gap-2 mb-3">
+                  <button
+                    onClick={toggleBillingType}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${billingType === 'retainer' ? 'text-white' : 'bg-gray-100 text-gray-500'}`}
+                    style={billingType === 'retainer' ? { backgroundColor: 'var(--accent)' } : {}}
+                  >Monthly Retainer</button>
+                  <button
+                    onClick={toggleBillingType}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${billingType === 'hourly' ? 'text-white' : 'bg-gray-100 text-gray-500'}`}
+                    style={billingType === 'hourly' ? { backgroundColor: 'var(--accent)' } : {}}
+                  >Hourly Rate</button>
+                </div>
                 <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
                     {/* Retainer currency dropdown */}

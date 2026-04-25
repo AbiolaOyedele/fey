@@ -3,7 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Settings, ChevronDown, Plus, Trash2, X, Check,
   GripVertical, ChevronUp, Bookmark, Send, Save, FileText,
-  Paperclip, Upload, Image as ImageIcon, Layout,
+  Paperclip, Upload, Image as ImageIcon, Layout, ImagePlus,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -19,6 +19,14 @@ const INVOICE_LAYOUTS = [
   { id: 'brutalist',    label: 'Brutalist' },
 ];
 const SECTION_TYPES = ['Terms and Conditions','Legal Info','Payment Info','Warranty','Refund Policy','Confidentiality'];
+const SECTION_PLACEHOLDERS = {
+  'Terms and Conditions': 'By accepting this invoice, the client agrees to the following terms: Payment is due within the specified period. Late payments may incur a fee of 1.5% per month. All work remains the property of the provider until payment is received in full.',
+  'Legal Info': 'This invoice constitutes a legally binding agreement between the parties. Any disputes shall be resolved in accordance with the laws of the jurisdiction in which the service provider operates.',
+  'Payment Info': 'Bank: First Bank\nAccount Name: Your Business Name\nAccount Number: 0123456789\nSort Code: 00-00-00\n\nAlternatively, payment can be made via bank transfer or mobile payment.',
+  'Warranty': 'All services are warranted for a period of 30 days from the date of delivery. Any defects reported within this period will be corrected at no additional charge. This warranty does not cover changes requested after delivery.',
+  'Refund Policy': 'Refunds are available within 14 days of invoice date, provided no work has commenced. Once work has started, a pro-rated refund may be issued based on the portion of work completed.',
+  'Confidentiality': 'Both parties agree to keep all shared information confidential. The service provider will not disclose any client data to third parties without prior written consent, except as required by law.',
+};
 const ADDITION_TYPES = [
   { type: 'discount',    label: 'Discount',    isPercent: false, sign: -1 },
   { type: 'tax',         label: 'Tax',          isPercent: true,  sign: 1  },
@@ -169,6 +177,7 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
 
   const [notes, setNotes] = useState(settings.default_invoice_notes || '');
   const [customSections, setCustomSections] = useState([]);
+  const [activeSecId, setActiveSecId] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [showAttach, setShowAttach] = useState(false);
   const attachRef = useRef(null);
@@ -181,6 +190,7 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
   const [showCover, setShowCover] = useState(false);
   const [logoSize,  setLogoSize]  = useState(60);
   const [invAccent, setInvAccent] = useState(settings.accent_color || '#ED64A6');
+  const [bgImage,   setBgImage]   = useState(settings.invoice_bg_image || '');
 
   // Invoice settings panel
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
@@ -236,6 +246,7 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
       if (inv_s.show_payment !== undefined) setShowPayDet(inv_s.show_payment);
       if (inv_s.signature !== undefined) setShowSignSetting(inv_s.signature);
       if (inv_s.accent) setInvAccent(inv_s.accent);
+      if (inv_s.bg_image) setBgImage(inv_s.bg_image);
       setLayout(data.layout || 'left_aligned');
       setFontColor(data.font_color || '#1a1a1a');
       setBgColor(data.bg_color || '#ffffff');
@@ -286,7 +297,11 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
   const removeAddition = (addId) => setAdditions((prev) => prev.filter((a) => a.id !== addId));
 
   // ── Custom sections ───────────────────────────────────────────────────────
-  const addSection = (title) => setCustomSections((prev) => [...prev, { id: uid(), title, body: '' }]);
+  const addSection = (title) => {
+    const newId = uid();
+    setCustomSections((prev) => [...prev, { id: newId, title, body: '' }]);
+    setActiveSecId(newId);
+  };
   const updateSection = (secId, field, value) => setCustomSections((prev) => prev.map((s) => s.id === secId ? { ...s, [field]: value } : s));
   const moveSection = (secId, dir) => {
     setCustomSections((prev) => {
@@ -299,7 +314,13 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
       return next;
     });
   };
-  const removeSection = (secId) => setCustomSections((prev) => prev.filter((s) => s.id !== secId));
+  const removeSection = (secId) => {
+    setCustomSections((prev) => {
+      const filtered = prev.filter((s) => s.id !== secId);
+      if (activeSecId === secId) setActiveSecId(filtered[filtered.length - 1]?.id || null);
+      return filtered;
+    });
+  };
 
   // ── Attachments ───────────────────────────────────────────────────────────
   const handleAttachFiles = (files) => {
@@ -329,10 +350,10 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
     bg_color: bgColor,
     font_family: fontFam,
     custom_sections: customSections,
-    invoice_settings: { language: invLang, currency: invCurrency, show_payment: showPayDet, signature: showSignSetting, accent: invAccent },
+    invoice_settings: { language: invLang, currency: invCurrency, show_payment: showPayDet, signature: showSignSetting, accent: invAccent, bg_image: bgImage },
     share_token: shareToken || null,
     share_enabled: shareEnabled,
-  }), [invoiceNum, status, issueDate, dueDate, showSupply, supplyDate, billTo, from, lineItems, taskIds, payMethod, payFields, payLink, additions, showSig, subtotal, total, notes, invCurrency, layout, fontColor, bgColor, fontFam, customSections, invLang, showPayDet, showSignSetting, shareToken, shareEnabled]);
+  }), [invoiceNum, status, issueDate, dueDate, showSupply, supplyDate, billTo, from, lineItems, taskIds, payMethod, payFields, payLink, additions, showSig, subtotal, total, notes, invCurrency, layout, fontColor, bgColor, bgImage, fontFam, customSections, invLang, showPayDet, showSignSetting, shareToken, shareEnabled]);
 
   const doSave = async (saveStatus) => {
     setSaving(true);
@@ -372,6 +393,7 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
     color: fontColor,
     backgroundColor: bgColor,
     fontFamily: fontFam || 'var(--body-font)',
+    ...(bgImage ? { backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
   };
 
   return (
@@ -506,28 +528,6 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
               </div>
             ))}
 
-            {/* Colors — accessible on all screen sizes */}
-            <div className="border-t border-gray-100 pt-4">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Colors</p>
-              <div className="space-y-3">
-                {[
-                  { label: 'Font color',   value: fontColor,  onChange: setFontColor  },
-                  { label: 'Background',   value: bgColor,    onChange: setBgColor    },
-                  { label: 'Header color', value: invAccent,  onChange: setInvAccent  },
-                ].map(({ label, value, onChange }) => (
-                  <div key={label} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700">{label}</span>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <span className="text-xs font-mono text-gray-400">{value}</span>
-                      <div className="w-8 h-8 rounded-lg border border-gray-200 relative overflow-hidden flex-shrink-0">
-                        <div className="absolute inset-0" style={{ backgroundColor: value }} />
-                        <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
-                      </div>
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </>
       )}
@@ -778,6 +778,39 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
                 className={`${iField} text-sm resize-none`} />
             </div>
 
+            {/* Sections tab strip */}
+            {customSections.length > 0 && (
+              <div className="mb-4 border-t border-current border-opacity-10 pt-4">
+                {/* Tab strip */}
+                <div className="flex gap-1 mb-3 flex-wrap">
+                  {customSections.map((sec, idx) => (
+                    <div key={sec.id} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs border transition-all cursor-pointer ${activeSecId === sec.id ? 'border-current border-opacity-40 bg-black/5 font-medium' : 'border-current border-opacity-10 opacity-50 hover:opacity-70'}`}
+                      onClick={() => setActiveSecId(sec.id)}>
+                      <button onClick={(e) => { e.stopPropagation(); moveSection(sec.id, 'up'); }} disabled={idx === 0} className="opacity-50 hover:opacity-100 disabled:opacity-20 transition-opacity">
+                        <ChevronUp size={10} />
+                      </button>
+                      <span className="max-w-[80px] truncate">{sec.title}</span>
+                      <button onClick={(e) => { e.stopPropagation(); moveSection(sec.id, 'down'); }} disabled={idx === customSections.length - 1} className="opacity-50 hover:opacity-100 disabled:opacity-20 transition-opacity">
+                        <ChevronDown size={10} />
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); removeSection(sec.id); }} className="text-red-400 hover:text-red-600 transition-colors ml-0.5">
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {/* Active section content */}
+                {customSections.filter((s) => s.id === activeSecId).map((sec) => (
+                  <div key={sec.id}>
+                    <input value={sec.title} onChange={(e) => updateSection(sec.id, 'title', e.target.value)}
+                      className={`${iField} text-sm font-bold uppercase tracking-wide opacity-60 mb-2`} />
+                    <textarea value={sec.body} onChange={(e) => updateSection(sec.id, 'body', e.target.value)} rows={5}
+                      placeholder={SECTION_PLACEHOLDERS[sec.title] || 'Add text here…'} className={`${iField} text-sm resize-none`} />
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Add section chips */}
             <div className="mb-4 flex flex-wrap gap-2">
               {SECTION_TYPES.filter((s) => !customSections.find((cs) => cs.title === s)).map((s) => (
@@ -788,23 +821,6 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
                 </button>
               ))}
             </div>
-
-            {/* Custom sections */}
-            {customSections.map((sec, idx) => (
-              <div key={sec.id} className="mb-5 border-t border-current border-opacity-10 pt-5 group relative">
-                {/* Floating controls */}
-                <div className="absolute right-0 top-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {idx > 0 && <button onClick={() => moveSection(sec.id, 'up')} className="p-1 rounded hover:bg-black/10"><ChevronUp size={12} /></button>}
-                  {idx < customSections.length - 1 && <button onClick={() => moveSection(sec.id, 'down')} className="p-1 rounded hover:bg-black/10"><ChevronDown size={12} /></button>}
-                  <button className="p-1 rounded hover:bg-black/10 opacity-40" title="Bookmark"><Bookmark size={12} /></button>
-                  <button onClick={() => removeSection(sec.id)} className="p-1 rounded hover:bg-red-100 text-red-400"><X size={12} /></button>
-                </div>
-                <input value={sec.title} onChange={(e) => updateSection(sec.id, 'title', e.target.value)}
-                  className={`${iField} text-sm font-bold uppercase tracking-wide opacity-60 mb-2`} />
-                <textarea value={sec.body} onChange={(e) => updateSection(sec.id, 'body', e.target.value)} rows={4}
-                  placeholder="Add text here…" className={`${iField} text-sm resize-none`} />
-              </div>
-            ))}
 
             {/* Attachments */}
             <div className="border-t border-current border-opacity-10 pt-5">
@@ -892,6 +908,18 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
                   </label>
                 </div>
               ))}
+              {(layout === 'bold_header' || layout === 'brutalist') && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1.5 font-medium">Header color</p>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <div className="w-8 h-8 rounded-lg border border-gray-200 flex-shrink-0 relative overflow-hidden">
+                      <div className="absolute inset-0" style={{ backgroundColor: invAccent }} />
+                      <input type="color" value={invAccent} onChange={(e) => setInvAccent(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                    </div>
+                    <span className="text-xs font-mono text-gray-500">{invAccent}</span>
+                  </label>
+                </div>
+              )}
             </div>
 
             {/* Header Cover */}
@@ -917,6 +945,32 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
               </div>
               <input type="range" min="24" max="100" value={logoSize} onChange={(e) => setLogoSize(Number(e.target.value))}
                 className="w-full accent-[var(--accent)]" />
+            </div>
+
+            {/* Background image */}
+            <div>
+              <p className="text-xs text-gray-400 font-medium mb-1.5">Background Image</p>
+              {bgImage ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-lg border border-gray-200 overflow-hidden flex-shrink-0">
+                    <img src={bgImage} alt="bg" className="w-full h-full object-cover" />
+                  </div>
+                  <button onClick={() => setBgImage('')} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                </div>
+              ) : (
+                <label className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-xl border border-dashed border-gray-300 hover:border-gray-400 transition-colors">
+                  <ImagePlus size={14} className="text-gray-400 flex-shrink-0" />
+                  <span className="text-xs text-gray-500">Upload image</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => setBgImage(ev.target.result);
+                    reader.readAsDataURL(file);
+                    e.target.value = '';
+                  }} />
+                </label>
+              )}
             </div>
           </div>
         </div>

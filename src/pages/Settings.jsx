@@ -184,7 +184,20 @@ const PAYMENT_METHODS = [
 const PAYMENT_FIELD_OPTIONS = [
   'Bank', 'Account Name', 'Account Number', 'Routing Number',
   'SWIFT/BIC', 'IBAN', 'BSB', 'Sort Code', 'IFSC',
+  'Email', 'Phone', 'Username', 'Wallet Address', 'Network', 'Reference',
 ];
+
+const METHOD_DEFAULT_FIELDS = {
+  'Bank Transfer': ['Bank', 'Account Name', 'Account Number', 'Sort Code'],
+  'Stripe': ['Email'],
+  'Credit Card': ['Reference'],
+  'PayPal': ['Email'],
+  'Cash': ['Reference'],
+  'Check': ['Account Name', 'Reference'],
+  'Cryptocurrency': ['Wallet Address', 'Network'],
+  'Wise': ['Email', 'Account Name'],
+  'Revolut': ['Phone', 'Username'],
+};
 
 const DATE_FORMATS = ['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD', 'DD MMM YYYY'];
 
@@ -376,13 +389,21 @@ export default function Settings({ clients, refetch }) {
   };
   const openNewTemplate = () => {
     setEditingTpl(null);
-    setTplForm({ name: '', method: 'Bank Transfer', fields: [] });
+    const defaultFields = (METHOD_DEFAULT_FIELDS['Bank Transfer'] || []).map((label) => ({ label, value: '' }));
+    setTplForm({ name: '', method: 'Bank Transfer', fields: defaultFields });
     setShowTplForm(true);
     setAddFieldOpen(false);
   };
+
+  const handleMethodChange = (method) => {
+    const defaultFields = (METHOD_DEFAULT_FIELDS[method] || []).map((label) => ({ label, value: '' }));
+    setTplForm((f) => ({ ...f, method, fields: defaultFields }));
+  };
   const openEditTemplate = (tpl, idx) => {
     setEditingTpl(idx);
-    setTplForm({ name: tpl.name, method: tpl.method, fields: [...tpl.fields] });
+    // Normalize legacy string fields to {label, value} objects
+    const fields = (tpl.fields || []).map((f) => typeof f === 'string' ? { label: f, value: '' } : f);
+    setTplForm({ name: tpl.name, method: tpl.method, fields });
     setShowTplForm(true);
     setAddFieldOpen(false);
   };
@@ -398,12 +419,15 @@ export default function Settings({ clients, refetch }) {
   };
   const deleteTemplate = (idx) => saveTemplates(templates.filter((_, i) => i !== idx));
   const addFieldToTpl = (field) => {
-    if (tplForm.fields.includes(field)) return;
-    setTplForm((f) => ({ ...f, fields: [...f.fields, field] }));
+    if (tplForm.fields.find((f) => f.label === field)) return;
+    setTplForm((f) => ({ ...f, fields: [...f.fields, { label: field, value: '' }] }));
     setAddFieldOpen(false);
   };
-  const removeFieldFromTpl = (field) => {
-    setTplForm((f) => ({ ...f, fields: f.fields.filter((x) => x !== field) }));
+  const removeFieldFromTpl = (label) => {
+    setTplForm((f) => ({ ...f, fields: f.fields.filter((x) => x.label !== label) }));
+  };
+  const updateFieldValue = (label, value) => {
+    setTplForm((f) => ({ ...f, fields: f.fields.map((x) => x.label === label ? { ...x, value } : x) }));
   };
 
   // Restore / trash
@@ -993,7 +1017,7 @@ export default function Settings({ clients, refetch }) {
             <div>
               <p className="text-xs text-gray-400 mb-1.5">Payment Method</p>
               <div className="relative">
-                <select value={tplForm.method} onChange={(e) => setTplForm((f) => ({ ...f, method: e.target.value }))} className={selectClass}>
+                <select value={tplForm.method} onChange={(e) => handleMethodChange(e.target.value)} className={selectClass}>
                   {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -1008,7 +1032,7 @@ export default function Settings({ clients, refetch }) {
                   </button>
                   {addFieldOpen && (
                     <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl border border-gray-200 shadow-lg z-10 overflow-hidden">
-                      {PAYMENT_FIELD_OPTIONS.filter((f) => !tplForm.fields.includes(f)).map((field) => (
+                      {PAYMENT_FIELD_OPTIONS.filter((f) => !tplForm.fields.find((x) => x.label === f)).map((field) => (
                         <button key={field} onClick={() => addFieldToTpl(field)} className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                           {field}
                         </button>
@@ -1020,14 +1044,20 @@ export default function Settings({ clients, refetch }) {
               {tplForm.fields.length === 0 ? (
                 <p className="text-xs text-gray-400 italic">No fields added yet</p>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {tplForm.fields.map((field) => (
-                    <span key={field} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 rounded-lg text-xs font-medium text-gray-700">
-                      {field}
-                      <button onClick={() => removeFieldFromTpl(field)} className="text-gray-400 hover:text-gray-600">
-                        <X size={10} />
+                <div className="space-y-2 mt-1">
+                  {tplForm.fields.map(({ label, value }) => (
+                    <div key={label} className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 w-32 flex-shrink-0 font-medium">{label}</span>
+                      <input
+                        value={value}
+                        onChange={(e) => updateFieldValue(label, e.target.value)}
+                        placeholder={`Enter ${label.toLowerCase()}…`}
+                        className={`${inputClass} flex-1 text-sm py-1.5`}
+                      />
+                      <button onClick={() => removeFieldFromTpl(label)} className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
+                        <X size={13} />
                       </button>
-                    </span>
+                    </div>
                   ))}
                 </div>
               )}
@@ -1442,7 +1472,7 @@ export default function Settings({ clients, refetch }) {
               <button
                 key={item}
                 onClick={() => setActiveSection(item)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${activeSection === item ? 'text-white' : 'bg-gray-100 text-gray-500'}`}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeSection === item ? 'text-white' : 'bg-gray-100 text-gray-500'}`}
                 style={activeSection === item ? { backgroundColor: 'var(--accent)' } : {}}
               >
                 {item}

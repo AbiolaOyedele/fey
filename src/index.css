@@ -162,8 +162,6 @@ html, body, #root { overflow-x: hidden; }
 
 /* Minimum touch target on mobile/tablet */
 @media (max-width: 768px) {
-  button, a, [role="button"] { min-height: 44px; }
-
   /* Prevent iOS auto-zoom on input focus */
   input, select, textarea { font-size: 16px !important; }
 }

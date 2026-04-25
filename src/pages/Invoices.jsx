@@ -196,7 +196,7 @@ export default function Invoices({ clients = [] }) {
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors capitalize ${statusFilter === s ? 'text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize min-w-[2.5rem] text-center ${statusFilter === s ? 'text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
               style={statusFilter === s ? { backgroundColor: 'var(--accent)' } : {}}
             >
               {s === 'all' ? 'All' : STATUS_CONFIG[s].label}

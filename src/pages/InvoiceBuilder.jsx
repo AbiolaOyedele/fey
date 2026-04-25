@@ -182,6 +182,8 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
   const [showAttach, setShowAttach] = useState(false);
   const attachRef = useRef(null);
 
+  const [betaDismissed, setBetaDismissed] = useState(() => sessionStorage.getItem('invoice_beta_dismissed') === '1');
+
   // Customize panel
   const [layout,    setLayout]    = useState(settings.invoice_layout   || 'left_aligned');
   const [fontColor, setFontColor] = useState(settings.invoice_font_color || '#1a1a1a');
@@ -489,6 +491,18 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
       </div>
 
       {/* ── Invoice settings panel (overlay) ── */}
+      {/* ── Beta warning banner ── */}
+      {!betaDismissed && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center gap-3 no-print">
+          <span className="text-xs font-bold text-amber-700 bg-amber-200 px-2 py-0.5 rounded-full flex-shrink-0">BETA</span>
+          <p className="text-xs text-amber-700 flex-1">Invoicing is still in testing — some features may not work as expected. Proceed with caution.</p>
+          <button
+            onClick={() => { setBetaDismissed(true); sessionStorage.setItem('invoice_beta_dismissed', '1'); }}
+            className="text-xs font-medium text-amber-700 hover:text-amber-900 underline flex-shrink-0 transition-colors"
+          >Got it</button>
+        </div>
+      )}
+
       {showSettingsPanel && (
         <>
           <div className="fixed inset-0 z-30 no-print" onClick={() => setShowSettingsPanel(false)} />
@@ -850,6 +864,12 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Invoice footer */}
+            <div className="mt-8 pt-4 border-t border-current border-opacity-10 flex items-center justify-between">
+              <p className="text-[10px] opacity-25">Created with WorkBoard</p>
+              <p className="text-[10px] opacity-40 font-medium">{invoiceNum}</p>
             </div>
           </div>
         </div>

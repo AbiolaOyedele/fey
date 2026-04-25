@@ -1,0 +1,161 @@
+[
+  {
+    "version": "1.8.0",
+    "date": "25 April 2026",
+    "title": "Invoices & Settings Overhaul",
+    "features": [
+      "Full invoicing system — create, send, and track invoices",
+      "Invoice builder with 4 layouts and inline editing",
+      "Three creation paths: from tasks, from client, or blank",
+      "Shareable invoice links — clients can view without an account",
+      "PDF export via browser print dialog",
+      "Settings expanded to 8 tabs: Profile, Branding, Business Info, Payments, General, Emails, Integrations, Billing",
+      "Avatar and cover image upload in Profile settings",
+      "Payment template builder in Payments settings",
+      "Getting Started checklist widget with auto-completion detection"
+    ],
+    "improvements": [
+      "Invoices nav item added to sidebar (desktop and mobile)",
+      "Business info in settings feeds directly into invoice FROM section"
+    ],
+    "fixes": []
+  },
+  {
+    "version": "1.7.0",
+    "date": "18 April 2026",
+    "title": "Sharing & Task Dashboard",
+    "features": [
+      "Client workspace sharing with one-click shareable links",
+      "Public shared workspace for recipients (no account needed)",
+      "Per-member view/edit permission controls",
+      "Members panel in client workspace right sidebar",
+      "Task-only dashboard with completion rings and group cards",
+      "Tick off tasks directly from the task dashboard"
+    ],
+    "improvements": [
+      "All modals and popups now always center on screen (fixed stacking context bug)",
+      "Sidebar logo navigates to dashboard instead of full page reload"
+    ],
+    "fixes": ["Share link RLS bypass — cached client info in shared_clients table"]
+  },
+  {
+    "version": "1.6.1",
+    "date": "15 April 2026",
+    "title": "Bug Fix",
+    "features": [],
+    "improvements": [],
+    "fixes": ["Syntax error fix in SettingsContext restoreFromTrash function"]
+  },
+  {
+    "version": "1.6.0",
+    "date": "April 2026",
+    "title": "Tasks & App Modes",
+    "features": [
+      "Tasks page with standalone task list and task groups",
+      "Task group workspace with full task management",
+      "App mode switch (Clients Only, Tasks Only, Dual)",
+      "Clients section label rename in settings",
+      "Task mode toggle on client pages",
+      "Changelog popup"
+    ],
+    "improvements": [],
+    "fixes": []
+  },
+  {
+    "version": "1.5.0",
+    "date": "April 2026",
+    "title": "Drag & Drop",
+    "features": [
+      "Task drag and drop with sort order persistence",
+      "Task filter dropdown (All, Overdue, Due Today, Due Tomorrow)",
+      "Sentence case auto-formatting on task save",
+      "Pastel color randomisation for new clients"
+    ],
+    "improvements": [],
+    "fixes": []
+  },
+  {
+    "version": "1.4.2",
+    "date": "April 2026",
+    "title": "Bug Fixes",
+    "features": [],
+    "improvements": [],
+    "fixes": [
+      "Drag and drop click conflict on client cards",
+      "Task row icon alignment",
+      "Horizontal overflow layout fix"
+    ]
+  },
+  {
+    "version": "1.4.1",
+    "date": "April 2026",
+    "title": "Currency Improvements",
+    "features": [],
+    "improvements": ["Currency input decimal support and comma formatting"],
+    "fixes": []
+  },
+  {
+    "version": "1.4.0",
+    "date": "April 2026",
+    "title": "Deadlines & Currency",
+    "features": [
+      "Deadline tracking on tasks with calendar picker",
+      "Overdue button with red badge in dashboard",
+      "Dashboard tab restructure with filter tabs",
+      "Currency conversion system (NGN / USD)"
+    ],
+    "improvements": [],
+    "fixes": []
+  },
+  {
+    "version": "1.3.0",
+    "date": "April 2026",
+    "title": "Fonts & Branding",
+    "features": [
+      "Font system with Google Fonts and custom font upload",
+      "Client logos support",
+      "Drag and drop client card reordering",
+      "Overdue indicators on client cards and workspace",
+      "Notification bell with upcoming deadlines"
+    ],
+    "improvements": [],
+    "fixes": []
+  },
+  {
+    "version": "1.2.0",
+    "date": "April 2026",
+    "title": "Settings & Theming",
+    "features": [
+      "Settings page with full appearance controls",
+      "Trash with 45-day retention and one-click restore",
+      "Accent color theming applied globally"
+    ],
+    "improvements": [],
+    "fixes": []
+  },
+  {
+    "version": "1.1.0",
+    "date": "April 2026",
+    "title": "Supabase Migration",
+    "features": [
+      "Migrated from localStorage to Supabase",
+      "Data persists across devices and sessions"
+    ],
+    "improvements": [],
+    "fixes": []
+  },
+  {
+    "version": "1.0.0",
+    "date": "April 2026",
+    "title": "Initial Release",
+    "features": [
+      "Initial build with React, Vite, Tailwind CSS",
+      "Dashboard overview with earnings tracking",
+      "Clients management with task tracking",
+      "Payments history page",
+      "Data stored in localStorage"
+    ],
+    "improvements": [],
+    "fixes": []
+  }
+]

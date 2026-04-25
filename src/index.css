@@ -177,3 +177,20 @@ input[type="checkbox"] {
   appearance: auto;
   -webkit-appearance: auto;
 }
+
+/* PDF / print styles — show only the invoice document */
+@media print {
+  body > * { display: none !important; }
+  #invoice-document {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: white;
+    overflow: visible;
+  }
+  #invoice-document * { visibility: visible !important; }
+}

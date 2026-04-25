@@ -18,6 +18,9 @@ import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Onboarding from './pages/Onboarding';
 import SharedClientPage from './pages/SharedClientPage';
+import Invoices from './pages/Invoices';
+import InvoiceBuilder from './pages/InvoiceBuilder';
+import PublicInvoicePage from './pages/PublicInvoicePage';
 import ToastContainer from './components/Toast';
 import WelcomeGuide from './components/WelcomeGuide';
 import GettingStartedChecklist from './components/GettingStartedChecklist';
@@ -168,6 +171,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Login />} />
         <Route path="/share/:token" element={<SharedClientPage />} />
+        <Route path="/invoice/:token" element={<PublicInvoicePage />} />
 
         {/* Onboarding — protected but no sidebar/shell */}
         <Route path="/onboarding" element={
@@ -216,6 +220,9 @@ export default function App() {
                     )}
 
                     <Route path="/payments" element={<Payments clients={orderedClients} />} />
+                    <Route path="/invoices" element={<Invoices clients={orderedClients} />} />
+                    <Route path="/invoices/new" element={<InvoiceBuilder clients={orderedClients} />} />
+                    <Route path="/invoices/:id" element={<InvoiceBuilder clients={orderedClients} />} />
                     <Route path="/settings" element={<Settings clients={orderedClients} refetch={refetch} />} />
                   </Routes>
                 </main>

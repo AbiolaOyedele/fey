@@ -26,7 +26,13 @@ export default function PublicInvoicePage() {
     if (!el) return;
     setDownloading(true);
     try {
-      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const canvas = await html2canvas(el, {
+        scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
+        ignoreElements: (elem) => {
+          const s = window.getComputedStyle(elem);
+          return s.position === 'fixed' && !el.contains(elem);
+        },
+      });
       const imgW = 210;
       const imgH = (canvas.height * imgW) / canvas.width;
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [imgW, imgH] });

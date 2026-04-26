@@ -1,56 +1,18 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Folder, Upload, ArrowRight, Loader2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { useClientFiles } from '../hooks/useClientFiles';
 import { isImageType } from '../utils/cloudinary';
 
 /**
- * Summary card shown in the ClientWorkspace right sidebar below Members.
- * Shows total file count + up to 4 thumbnail previews + "View All" button.
+ * Summary card shown in the ClientWorkspace right sidebar.
+ * Uses useClientFiles so it updates in real-time after uploads.
  */
 export default function ClientFilesCard({ clientId }) {
   const navigate = useNavigate();
-  const [files, setFiles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
+  const { files, loading } = useClientFiles(clientId);
 
-  useEffect(() => {
-    if (!clientId) return;
-    async function load() {
-      setLoading(true);
-      const [cf, tf] = await Promise.all([
-        supabase
-          .from('client_files')
-          .select('id, file_url, file_type, file_name')
-          .eq('client_id', clientId)
-          .order('created_at', { ascending: false })
-          .limit(4),
-        supabase
-          .from('task_files')
-          .select('id, file_url, file_type, file_name')
-          .eq('client_id', clientId)
-          .order('created_at', { ascending: false })
-          .limit(4),
-      ]);
-
-      // Count totals separately
-      const [cfCount, tfCount] = await Promise.all([
-        supabase.from('client_files').select('id', { count: 'exact', head: true }).eq('client_id', clientId),
-        supabase.from('task_files').select('id', { count: 'exact', head: true }).eq('client_id', clientId),
-      ]);
-
-      setTotal((cfCount.count || 0) + (tfCount.count || 0));
-
-      // Combine and take first 4
-      const combined = [
-        ...(cf.data || []),
-        ...(tf.data || []),
-      ].slice(0, 4);
-      setFiles(combined);
-      setLoading(false);
-    }
-    load();
-  }, [clientId]);
+  const previews = files.slice(0, 4);
+  const total = files.length;
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -83,12 +45,12 @@ export default function ClientFilesCard({ clientId }) {
         </div>
       ) : (
         <>
-          {/* Thumbnail grid */}
           <div className="grid grid-cols-4 gap-1 mb-3">
-            {files.map((f) => (
+            {previews.map((f) => (
               <div
                 key={f.id}
-                className="aspect-square rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center"
+                className="aspect-square rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center cursor-pointer"
+                onClick={() => navigate(`/clients/${clientId}/files`)}
               >
                 {isImageType(f.file_type) ? (
                   <img src={f.file_url} alt={f.file_name} className="w-full h-full object-cover" />

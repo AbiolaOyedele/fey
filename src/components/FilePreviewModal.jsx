@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Download, Check, AlertCircle, RotateCcw, ChevronDown, Clock, FileText, Image, File, Loader2, History } from 'lucide-react';
+import { X, Download, Check, AlertCircle, RotateCcw, ChevronDown, Clock, FileText, Image, File, Loader2, History, Film } from 'lucide-react';
 import { formatFileSize, isImageType, isPdfType } from '../utils/cloudinary';
 import { supabase } from '../lib/supabase';
 
@@ -30,11 +30,42 @@ function FilePreview({ file }) {
       />
     );
   }
+  if (file.file_type === 'video') {
+    return (
+      <video
+        src={file.file_url}
+        controls
+        className="w-full h-full rounded-xl object-contain bg-black"
+      >
+        Your browser does not support video playback.
+      </video>
+    );
+  }
+  // Generic: document / spreadsheet / other — show download prompt
+  const iconMap = {
+    document:    <FileText size={52} strokeWidth={1} className="text-blue-300" />,
+    spreadsheet: <FileText size={52} strokeWidth={1} className="text-green-300" />,
+    video:       <Film     size={52} strokeWidth={1} className="text-purple-300" />,
+  };
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
-      <FileText size={48} strokeWidth={1} />
-      <p className="text-sm font-medium text-gray-600">{file.file_name}</p>
-      <p className="text-xs">{formatFileSize(file.file_size)}</p>
+    <div className="flex flex-col items-center justify-center h-full gap-4 text-gray-400">
+      {iconMap[file.file_type] || <File size={52} strokeWidth={1} />}
+      <div className="text-center">
+        <p className="text-sm font-semibold text-gray-700">{file.file_name}</p>
+        <p className="text-xs text-gray-400 mt-1">{formatFileSize(file.file_size)}</p>
+        <p className="text-xs text-gray-300 mt-0.5 capitalize">{file.file_type} file — preview not available</p>
+      </div>
+      <a
+        href={file.file_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        download={file.file_name}
+        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
+        style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+      >
+        <Download size={14} />
+        Download to view
+      </a>
     </div>
   );
 }

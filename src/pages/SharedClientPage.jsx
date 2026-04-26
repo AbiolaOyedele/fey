@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle, Edit2, Eye, Ban } from 'lucide-react';
+import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle, Edit2, Eye, Ban, Folder, File, FileText, Image, Film, Download, X } from 'lucide-react';
+import { formatFileSize, isImageType, isPdfType } from '../utils/cloudinary';
 
 import { getContrastColor } from '../utils/colorContrast';
 
@@ -188,6 +189,133 @@ function WelcomePage({ shareRecord, clientName, onAccept }) {
 }
 
 // ── Shared dashboard ──────────────────────────────────────────────────────────
+// ── Inline file preview ───────────────────────────────────────────────────────
+function SharedFilePreview({ file, onClose }) {
+  if (!file) return null;
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200] p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-100 flex-shrink-0">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">{file.file_name}</p>
+            <p className="text-xs text-gray-400">{formatFileSize(file.file_size)}{file.uploader_name ? ` · ${file.uploader_name}` : ''}</p>
+          </div>
+          <a href={file.file_url} download={file.file_name} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50">
+            <Download size={12} /> Download
+          </a>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-hidden p-4 bg-gray-50 flex items-center justify-center min-h-0">
+          {isImageType(file.file_type) ? (
+            <img src={file.file_url} alt={file.file_name} className="max-w-full max-h-full object-contain rounded-xl" />
+          ) : isPdfType(file.file_type) ? (
+            <iframe src={file.file_url} title={file.file_name} className="w-full h-full rounded-xl border-0" style={{ minHeight: '60vh' }} />
+          ) : file.file_type === 'video' ? (
+            <video src={file.file_url} controls className="max-w-full max-h-full rounded-xl bg-black">
+              Your browser does not support video playback.
+            </video>
+          ) : (
+            <div className="flex flex-col items-center gap-4 text-gray-400">
+              <File size={52} strokeWidth={1} />
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-700">{file.file_name}</p>
+                <p className="text-xs text-gray-400 mt-1">Preview not available</p>
+              </div>
+              <a href={file.file_url} target="_blank" rel="noopener noreferrer" download={file.file_name}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white"
+                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
+                <Download size={14} /> Download to view
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Files section for shared page ────────────────────────────────────────────
+function SharedFilesSection({ clientId }) {
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [preview, setPreview] = useState(null);
+
+  useEffect(() => {
+    if (!clientId) return;
+    async function load() {
+      setLoading(true);
+      const [cf, tf] = await Promise.all([
+        supabase.from('client_files').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
+        supabase.from('task_files').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
+      ]);
+      const combined = [
+        ...(cf.data || []).map((f) => ({ ...f, _source: 'client' })),
+        ...(tf.data || []).map((f) => ({ ...f, _source: 'task' })),
+      ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setFiles(combined);
+      setLoading(false);
+    }
+    load();
+  }, [clientId]);
+
+  if (loading) return null;
+  if (files.length === 0) return null;
+
+  const iconFor = (f) => {
+    if (isImageType(f.file_type)) return <Image size={16} className="text-pink-400" />;
+    if (isPdfType(f.file_type)) return <FileText size={16} className="text-red-400" />;
+    if (f.file_type === 'video') return <Film size={16} className="text-purple-400" />;
+    if (f.file_type === 'document') return <FileText size={16} className="text-blue-400" />;
+    return <File size={16} className="text-gray-400" />;
+  };
+
+  return (
+    <>
+      <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <p className="text-sm font-semibold text-gray-700">Files</p>
+          <span className="text-xs font-mono bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-md">{files.length}</span>
+        </div>
+
+        {/* Image grid for images */}
+        {files.some((f) => isImageType(f.file_type)) && (
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {files.filter((f) => isImageType(f.file_type)).slice(0, 6).map((f) => (
+              <div key={f.id} onClick={() => setPreview(f)}
+                className="aspect-square rounded-xl overflow-hidden bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity">
+                <img src={f.file_url} alt={f.file_name} className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* List for non-images */}
+        {files.filter((f) => !isImageType(f.file_type)).map((f) => (
+          <div key={f.id} onClick={() => setPreview(f)}
+            className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors group">
+            <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0 border border-gray-100">
+              {iconFor(f)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-700 truncate">{f.file_name}</p>
+              <p className="text-xs text-gray-400">{formatFileSize(f.file_size)}</p>
+            </div>
+            <Download size={13} className="text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" />
+          </div>
+        ))}
+      </div>
+
+      {preview && <SharedFilePreview file={preview} onClose={() => setPreview(null)} />}
+    </>
+  );
+}
+
 function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permission }) {
   const navigate = useNavigate();
   const [newTask, setNewTask] = useState('');
@@ -463,6 +591,9 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
             />
           </div>
         </div>
+
+        {/* Files */}
+        <SharedFilesSection clientId={client.id} />
 
         {/* Try WorkBoard CTA */}
         <div className="bg-white rounded-2xl p-4 shadow-sm text-center">

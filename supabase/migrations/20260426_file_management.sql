@@ -56,3 +56,15 @@ create policy "Users manage client_files for their clients" on client_files
 -- Enable Realtime
 alter publication supabase_realtime add table task_files;
 alter publication supabase_realtime add table client_files;
+
+-- Allow anyone to READ files for a client that has an active share
+-- (so shared page viewers can see files without logging in)
+create policy "Public can view files for shared clients" on task_files
+  for select using (
+    client_id in (select client_id from shared_clients where active = true)
+  );
+
+create policy "Public can view client_files for shared clients" on client_files
+  for select using (
+    client_id in (select client_id from shared_clients where active = true)
+  );

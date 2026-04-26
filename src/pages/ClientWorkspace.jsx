@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ChevronDown, ChevronUp, Plus, Check, CheckCircle2, Clock,
   AlertTriangle, GripVertical, Edit2, Share2, Users, FileText,
+  Mail, Phone, Globe, RotateCcw, XCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ShareModal from '../components/ShareModal';
@@ -24,6 +25,7 @@ import { CSS } from '@dnd-kit/utilities';
 import TaskItem from '../components/TaskItem';
 import EditClientModal from '../components/EditClientModal';
 import ClientFilesCard from '../components/ClientFilesCard';
+import { useClientFiles } from '../hooks/useClientFiles';
 import { useSettings } from '../contexts/SettingsContext';
 import { getContrastColor } from '../utils/colorContrast';
 
@@ -121,6 +123,12 @@ export default function ClientWorkspace({ clients, actions }) {
   const filterBtnRef = useRef(null);
   const filterDropdownRef = useRef(null);
   const isDraggingRef = useRef(false);
+
+  // File status counts for overview panel
+  const { files: allFiles } = useClientFiles(id);
+  const amendedFiles  = allFiles.filter((f) => f.status === 'amended');
+  const declinedFiles = allFiles.filter((f) => f.status === 'declined');
+  const pendingFiles  = allFiles.filter((f) => f.status === 'pending');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -261,6 +269,19 @@ export default function ClientWorkspace({ clients, actions }) {
     if (!newTask.trim()) return;
     await actions.addTask(id, newTask.trim(), settings.currency);
     setNewTask('');
+  };
+
+  // Bulk paste: if pasted text has multiple non-empty lines, create a task per line
+  const handleTaskPaste = async (e) => {
+    const text = e.clipboardData.getData('text');
+    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 2) return; // single line → let default paste handle it
+    e.preventDefault();
+    for (const line of lines) {
+      await actions.addTask(id, line, settings.currency);
+    }
+    setNewTask('');
+    showToast(`${lines.length} tasks added`);
   };
 
   const handleUpdateTask = async (updatedTask) => {
@@ -588,6 +609,7 @@ export default function ClientWorkspace({ clients, actions }) {
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+              onPaste={handleTaskPaste}
               className="flex-1 px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all min-w-0"
             />
             <button
@@ -639,8 +661,79 @@ export default function ClientWorkspace({ clients, actions }) {
                 </div>
               </div>
             )}
+            {amendedFiles.length > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+                  <RotateCcw size={16} className="text-amber-500" />
+                </div>
+                <div>
+                  <p className="font-mono font-semibold text-amber-600">{amendedFiles.length}</p>
+                  <p className="text-xs text-amber-400">Files need amends</p>
+                </div>
+              </div>
+            )}
+            {declinedFiles.length > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+                  <XCircle size={16} className="text-red-500" />
+                </div>
+                <div>
+                  <p className="font-mono font-semibold text-red-600">{declinedFiles.length}</p>
+                  <p className="text-xs text-red-400">Files declined</p>
+                </div>
+              </div>
+            )}
+            {pendingFiles.length > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <FileText size={16} className="text-gray-400" />
+                </div>
+                <div>
+                  <p className="font-mono font-semibold text-gray-700">{pendingFiles.length}</p>
+                  <p className="text-xs text-gray-400">Files awaiting review</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Contact info */}
+        {(client.email || client.phone || client.website) && (
+          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm mb-4">
+            <p className="text-sm font-semibold text-gray-700 mb-3">Contact</p>
+            <div className="space-y-2">
+              {client.email && (
+                <a
+                  href={`mailto:${client.email}`}
+                  className="flex items-center gap-2 text-xs text-gray-600 hover:text-gray-900 transition-colors group"
+                >
+                  <Mail size={13} className="text-gray-400 group-hover:text-gray-600 flex-shrink-0" />
+                  <span className="truncate">{client.email}</span>
+                </a>
+              )}
+              {client.phone && (
+                <a
+                  href={`tel:${client.phone}`}
+                  className="flex items-center gap-2 text-xs text-gray-600 hover:text-gray-900 transition-colors group"
+                >
+                  <Phone size={13} className="text-gray-400 group-hover:text-gray-600 flex-shrink-0" />
+                  <span className="truncate">{client.phone}</span>
+                </a>
+              )}
+              {client.website && (
+                <a
+                  href={client.website.startsWith('http') ? client.website : `https://${client.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs text-gray-600 hover:text-gray-900 transition-colors group"
+                >
+                  <Globe size={13} className="text-gray-400 group-hover:text-gray-600 flex-shrink-0" />
+                  <span className="truncate">{client.website}</span>
+                </a>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Earnings */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm mb-4">

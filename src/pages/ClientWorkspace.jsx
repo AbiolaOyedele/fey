@@ -23,6 +23,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import TaskItem from '../components/TaskItem';
 import EditClientModal from '../components/EditClientModal';
+import ClientFilesCard from '../components/ClientFilesCard';
 import { useSettings } from '../contexts/SettingsContext';
 import { getContrastColor } from '../utils/colorContrast';
 
@@ -801,6 +802,9 @@ export default function ClientWorkspace({ clients, actions }) {
             </div>
           )}
         </div>
+
+        {/* Files card */}
+        <ClientFilesCard clientId={id} />
       </div>
 
       {editingClient && (

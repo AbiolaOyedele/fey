@@ -47,7 +47,9 @@ async function req(method, path, body) {
 
 console.log(`Syncing v${latest.version} — "${latest.title}"…`);
 
-// 1. Upsert into whats_new (conflict on version column)
+// Upsert into whats_new (conflict on version column)
+// The popup fetches the latest entry directly from this table — no per-user
+// app_settings update needed.
 await req('POST', '/whats_new', {
   version: latest.version,
   title: latest.title,
@@ -55,10 +57,4 @@ await req('POST', '/whats_new', {
   images: [],
 });
 console.log(`✓ whats_new upserted`);
-
-// 2. Update existing app_settings rows (users already in the system)
-await req('PATCH', '/app_settings?key=eq.whats_new_version', { value: latest.version });
-await req('PATCH', '/app_settings?key=eq.whats_new_active', { value: 'true' });
-console.log(`✓ app_settings updated`);
-
 console.log(`Done. v${latest.version} is live.`);

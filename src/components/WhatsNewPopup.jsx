@@ -1,37 +1,51 @@
 import { useState, useEffect } from 'react';
 import { X, Sparkles, ChevronLeft, ChevronRight, Check } from 'lucide-react';
-import { useSettings } from '../contexts/SettingsContext';
 import { supabase } from '../lib/supabase';
 
+const DISMISSED_KEY = 'whats_new_dismissed_version';
+
+/**
+ * Fetch the single latest entry from the whats_new table.
+ * Returns null on error or if table is empty.
+ */
+export async function fetchLatestWhatsNew() {
+  const { data, error } = await supabase
+    .from('whats_new')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    ...data,
+    features: Array.isArray(data.features) ? data.features : JSON.parse(data.features || '[]'),
+    images:   Array.isArray(data.images)   ? data.images   : JSON.parse(data.images   || '[]'),
+  };
+}
+
+export function getDismissedVersion() {
+  return localStorage.getItem(DISMISSED_KEY) || '';
+}
+
+export function dismissVersion(version) {
+  localStorage.setItem(DISMISSED_KEY, version);
+}
+
 export default function WhatsNewPopup({ open, onClose }) {
-  const { settings } = useSettings();
   const [entry, setEntry] = useState(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [closing, setClosing] = useState(false);
 
   useEffect(() => {
-    if (!open || !settings.whats_new_version) return;
+    if (!open) return;
     setEntry(null);
     setCarouselIndex(0);
-    supabase
-      .from('whats_new')
-      .select('*')
-      .eq('version', settings.whats_new_version)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          setEntry({
-            ...data,
-            features: Array.isArray(data.features) ? data.features : JSON.parse(data.features || '[]'),
-            images: Array.isArray(data.images) ? data.images : JSON.parse(data.images || '[]'),
-          });
-        }
-      });
-  }, [open, settings.whats_new_version]);
+    fetchLatestWhatsNew().then((e) => { if (e) setEntry(e); });
+  }, [open]);
 
   const handleClose = () => {
     setClosing(true);
-    localStorage.setItem('whats_new_dismissed_version', settings.whats_new_version || '');
+    if (entry?.version) dismissVersion(entry.version);
     setTimeout(() => {
       setClosing(false);
       onClose();
@@ -40,10 +54,10 @@ export default function WhatsNewPopup({ open, onClose }) {
 
   if (!open) return null;
 
-  const images = entry?.images || [];
+  const images   = entry?.images   || [];
   const features = entry?.features || [];
-  const version = entry?.version || settings.whats_new_version || '';
-  const title = entry?.title || 'New in WorkBoard';
+  const version  = entry?.version  || '';
+  const title    = entry?.title    || 'New in WorkBoard';
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] animate-fadeIn">
@@ -58,7 +72,7 @@ export default function WhatsNewPopup({ open, onClose }) {
             className="w-full md:w-[44%] p-6 flex flex-col min-h-[200px] md:min-h-0"
             style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
-            {/* What's New badge — rotating seal, fixed text */}
+            {/* Rotating seal badge */}
             <div className="mb-5">
               <div className="relative inline-flex items-center justify-center w-16 h-16">
                 <svg
@@ -76,18 +90,16 @@ export default function WhatsNewPopup({ open, onClose }) {
                     c8.043-8.04,11.909-19.133,10.609-30.434c-1.989-17.273,4.955-34.037,18.576-44.845c8.907-7.07,14.017-17.647,14.017-29.02
                     S289.886,125.549,280.977,118.478z"/>
                 </svg>
-                <span className="relative z-10 text-white font-bold text-center text-[11px]">
-                  New
-                </span>
+                <span className="relative z-10 text-white font-bold text-center text-[11px]">New</span>
               </div>
             </div>
 
-            {/* Version number */}
+            {/* Version */}
             <p className="font-mono text-4xl font-bold text-white mb-1 leading-none">
-              v{version}
+              {version ? `v${version}` : <span className="opacity-40 text-2xl">Loading…</span>}
             </p>
 
-            {/* Release title */}
+            {/* Title */}
             <p className="text-white/75 text-sm font-medium mb-6">{title}</p>
 
             {/* Feature list */}
@@ -100,14 +112,15 @@ export default function WhatsNewPopup({ open, onClose }) {
                   </li>
                 ))
               ) : (
-                <li className="text-white/40 text-sm italic">Loading…</li>
+                <li className="text-white/40 text-sm italic">
+                  {entry === null ? 'Loading…' : 'No features listed'}
+                </li>
               )}
             </ul>
           </div>
 
           {/* Right column — white */}
           <div className="flex-1 p-6 flex flex-col min-h-[200px] md:min-h-0">
-            {/* X close in top-right */}
             <div className="flex justify-end mb-3">
               <button
                 onClick={handleClose}
@@ -152,17 +165,16 @@ export default function WhatsNewPopup({ open, onClose }) {
                 </div>
               )}
 
-              {/* Dot indicators */}
               {images.length > 1 && (
                 <div className="flex items-center justify-center gap-1.5 mt-3">
                   {images.map((_, i) => (
                     <button
                       key={i}
                       onClick={() => setCarouselIndex(i)}
-                      className="w-1.5 h-1.5 rounded-full transition-all"
+                      className="rounded-full transition-all"
                       style={{
                         backgroundColor: i === carouselIndex ? 'var(--accent, #ED64A6)' : '#D1D5DB',
-                        width: i === carouselIndex ? '6px' : '5px',
+                        width:  i === carouselIndex ? '6px' : '5px',
                         height: i === carouselIndex ? '6px' : '5px',
                       }}
                     />
@@ -171,7 +183,6 @@ export default function WhatsNewPopup({ open, onClose }) {
               )}
             </div>
 
-            {/* Primary close button */}
             <button
               onClick={handleClose}
               className="mt-5 w-full py-3 rounded-xl text-white text-sm font-medium hover:opacity-90 transition-opacity"

@@ -1,5 +1,24 @@
 [
   {
+    "version": "1.8.1",
+    "date": "26 April 2026",
+    "title": "Polish & Bug Fixes",
+    "features": [],
+    "improvements": [
+      "Client and task group cards now auto-switch to white text on dark custom colors",
+      "Pastel card colors keep their original warm color-matched text",
+      "What's New popup now loads content reliably for all users",
+      "Invoice PDF export cleaned up — no overlapping inputs or browser UI artifacts",
+      "Status dropdown no longer clips inside table containers",
+      "Mobile button and pill styles unified across all pages"
+    ],
+    "fixes": [
+      "Invoice stat cards redesigned to match app design language",
+      "Settings nav tabs and filter pills use consistent rounded style",
+      "Payment method templates now show per-method default fields"
+    ]
+  },
+  {
     "version": "1.8.0",
     "date": "25 April 2026",
     "title": "Invoices & Settings Overhaul",

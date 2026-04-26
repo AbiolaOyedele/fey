@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Users, CreditCard, Settings, ListTodo, FileText } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
-import WhatsNewPopup from './WhatsNewPopup';
+import WhatsNewPopup, { fetchLatestWhatsNew, getDismissedVersion, dismissVersion } from './WhatsNewPopup';
 
 const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -14,26 +14,14 @@ export default function Sidebar() {
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const [showBadge, setShowBadge] = useState(false);
 
-  // Badge visibility: active in settings, not yet dismissed, not expired after 24h
+  // On mount: fetch latest whats_new entry and show badge if not dismissed
   useEffect(() => {
-    const isActive = settings.whats_new_active === 'true';
-    const currentVersion = settings.whats_new_version || '';
-    if (!isActive || !currentVersion) { setShowBadge(false); return; }
-
-    const dismissed = localStorage.getItem('whats_new_dismissed_version');
-    if (dismissed === currentVersion) { setShowBadge(false); return; }
-
-    const shownAt = localStorage.getItem('whats_new_shown_at');
-    const now = Date.now();
-    if (shownAt) {
-      const elapsed = now - parseInt(shownAt, 10);
-      if (elapsed > 24 * 60 * 60 * 1000) { setShowBadge(false); return; }
-    } else {
-      localStorage.setItem('whats_new_shown_at', String(now));
-    }
-
-    setShowBadge(true);
-  }, [settings.whats_new_active, settings.whats_new_version]);
+    fetchLatestWhatsNew().then((entry) => {
+      if (!entry?.version) return;
+      if (getDismissedVersion() === entry.version) return;
+      setShowBadge(true);
+    });
+  }, []);
 
   const handlePopupClose = () => {
     setWhatsNewOpen(false);

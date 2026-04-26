@@ -3,15 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle, Edit2, Eye, Ban } from 'lucide-react';
 
-const ACCENT_TEXT = {
-  '#FDE8E8': '#92400E', '#FEF3C7': '#78350F', '#D1FAE5': '#065F46',
-  '#DBEAFE': '#1E3A8A', '#EDE9FE': '#5B21B6', '#FCE7F3': '#9D174D',
-  '#ECFDF5': '#047857', '#FFF7ED': '#9A3412', '#F0FDF4': '#166534',
-  '#E0F2FE': '#0C4A6E', '#F5F3FF': '#4C1D95', '#FFF1F2': '#9F1239',
-  '#ECFEFF': '#164E63', '#FEFCE8': '#713F12', '#F7FEE7': '#365314',
-  '#FDF4FF': '#701A75', '#F0F9FF': '#0C4A6E', '#E6FFFA': '#134E4A',
-  '#EEF2FF': '#312E81', '#FFF9F0': '#7C2D12',
-};
+import { getContrastColor } from '../utils/colorContrast';
 
 function getTodayStr() {
   const n = new Date();
@@ -203,7 +195,7 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
   const [filter, setFilter] = useState('all');
   const todayStr = getTodayStr();
 
-  const textColor = ACCENT_TEXT[client.color] || '#374151';
+  const textColor = getContrastColor(client.color);
   const totalTasks = tasks.length;
   const doneTasks = tasks.filter((t) => t.done).length;
   const pendingCount = tasks.filter((t) => !t.done).length;

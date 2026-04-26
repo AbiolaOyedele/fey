@@ -6,18 +6,7 @@ import {
   TriangleAlert, ListChecks,
 } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
-
-const ACCENT_TEXT = {
-  '#FDE8E8': '#92400E',
-  '#FEF3C7': '#78350F',
-  '#D1FAE5': '#065F46',
-  '#DBEAFE': '#1E3A8A',
-  '#EDE9FE': '#5B21B6',
-  '#FCE7F3': '#9D174D',
-  '#ECFDF5': '#047857',
-  '#FFF7ED': '#9A3412',
-  '#F0FDF4': '#166534',
-};
+import { getContrastColor } from '../utils/colorContrast';
 
 function getTodayStr() {
   const n = new Date();
@@ -119,7 +108,7 @@ function TaskRow({ task, todayStr, onToggle }) {
 
 // ── Group card ────────────────────────────────────────────────────────────────
 function GroupCard({ group, todayStr, expanded, onToggle, onToggleTask }) {
-  const textColor = ACCENT_TEXT[group.color] || '#374151';
+  const textColor = getContrastColor(group.color);
   const total = group.tasks.length;
   const done = group.tasks.filter((t) => t.done).length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;

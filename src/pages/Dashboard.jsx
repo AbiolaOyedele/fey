@@ -8,18 +8,7 @@ import {
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-
-const ACCENT_TEXT = {
-  '#FDE8E8': '#92400E',
-  '#FEF3C7': '#78350F',
-  '#D1FAE5': '#065F46',
-  '#DBEAFE': '#1E3A8A',
-  '#EDE9FE': '#5B21B6',
-  '#FCE7F3': '#9D174D',
-  '#ECFDF5': '#047857',
-  '#FFF7ED': '#9A3412',
-  '#F0FDF4': '#166534',
-};
+import { getContrastColor } from '../utils/colorContrast';
 
 const CARD_COLS = {
   small: 'lg:grid-cols-3',
@@ -548,7 +537,7 @@ export default function Dashboard({ clients, actions }) {
                 const paidAmount = client.tasks
                   .filter((t) => t.paid)
                   .reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
-                const textColor = ACCENT_TEXT[client.color] || '#374151';
+                const textColor = getContrastColor(client.color);
                 const hasOverdue = client.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
 
                 return (
@@ -645,7 +634,7 @@ export default function Dashboard({ clients, actions }) {
               </div>
             )}
             {tasksByClient.map(({ client, tasks }) => {
-              const textColor = ACCENT_TEXT[client.color] || '#374151';
+              const textColor = getContrastColor(client.color);
               return (
                 <div key={client.id} className="overflow-hidden min-w-0">
                   <Link
@@ -904,7 +893,7 @@ export default function Dashboard({ clients, actions }) {
                     className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
                     style={{
                       backgroundColor: client.color,
-                      color: ACCENT_TEXT[client.color] || '#374151',
+                      color: getContrastColor(client.color),
                     }}
                   >
                     {client.name.charAt(0)}
@@ -921,7 +910,7 @@ export default function Dashboard({ clients, actions }) {
                     className="text-xs font-mono font-medium px-2 py-0.5 rounded-lg"
                     style={{
                       backgroundColor: client.color,
-                      color: ACCENT_TEXT[client.color] || '#374151',
+                      color: getContrastColor(client.color),
                     }}
                   >
                     {client.completionPct}%

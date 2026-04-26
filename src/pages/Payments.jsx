@@ -2,18 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, TrendingUp, Clock } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
-
-const ACCENT_TEXT = {
-  '#FDE8E8': '#92400E',
-  '#FEF3C7': '#78350F',
-  '#D1FAE5': '#065F46',
-  '#DBEAFE': '#1E3A8A',
-  '#EDE9FE': '#5B21B6',
-  '#FCE7F3': '#9D174D',
-  '#ECFDF5': '#047857',
-  '#FFF7ED': '#9A3412',
-  '#F0FDF4': '#166534',
-};
+import { getContrastColor } from '../utils/colorContrast';
 
 export default function Payments({ clients }) {
   const [expandedMonth, setExpandedMonth] = useState(null);
@@ -277,7 +266,7 @@ export default function Payments({ clients }) {
                   {isExpanded && (
                     <div className="border-t border-gray-100 px-4 sm:px-6 py-4 animate-slideDown space-y-4">
                       {clientEntries.map((clientData) => {
-                        const textColor = ACCENT_TEXT[clientData.color] || '#374151';
+                        const textColor = getContrastColor(clientData.color);
                         return (
                           <div key={clientData.id || clientData.name}>
                             {/* Client header row */}
@@ -420,7 +409,7 @@ export default function Payments({ clients }) {
               .sort((a, b) => b.totalEarned - a.totalEarned)
               .slice(0, 5)
               .map((c) => {
-                const textColor = ACCENT_TEXT[c.color] || '#374151';
+                const textColor = getContrastColor(c.color);
                 return (
                   <Link
                     key={c.id}

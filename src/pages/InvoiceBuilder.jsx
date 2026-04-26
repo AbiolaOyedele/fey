@@ -719,7 +719,22 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
               <div className="mb-6 border-t border-current border-opacity-10 pt-5">
                 <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-3">Payment Details</p>
                 <div className="relative max-w-xs mb-3">
-                  <select value={payMethod} onChange={(e) => { setPayMethod(e.target.value); setPayFields({}); }}
+                  <select value={payMethod} onChange={(e) => {
+                    const name = e.target.value;
+                    setPayMethod(name);
+                    const tpl = templates.find((t) => t.name === name);
+                    if (tpl) {
+                      const pre = {};
+                      (tpl.fields || []).forEach((f) => {
+                        const label = typeof f === 'string' ? f : f.label;
+                        const val = typeof f === 'string' ? '' : (f.value || '');
+                        pre[label] = val;
+                      });
+                      setPayFields(pre);
+                    } else {
+                      setPayFields({});
+                    }
+                  }}
                     className="w-full bg-transparent border border-current border-opacity-20 rounded-lg px-3 py-1.5 text-sm outline-none appearance-none"
                   >
                     <option value="">Select payment method</option>
@@ -727,13 +742,16 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
                   </select>
                   <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-40 pointer-events-none" />
                 </div>
-                {selectedTemplate?.fields?.map((field) => (
-                  <div key={field} className="flex gap-3 text-sm mb-1">
-                    <span className="opacity-50 w-36 flex-shrink-0">{field}:</span>
-                    <input value={payFields[field] || ''} onChange={(e) => setPayFields((f) => ({ ...f, [field]: e.target.value }))}
-                      placeholder="—" className={`${iField} flex-1`} />
-                  </div>
-                ))}
+                {selectedTemplate?.fields?.map((f) => {
+                  const label = typeof f === 'string' ? f : f.label;
+                  return (
+                    <div key={label} className="flex gap-3 text-sm mb-1">
+                      <span className="opacity-50 w-36 flex-shrink-0">{label}:</span>
+                      <input value={payFields[label] || ''} onChange={(e) => setPayFields((prev) => ({ ...prev, [label]: e.target.value }))}
+                        placeholder="—" className={`${iField} flex-1`} />
+                    </div>
+                  );
+                })}
                 <div className="flex gap-3 text-sm mt-2">
                   <span className="opacity-50 w-36 flex-shrink-0">Payment Link:</span>
                   <input value={payLink} onChange={(e) => setPayLink(e.target.value)} placeholder="https://..." className={`${iField} flex-1`} />

@@ -27,7 +27,7 @@ function FileTypeIcon({ fileType, size = 14 }) {
  */
 export default function TaskFileAttachment({ taskId, clientId, open }) {
   const { user } = useAuth();
-  const { settings } = useSettings();
+  const { settings, showToast } = useSettings();
   const { files, loading, addFile, deleteFile } = useTaskFiles(taskId, open);
   const [uploads, setUploads] = useState([]);
   const [dragOver, setDragOver] = useState(false);
@@ -48,7 +48,7 @@ export default function TaskFileAttachment({ taskId, clientId, open }) {
       abortsRef.current[uid] = abort;
       try {
         const { url, publicId, size } = await promise;
-        await addFile({
+        const { error } = await addFile({
           task_id: taskId,
           client_id: clientId,
           uploaded_by: user?.id || null,
@@ -61,8 +61,9 @@ export default function TaskFileAttachment({ taskId, clientId, open }) {
           version: 1,
           status: 'pending',
         });
+        if (error) showToast?.(`Failed to save "${file.name}": ${error.message}`);
       } catch (err) {
-        if (err.message !== 'cancelled') console.error('Upload failed:', err);
+        if (err.message !== 'cancelled') showToast?.(`Upload failed: ${err.message}`);
       } finally {
         delete abortsRef.current[uid];
         setUploads((p) => p.filter((u) => u.id !== uid));

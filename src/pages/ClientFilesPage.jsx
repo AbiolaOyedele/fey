@@ -276,7 +276,7 @@ export default function ClientFilesPage({ clients }) {
   const { id: clientId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { settings } = useSettings();
+  const { settings, showToast } = useSettings();
 
   const client = clients?.find((c) => c.id === clientId);
   const { files, loading, addClientFile, updateStatus, deleteFile, fetchVersions } = useClientFiles(clientId);
@@ -306,7 +306,7 @@ export default function ClientFilesPage({ clients }) {
       uploadAbortsRef.current[uploadId] = abort;
       try {
         const { url, publicId, size } = await promise;
-        await addClientFile({
+        const { error } = await addClientFile({
           client_id: clientId,
           uploaded_by: user?.id || null,
           uploader_name: settings.full_name || user?.email || 'You',
@@ -318,8 +318,9 @@ export default function ClientFilesPage({ clients }) {
           version: 1,
           status: 'pending',
         });
+        if (error) showToast?.(`Failed to save "${file.name}": ${error.message}`);
       } catch (err) {
-        if (err.message !== 'cancelled') console.error('Upload failed:', err);
+        if (err.message !== 'cancelled') showToast?.(`Upload failed: ${err.message}`);
       } finally {
         delete uploadAbortsRef.current[uploadId];
         setUploads((prev) => prev.filter((u) => u.id !== uploadId));

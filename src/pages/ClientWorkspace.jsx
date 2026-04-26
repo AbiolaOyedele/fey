@@ -185,19 +185,23 @@ export default function ClientWorkspace({ clients, actions }) {
       setMembers(mems || []);
       setMembersLoading(false);
 
-      // Realtime subscription
-      channel = supabase
-        .channel(`members-${share.id}`)
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'shared_client_members', filter: `shared_client_id=eq.${share.id}` },
-          (payload) => {
-            setMembers((prev) => [payload.new, ...prev]);
-            const memberName = payload.new.name || 'Someone';
-            showToast(`${memberName} joined ${client?.name || 'the workspace'}`);
-          }
-        )
-        .subscribe();
+      // Realtime subscription — unique name per mount to survive StrictMode double-invoke
+      try {
+        channel = supabase
+          .channel(`members-${share.id}-${Date.now()}`)
+          .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'shared_client_members', filter: `shared_client_id=eq.${share.id}` },
+            (payload) => {
+              setMembers((prev) => [payload.new, ...prev]);
+              const memberName = payload.new.name || 'Someone';
+              showToast(`${memberName} joined ${client?.name || 'the workspace'}`);
+            }
+          )
+          .subscribe();
+      } catch (e) {
+        // ignore StrictMode double-invoke errors
+      }
     }
 
     fetchShareAndMembers();

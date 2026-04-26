@@ -30,16 +30,23 @@ export function useTaskFiles(taskId, enabled = false) {
   // Realtime subscription (always active once mounted with a taskId)
   useEffect(() => {
     if (!taskId) return;
-    const channel = supabase
-      .channel(`task-files-${taskId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'task_files',
-        filter: `task_id=eq.${taskId}`,
-      }, () => { if (enabled) fetch(); })
-      .subscribe();
-    return () => supabase.removeChannel(channel);
+    // Use a unique channel name per mount to avoid StrictMode double-invoke conflicts
+    const channelName = `task-files-${taskId}-${Date.now()}`;
+    let channel;
+    try {
+      channel = supabase
+        .channel(channelName)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'task_files',
+          filter: `task_id=eq.${taskId}`,
+        }, () => { if (enabled) fetch(); })
+        .subscribe();
+    } catch (e) {
+      // ignore subscription errors (e.g. StrictMode double-invoke)
+    }
+    return () => { if (channel) supabase.removeChannel(channel); };
   }, [taskId, enabled, fetch]);
 
   const addFile = useCallback(async (fileData) => {

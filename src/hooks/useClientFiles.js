@@ -39,18 +39,24 @@ export function useClientFiles(clientId) {
   // Realtime: listen to both tables for this client
   useEffect(() => {
     if (!clientId) return;
-    const channel = supabase
-      .channel(`client-all-files-${clientId}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'client_files',
-        filter: `client_id=eq.${clientId}`,
-      }, fetch)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'task_files',
-        filter: `client_id=eq.${clientId}`,
-      }, fetch)
-      .subscribe();
-    return () => supabase.removeChannel(channel);
+    const channelName = `client-all-files-${clientId}-${Date.now()}`;
+    let channel;
+    try {
+      channel = supabase
+        .channel(channelName)
+        .on('postgres_changes', {
+          event: '*', schema: 'public', table: 'client_files',
+          filter: `client_id=eq.${clientId}`,
+        }, fetch)
+        .on('postgres_changes', {
+          event: '*', schema: 'public', table: 'task_files',
+          filter: `client_id=eq.${clientId}`,
+        }, fetch)
+        .subscribe();
+    } catch (e) {
+      // ignore StrictMode double-invoke errors
+    }
+    return () => { if (channel) supabase.removeChannel(channel); };
   }, [clientId, fetch]);
 
   const addClientFile = useCallback(async (fileData) => {

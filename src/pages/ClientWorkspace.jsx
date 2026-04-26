@@ -33,7 +33,7 @@ const TASK_FILTER_OPTIONS = [
   { value: 'tomorrow', label: 'Due Tomorrow' },
 ];
 
-function SortableTaskRow({ task, onUpdate, onDelete, dragListeners, dragAttributes, isDragging }) {
+function SortableTaskRow({ task, onUpdate, onDelete, dragListeners, dragAttributes, isDragging, clientId }) {
   const {
     setNodeRef,
     transform,
@@ -55,13 +55,14 @@ function SortableTaskRow({ task, onUpdate, onDelete, dragListeners, dragAttribut
         onDelete={onDelete}
         dragListeners={dragListeners}
         dragAttributes={dragAttributes}
+        clientId={clientId}
       />
     </div>
   );
 }
 
 // Wrapper that provides drag handle listeners to TaskItem
-function DraggableTaskItem({ task, onUpdate, onDelete }) {
+function DraggableTaskItem({ task, onUpdate, onDelete, clientId }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -77,6 +78,7 @@ function DraggableTaskItem({ task, onUpdate, onDelete }) {
         onDelete={onDelete}
         dragListeners={listeners}
         dragAttributes={attributes}
+        clientId={clientId}
       />
     </div>
   );
@@ -543,9 +545,9 @@ export default function ClientWorkspace({ clients, actions }) {
                 <div className="mb-4">
                   {pendingTasks.map((task) => (
                     dndEnabled ? (
-                      <DraggableTaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={handleDeleteTask} />
+                      <DraggableTaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={handleDeleteTask} clientId={id} />
                     ) : (
-                      <TaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={handleDeleteTask} />
+                      <TaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={handleDeleteTask} clientId={id} />
                     )
                   ))}
                 </div>
@@ -557,9 +559,9 @@ export default function ClientWorkspace({ clients, actions }) {
                   <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 px-4">Completed</p>
                   {completedTasks.map((task) => (
                     dndEnabled ? (
-                      <DraggableTaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={handleDeleteTask} />
+                      <DraggableTaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={handleDeleteTask} clientId={id} />
                     ) : (
-                      <TaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={handleDeleteTask} />
+                      <TaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={handleDeleteTask} clientId={id} />
                     )
                   ))}
                 </div>

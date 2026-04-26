@@ -5,7 +5,7 @@ export const SettingsContext = createContext(null);
 
 const DEFAULT_CHANGELOG = [
   {
-    version: '1.9.0', date: '26 Apr, 2026',
+    version: '1.8.1', date: '26 Apr, 2026',
     features: [
       'Client contact details — store email, phone, website, tax ID, and address per client from the Edit modal',
     ],

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Trash2, Check, Calendar, GripVertical, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, Check, Calendar, GripVertical, ChevronDown, ChevronUp, Paperclip } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
+import TaskFileAttachment from './TaskFileAttachment';
+import { useTaskFiles } from '../hooks/useTaskFiles';
 
 function formatWithCommas(val) {
   const num = parseFloat(String(val).replace(/,/g, ''));
@@ -17,7 +19,7 @@ function formatDeadline(dateStr) {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export default function TaskItem({ task, onUpdate, onDelete, dragListeners, dragAttributes, noMoney = false }) {
+export default function TaskItem({ task, onUpdate, onDelete, dragListeners, dragAttributes, noMoney = false, clientId = null }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [expanded, setExpanded] = useState(false);
@@ -26,8 +28,12 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
   const [amountInput, setAmountInput] = useState('');
   const [amountEditing, setAmountEditing] = useState(false);
   const [paidMenuOpen, setPaidMenuOpen] = useState(false);
+  const [fileOpen, setFileOpen] = useState(false);
   const dateInputRef = useRef(null);
   const paidMenuRef = useRef(null);
+
+  // File count badge — lightweight count query (no files fetched until panel opens)
+  const { count: fileCount } = useTaskFiles(clientId ? task.id : null, false);
 
   useEffect(() => {
     if (!paidMenuOpen) return;
@@ -46,7 +52,6 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
   const isOverdue = task.deadline && !task.done && task.deadline < todayStr;
   const isToday = task.deadline && task.deadline === todayStr;
 
-  // Sync display amount when task amount/currency or viewing currency changes
   useEffect(() => {
     if (!amountEditing) {
       const converted = convertAmount(task.amount, task.currency);
@@ -102,12 +107,12 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
 
   return (
     <div
-      className={`group py-3 px-4 rounded-xl hover:bg-gray-50 transition-all duration-150 ${
+      className={`group rounded-xl hover:bg-gray-50 transition-all duration-150 ${
         deleting ? 'animate-fadeOut' : 'animate-fadeIn'
-      } ${isOverdue ? 'border-l-2 border-red-400 pl-3' : ''}`}
+      } ${isOverdue ? 'border-l-2 border-red-400' : ''}`}
     >
-      {/* ── Mobile top row: checkbox + title + chevron ── */}
-      <div className="flex items-center gap-3">
+      {/* ── Main task row ── */}
+      <div className={`flex items-center gap-3 py-3 px-4 ${isOverdue ? 'pl-3' : ''}`}>
         {/* Done checkbox */}
         <span
           onClick={handleDone}
@@ -213,6 +218,31 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
 
         {/* Desktop trailing icons */}
         <div className="hidden md:flex items-center gap-1.5 flex-shrink-0">
+          {/* Paperclip — only for client tasks */}
+          {clientId && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setFileOpen((v) => !v); }}
+              title="Attachments"
+              className={`relative flex items-center justify-center w-6 h-6 transition-colors ${
+                fileOpen
+                  ? 'text-gray-600'
+                  : fileCount > 0
+                  ? 'text-gray-400'
+                  : 'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-500'
+              }`}
+            >
+              <Paperclip size={14} />
+              {fileCount > 0 && (
+                <span
+                  className="absolute -top-1 -right-1.5 w-3.5 h-3.5 rounded-full text-white text-[8px] font-bold flex items-center justify-center leading-none"
+                  style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                >
+                  {fileCount > 9 ? '9+' : fileCount}
+                </span>
+              )}
+            </button>
+          )}
+
           <div className="relative">
             <button
               onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
@@ -293,9 +323,9 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
         )}
       </div>
 
-      {/* ── Mobile expanded panel (hidden on md+, shown when expanded) ── */}
+      {/* ── Mobile expanded panel (hidden on md+) ── */}
       {!noMoney && expanded && (
-        <div className="md:hidden flex items-center gap-2 flex-wrap pt-2 pb-1 pl-8">
+        <div className="md:hidden flex items-center gap-2 flex-wrap pt-2 pb-1 pl-8 px-4">
           <span className="text-xs text-gray-400">{currencyLabel}</span>
           <input
             type="text"
@@ -341,11 +371,7 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
           <button
             onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
             className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${
-              isOverdue
-                ? 'text-red-400'
-                : task.deadline
-                ? 'text-amber-400'
-                : 'text-gray-300'
+              isOverdue ? 'text-red-400' : task.deadline ? 'text-amber-400' : 'text-gray-300'
             }`}
           >
             <Calendar size={14} />
@@ -357,6 +383,11 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
             <Trash2 size={14} />
           </button>
         </div>
+      )}
+
+      {/* ── File attachment panel (desktop, below the row) ── */}
+      {clientId && (
+        <TaskFileAttachment taskId={task.id} clientId={clientId} open={fileOpen} />
       )}
     </div>
   );

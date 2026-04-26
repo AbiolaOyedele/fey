@@ -9,6 +9,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { useInvoiceData } from '../hooks/useInvoiceData';
 import InvoiceSendModal from '../components/InvoiceSendModal';
+import { uploadToCloudinary, getFileType, formatFileSize } from '../utils/cloudinary';
+import { supabase } from '../lib/supabase';
+import { Loader2 } from 'lucide-react';
 
 const CURRENCY_SYMBOLS = { NGN:'₦', USD:'$', GBP:'£', EUR:'€', CAD:'CA$', AUD:'A$', JPY:'¥', CHF:'CHF', INR:'₹', ZAR:'R' };
 const FONTS = ['Default', 'Lato', 'Urbanist', 'Spectral', 'Playfair Display', 'Georgia', 'Courier New'];
@@ -179,6 +182,7 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
   const [customSections, setCustomSections] = useState([]);
   const [activeSecId, setActiveSecId] = useState(null);
   const [attachments, setAttachments] = useState([]);
+  const [attachUploads, setAttachUploads] = useState([]); // in-progress uploads
   const [showAttach, setShowAttach] = useState(false);
   const attachRef = useRef(null);
 
@@ -256,6 +260,7 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
       setFontFam(data.font_family || '');
       setShareToken(data.share_token || '');
       setShareEnabled(data.share_enabled || false);
+      if (data.attachments) setAttachments(data.attachments);
       setSavedId(data.id);
       setLoaded(true);
     })();
@@ -326,11 +331,46 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
   };
 
   // ── Attachments ───────────────────────────────────────────────────────────
-  const handleAttachFiles = (files) => {
-    Array.from(files).forEach((file) => {
-      setAttachments((prev) => [...prev, { id: uid(), name: file.name, size: file.size, type: file.type }]);
-    });
-  };
+  const handleAttachFiles = useCallback(async (fileList) => {
+    for (const file of Array.from(fileList)) {
+      const tempId = uid();
+      setAttachUploads((p) => [...p, { id: tempId, name: file.name, progress: 0 }]);
+      try {
+        const folder = savedId ? `invoices/${savedId}` : 'invoices/tmp';
+        const { url, publicId, size } = await uploadToCloudinary(
+          file,
+          folder,
+          (pct) => setAttachUploads((p) => p.map((u) => u.id === tempId ? { ...u, progress: pct } : u))
+        );
+        setAttachments((prev) => [
+          ...prev,
+          {
+            id: uid(),
+            name: file.name,
+            url,
+            publicId,
+            size: size || file.size,
+            fileType: getFileType(file.name),
+          },
+        ]);
+      } catch (err) {
+        console.error('Attachment upload failed:', err);
+      } finally {
+        setAttachUploads((p) => p.filter((u) => u.id !== tempId));
+      }
+    }
+  }, [savedId]);
+
+  const deleteAttachment = useCallback(async (attId, publicId) => {
+    if (publicId) {
+      try {
+        await supabase.functions.invoke('delete-cloudinary-file', { body: { public_id: publicId } });
+      } catch (e) {
+        console.warn('Cloudinary delete failed:', e);
+      }
+    }
+    setAttachments((prev) => prev.filter((a) => a.id !== attId));
+  }, []);
 
   // ── Save ──────────────────────────────────────────────────────────────────
   const buildPayload = useCallback((saveStatus) => ({
@@ -356,7 +396,8 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
     invoice_settings: { language: invLang, currency: invCurrency, show_payment: showPayDet, signature: showSignSetting, accent: invAccent, bg_image: bgImage },
     share_token: shareToken || null,
     share_enabled: shareEnabled,
-  }), [invoiceNum, status, issueDate, dueDate, showSupply, supplyDate, billTo, from, lineItems, taskIds, payMethod, payFields, payLink, additions, showSig, subtotal, total, notes, invCurrency, layout, fontColor, bgColor, bgImage, fontFam, customSections, invLang, showPayDet, showSignSetting, shareToken, shareEnabled]);
+    attachments,
+  }), [invoiceNum, status, issueDate, dueDate, showSupply, supplyDate, billTo, from, lineItems, taskIds, payMethod, payFields, payLink, additions, showSig, subtotal, total, notes, invCurrency, layout, fontColor, bgColor, bgImage, fontFam, customSections, invLang, showPayDet, showSignSetting, shareToken, shareEnabled, attachments]);
 
   const doSave = async (saveStatus) => {
     setSaving(true);
@@ -858,11 +899,12 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
             {/* Attachments */}
             <div className="border-t border-current border-opacity-10 pt-5">
               <button onClick={() => setShowAttach((o) => !o)} className="flex items-center gap-2 text-sm opacity-50 hover:opacity-80 transition-opacity mb-3">
-                <Paperclip size={13} />Attachments {attachments.length > 0 && `(${attachments.length})`}
+                <Paperclip size={13} />Attachments {(attachments.length + attachUploads.length) > 0 && `(${attachments.length + attachUploads.length})`}
                 {showAttach ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </button>
               {showAttach && (
                 <div>
+                  {/* Drop zone */}
                   <div
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => { e.preventDefault(); handleAttachFiles(e.dataTransfer.files); }}
@@ -871,14 +913,39 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
                   >
                     <Upload size={18} className="mx-auto mb-2 opacity-30" />
                     <p className="text-xs opacity-40">Drag & drop files or click to upload</p>
-                    <input ref={attachRef} type="file" multiple className="hidden" onChange={(e) => handleAttachFiles(e.target.files)} />
+                    <input ref={attachRef} type="file" multiple className="hidden" onChange={(e) => { handleAttachFiles(e.target.files); e.target.value = ''; }} />
                   </div>
+
+                  {/* Active uploads with progress */}
+                  {attachUploads.map((u) => (
+                    <div key={u.id} className="flex items-center gap-3 py-2 text-sm">
+                      <Loader2 size={13} className="animate-spin opacity-40 flex-shrink-0" />
+                      <span className="flex-1 truncate opacity-60">{u.name}</span>
+                      <div className="w-16 h-1 bg-current bg-opacity-10 rounded-full overflow-hidden flex-shrink-0">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${u.progress}%`, backgroundColor: invAccent }} />
+                      </div>
+                      <span className="text-xs opacity-30 flex-shrink-0">{u.progress}%</span>
+                    </div>
+                  ))}
+
+                  {/* Uploaded files */}
                   {attachments.map((att) => (
-                    <div key={att.id} className="flex items-center gap-3 py-2 text-sm">
+                    <div key={att.id} className="group/att flex items-center gap-3 py-2 text-sm">
                       <Paperclip size={13} className="opacity-40 flex-shrink-0" />
-                      <span className="flex-1 truncate opacity-70">{att.name}</span>
-                      <span className="text-xs opacity-30">{(att.size / 1024).toFixed(1)} KB</span>
-                      <button onClick={() => setAttachments((prev) => prev.filter((a) => a.id !== att.id))} className="p-0.5 rounded hover:bg-red-100 text-red-400 opacity-0 group-hover:opacity-100"><X size={10} /></button>
+                      {att.url ? (
+                        <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate opacity-70 hover:opacity-100 hover:underline">
+                          {att.name}
+                        </a>
+                      ) : (
+                        <span className="flex-1 truncate opacity-70">{att.name}</span>
+                      )}
+                      <span className="text-xs opacity-30 flex-shrink-0">{formatFileSize(att.size)}</span>
+                      <button
+                        onClick={() => deleteAttachment(att.id, att.publicId)}
+                        className="opacity-0 group-hover/att:opacity-100 p-0.5 rounded hover:text-red-400 transition-all text-current"
+                      >
+                        <X size={10} />
+                      </button>
                     </div>
                   ))}
                 </div>

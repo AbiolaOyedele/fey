@@ -16,6 +16,11 @@ export default function EditClientModal({ client, onSave, onClose }) {
   const [selectedColor, setSelectedColor] = useState(client.color);
   const [customHex, setCustomHex] = useState('');
   const [logo, setLogo] = useState(client.logo || '');
+  const [email, setEmail] = useState(client.email || '');
+  const [phone, setPhone] = useState(client.phone || '');
+  const [address, setAddress] = useState(client.address || '');
+  const [website, setWebsite] = useState(client.website || '');
+  const [taxId, setTaxId] = useState(client.tax_id || '');
   const fileInputRef = useRef(null);
 
   const handleLogoUpload = (e) => {
@@ -34,7 +39,7 @@ export default function EditClientModal({ client, onSave, onClose }) {
 
   const handleSave = () => {
     if (!name.trim()) return;
-    onSave({ name: name.trim(), color: selectedColor, logo });
+    onSave({ name: name.trim(), color: selectedColor, logo, email: email.trim(), phone: phone.trim(), address: address.trim(), website: website.trim(), tax_id: taxId.trim() });
   };
 
   return (
@@ -61,6 +66,48 @@ export default function EditClientModal({ client, onSave, onClose }) {
           onKeyDown={(e) => e.key === 'Enter' && handleSave()}
           className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/10 mb-4"
         />
+
+        {/* Contact details */}
+        <div className="mb-4">
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Contact Details</p>
+          <div className="space-y-2">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/10"
+            />
+            <input
+              type="tel"
+              placeholder="Phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/10"
+            />
+            <input
+              type="url"
+              placeholder="Website"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              className="w-full px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/10"
+            />
+            <input
+              type="text"
+              placeholder="Tax ID / VAT number"
+              value={taxId}
+              onChange={(e) => setTaxId(e.target.value)}
+              className="w-full px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/10"
+            />
+            <textarea
+              placeholder="Address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              rows={2}
+              className="w-full px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-primary/10 resize-none"
+            />
+          </div>
+        </div>
 
         {/* Logo upload */}
         <div className="mb-4">

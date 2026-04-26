@@ -10,6 +10,11 @@ function transformClients(clients, tasks, retainerPayments) {
     name: c.name,
     color: c.color,
     logo: c.logo || '',
+    email: c.email || '',
+    phone: c.phone || '',
+    address: c.address || '',
+    website: c.website || '',
+    tax_id: c.tax_id || '',
     task_mode: c.task_mode || false,
     retainer: Number(c.retainer) || 0,
     retainer_currency: c.retainer_currency || 'NGN',
@@ -92,14 +97,23 @@ export function useSupabaseData(userId) {
     ]);
   }, [userId]);
 
-  // Update a client's name, color, and/or logo
+  // Update a client's name, color, logo, and/or contact details
   const updateClient = useCallback(async (clientId, updates) => {
     if (IS_DEMO || !userId) return;
-    const dbUpdates = {};
-    if ('name' in updates) dbUpdates.name = updates.name;
-    if ('color' in updates) dbUpdates.color = updates.color;
-    if ('logo' in updates) dbUpdates.logo = updates.logo;
-    if ('task_mode' in updates) dbUpdates.task_mode = updates.task_mode;
+    const coreUpdates = {};
+    if ('name' in updates) coreUpdates.name = updates.name;
+    if ('color' in updates) coreUpdates.color = updates.color;
+    if ('logo' in updates) coreUpdates.logo = updates.logo;
+    if ('task_mode' in updates) coreUpdates.task_mode = updates.task_mode;
+
+    const contactUpdates = {};
+    if ('email' in updates) contactUpdates.email = updates.email;
+    if ('phone' in updates) contactUpdates.phone = updates.phone;
+    if ('address' in updates) contactUpdates.address = updates.address;
+    if ('website' in updates) contactUpdates.website = updates.website;
+    if ('tax_id' in updates) contactUpdates.tax_id = updates.tax_id;
+
+    const dbUpdates = { ...coreUpdates, ...contactUpdates };
 
     const { error: err } = await supabase
       .from('clients')
@@ -107,7 +121,20 @@ export function useSupabaseData(userId) {
       .eq('id', clientId)
       .eq('user_id', userId);
 
-    if (err) { setError(err.message); return; }
+    if (err) {
+      // If contact columns don't exist yet (migration pending), fall back to core fields only
+      if (Object.keys(contactUpdates).length > 0 && Object.keys(coreUpdates).length > 0) {
+        const { error: err2 } = await supabase
+          .from('clients')
+          .update(coreUpdates)
+          .eq('id', clientId)
+          .eq('user_id', userId);
+        if (err2) { setError(err2.message); return; }
+      } else {
+        setError(err.message);
+        return;
+      }
+    }
 
     setClients((prev) =>
       prev.map((c) => (c.id === clientId ? { ...c, ...updates } : c))

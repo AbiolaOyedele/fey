@@ -138,20 +138,24 @@ export default function PublicInvoicePage() {
           </div>
 
           {/* From / Bill To */}
-          <div className="grid grid-cols-2 gap-8">
-            <div>
+          <div style={{ display: 'flex', gap: '2rem' }}>
+            <div style={{ flex: '1 1 0', minWidth: 0 }}>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">From</p>
-              {from.name && <p className="text-sm font-semibold text-gray-800">{from.name}</p>}
-              {from.email && <p className="text-sm text-gray-500">{from.email}</p>}
-              {from.phone && <p className="text-sm text-gray-500">{from.phone}</p>}
-              {from.address && <p className="text-sm text-gray-500 whitespace-pre-line">{from.address}</p>}
+              {from.name && <p className="text-sm font-semibold text-gray-800 mb-0.5">{from.name}</p>}
+              {from.email && <p className="text-sm text-gray-500 mb-0.5">{from.email}</p>}
+              {from.phone && <p className="text-sm text-gray-500 mb-0.5">{from.phone}</p>}
+              {from.website && <p className="text-sm text-gray-500 mb-0.5">{from.website}</p>}
+              {from.address && <p className="text-sm text-gray-500 whitespace-pre-line mb-0.5">{from.address}</p>}
+              {from.tax_id && <p className="text-sm text-gray-400 mb-0.5">Tax ID: {from.tax_id}</p>}
             </div>
-            <div>
+            <div style={{ flex: '1 1 0', minWidth: 0 }}>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Bill To</p>
-              {billTo.name && <p className="text-sm font-semibold text-gray-800">{billTo.name}</p>}
-              {billTo.email && <p className="text-sm text-gray-500">{billTo.email}</p>}
-              {billTo.phone && <p className="text-sm text-gray-500">{billTo.phone}</p>}
-              {billTo.address && <p className="text-sm text-gray-500 whitespace-pre-line">{billTo.address}</p>}
+              {billTo.name && <p className="text-sm font-semibold text-gray-800 mb-0.5">{billTo.name}</p>}
+              {billTo.email && <p className="text-sm text-gray-500 mb-0.5">{billTo.email}</p>}
+              {billTo.phone && <p className="text-sm text-gray-500 mb-0.5">{billTo.phone}</p>}
+              {billTo.website && <p className="text-sm text-gray-500 mb-0.5">{billTo.website}</p>}
+              {billTo.address && <p className="text-sm text-gray-500 whitespace-pre-line mb-0.5">{billTo.address}</p>}
+              {billTo.tax_id && <p className="text-sm text-gray-400 mb-0.5">Tax ID: {billTo.tax_id}</p>}
             </div>
           </div>
         </div>

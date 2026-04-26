@@ -216,7 +216,8 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
     if (isNew) {
       // Pre-fill client from route state
       if (rs.prefillClient) {
-        setBillTo({ client_id: rs.prefillClient.id, name: rs.prefillClient.name, email: '', phone: '', address: '', website: '', tax_id: '' });
+        const pc = rs.prefillClient;
+        setBillTo({ client_id: pc.id, name: pc.name, email: pc.email || '', phone: pc.phone || '', address: pc.address || '', website: pc.website || '', tax_id: pc.tax_id || '' });
       }
       setLoaded(true);
       return;
@@ -270,7 +271,7 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
   // ── Client search ─────────────────────────────────────────────────────────
   const filteredClients = clients.filter((c) => c.name.toLowerCase().includes(clientSearch.toLowerCase()));
   const selectClient = (c) => {
-    setBillTo({ client_id: c.id, name: c.name, email: '', phone: '', address: '', website: '', tax_id: '' });
+    setBillTo({ client_id: c.id, name: c.name, email: c.email || '', phone: c.phone || '', address: c.address || '', website: c.website || '', tax_id: c.tax_id || '' });
     setClientSearch('');
     setShowClientDD(false);
   };

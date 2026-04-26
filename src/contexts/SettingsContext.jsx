@@ -5,6 +5,19 @@ export const SettingsContext = createContext(null);
 
 const DEFAULT_CHANGELOG = [
   {
+    version: '1.9.0', date: '26 Apr, 2026',
+    features: [
+      'Client contact details — store email, phone, website, tax ID, and address per client from the Edit modal',
+    ],
+    improvements: [
+      'Invoice Bill To section now auto-populates from saved client contact details when selecting a client',
+      'Shared invoice now displays website and Tax ID fields in the From and Bill To sections',
+    ],
+    fixes: [
+      'Invoice From/Bill To text misalignment in shared and downloaded invoices fixed (switched to flexbox layout for reliable PDF rendering)',
+    ],
+  },
+  {
     version: '1.8.0', date: '25 April 2026',
     features: [
       'Full invoicing system — create, send, and track invoices',

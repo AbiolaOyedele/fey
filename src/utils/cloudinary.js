@@ -6,13 +6,14 @@ const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
  * Uses XMLHttpRequest to support upload progress callbacks.
  */
 export const uploadToCloudinary = (file, folder, onProgress) => {
-  return new Promise((resolve, reject) => {
+  let xhr;
+  const promise = new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', UPLOAD_PRESET);
     formData.append('folder', `workboard/${folder}`);
 
-    const xhr = new XMLHttpRequest();
+    xhr = new XMLHttpRequest();
     xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
 
     if (onProgress) {
@@ -36,8 +37,11 @@ export const uploadToCloudinary = (file, folder, onProgress) => {
     };
 
     xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.onabort = () => reject(new Error('cancelled'));
     xhr.send(formData);
   });
+
+  return { promise, abort: () => xhr?.abort() };
 };
 
 const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif', 'heic'];

@@ -28,13 +28,20 @@ function FileTypeIcon({ fileType, size = 20, className = '' }) {
   return <File size={size} className={className} />;
 }
 
-function UploadProgress({ name, progress }) {
+function UploadProgress({ name, progress, onCancel }) {
   return (
     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
       <div className="flex items-center gap-3 mb-2">
         <Loader2 size={16} className="animate-spin text-gray-400 flex-shrink-0" />
         <p className="text-sm font-medium text-gray-700 truncate flex-1">{name}</p>
         <span className="text-xs text-gray-400 flex-shrink-0">{progress}%</span>
+        <button
+          onClick={onCancel}
+          className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+          title="Cancel upload"
+        >
+          <X size={13} />
+        </button>
       </div>
       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <div
@@ -284,17 +291,21 @@ export default function ClientFilesPage({ clients }) {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
+  const uploadAbortsRef = useRef({});
+
   const handleUpload = useCallback(async (fileList) => {
     const accepted = Array.from(fileList);
     for (const file of accepted) {
       const uploadId = crypto.randomUUID();
       setUploads((prev) => [...prev, { id: uploadId, name: file.name, progress: 0 }]);
+      const { promise, abort } = uploadToCloudinary(
+        file,
+        `clients/${clientId}`,
+        (pct) => setUploads((prev) => prev.map((u) => u.id === uploadId ? { ...u, progress: pct } : u))
+      );
+      uploadAbortsRef.current[uploadId] = abort;
       try {
-        const { url, publicId, size } = await uploadToCloudinary(
-          file,
-          `clients/${clientId}`,
-          (pct) => setUploads((prev) => prev.map((u) => u.id === uploadId ? { ...u, progress: pct } : u))
-        );
+        const { url, publicId, size } = await promise;
         await addClientFile({
           client_id: clientId,
           uploaded_by: user?.id || null,
@@ -308,12 +319,17 @@ export default function ClientFilesPage({ clients }) {
           status: 'pending',
         });
       } catch (err) {
-        console.error('Upload failed:', err);
+        if (err.message !== 'cancelled') console.error('Upload failed:', err);
       } finally {
+        delete uploadAbortsRef.current[uploadId];
         setUploads((prev) => prev.filter((u) => u.id !== uploadId));
       }
     }
   }, [clientId, user, settings, addClientFile]);
+
+  const cancelUpload = useCallback((uploadId) => {
+    uploadAbortsRef.current[uploadId]?.();
+  }, []);
 
   const handleStatusAction = useCallback(async (fileId, source, status, notes = null) => {
     setActionModal(null);
@@ -478,7 +494,7 @@ export default function ClientFilesPage({ clients }) {
       {/* Active uploads */}
       {uploads.length > 0 && (
         <div className="mb-4 space-y-2">
-          {uploads.map((u) => <UploadProgress key={u.id} name={u.name} progress={u.progress} />)}
+          {uploads.map((u) => <UploadProgress key={u.id} name={u.name} progress={u.progress} onCancel={() => cancelUpload(u.id)} />)}
         </div>
       )}
 

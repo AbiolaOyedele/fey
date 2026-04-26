@@ -331,17 +331,21 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
   };
 
   // ── Attachments ───────────────────────────────────────────────────────────
+  const attachAbortsRef = useRef({});
+
   const handleAttachFiles = useCallback(async (fileList) => {
     for (const file of Array.from(fileList)) {
       const tempId = uid();
       setAttachUploads((p) => [...p, { id: tempId, name: file.name, progress: 0 }]);
+      const folder = savedId ? `invoices/${savedId}` : 'invoices/tmp';
+      const { promise, abort } = uploadToCloudinary(
+        file,
+        folder,
+        (pct) => setAttachUploads((p) => p.map((u) => u.id === tempId ? { ...u, progress: pct } : u))
+      );
+      attachAbortsRef.current[tempId] = abort;
       try {
-        const folder = savedId ? `invoices/${savedId}` : 'invoices/tmp';
-        const { url, publicId, size } = await uploadToCloudinary(
-          file,
-          folder,
-          (pct) => setAttachUploads((p) => p.map((u) => u.id === tempId ? { ...u, progress: pct } : u))
-        );
+        const { url, publicId, size } = await promise;
         setAttachments((prev) => [
           ...prev,
           {
@@ -354,12 +358,17 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
           },
         ]);
       } catch (err) {
-        console.error('Attachment upload failed:', err);
+        if (err.message !== 'cancelled') console.error('Attachment upload failed:', err);
       } finally {
+        delete attachAbortsRef.current[tempId];
         setAttachUploads((p) => p.filter((u) => u.id !== tempId));
       }
     }
   }, [savedId]);
+
+  const cancelAttachUpload = useCallback((tempId) => {
+    attachAbortsRef.current[tempId]?.();
+  }, []);
 
   const deleteAttachment = useCallback(async (attId, publicId) => {
     if (publicId) {
@@ -925,6 +934,13 @@ export default function InvoiceBuilder({ clients = [], refetch }) {
                         <div className="h-full rounded-full transition-all" style={{ width: `${u.progress}%`, backgroundColor: invAccent }} />
                       </div>
                       <span className="text-xs opacity-30 flex-shrink-0">{u.progress}%</span>
+                      <button
+                        onClick={() => cancelAttachUpload(u.id)}
+                        className="opacity-40 hover:opacity-100 hover:text-red-400 transition-all flex-shrink-0"
+                        title="Cancel upload"
+                      >
+                        <X size={12} />
+                      </button>
                     </div>
                   ))}
 

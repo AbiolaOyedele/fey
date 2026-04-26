@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState } from 'react';
-import { Upload, Trash2, Loader2, File, Image, FileText } from 'lucide-react';
+import { Upload, Trash2, Loader2, File, Image, FileText, X } from 'lucide-react';
 import { uploadToCloudinary, getFileType, formatFileSize, isImageType } from '../utils/cloudinary';
 import { useTaskFiles } from '../hooks/useTaskFiles';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,17 +33,21 @@ export default function TaskFileAttachment({ taskId, clientId, open }) {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
+  const abortsRef = useRef({});
+
   const handleFiles = useCallback(async (fileList) => {
     const accepted = Array.from(fileList);
     for (const file of accepted) {
       const uid = crypto.randomUUID();
       setUploads((p) => [...p, { id: uid, name: file.name, progress: 0 }]);
+      const { promise, abort } = uploadToCloudinary(
+        file,
+        `tasks/${taskId}`,
+        (pct) => setUploads((p) => p.map((u) => u.id === uid ? { ...u, progress: pct } : u))
+      );
+      abortsRef.current[uid] = abort;
       try {
-        const { url, publicId, size } = await uploadToCloudinary(
-          file,
-          `tasks/${taskId}`,
-          (pct) => setUploads((p) => p.map((u) => u.id === uid ? { ...u, progress: pct } : u))
-        );
+        const { url, publicId, size } = await promise;
         await addFile({
           task_id: taskId,
           client_id: clientId,
@@ -58,12 +62,17 @@ export default function TaskFileAttachment({ taskId, clientId, open }) {
           status: 'pending',
         });
       } catch (err) {
-        console.error('Upload failed:', err);
+        if (err.message !== 'cancelled') console.error('Upload failed:', err);
       } finally {
+        delete abortsRef.current[uid];
         setUploads((p) => p.filter((u) => u.id !== uid));
       }
     }
   }, [taskId, clientId, user, settings, addFile]);
+
+  const cancelUpload = useCallback((uid) => {
+    abortsRef.current[uid]?.();
+  }, []);
 
   if (!open) return null;
 
@@ -108,6 +117,13 @@ export default function TaskFileAttachment({ taskId, clientId, open }) {
             />
           </div>
           <span className="text-[10px] text-gray-400 flex-shrink-0">{u.progress}%</span>
+          <button
+            onClick={() => cancelUpload(u.id)}
+            className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+            title="Cancel upload"
+          >
+            <X size={11} />
+          </button>
         </div>
       ))}
 

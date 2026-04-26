@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, FileText, DollarSign, Clock, CheckCircle2, AlertCircle,
@@ -318,10 +318,22 @@ export default function Invoices({ clients = [] }) {
 
 function StatusDropdown({ inv, onStatusChange, cfg }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
+
+  const handleOpen = () => {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left });
+    }
+    setOpen((o) => !o);
+  };
+
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen((o) => !o)}
+        ref={btnRef}
+        onClick={handleOpen}
         className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${cfg.color}`}
       >
         {cfg.label}
@@ -329,8 +341,9 @@ function StatusDropdown({ inv, onStatusChange, cfg }) {
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 mt-1 w-32 bg-white rounded-xl border border-gray-200 shadow-lg z-20 overflow-hidden">
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="fixed w-36 bg-white rounded-xl border border-gray-200 shadow-xl z-50"
+            style={{ top: pos.top, left: pos.left }}>
             {Object.entries(STATUS_CONFIG).map(([value, { label, color }]) => (
               <button
                 key={value}

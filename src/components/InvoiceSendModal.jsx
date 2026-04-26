@@ -72,13 +72,64 @@ export default function InvoiceSendModal({ invoice, onShareUpdate, onSaveShare, 
     if (!el) { showToast('Invoice not found — make sure it is visible'); return; }
     setPrinting(true);
     try {
-      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: null });
-      const imgW = 210; // A4 width mm
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        // Skip fixed-position browser chrome / extension elements
+        ignoreElements: (elem) => {
+          const s = window.getComputedStyle(elem);
+          return s.position === 'fixed' && !el.contains(elem);
+        },
+        onclone: (clonedDoc) => {
+          const inv = clonedDoc.getElementById('invoice-document');
+          if (!inv) return;
+
+          // Remove all buttons (UI controls, trash icons, add buttons)
+          inv.querySelectorAll('button').forEach((b) => b.remove());
+
+          // Remove number inputs — their value already appears in a sibling formatted <span>
+          inv.querySelectorAll('input[type="number"]').forEach((i) => i.remove());
+
+          // Replace date inputs with a readable date string
+          inv.querySelectorAll('input[type="date"]').forEach((i) => {
+            const span = clonedDoc.createElement('span');
+            if (i.value) {
+              const d = new Date(i.value + 'T00:00:00');
+              span.textContent = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+            }
+            i.replaceWith(span);
+          });
+
+          // Replace text inputs with a span showing their value (not placeholder)
+          inv.querySelectorAll('input').forEach((i) => {
+            const span = clonedDoc.createElement('span');
+            span.textContent = i.value || '';
+            i.replaceWith(span);
+          });
+
+          // Replace textareas with a div showing their value
+          inv.querySelectorAll('textarea').forEach((ta) => {
+            const div = clonedDoc.createElement('div');
+            div.textContent = ta.value || '';
+            div.style.whiteSpace = 'pre-wrap';
+            ta.replaceWith(div);
+          });
+
+          // Replace selects with their selected option text
+          inv.querySelectorAll('select').forEach((sel) => {
+            const span = clonedDoc.createElement('span');
+            span.textContent = sel.options[sel.selectedIndex]?.text || '';
+            sel.replaceWith(span);
+          });
+        },
+      });
+      const imgW = 210;
       const imgH = (canvas.height * imgW) / canvas.width;
-      const pdf = new jsPDF({ orientation: imgH > imgW ? 'portrait' : 'landscape', unit: 'mm', format: [imgW, imgH] });
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [imgW, imgH] });
       pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgW, imgH);
-      const filename = `invoice-${invoice?.invoice_number || 'draft'}.pdf`;
-      pdf.save(filename);
+      pdf.save(`invoice-${invoice?.invoice_number || 'draft'}.pdf`);
     } catch (err) {
       showToast('Failed to generate PDF');
       console.error(err);

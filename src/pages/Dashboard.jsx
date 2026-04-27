@@ -603,31 +603,33 @@ export default function Dashboard({ clients, actions }) {
                   .reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
                 const textColor = getContrastColor(client.color);
                 const hasOverdue = client.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
+                const isSmall = settings.card_size === 'small';
 
                 return (
                   <Link
                     key={client.id}
                     to={`/clients/${client.id}`}
-                    className="group rounded-2xl p-4 sm:p-5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
-                    style={{ backgroundColor: client.color }}
+                    className="group rounded-2xl transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
+                    style={{ backgroundColor: client.color, padding: isSmall ? '0.875rem' : '1.25rem' }}
                   >
-                    <div className="flex items-center justify-between mb-4">
+                    {/* Top row: task count + badges */}
+                    <div className="flex items-center justify-between mb-3">
                       <span
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-white/60 backdrop-blur-sm"
-                        style={{ color: textColor }}
+                        className="inline-flex items-center gap-1 rounded-lg font-medium bg-white/60 backdrop-blur-sm whitespace-nowrap"
+                        style={{ color: textColor, fontSize: '11px', padding: isSmall ? '2px 8px' : '4px 10px' }}
                       >
-                        <Users size={12} />
+                        <Users size={10} />
                         {doneTasks}/{totalTasks} tasks
                       </span>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1 flex-shrink-0 ml-1">
                         {hasOverdue && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-red-100/80 text-red-600">
-                            <AlertTriangle size={10} />
-                            Overdue
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg text-[10px] font-semibold bg-red-100/80 text-red-600 whitespace-nowrap">
+                            <AlertTriangle size={9} />
+                            {!isSmall && 'Overdue'}
                           </span>
                         )}
-                        {paidAmount > 0 && (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white/70 text-success">
+                        {paidAmount > 0 && !isSmall && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white/70 text-success whitespace-nowrap">
                             <span className="w-1.5 h-1.5 rounded-full bg-success" />
                             {formatMoney(paidAmount)}
                           </span>
@@ -635,18 +637,23 @@ export default function Dashboard({ clients, actions }) {
                       </div>
                     </div>
 
+                    {/* Client name */}
                     <h3
-                      className="font-display text-xl font-bold mb-1 leading-snug"
+                      className={`font-display font-bold leading-snug mb-1 ${isSmall ? 'text-base line-clamp-2' : 'text-xl'}`}
                       style={{ color: textColor }}
                     >
                       {client.name}
                     </h3>
-                    <p className="text-sm mb-4 opacity-70" style={{ color: textColor }}>
+                    <p
+                      className="mb-3 opacity-70 truncate"
+                      style={{ color: textColor, fontSize: isSmall ? '11px' : '14px' }}
+                    >
                       {doneTasks} completed, {totalTasks - doneTasks} pending
                     </p>
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 mr-4">
+                    {/* Progress bar + avatar */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
                         <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all duration-300"
@@ -658,18 +665,16 @@ export default function Dashboard({ clients, actions }) {
                           />
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {client.logo ? (
-                          <img src={client.logo} alt={client.name} className="w-8 h-8 rounded-full object-contain bg-white p-0.5" />
-                        ) : (
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50"
-                            style={{ color: textColor }}
-                          >
-                            {client.name.charAt(0)}
-                          </div>
-                        )}
-                      </div>
+                      {client.logo ? (
+                        <img src={client.logo} alt={client.name} className="w-7 h-7 rounded-full object-contain bg-white p-0.5 flex-shrink-0" />
+                      ) : (
+                        <div
+                          className="rounded-full flex items-center justify-center font-bold bg-white/50 flex-shrink-0"
+                          style={{ color: textColor, width: isSmall ? 26 : 32, height: isSmall ? 26 : 32, fontSize: isSmall ? 11 : 13 }}
+                        >
+                          {client.name.charAt(0)}
+                        </div>
+                      )}
                     </div>
                   </Link>
                 );

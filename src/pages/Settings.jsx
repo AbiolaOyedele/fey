@@ -859,6 +859,46 @@ export default function Settings({ clients, refetch }) {
               className="w-32 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm font-mono outline-none focus:border-gray-400 transition-all" />
             <span className="text-xs text-gray-400">Custom hex</span>
           </div>
+          {/* Color mode */}
+          <div>
+            <p className="text-xs text-gray-400 mb-2">Client &amp; campaign colors</p>
+            <div className="flex gap-2">
+              {[
+                { value: 'custom', label: 'Custom colors', desc: 'Each card uses its own chosen color' },
+                { value: 'accent', label: 'Use accent color', desc: 'Force accent color on all cards' },
+              ].map((opt) => {
+                const active = (settings.color_mode || 'custom') === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => saveSetting('color_mode', opt.value)}
+                    className="flex-1 text-left px-4 py-3 rounded-xl border-2 transition-all"
+                    style={active
+                      ? { borderColor: 'var(--accent)', backgroundColor: 'color-mix(in srgb, var(--accent) 8%, white)' }
+                      : { borderColor: '#e5e7eb', backgroundColor: 'white' }
+                    }
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      {/* Color preview swatch */}
+                      <div className="flex gap-1">
+                        {opt.value === 'custom'
+                          ? ['#FBD5E1', '#D1FAE5', '#DBEAFE'].map((c) => (
+                              <div key={c} className="w-3 h-3 rounded-full" style={{ backgroundColor: c }} />
+                            ))
+                          : [1, 2, 3].map((i) => (
+                              <div key={i} className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--accent)' }} />
+                            ))
+                        }
+                      </div>
+                      <span className="text-xs font-semibold text-gray-700">{opt.label}</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 leading-snug">{opt.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div>
             <p className="text-xs text-gray-400 mb-2">Card size</p>
             <div className="relative w-48">

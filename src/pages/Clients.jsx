@@ -35,7 +35,9 @@ const isValidHex = (val) => /^#[0-9A-Fa-f]{6}$/.test(normalizeHex(val));
 
 function SortableGridCard({ client, isDraggingRef, onDelete, formatMoney, convertAmount, todayStr }) {
   const navigate = useNavigate();
-  const textColor = getContrastColor(client.color);
+  const { resolveColor } = useSettings();
+  const cardColor = resolveColor(client.color);
+  const textColor = getContrastColor(cardColor);
   const totalTasks = client.tasks.length;
   const doneTasks = client.tasks.filter((t) => t.done).length;
   const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
@@ -55,7 +57,7 @@ function SortableGridCard({ client, isDraggingRef, onDelete, formatMoney, conver
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    backgroundColor: client.color,
+    backgroundColor: cardColor,
   };
 
   const handleCardClick = () => {
@@ -148,7 +150,9 @@ function SortableGridCard({ client, isDraggingRef, onDelete, formatMoney, conver
 
 function SortableListRow({ client, isDraggingRef, onDelete, todayStr }) {
   const navigate = useNavigate();
-  const textColor = getContrastColor(client.color);
+  const { resolveColor } = useSettings();
+  const cardColor = resolveColor(client.color);
+  const textColor = getContrastColor(cardColor);
   const totalTasks = client.tasks.length;
   const doneTasks = client.tasks.filter((t) => t.done).length;
   const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
@@ -167,7 +171,7 @@ function SortableListRow({ client, isDraggingRef, onDelete, todayStr }) {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    backgroundColor: client.color,
+    backgroundColor: cardColor,
   };
 
   const handleRowClick = () => {

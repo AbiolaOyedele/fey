@@ -59,7 +59,7 @@ export default function CampaignWorkspace({ clients }) {
   const { id: clientId, campaignId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { settings, showToast, formatMoney, convertAmount } = useSettings();
+  const { settings, showToast, formatMoney, convertAmount, resolveColor } = useSettings();
 
   // ── All hooks MUST be called before any conditional returns ──
   const { campaigns, loading: campaignsLoading, updateCampaign, addTask, updateTask, deleteTask, reorderTasks, addTasksBulk } = useCampaigns(clientId, user?.id);
@@ -137,7 +137,7 @@ export default function CampaignWorkspace({ clients }) {
   );
 
   // Campaign's own color drives the entire workspace
-  const campaignColor = campaign.color || '#E9D5FF';
+  const campaignColor = resolveColor(campaign.color || '#E9D5FF');
   const textColor     = getContrastColor(campaignColor);
 
   // Date helpers

@@ -6,7 +6,7 @@ import { getContrastColor } from '../utils/colorContrast';
 
 export default function Payments({ clients }) {
   const [expandedMonth, setExpandedMonth] = useState(null);
-  const { formatMoney, convertAmount, trash } = useSettings();
+  const { formatMoney, convertAmount, trash, resolveColor } = useSettings();
 
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -409,7 +409,8 @@ export default function Payments({ clients }) {
               .sort((a, b) => b.totalEarned - a.totalEarned)
               .slice(0, 5)
               .map((c) => {
-                const textColor = getContrastColor(c.color);
+                const rc = resolveColor(c.color);
+                const textColor = getContrastColor(rc);
                 return (
                   <Link
                     key={c.id}
@@ -418,7 +419,7 @@ export default function Payments({ clients }) {
                   >
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                      style={{ backgroundColor: c.color, color: textColor }}
+                      style={{ backgroundColor: rc, color: textColor }}
                     >
                       {c.name.charAt(0)}
                     </div>

@@ -138,6 +138,7 @@ const DEFAULTS = {
   page_bg_type: 'color',
   page_bg_color: '#f9fafb',
   page_bg_image: '',
+  color_mode: 'custom',  // 'custom' = per-card colors | 'accent' = force accent everywhere
   // Business Info
   business_email: '',
   business_phone: '',
@@ -610,6 +611,9 @@ export function SettingsProvider({ children }) {
         refreshExchangeRate,
         convertAmount,
         formatMoney,
+        /** resolveColor: returns accent when color_mode='accent', else the card's own color */
+        resolveColor: (color) =>
+          settings.color_mode === 'accent' ? settings.accent_color : (color || settings.accent_color),
         trash,
         trashClient,
         trashTask,

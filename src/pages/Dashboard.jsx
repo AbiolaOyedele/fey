@@ -226,7 +226,7 @@ export default function Dashboard({ clients, actions }) {
   const [fileAlerts, setFileAlerts] = useState([]); // [{file, clientId, clientName, status}]
   const bellRef = useRef(null);
   const overdueRef = useRef(null);
-  const { settings, formatMoney, convertAmount } = useSettings();
+  const { settings, formatMoney, convertAmount, resolveColor } = useSettings();
   const { user } = useAuth();
 
   const now = new Date();
@@ -265,7 +265,7 @@ export default function Dashboard({ clients, actions }) {
   }, []);
 
   const allTasks = clients.flatMap((c) =>
-    c.tasks.map((t) => ({ ...t, clientId: c.id, clientName: c.name, clientColor: c.color }))
+    c.tasks.map((t) => ({ ...t, clientId: c.id, clientName: c.name, clientColor: resolveColor(c.color) }))
   );
 
   const tasksDone = allTasks.filter((t) => t.done).length;
@@ -322,7 +322,7 @@ export default function Dashboard({ clients, actions }) {
         if (filter === 'Unpaid') return t.done && !t.paid;
         return false;
       })
-      .map((t) => ({ ...t, clientId: c.id, clientName: c.name, clientColor: c.color }))
+      .map((t) => ({ ...t, clientId: c.id, clientName: c.name, clientColor: resolveColor(c.color) }))
   ) : [];
 
   // Group flat tasks by client
@@ -601,7 +601,8 @@ export default function Dashboard({ clients, actions }) {
                 const paidAmount = client.tasks
                   .filter((t) => t.paid)
                   .reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
-                const textColor = getContrastColor(client.color);
+                const resolvedColor = resolveColor(client.color);
+                const textColor = getContrastColor(resolvedColor);
                 const hasOverdue = client.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
                 const isSmall = settings.card_size === 'small';
 
@@ -610,7 +611,7 @@ export default function Dashboard({ clients, actions }) {
                     key={client.id}
                     to={`/clients/${client.id}`}
                     className="group rounded-2xl transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
-                    style={{ backgroundColor: client.color, padding: isSmall ? '0.875rem' : '1.25rem' }}
+                    style={{ backgroundColor: resolvedColor, padding: isSmall ? '0.875rem' : '1.25rem' }}
                   >
                     {/* Top row: task count + badges */}
                     <div className="flex items-center justify-between mb-3">
@@ -703,7 +704,8 @@ export default function Dashboard({ clients, actions }) {
               </div>
             )}
             {tasksByClient.map(({ client, tasks }) => {
-              const textColor = getContrastColor(client.color);
+              const resolvedColor = resolveColor(client.color);
+              const textColor = getContrastColor(resolvedColor);
               return (
                 <div key={client.id} className="overflow-hidden min-w-0">
                   <Link
@@ -715,7 +717,7 @@ export default function Dashboard({ clients, actions }) {
                     ) : (
                       <div
                         className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ backgroundColor: client.color, color: textColor }}
+                        style={{ backgroundColor: resolvedColor, color: textColor }}
                       >
                         {client.name.charAt(0)}
                       </div>
@@ -730,7 +732,7 @@ export default function Dashboard({ clients, actions }) {
                         <div
                           key={task.id}
                           className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border-l-4 shadow-sm min-w-0 w-full"
-                          style={{ borderLeftColor: client.color }}
+                          style={{ borderLeftColor: resolvedColor }}
                         >
                           <div className="flex-1 min-w-0 overflow-hidden">
                             <p className={`text-sm font-medium truncate ${task.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
@@ -949,7 +951,10 @@ export default function Dashboard({ clients, actions }) {
             </Link>
           </div>
           <div className="space-y-3">
-            {topEarningClients.map((client) => (
+            {topEarningClients.map((client) => {
+              const rc = resolveColor(client.color);
+              const rct = getContrastColor(rc);
+              return (
               <Link
                 key={client.id}
                 to={`/clients/${client.id}`}
@@ -961,8 +966,8 @@ export default function Dashboard({ clients, actions }) {
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
                     style={{
-                      backgroundColor: client.color,
-                      color: getContrastColor(client.color),
+                      backgroundColor: rc,
+                      color: rct,
                     }}
                   >
                     {client.name.charAt(0)}
@@ -978,15 +983,15 @@ export default function Dashboard({ clients, actions }) {
                   <span
                     className="text-xs font-mono font-medium px-2 py-0.5 rounded-lg"
                     style={{
-                      backgroundColor: client.color,
-                      color: getContrastColor(client.color),
+                      backgroundColor: rc,
+                      color: rct,
                     }}
                   >
                     {client.completionPct}%
                   </span>
                 </div>
               </Link>
-            ))}
+            );})}
           </div>
         </div>
       </div>

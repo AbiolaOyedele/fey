@@ -94,7 +94,7 @@ function DraggableTaskItem({ task, onUpdate, onDelete, clientId }) {
 export default function ClientWorkspace({ clients, actions }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { formatMoney, convertAmount, settings, showToast } = useSettings();
+  const { formatMoney, convertAmount, settings, showToast, resolveColor } = useSettings();
   const { user } = useAuth();
   const client = clients.find((c) => c.id === id);
   const [newTask, setNewTask] = useState('');
@@ -262,7 +262,8 @@ export default function ClientWorkspace({ clients, actions }) {
 
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const textColor = getContrastColor(client.color);
+  const clientColor = resolveColor(client.color);
+  const textColor = getContrastColor(clientColor);
   const retainerPaidThisMonth = client.retainerPaid?.[currentMonth] || false;
 
   const todayStr = (() => {
@@ -389,7 +390,7 @@ export default function ClientWorkspace({ clients, actions }) {
         </button>
 
         {/* Hero header */}
-        <div className="rounded-2xl p-6 mb-6 overflow-hidden" style={{ backgroundColor: client.color }}>
+        <div className="rounded-2xl p-6 mb-6 overflow-hidden" style={{ backgroundColor: clientColor }}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             {client.logo ? (
               <img src={client.logo} alt={client.name} className="w-14 h-14 rounded-2xl object-contain bg-white p-1 flex-shrink-0" />
@@ -890,7 +891,7 @@ export default function ClientWorkspace({ clients, actions }) {
         </div>
 
         {/* Completion */}
-        <div className="rounded-2xl p-5 mb-4" style={{ backgroundColor: client.color }}>
+        <div className="rounded-2xl p-5 mb-4" style={{ backgroundColor: clientColor }}>
           <p className="text-sm font-semibold mb-3" style={{ color: textColor }}>
             Completion
           </p>
@@ -949,7 +950,7 @@ export default function ClientWorkspace({ clients, actions }) {
                   <div key={m.id} className="flex items-center gap-2.5 py-2.5 border-b border-gray-50 last:border-0">
                     <div
                       className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                      style={{ backgroundColor: client.color, color: textColor }}
+                      style={{ backgroundColor: clientColor, color: textColor }}
                     >
                       {m.name.charAt(0).toUpperCase()}
                     </div>

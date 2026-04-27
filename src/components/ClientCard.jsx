@@ -1,7 +1,11 @@
 import { Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useSettings } from '../contexts/SettingsContext';
 
 export default function ClientCard({ client, onDelete, viewMode = 'grid' }) {
+  const { resolveColor } = useSettings();
+  const cardColor = resolveColor(client.color);
+
   const totalTasks = client.tasks.length;
   const doneTasks = client.tasks.filter((t) => t.done).length;
   const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
@@ -20,7 +24,7 @@ export default function ClientCard({ client, onDelete, viewMode = 'grid' }) {
       >
         <div
           className="w-3 h-3 rounded-full flex-shrink-0"
-          style={{ backgroundColor: client.color }}
+          style={{ backgroundColor: cardColor }}
         />
         <span className="font-display font-semibold text-gray-900 w-40 truncate">
           {client.name}
@@ -54,7 +58,7 @@ export default function ClientCard({ client, onDelete, viewMode = 'grid' }) {
     >
       <div
         className="absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl"
-        style={{ backgroundColor: client.color }}
+        style={{ backgroundColor: cardColor }}
       />
       <div className="flex items-start justify-between mt-1">
         <h3 className="font-display font-semibold text-lg text-gray-900">{client.name}</h3>

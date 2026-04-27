@@ -11,9 +11,9 @@ import { useSettings } from '../contexts/SettingsContext';
  */
 export default function CampaignCard({ campaign, clientId, onDelete, isDraggingRef }) {
   const navigate = useNavigate();
-  const { formatMoney, convertAmount } = useSettings();
+  const { formatMoney, convertAmount, resolveColor } = useSettings();
 
-  const bg        = campaign.color || '#E9D5FF';
+  const bg        = resolveColor(campaign.color || '#E9D5FF');
   const textColor = getContrastColor(bg);
 
   const tasks      = campaign.tasks || [];

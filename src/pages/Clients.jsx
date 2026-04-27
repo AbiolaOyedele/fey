@@ -38,11 +38,12 @@ function SortableGridCard({ client, isDraggingRef, onDelete, formatMoney, conver
   const { resolveColor } = useSettings();
   const cardColor = resolveColor(client.color);
   const textColor = getContrastColor(cardColor);
-  const totalTasks = client.tasks.length;
-  const doneTasks = client.tasks.filter((t) => t.done).length;
+  const allTasks  = client.allTasks || client.tasks;
+  const totalTasks = allTasks.length;
+  const doneTasks = allTasks.filter((t) => t.done).length;
   const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const paidAmount = client.tasks.filter((t) => t.paid).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
-  const hasOverdue = client.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
+  const hasOverdue = allTasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
 
   const {
     attributes,
@@ -69,7 +70,7 @@ function SortableGridCard({ client, isDraggingRef, onDelete, formatMoney, conver
     <div
       ref={setNodeRef}
       style={style}
-      className="group rounded-2xl p-4 sm:p-5 transition-shadow duration-150 hover:shadow-lg relative overflow-hidden cursor-pointer"
+      className="group flex flex-col rounded-2xl p-4 sm:p-5 transition-shadow duration-150 hover:shadow-lg relative overflow-hidden cursor-pointer"
       onClick={handleCardClick}
     >
       {/* Top badges */}
@@ -97,16 +98,18 @@ function SortableGridCard({ client, isDraggingRef, onDelete, formatMoney, conver
         </div>
       </div>
 
-      {/* Client name */}
-      <h3 className="font-display text-xl font-bold mb-1" style={{ color: textColor }}>
-        {client.name}
-      </h3>
-      <p className="text-sm mb-4 opacity-70" style={{ color: textColor }}>
-        {doneTasks} completed, {totalTasks - doneTasks} pending
-      </p>
+      {/* Client name — flex-1 so it stretches and pins the bottom row */}
+      <div className="flex-1">
+        <h3 className="font-display text-xl font-bold mb-1" style={{ color: textColor }}>
+          {client.name}
+        </h3>
+        <p className="text-sm opacity-70" style={{ color: textColor }}>
+          {doneTasks} completed, {totalTasks - doneTasks} pending
+        </p>
+      </div>
 
       {/* Progress + avatar + delete */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mt-4">
         <div className="flex-1 mr-4">
           <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
             <div
@@ -153,10 +156,11 @@ function SortableListRow({ client, isDraggingRef, onDelete, todayStr }) {
   const { resolveColor } = useSettings();
   const cardColor = resolveColor(client.color);
   const textColor = getContrastColor(cardColor);
-  const totalTasks = client.tasks.length;
-  const doneTasks = client.tasks.filter((t) => t.done).length;
+  const allTasks   = client.allTasks || client.tasks;
+  const totalTasks = allTasks.length;
+  const doneTasks  = allTasks.filter((t) => t.done).length;
   const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
-  const hasOverdue = client.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
+  const hasOverdue = allTasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
 
   const {
     attributes,
@@ -264,7 +268,7 @@ export default function Clients({ clients, actions }) {
     : clients
         .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
         .sort((a, b) => {
-          if (sortBy === 'tasks') return b.tasks.length - a.tasks.length;
+          if (sortBy === 'tasks') return (b.allTasks || b.tasks).length - (a.allTasks || a.tasks).length;
           return a.name.localeCompare(b.name);
         });
 

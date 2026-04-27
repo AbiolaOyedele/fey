@@ -321,40 +321,18 @@ function SharedFilesSection({ clientId }) {
   );
 }
 
-// ── Campaigns section — card grid matching real ClientWorkspace ───────────────
-function SharedCampaignsSection({ clientId }) {
-  const [campaigns, setCampaigns] = useState([]);
-  const [expanded, setExpanded] = useState(null);
-  const todayStr = getTodayStr();
-
-  useEffect(() => {
-    async function load() {
-      const [camRes, taskRes] = await Promise.all([
-        supabase.from('client_campaigns').select('*').eq('client_id', clientId).order('sort_order'),
-        supabase.from('campaign_tasks').select('*').eq('client_id', clientId).order('sort_order'),
-      ]);
-      setCampaigns((camRes.data || []).map((c) => ({
-        ...c,
-        tasks: (taskRes.data || [])
-          .filter((t) => t.campaign_id === c.id)
-          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
-      })));
-    }
-    load();
-  }, [clientId]);
-
-  if (campaigns.length === 0) return null;
+// ── Campaign card grid — click opens full campaign view ───────────────────────
+function SharedCampaignsSection({ campaigns, onSelect, todayStr }) {
+  if (!campaigns || campaigns.length === 0) return null;
 
   return (
     <div className="mt-4">
-      {/* Section header — mirrors ClientWorkspace */}
       <div className="flex items-center gap-2 mb-3">
         <Layers size={15} className="text-gray-400" />
         <h2 className="font-display text-base font-semibold text-gray-900">Campaigns</h2>
         <span className="text-xs font-mono bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-md">{campaigns.length}</span>
       </div>
 
-      {/* Card grid — same 2-col grid as real workspace */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {campaigns.map((campaign) => {
           const bg       = campaign.color || '#E9D5FF';
@@ -363,73 +341,219 @@ function SharedCampaignsSection({ clientId }) {
           const total    = campaign.tasks.length;
           const pct      = total > 0 ? Math.round((done / total) * 100) : 0;
           const hasOverdue = campaign.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
-          const isOpen   = expanded === campaign.id;
 
           return (
-            <div key={campaign.id} className="rounded-2xl overflow-hidden" style={{ backgroundColor: bg }}>
-              {/* Card face — click to expand tasks */}
-              <button
-                onClick={() => setExpanded(isOpen ? null : campaign.id)}
-                className="w-full text-left p-4 sm:p-5"
-              >
-                {/* Top row */}
-                <div className="flex items-center justify-between mb-3">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-white/60" style={{ color: tc }}>
-                    <Layers size={11} />
-                    {done}/{total} tasks
+            <button
+              key={campaign.id}
+              onClick={() => onSelect(campaign)}
+              className="flex flex-col text-left rounded-2xl p-4 sm:p-5 hover:opacity-90 transition-opacity cursor-pointer"
+              style={{ backgroundColor: bg }}
+            >
+              {/* Top row */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-white/60" style={{ color: tc }}>
+                  <Layers size={11} />
+                  {done}/{total} tasks
+                </span>
+                {hasOverdue && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-red-100/80 text-red-600">
+                    <AlertTriangle size={10} /> Overdue
                   </span>
-                  {hasOverdue && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-red-100/80 text-red-600">
-                      <AlertTriangle size={10} /> Overdue
-                    </span>
-                  )}
-                </div>
-                {/* Name */}
-                <div className="flex items-center gap-2 mb-1">
-                  {campaign.logo && (
-                    <img src={campaign.logo} alt={campaign.name} className="w-6 h-6 rounded-lg object-contain bg-white/70 p-0.5 flex-shrink-0" />
-                  )}
-                  <h3 className="font-display text-lg font-bold leading-snug truncate" style={{ color: tc }}>{campaign.name}</h3>
-                </div>
-                <p className="text-sm mb-3 opacity-70" style={{ color: tc }}>{done} completed · {total - done} pending</p>
-                {/* Progress bar */}
-                <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, backgroundColor: tc, opacity: 0.5 }} />
-                </div>
-              </button>
+                )}
+              </div>
 
-              {/* Expanded task list */}
-              {isOpen && (
-                <div className="bg-white/20 px-4 pb-4 space-y-1">
-                  {campaign.tasks.length === 0 && (
-                    <p className="text-xs py-2 opacity-60" style={{ color: tc }}>No tasks yet.</p>
-                  )}
-                  {campaign.tasks.map((task) => {
-                    const isOverdue = !task.done && task.deadline && task.deadline < todayStr;
-                    return (
-                      <div key={task.id} className={`flex items-center gap-2 py-1.5 ${task.done ? 'opacity-50' : ''}`}>
-                        <div
-                          className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                          style={task.done ? { backgroundColor: tc, borderColor: tc } : { borderColor: `${tc}80` }}
-                        >
-                          {task.done && <Check size={8} strokeWidth={3} style={{ color: bg }} />}
-                        </div>
-                        <p className={`text-xs flex-1 ${task.done ? 'line-through' : ''}`} style={{ color: tc }}>
-                          {task.title}
-                        </p>
-                        {task.deadline && !task.done && (
-                          <span className="text-[10px] opacity-70 flex-shrink-0" style={{ color: isOverdue ? '#ef4444' : tc }}>
-                            {formatDate(task.deadline)}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+              {/* Name */}
+              <div className="flex items-center gap-2 mb-1 flex-1">
+                {campaign.logo && (
+                  <img src={campaign.logo} alt={campaign.name} className="w-6 h-6 rounded-lg object-contain bg-white/70 p-0.5 flex-shrink-0" />
+                )}
+                <h3 className="font-display text-lg font-bold leading-snug" style={{ color: tc }}>{campaign.name}</h3>
+              </div>
+              <p className="text-sm mb-3 opacity-70" style={{ color: tc }}>{done} completed · {total - done} pending</p>
+
+              {/* Progress bar */}
+              <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, backgroundColor: tc, opacity: 0.5 }} />
+              </div>
+            </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// ── Full campaign workspace view (read-only) ──────────────────────────────────
+function SharedCampaignView({ campaign, clientName, clientColor, onBack, todayStr }) {
+  const bg = campaign.color || '#E9D5FF';
+  const tc = getContrastColor(bg);
+  const tasks = campaign.tasks || [];
+  const done     = tasks.filter((t) => t.done).length;
+  const total    = tasks.length;
+  const pending  = tasks.filter((t) => !t.done).length;
+  const overdue  = tasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr);
+  const pct      = total > 0 ? Math.round((done / total) * 100) : 0;
+  const pendingTasks   = tasks.filter((t) => !t.done);
+  const completedTasks = tasks.filter((t) => t.done);
+
+  return (
+    <div className="flex flex-col lg:flex-row min-h-screen bg-[#F7F8FA] overflow-hidden max-w-full">
+
+      {/* ── Main column ── */}
+      <div className="flex-1 p-4 lg:p-8 lg:pr-4 min-w-0 overflow-y-auto overflow-x-hidden">
+        {/* Top bar */}
+        <div className="flex items-center justify-between mb-6">
+          <img src="/favicon.svg" alt="WorkBoard" className="w-8 h-8 rounded-xl opacity-80" />
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            ← {clientName}
+          </button>
+        </div>
+
+        {/* Hero banner */}
+        <div className="rounded-2xl p-6 mb-6 overflow-hidden" style={{ backgroundColor: bg }}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+            {campaign.logo ? (
+              <img src={campaign.logo} alt={campaign.name} className="w-14 h-14 rounded-2xl object-contain bg-white p-1 flex-shrink-0" />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-display font-bold bg-white/50 flex-shrink-0" style={{ color: tc }}>
+                {campaign.name.charAt(0)}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <h1 className="font-display text-3xl leading-tight font-bold truncate" style={{ color: tc }}>
+                {campaign.name}
+              </h1>
+              <p className="text-sm mt-0.5 opacity-70" style={{ color: tc }}>
+                {total} task{total !== 1 ? 's' : ''} total
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tasks card */}
+        <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-5">
+          <p className="text-sm font-semibold text-gray-700 mb-4">
+            Tasks <span className="font-normal text-gray-400">{total} total</span>
+          </p>
+
+          {pendingTasks.length > 0 && (
+            <div className="mb-2">
+              {pendingTasks.map((task) => {
+                const isOverdue = !task.done && task.deadline && task.deadline < todayStr;
+                const isToday   = !task.done && task.deadline === todayStr;
+                return (
+                  <div key={task.id} className={`flex items-center gap-3 py-3 px-4 rounded-xl hover:bg-gray-50 ${isOverdue ? 'border-l-2 border-red-400 pl-3' : ''}`}>
+                    <span
+                      className="rounded-md border-2 flex-shrink-0"
+                      style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', borderColor: '#d1d5db' }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 break-words">{task.title}</p>
+                      {task.deadline && (
+                        <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : isToday ? 'text-amber-500 font-medium' : 'text-gray-400'}`}>
+                          Due: {formatDate(task.deadline)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {completedTasks.length > 0 && (
+            <details className={pendingTasks.length > 0 ? 'mt-3' : ''}>
+              <summary className="text-xs font-semibold text-gray-400 cursor-pointer select-none list-none flex items-center gap-1.5 py-2">
+                <ChevronDown size={12} /> {completedTasks.length} completed
+              </summary>
+              <div className="opacity-60 mt-1">
+                {completedTasks.map((task) => (
+                  <div key={task.id} className="flex items-center gap-3 py-3 px-4 rounded-xl hover:bg-gray-50">
+                    <span
+                      className="rounded-md border-2 flex-shrink-0"
+                      style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: bg, borderColor: bg }}
+                    >
+                      <Check size={11} strokeWidth={3} style={{ color: tc }} />
+                    </span>
+                    <p className="text-sm font-medium text-gray-400 line-through break-words">{task.title}</p>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+
+          {total === 0 && (
+            <p className="text-sm text-gray-400 py-4 text-center">No tasks yet.</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Right sidebar ── */}
+      <div className="w-full lg:w-[260px] lg:flex-shrink-0 p-4 lg:p-5 lg:pl-2 space-y-4 overflow-y-auto overflow-x-hidden">
+
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm">
+          <p className="text-sm font-semibold text-gray-700 mb-4">Overview</p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${bg}33` }}>
+                <CheckCircle2 size={16} style={{ color: bg }} />
+              </div>
+              <div>
+                <p className="font-mono font-semibold text-gray-900">{done}</p>
+                <p className="text-xs text-gray-400">Completed</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <Clock size={16} className="text-gray-400" />
+              </div>
+              <div>
+                <p className="font-mono font-semibold text-gray-900">{pending}</p>
+                <p className="text-xs text-gray-400">Pending</p>
+              </div>
+            </div>
+            {overdue.length > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle size={16} className="text-red-500" />
+                </div>
+                <div>
+                  <p className="font-mono font-semibold text-red-600">{overdue.length}</p>
+                  <p className="text-xs text-red-400">Overdue</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {total > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs text-gray-400">Progress</p>
+                <p className="text-xs font-mono font-semibold text-gray-700">{pct}%</p>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, backgroundColor: bg }} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* CTA */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm text-center">
+          <Sparkles size={20} className="mx-auto mb-2" style={{ color: 'var(--accent, #ED64A6)' }} />
+          <p className="text-sm font-semibold text-gray-800 mb-1">Like what you see?</p>
+          <p className="text-xs text-gray-400 mb-3">Track your own clients & campaigns with WorkBoard.</p>
+          <button
+            onClick={onBack}
+            className="w-full py-2.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+          >
+            Try WorkBoard free
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -444,14 +568,33 @@ const FILTER_OPTIONS = [
 
 function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permission }) {
   const navigate = useNavigate();
-  const [newTask, setNewTask]     = useState('');
+  const [newTask, setNewTask]       = useState('');
   const [addingTask, setAddingTask] = useState(false);
-  const [filter, setFilter]       = useState('all');
+  const [filter, setFilter]         = useState('all');
   const [filterOpen, setFilterOpen] = useState(false);
-  const [filterPos, setFilterPos] = useState({ top: 0, left: 0 });
+  const [filterPos, setFilterPos]   = useState({ top: 0, left: 0 });
+  const [campaigns, setCampaigns]   = useState([]);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
   const filterBtnRef  = useRef(null);
   const filterDropRef = useRef(null);
   const taskInputRef  = useRef(null);
+
+  // Load campaigns + their tasks once
+  useEffect(() => {
+    async function loadCampaigns() {
+      const [camRes, taskRes] = await Promise.all([
+        supabase.from('client_campaigns').select('*').eq('client_id', client.id).order('sort_order'),
+        supabase.from('campaign_tasks').select('*').eq('client_id', client.id).order('sort_order'),
+      ]);
+      setCampaigns((camRes.data || []).map((c) => ({
+        ...c,
+        tasks: (taskRes.data || [])
+          .filter((t) => t.campaign_id === c.id)
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+      })));
+    }
+    loadCampaigns();
+  }, [client.id]);
 
   const todayStr = getTodayStr();
   const tomorrowStr = (() => {
@@ -527,6 +670,19 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
     }
     setAddingTask(false);
   };
+
+  // If a campaign is selected, show the full campaign view
+  if (selectedCampaign) {
+    return (
+      <SharedCampaignView
+        campaign={selectedCampaign}
+        clientName={client.name}
+        clientColor={client.color}
+        onBack={() => setSelectedCampaign(null)}
+        todayStr={todayStr}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-[#F7F8FA] overflow-hidden max-w-full">
@@ -671,7 +827,11 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
         </div>
 
         {/* Campaigns — in main column like real workspace */}
-        <SharedCampaignsSection clientId={client.id} />
+        <SharedCampaignsSection
+          campaigns={campaigns}
+          onSelect={setSelectedCampaign}
+          todayStr={todayStr}
+        />
       </div>
 
       {/* ── Right sidebar — mirrors ClientWorkspace ── */}

@@ -4,27 +4,11 @@ import { supabase } from '../lib/supabase';
 const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
 
 // Transform Supabase rows into the app's data shape
-function transformClients(clients, tasks, retainerPayments) {
-  return clients.map((c) => ({
-    id: c.id,
-    name: c.name,
-    color: c.color,
-    logo: c.logo || '',
-    email: c.email || '',
-    phone: c.phone || '',
-    address: c.address || '',
-    website: c.website || '',
-    tax_id: c.tax_id || '',
-    task_mode: c.task_mode || false,
-    retainer: Number(c.retainer) || 0,
-    retainer_currency: c.retainer_currency || 'NGN',
-    retainerPaid: retainerPayments
-      .filter((rp) => rp.client_id === c.id)
-      .reduce((acc, rp) => {
-        acc[rp.month] = rp.paid;
-        return acc;
-      }, {}),
-    tasks: tasks
+function transformClients(clients, tasks, retainerPayments, campaignTasks = []) {
+  return clients.map((c) => {
+    // Lightweight campaign-task summaries merged into tasks array so
+    // everywhere that reads client.tasks gets the full combined picture.
+    const directTasks = tasks
       .filter((t) => t.client_id === c.id)
       .map((t) => ({
         id: t.id,
@@ -36,8 +20,46 @@ function transformClients(clients, tasks, retainerPayments) {
         deadline: t.deadline || null,
         sort_order: t.sort_order ?? 0,
         createdAt: t.created_at,
-      })),
-  }));
+        _isCampaignTask: false,
+      }));
+
+    const campaignTasksForClient = campaignTasks
+      .filter((t) => t.client_id === c.id)
+      .map((t) => ({
+        id: t.id,
+        title: t.title,
+        done: t.done,
+        paid: false,       // campaign tasks have no payment tracking
+        amount: 0,
+        currency: 'NGN',
+        deadline: t.deadline || null,
+        sort_order: t.sort_order ?? 0,
+        createdAt: t.created_at,
+        _isCampaignTask: true,
+      }));
+
+    return {
+      id: c.id,
+      name: c.name,
+      color: c.color,
+      logo: c.logo || '',
+      email: c.email || '',
+      phone: c.phone || '',
+      address: c.address || '',
+      website: c.website || '',
+      tax_id: c.tax_id || '',
+      task_mode: c.task_mode || false,
+      retainer: Number(c.retainer) || 0,
+      retainer_currency: c.retainer_currency || 'NGN',
+      retainerPaid: retainerPayments
+        .filter((rp) => rp.client_id === c.id)
+        .reduce((acc, rp) => { acc[rp.month] = rp.paid; return acc; }, {}),
+      // Direct tasks only — used for task list UI in ClientWorkspace
+      tasks: directTasks,
+      // Combined tasks — used for counts on cards, dashboard, overview stats
+      allTasks: [...directTasks, ...campaignTasksForClient],
+    };
+  });
 }
 
 export function useSupabaseData(userId) {
@@ -56,17 +78,24 @@ export function useSupabaseData(userId) {
     if (IS_DEMO) return; // no Supabase reads in demo mode
     if (!userId) return;  // wait until we know who the user is
     try {
-      const [clientsRes, tasksRes, retainerRes] = await Promise.all([
+      const [clientsRes, tasksRes, retainerRes, campaignTasksRes] = await Promise.all([
         supabase.from('clients').select('*').eq('user_id', userId).order('created_at'),
         supabase.from('tasks').select('*').eq('user_id', userId).order('sort_order', { ascending: true }).order('created_at'),
         supabase.from('retainer_payments').select('*').eq('user_id', userId),
+        supabase.from('campaign_tasks').select('*').eq('user_id', userId),
       ]);
 
       if (clientsRes.error) throw clientsRes.error;
       if (tasksRes.error) throw tasksRes.error;
       if (retainerRes.error) throw retainerRes.error;
+      // campaign_tasks error is non-fatal — table may not exist yet
 
-      setClients(transformClients(clientsRes.data || [], tasksRes.data || [], retainerRes.data || []));
+      setClients(transformClients(
+        clientsRes.data || [],
+        tasksRes.data || [],
+        retainerRes.data || [],
+        campaignTasksRes.data || [],
+      ));
 
       setError(null);
     } catch (err) {

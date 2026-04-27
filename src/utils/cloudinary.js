@@ -32,7 +32,13 @@ export const uploadToCloudinary = (file, folder, onProgress) => {
           format: data.format,
         });
       } else {
-        reject(new Error(`Upload failed (${xhr.status})`));
+        let msg = `Upload failed (${xhr.status})`;
+        try {
+          const err = JSON.parse(xhr.responseText);
+          if (err?.error?.message) msg = err.error.message;
+        } catch (_) {}
+        console.error('Cloudinary error:', xhr.status, xhr.responseText);
+        reject(new Error(msg));
       }
     };
 

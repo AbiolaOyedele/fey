@@ -11,6 +11,12 @@ const STATUS_STYLES = {
   declined: 'bg-red-100 text-red-500',
   amended:  'bg-amber-100 text-amber-700',
 };
+const STATUS_LABELS = {
+  pending:  'Pending',
+  approved: 'Approved',
+  declined: 'Declined',
+  amended:  'Amend',
+};
 
 function FileTypeIcon({ fileType, size = 14 }) {
   if (fileType === 'image') return <Image size={size} />;
@@ -155,8 +161,8 @@ export default function TaskFileAttachment({ taskId, clientId, open }) {
               </a>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {f.status !== 'pending' && (
-                  <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full capitalize ${STATUS_STYLES[f.status]}`}>
-                    {f.status}
+                  <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${STATUS_STYLES[f.status]}`}>
+                    {STATUS_LABELS[f.status] || f.status}
                   </span>
                 )}
                 <span className="text-[10px] text-gray-400">{formatFileSize(f.file_size)}</span>

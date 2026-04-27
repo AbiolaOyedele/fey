@@ -223,6 +223,7 @@ export default function Dashboard({ clients, actions }) {
   const [overdueOpen, setOverdueOpen] = useState(false);
   const [bellPos, setBellPos] = useState({ top: 0, right: 0 });
   const [overduePos, setOverduePos] = useState({ top: 0, right: 0 });
+  const [fileAlerts, setFileAlerts] = useState([]); // [{file, clientId, clientName, status}]
   const bellRef = useRef(null);
   const overdueRef = useRef(null);
   const { settings, formatMoney, convertAmount } = useSettings();
@@ -231,6 +232,27 @@ export default function Dashboard({ clients, actions }) {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const todayStr = getTodayStr();
+
+  // Fetch file alerts: amended + declined + pending files across all clients
+  useEffect(() => {
+    if (!clients.length) return;
+    const clientIds = clients.map((c) => c.id);
+    const fetchAlerts = async () => {
+      const [cf, tf] = await Promise.all([
+        supabase.from('client_files').select('id,file_name,status,client_id,created_at').in('client_id', clientIds).in('status', ['amended', 'declined', 'pending']),
+        supabase.from('task_files').select('id,file_name,status,client_id,created_at,task_id').in('client_id', clientIds).in('status', ['amended', 'declined', 'pending']),
+      ]);
+      const all = [
+        ...(cf.data || []).map((f) => ({ ...f, _source: 'client' })),
+        ...(tf.data || []).map((f) => ({ ...f, _source: 'task' })),
+      ].map((f) => ({
+        ...f,
+        clientName: clients.find((c) => c.id === f.client_id)?.name || '',
+      })).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setFileAlerts(all);
+    };
+    fetchAlerts();
+  }, [clients]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -257,7 +279,7 @@ export default function Dashboard({ clients, actions }) {
   const overdueTasks = allTasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr)
     .sort((a, b) => a.deadline.localeCompare(b.deadline));
 
-  const bellBadge = dueTodayTasks.length;
+  const bellBadge = dueTodayTasks.length + fileAlerts.filter((f) => f.status === 'amended' || f.status === 'declined').length;
   const overdueBadge = overdueTasks.length;
 
   // Only show Overdue tab when there are overdue tasks
@@ -430,12 +452,54 @@ export default function Dashboard({ clients, actions }) {
                     style={{ top: bellPos.top, right: bellPos.right }}
                   >
                     <div className="px-4 py-3 border-b border-gray-100">
-                      <p className="text-sm font-semibold text-gray-700">Upcoming Deadlines</p>
+                      <p className="text-sm font-semibold text-gray-700">Notifications</p>
                     </div>
-                    {dueTodayTasks.length === 0 && upcomingTasks.length === 0 ? (
-                      <div className="px-4 py-6 text-center text-sm text-gray-400">No upcoming deadlines</div>
+                    {dueTodayTasks.length === 0 && upcomingTasks.length === 0 && fileAlerts.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm text-gray-400">All clear — nothing needs attention</div>
                     ) : (
-                      <div className="max-h-72 overflow-y-auto">
+                      <div className="max-h-80 overflow-y-auto">
+                        {/* File alerts — amended + declined first */}
+                        {fileAlerts.filter((f) => f.status === 'amended' || f.status === 'declined').length > 0 && (
+                          <>
+                            <p className="px-4 pt-3 pb-1 text-xs font-semibold text-amber-600 uppercase tracking-wider">Files Need Attention</p>
+                            {fileAlerts.filter((f) => f.status === 'amended' || f.status === 'declined').map((f) => (
+                              <Link
+                                key={f.id}
+                                to={`/clients/${f.client_id}/files`}
+                                onClick={() => setBellOpen(false)}
+                                className="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                              >
+                                <span className={`mt-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${f.status === 'amended' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'}`}>
+                                  {f.status === 'amended' ? 'Amend' : 'Declined'}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-800 truncate">{f.file_name}</p>
+                                  <p className="text-xs text-gray-400">{f.clientName}</p>
+                                </div>
+                              </Link>
+                            ))}
+                          </>
+                        )}
+                        {/* Pending files */}
+                        {fileAlerts.filter((f) => f.status === 'pending').length > 0 && (
+                          <>
+                            <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Awaiting Review</p>
+                            {fileAlerts.filter((f) => f.status === 'pending').slice(0, 5).map((f) => (
+                              <Link
+                                key={f.id}
+                                to={`/clients/${f.client_id}/files`}
+                                onClick={() => setBellOpen(false)}
+                                className="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                              >
+                                <span className="mt-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">Pending</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-800 truncate">{f.file_name}</p>
+                                  <p className="text-xs text-gray-400">{f.clientName}</p>
+                                </div>
+                              </Link>
+                            ))}
+                          </>
+                        )}
                         {dueTodayTasks.length > 0 && (
                           <>
                             <p className="px-4 pt-3 pb-1 text-xs font-semibold text-amber-600 uppercase tracking-wider">Due Today</p>
@@ -457,7 +521,7 @@ export default function Dashboard({ clients, actions }) {
                         )}
                         {upcomingTasks.length > 0 && (
                           <>
-                            <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Upcoming</p>
+                            <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Upcoming Deadlines</p>
                             {upcomingTasks.map((task) => (
                               <Link
                                 key={task.id}

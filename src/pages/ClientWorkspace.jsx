@@ -662,7 +662,7 @@ export default function ClientWorkspace({ clients, actions }) {
               </div>
             )}
             {amendedFiles.length > 0 && (
-              <div className="flex items-center gap-3">
+              <button onClick={() => navigate(`/clients/${id}/files`)} className="flex items-center gap-3 w-full text-left hover:bg-amber-50 rounded-xl -mx-2 px-2 py-1 transition-colors">
                 <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
                   <RotateCcw size={16} className="text-amber-500" />
                 </div>
@@ -670,10 +670,10 @@ export default function ClientWorkspace({ clients, actions }) {
                   <p className="font-mono font-semibold text-amber-600">{amendedFiles.length}</p>
                   <p className="text-xs text-amber-400">Files need amends</p>
                 </div>
-              </div>
+              </button>
             )}
             {declinedFiles.length > 0 && (
-              <div className="flex items-center gap-3">
+              <button onClick={() => navigate(`/clients/${id}/files`)} className="flex items-center gap-3 w-full text-left hover:bg-red-50 rounded-xl -mx-2 px-2 py-1 transition-colors">
                 <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
                   <XCircle size={16} className="text-red-500" />
                 </div>
@@ -681,10 +681,10 @@ export default function ClientWorkspace({ clients, actions }) {
                   <p className="font-mono font-semibold text-red-600">{declinedFiles.length}</p>
                   <p className="text-xs text-red-400">Files declined</p>
                 </div>
-              </div>
+              </button>
             )}
             {pendingFiles.length > 0 && (
-              <div className="flex items-center gap-3">
+              <button onClick={() => navigate(`/clients/${id}/files`)} className="flex items-center gap-3 w-full text-left hover:bg-gray-50 rounded-xl -mx-2 px-2 py-1 transition-colors">
                 <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
                   <FileText size={16} className="text-gray-400" />
                 </div>
@@ -692,7 +692,7 @@ export default function ClientWorkspace({ clients, actions }) {
                   <p className="font-mono font-semibold text-gray-700">{pendingFiles.length}</p>
                   <p className="text-xs text-gray-400">Files awaiting review</p>
                 </div>
-              </div>
+              </button>
             )}
           </div>
         </div>

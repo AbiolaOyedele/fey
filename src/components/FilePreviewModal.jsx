@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
-import { X, Download, Check, AlertCircle, RotateCcw, ChevronDown, Clock, FileText, Image, File, Loader2, History, Film } from 'lucide-react';
-import { formatFileSize, isImageType, isPdfType } from '../utils/cloudinary';
+import { useState, useEffect, useRef } from 'react';
+import { X, Download, Check, AlertCircle, RotateCcw, ChevronDown, FileText, File, Loader2, History, Film, Upload } from 'lucide-react';
+import { formatFileSize, isImageType, isPdfType, uploadToCloudinary, getFileType } from '../utils/cloudinary';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 
 const STATUS_CONFIG = {
   pending:  { label: 'Pending',  cls: 'bg-gray-100 text-gray-600' },
@@ -143,12 +145,18 @@ function AmendPrompt({ onConfirm, onCancel }) {
  *   fetchVersions – async fn(fileId, source) → version array
  */
 export default function FilePreviewModal({ file, source, onClose, onStatus, fetchVersions }) {
+  const { user } = useAuth();
+  const { settings } = useSettings();
   const [action, setAction] = useState(null); // 'decline' | 'amend'
   const [saving, setSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [versions, setVersions] = useState([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
   const [currentFile, setCurrentFile] = useState(file);
+  const [showUploadVersion, setShowUploadVersion] = useState(false);
+  const [versionComment, setVersionComment] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(null); // null | 0-100
+  const versionInputRef = useRef(null);
 
   // Load version history when toggled
   useEffect(() => {
@@ -166,6 +174,49 @@ export default function FilePreviewModal({ file, source, onClose, onStatus, fetc
     if (updated) setCurrentFile({ ...currentFile, status, amendment_notes: notes });
     setSaving(false);
     setAction(null);
+  };
+
+  const handleUploadVersion = async (e) => {
+    const newFile = e.target.files?.[0];
+    if (!newFile) return;
+    setUploadProgress(0);
+    const folder = source === 'task'
+      ? `tasks/${currentFile.task_id}`
+      : `clients/${currentFile.client_id}`;
+    const { promise } = uploadToCloudinary(newFile, folder, setUploadProgress);
+    try {
+      const { url, publicId, size } = await promise;
+      const table = source === 'task' ? 'task_files' : 'client_files';
+      const rootId = currentFile.parent_file_id || currentFile.id;
+      const newVersion = (currentFile.version || 1) + 1;
+      const payload = {
+        file_name: newFile.name,
+        file_url: url,
+        public_id: publicId,
+        file_size: size || newFile.size,
+        file_type: getFileType(newFile.name),
+        version: newVersion,
+        parent_file_id: rootId,
+        status: 'pending',
+        uploaded_by: user?.id || null,
+        uploader_name: settings.full_name || user?.email || 'You',
+        client_id: currentFile.client_id,
+        amendment_notes: versionComment.trim() || null,
+      };
+      if (source === 'task') payload.task_id = currentFile.task_id;
+      const { data } = await supabase.from(table).insert(payload).select().single();
+      if (data) {
+        setCurrentFile({ ...data, _source: source });
+        setVersions([]);
+        setShowHistory(false);
+      }
+      setShowUploadVersion(false);
+      setVersionComment('');
+    } catch (err) {
+      console.error('Version upload failed', err);
+    } finally {
+      setUploadProgress(null);
+    }
   };
 
   if (!file) return null;
@@ -277,6 +328,58 @@ export default function FilePreviewModal({ file, source, onClose, onStatus, fetc
                     <RotateCcw size={14} />
                     Request Amend
                   </button>
+                </div>
+              )}
+            </div>
+
+            {/* Upload new version */}
+            <div className="px-4 py-4 border-b border-gray-100">
+              <input
+                ref={versionInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleUploadVersion}
+              />
+              {!showUploadVersion ? (
+                <button
+                  onClick={() => setShowUploadVersion(true)}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                >
+                  <Upload size={14} />
+                  Upload New Version
+                </button>
+              ) : uploadProgress !== null ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">Uploading… {uploadProgress}%</p>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-gray-700">Add a note (optional)</p>
+                  <textarea
+                    autoFocus
+                    value={versionComment}
+                    onChange={(e) => setVersionComment(e.target.value)}
+                    rows={2}
+                    placeholder="What changed in this version?"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-700 outline-none focus:border-gray-400 resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => versionInputRef.current?.click()}
+                      className="flex-1 py-2 rounded-xl text-white text-xs font-medium bg-blue-500 hover:bg-blue-600 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <Upload size={12} /> Choose File
+                    </button>
+                    <button
+                      onClick={() => { setShowUploadVersion(false); setVersionComment(''); }}
+                      className="px-3 py-2 rounded-xl text-xs text-gray-500 hover:bg-gray-100 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

@@ -5,22 +5,16 @@
     "title": "Campaigns & File Workflow",
     "features": [
       "Campaigns — create named task groups inside any client workspace",
-      "Campaign tasks have the same features as regular tasks: amounts, deadlines, paid status, drag-to-reorder",
-      "Bulk paste into task inputs — paste multiple lines to create tasks instantly",
-      "Upload new version of a file directly from the preview modal with an optional note",
-      "File status badges (Amend, Declined, Approved) now show on task file rows",
-      "File counters in client overview panel are now clickable — navigate straight to the files page",
-      "Dashboard notification bell now shows file alerts (amended, declined, pending) across all clients",
-      "Client contact info (email, phone, website) now displayed in the workspace sidebar"
+      "Campaign tasks support amounts, deadlines, paid status, and drag-to-reorder",
+      "Bulk paste — paste multiple lines into any task input to create tasks instantly",
+      "Upload a new file version directly from the preview modal with an optional note",
+      "File status badges (Amend, Declined, Approved) visible on task file rows",
+      "Overview file counters are clickable — jump straight to the files page",
+      "Notification bell now shows file alerts (amended, declined, pending) across all clients",
+      "Client contact info (email, phone, website) shown in the workspace sidebar"
     ],
-    "improvements": [
-      "Members and Files sidebar cards have tighter, more compact empty states",
-      "Overview file counter rows are interactive with hover highlights"
-    ],
-    "fixes": [
-      "Cloudinary upload errors now show the exact error message from the API",
-      "Supabase channel naming fixed to prevent StrictMode crashes on realtime subscriptions"
-    ]
+    "improvements": [],
+    "fixes": []
   },
   {
     "version": "1.8.1",

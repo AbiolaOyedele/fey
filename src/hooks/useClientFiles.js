@@ -2,62 +2,86 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
 /**
- * Manages all files for a client — both client-level and task-level uploads.
- * Combined and sorted by created_at desc.
+ * Manages files for a client OR a campaign.
+ *
+ * useClientFiles(clientId)              → client-level files (campaign_id IS NULL) + task files
+ * useClientFiles(clientId, {campaignId}) → campaign-scoped files only (campaign_id = campaignId)
  */
-export function useClientFiles(clientId) {
+export function useClientFiles(clientId, { campaignId } = {}) {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const fetch = useCallback(async () => {
     if (!clientId) return;
     setLoading(true);
-    const [cf, tf] = await Promise.all([
-      supabase
+
+    if (campaignId) {
+      // Campaign-scoped: only client_files with matching campaign_id
+      const { data } = await supabase
         .from('client_files')
         .select('*')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('task_files')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false }),
-    ]);
+        .eq('campaign_id', campaignId)
+        .order('created_at', { ascending: false });
+      setFiles((data || []).map((f) => ({ ...f, _source: 'client' })));
+    } else {
+      // Client-level: client_files where campaign_id IS NULL + all task_files
+      const [cf, tf] = await Promise.all([
+        supabase
+          .from('client_files')
+          .select('*')
+          .eq('client_id', clientId)
+          .is('campaign_id', null)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('task_files')
+          .select('*')
+          .eq('client_id', clientId)
+          .order('created_at', { ascending: false }),
+      ]);
 
-    const combined = [
-      ...(cf.data || []).map((f) => ({ ...f, _source: 'client' })),
-      ...(tf.data || []).map((f) => ({ ...f, _source: 'task' })),
-    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const combined = [
+        ...(cf.data || []).map((f) => ({ ...f, _source: 'client' })),
+        ...(tf.data || []).map((f) => ({ ...f, _source: 'task' })),
+      ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-    setFiles(combined);
+      setFiles(combined);
+    }
     setLoading(false);
-  }, [clientId]);
+  }, [clientId, campaignId]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
-  // Realtime: listen to both tables for this client
+  // Realtime: listen to relevant table(s)
   useEffect(() => {
     if (!clientId) return;
-    const channelName = `client-all-files-${clientId}-${Date.now()}`;
+    const channelName = `client-all-files-${clientId}-${campaignId || 'base'}-${Date.now()}`;
     let channel;
     try {
-      channel = supabase
-        .channel(channelName)
-        .on('postgres_changes', {
+      const builder = supabase.channel(channelName);
+
+      if (campaignId) {
+        builder.on('postgres_changes', {
           event: '*', schema: 'public', table: 'client_files',
-          filter: `client_id=eq.${clientId}`,
-        }, fetch)
-        .on('postgres_changes', {
-          event: '*', schema: 'public', table: 'task_files',
-          filter: `client_id=eq.${clientId}`,
-        }, fetch)
-        .subscribe();
+          filter: `campaign_id=eq.${campaignId}`,
+        }, fetch);
+      } else {
+        builder
+          .on('postgres_changes', {
+            event: '*', schema: 'public', table: 'client_files',
+            filter: `client_id=eq.${clientId}`,
+          }, fetch)
+          .on('postgres_changes', {
+            event: '*', schema: 'public', table: 'task_files',
+            filter: `client_id=eq.${clientId}`,
+          }, fetch);
+      }
+
+      channel = builder.subscribe();
     } catch (e) {
       // ignore StrictMode double-invoke errors
     }
     return () => { if (channel) supabase.removeChannel(channel); };
-  }, [clientId, fetch]);
+  }, [clientId, campaignId, fetch]);
 
   const addClientFile = useCallback(async (fileData) => {
     const { data, error } = await supabase

@@ -4,12 +4,15 @@ import { getContrastColor } from '../utils/colorContrast';
 import { useSettings } from '../contexts/SettingsContext';
 
 /**
- * Campaign card — matches the client card design on the dashboard.
- * Uses the client's color as the base background.
+ * Campaign card — each campaign has its own independently chosen color.
+ * Matches the client card design: colored background, progress bar, stats.
  */
-export default function CampaignCard({ campaign, clientId, clientColor }) {
+export default function CampaignCard({ campaign, clientId }) {
   const { formatMoney, convertAmount } = useSettings();
-  const textColor = getContrastColor(clientColor);
+
+  // Use the campaign's own color — NOT the client's color
+  const bg        = campaign.color || '#E9D5FF';
+  const textColor = getContrastColor(bg);
 
   const tasks      = campaign.tasks || [];
   const done       = tasks.filter((t) => t.done).length;
@@ -24,7 +27,7 @@ export default function CampaignCard({ campaign, clientId, clientColor }) {
     <Link
       to={`/clients/${clientId}/campaigns/${campaign.id}`}
       className="group rounded-2xl p-4 sm:p-5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden block"
-      style={{ backgroundColor: clientColor }}
+      style={{ backgroundColor: bg }}
     >
       {/* Top row: task count + badges */}
       <div className="flex items-center justify-between mb-4">
@@ -52,14 +55,19 @@ export default function CampaignCard({ campaign, clientId, clientColor }) {
       </div>
 
       {/* Campaign name */}
-      <h3 className="font-display text-lg font-bold mb-1 leading-snug" style={{ color: textColor }}>
-        {campaign.name}
-      </h3>
+      <div className="flex items-center gap-2 mb-1">
+        {campaign.logo ? (
+          <img src={campaign.logo} alt={campaign.name} className="w-6 h-6 rounded-lg object-contain bg-white/70 p-0.5 flex-shrink-0" />
+        ) : null}
+        <h3 className="font-display text-lg font-bold leading-snug" style={{ color: textColor }}>
+          {campaign.name}
+        </h3>
+      </div>
       <p className="text-sm mb-4 opacity-70" style={{ color: textColor }}>
-        {done} completed, {total - done} pending
+        {done} completed · {total - done} pending
       </p>
 
-      {/* Progress bar + icon */}
+      {/* Progress bar + avatar */}
       <div className="flex items-center justify-between">
         <div className="flex-1 mr-4">
           <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
@@ -69,12 +77,16 @@ export default function CampaignCard({ campaign, clientId, clientColor }) {
             />
           </div>
         </div>
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50"
-          style={{ color: textColor }}
-        >
-          <Layers size={14} />
-        </div>
+        {campaign.logo ? (
+          <img src={campaign.logo} alt={campaign.name} className="w-8 h-8 rounded-full object-contain bg-white/70 p-0.5 flex-shrink-0" />
+        ) : (
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50 flex-shrink-0"
+            style={{ color: textColor }}
+          >
+            <Layers size={14} />
+          </div>
+        )}
       </div>
     </Link>
   );

@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ChevronDown, ChevronUp, Plus, Check, CheckCircle2, Clock,
   AlertTriangle, GripVertical, Edit2, Share2, Users, FileText,
-  Mail, Phone, Globe, RotateCcw, XCircle, Layers,
+  Mail, Phone, Globe, RotateCcw, XCircle, Layers, X,
 } from 'lucide-react';
+import { PALETTE, getNextColor } from '../data/defaultClients';
 import { supabase } from '../lib/supabase';
 import ShareModal from '../components/ShareModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -130,6 +131,7 @@ export default function ClientWorkspace({ clients, actions }) {
   const { campaigns, addCampaign } = useCampaigns(id, user?.id);
   const [newCampaignName, setNewCampaignName] = useState('');
   const [creatingCampaign, setCreatingCampaign] = useState(false);
+  const [newCampaignColor, setNewCampaignColor] = useState('');
 
   // File status counts for overview panel
   const { files: allFiles } = useClientFiles(id);
@@ -651,47 +653,67 @@ export default function ClientWorkspace({ clients, actions }) {
               )}
             </div>
 
-            {/* New campaign input */}
-            {creatingCampaign && (
-              <div className="flex items-center gap-2 mb-4">
-                <input
-                  autoFocus
-                  type="text"
-                  value={newCampaignName}
-                  onChange={(e) => setNewCampaignName(e.target.value)}
-                  onKeyDown={async (e) => {
-                    if (e.key === 'Enter' && newCampaignName.trim()) {
-                      await addCampaign(newCampaignName.trim());
-                      setNewCampaignName('');
-                      setCreatingCampaign(false);
-                    }
-                    if (e.key === 'Escape') { setCreatingCampaign(false); setNewCampaignName(''); }
-                  }}
-                  placeholder="Campaign name…"
-                  className="flex-1 px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all min-w-0"
-                />
-                <button
-                  onClick={async () => {
-                    if (!newCampaignName.trim()) return;
-                    await addCampaign(newCampaignName.trim());
-                    setNewCampaignName('');
-                    setCreatingCampaign(false);
-                  }}
-                  disabled={!newCampaignName.trim()}
-                  className="flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all flex-shrink-0"
-                  style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
-                >
-                  <Plus size={16} />
-                  Create
-                </button>
-                <button
-                  onClick={() => { setCreatingCampaign(false); setNewCampaignName(''); }}
-                  className="px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:bg-gray-100 transition-colors flex-shrink-0"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
+            {/* New campaign form */}
+            {creatingCampaign && (() => {
+              const pickedColor = newCampaignColor || getNextColor(campaigns.map((c) => ({ color: c.color })));
+              const handleCreate = async () => {
+                if (!newCampaignName.trim()) return;
+                await addCampaign(newCampaignName.trim(), pickedColor);
+                setNewCampaignName('');
+                setNewCampaignColor('');
+                setCreatingCampaign(false);
+              };
+              return (
+                <div className="mb-4 bg-gray-50 rounded-2xl p-4 border border-gray-200">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newCampaignName}
+                    onChange={(e) => setNewCampaignName(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter') await handleCreate();
+                      if (e.key === 'Escape') { setCreatingCampaign(false); setNewCampaignName(''); setNewCampaignColor(''); }
+                    }}
+                    placeholder="Campaign name…"
+                    className="w-full px-4 py-2.5 bg-white rounded-xl border border-gray-200 text-sm outline-none focus:border-primary transition-all mb-3"
+                  />
+                  {/* Color swatches */}
+                  <div className="flex gap-1.5 flex-wrap mb-3">
+                    {PALETTE.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => setNewCampaignColor(color)}
+                        className="w-6 h-6 rounded-full transition-all duration-150 hover:scale-110"
+                        style={{
+                          backgroundColor: color,
+                          outline: pickedColor === color ? '3px solid #6B7280' : '3px solid transparent',
+                          outlineOffset: '2px',
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* Color preview */}
+                    <div className="w-5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: pickedColor }} />
+                    <button
+                      onClick={handleCreate}
+                      disabled={!newCampaignName.trim()}
+                      className="flex items-center gap-1.5 px-4 py-2 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all flex-shrink-0"
+                      style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                    >
+                      <Plus size={14} />
+                      Create
+                    </button>
+                    <button
+                      onClick={() => { setCreatingCampaign(false); setNewCampaignName(''); setNewCampaignColor(''); }}
+                      className="px-3 py-2 rounded-xl text-sm text-gray-400 hover:bg-gray-200 transition-colors flex-shrink-0 flex items-center"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
             {campaigns.length === 0 && !creatingCampaign && (
               <p className="text-sm text-gray-400 text-center py-4">
@@ -707,7 +729,6 @@ export default function ClientWorkspace({ clients, actions }) {
                     key={campaign.id}
                     campaign={campaign}
                     clientId={id}
-                    clientColor={client.color}
                   />
                 ))}
               </div>

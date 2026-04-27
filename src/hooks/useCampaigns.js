@@ -1,12 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { PALETTE } from '../data/defaultClients';
+
+function getNextCampaignColor(campaigns) {
+  const used = new Set(campaigns.map((c) => c.color));
+  const unused = PALETTE.find((c) => !used.has(c));
+  return unused || PALETTE[campaigns.length % PALETTE.length];
+}
 
 function transformCampaigns(campaigns, tasks) {
   return campaigns.map((c) => ({
     id: c.id,
     client_id: c.client_id,
     name: c.name,
-    color: c.color || '#818cf8',
+    color: c.color || PALETTE[0],
+    logo: c.logo || '',
     sort_order: c.sort_order ?? 0,
     createdAt: c.created_at,
     tasks: tasks
@@ -60,17 +68,20 @@ export function useCampaigns(clientId, userId) {
 
   // ── Campaigns ──────────────────────────────────────────────────────────────
 
-  const addCampaign = useCallback(async (name, color = '#818cf8') => {
+  const addCampaign = useCallback(async (name, color, logo = '') => {
     if (!clientId || !userId) return;
+    // Default to next unused pastel if no color provided
+    const finalColor = color || getNextCampaignColor(campaignsRef.current);
     const maxSort = campaignsRef.current.length > 0
       ? Math.max(...campaignsRef.current.map((c) => c.sort_order ?? 0)) + 1 : 0;
     const { data, error } = await supabase
       .from('client_campaigns')
-      .insert({ name, color, sort_order: maxSort, client_id: clientId, user_id: userId })
+      .insert({ name, color: finalColor, logo, sort_order: maxSort, client_id: clientId, user_id: userId })
       .select().single();
     if (error) return;
-    setCampaigns((prev) => [...prev, { ...data, tasks: [] }]);
-    return data;
+    const newCampaign = { ...data, logo: data.logo || '', tasks: [] };
+    setCampaigns((prev) => [...prev, newCampaign]);
+    return newCampaign;
   }, [clientId, userId]);
 
   const updateCampaign = useCallback(async (campaignId, updates) => {
@@ -121,12 +132,12 @@ export function useCampaigns(clientId, userId) {
 
   const updateTask = useCallback(async (campaignId, taskId, updates) => {
     const dbUpdates = {};
-    if ('title'    in updates) dbUpdates.title    = updates.title;
-    if ('done'     in updates) dbUpdates.done     = updates.done;
-    if ('paid'     in updates) dbUpdates.paid     = updates.paid;
-    if ('amount'   in updates) dbUpdates.amount   = updates.amount;
-    if ('currency' in updates) dbUpdates.currency = updates.currency;
-    if ('deadline' in updates) dbUpdates.deadline = updates.deadline;
+    if ('title'      in updates) dbUpdates.title      = updates.title;
+    if ('done'       in updates) dbUpdates.done       = updates.done;
+    if ('paid'       in updates) dbUpdates.paid       = updates.paid;
+    if ('amount'     in updates) dbUpdates.amount     = updates.amount;
+    if ('currency'   in updates) dbUpdates.currency   = updates.currency;
+    if ('deadline'   in updates) dbUpdates.deadline   = updates.deadline;
     if ('sort_order' in updates) dbUpdates.sort_order = updates.sort_order;
     await supabase.from('campaign_tasks').update(dbUpdates).eq('id', taskId);
     setCampaigns((prev) => prev.map((c) => {
@@ -153,7 +164,6 @@ export function useCampaigns(clientId, userId) {
     ));
   }, []);
 
-  // Bulk paste: add multiple tasks at once
   const addTasksBulk = useCallback(async (campaignId, titles, currency = 'NGN') => {
     if (!clientId || !userId || !titles.length) return;
     const campaign = campaignsRef.current.find((c) => c.id === campaignId);

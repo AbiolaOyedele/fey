@@ -355,6 +355,15 @@ export default function ClientWorkspace({ clients, actions }) {
 
   const allTasks = [...client.tasks].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
+  // Flat list of every campaign task — used for combined counts only
+  const campaignTasks = campaigns.flatMap((c) => c.tasks || []);
+  const combinedTasks = [...client.tasks, ...campaignTasks];
+  const combinedTotal   = combinedTasks.length;
+  const combinedDone    = combinedTasks.filter((t) => t.done).length;
+  const combinedPending = combinedTasks.filter((t) => !t.done).length;
+  const combinedOverdue = combinedTasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr);
+  const combinedPct     = combinedTotal > 0 ? Math.round((combinedDone / combinedTotal) * 100) : 0;
+
   const filterTaskList = (tasks) => {
     if (taskFilter === 'all') return tasks;
     if (taskFilter === 'overdue') return tasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr);
@@ -407,7 +416,7 @@ export default function ClientWorkspace({ clients, actions }) {
                 {client.name}
               </h1>
               <p className="text-sm mt-0.5 opacity-70" style={{ color: textColor }}>
-                {client.tasks.length} task{client.tasks.length !== 1 ? 's' : ''} total
+                {combinedTotal} task{combinedTotal !== 1 ? 's' : ''} total
               </p>
             </div>
             {/* Buttons in banner */}
@@ -771,7 +780,7 @@ export default function ClientWorkspace({ clients, actions }) {
                 <CheckCircle2 size={16} className="text-success" />
               </div>
               <div>
-                <p className="font-mono font-semibold text-gray-900">{client.tasks.filter((t) => t.done).length}</p>
+                <p className="font-mono font-semibold text-gray-900">{combinedDone}</p>
                 <p className="text-xs text-gray-400">Completed</p>
               </div>
             </div>
@@ -780,17 +789,17 @@ export default function ClientWorkspace({ clients, actions }) {
                 <Clock size={16} className="text-pending" />
               </div>
               <div>
-                <p className="font-mono font-semibold text-gray-900">{client.tasks.filter((t) => !t.done).length}</p>
+                <p className="font-mono font-semibold text-gray-900">{combinedPending}</p>
                 <p className="text-xs text-gray-400">Pending</p>
               </div>
             </div>
-            {overdueTasks.length > 0 && (
+            {combinedOverdue.length > 0 && (
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
                   <AlertTriangle size={16} className="text-red-500" />
                 </div>
                 <div>
-                  <p className="font-mono font-semibold text-red-600">{overdueTasks.length}</p>
+                  <p className="font-mono font-semibold text-red-600">{combinedOverdue.length}</p>
                   <p className="text-xs text-red-400">Overdue</p>
                 </div>
               </div>
@@ -897,16 +906,14 @@ export default function ClientWorkspace({ clients, actions }) {
           </p>
           <div className="flex items-end gap-2 mb-2">
             <span className="font-mono text-3xl font-bold" style={{ color: textColor }}>
-              {client.tasks.length > 0
-                ? Math.round((client.tasks.filter((t) => t.done).length / client.tasks.length) * 100)
-                : 0}%
+              {combinedPct}%
             </span>
           </div>
           <div className="h-2 bg-white/40 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-300"
               style={{
-                width: `${client.tasks.length > 0 ? (client.tasks.filter((t) => t.done).length / client.tasks.length) * 100 : 0}%`,
+                width: `${combinedPct}%`,
                 backgroundColor: textColor,
                 opacity: 0.6,
               }}

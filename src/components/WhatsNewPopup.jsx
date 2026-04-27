@@ -130,58 +130,7 @@ export default function WhatsNewPopup({ open, onClose }) {
               </button>
             </div>
 
-            {/* Image carousel or placeholder */}
-            <div className="flex-1 flex flex-col">
-              {images.length > 0 ? (
-                <div className="relative flex-1 rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center min-h-[180px]">
-                  <img
-                    src={images[carouselIndex]}
-                    alt={`Screenshot ${carouselIndex + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                  {images.length > 1 && (
-                    <>
-                      <button
-                        onClick={() => setCarouselIndex((i) => Math.max(0, i - 1))}
-                        disabled={carouselIndex === 0}
-                        className="absolute left-2 w-7 h-7 rounded-full bg-black/30 text-white flex items-center justify-center hover:bg-black/50 disabled:opacity-30 transition-colors"
-                      >
-                        <ChevronLeft size={14} />
-                      </button>
-                      <button
-                        onClick={() => setCarouselIndex((i) => Math.min(images.length - 1, i + 1))}
-                        disabled={carouselIndex === images.length - 1}
-                        className="absolute right-2 w-7 h-7 rounded-full bg-black/30 text-white flex items-center justify-center hover:bg-black/50 disabled:opacity-30 transition-colors"
-                      >
-                        <ChevronRight size={14} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="flex-1 rounded-xl bg-gray-50 flex flex-col items-center justify-center min-h-[180px] text-gray-300">
-                  <Sparkles size={34} />
-                  <p className="text-sm mt-2 text-gray-400">No screenshots yet</p>
-                </div>
-              )}
-
-              {images.length > 1 && (
-                <div className="flex items-center justify-center gap-1.5 mt-3">
-                  {images.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCarouselIndex(i)}
-                      className="rounded-full transition-all"
-                      style={{
-                        backgroundColor: i === carouselIndex ? 'var(--accent, #ED64A6)' : '#D1D5DB',
-                        width:  i === carouselIndex ? '6px' : '5px',
-                        height: i === carouselIndex ? '6px' : '5px',
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Screenshot section hidden for now */}
 
             <button
               onClick={handleClose}

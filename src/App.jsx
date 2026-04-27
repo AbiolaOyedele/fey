@@ -23,6 +23,7 @@ import InvoiceBuilder from './pages/InvoiceBuilder';
 import ClientFilesPage from './pages/ClientFilesPage';
 import CampaignWorkspace from './pages/CampaignWorkspace';
 import PublicInvoicePage from './pages/PublicInvoicePage';
+import NotFound from './pages/NotFound';
 import ToastContainer from './components/Toast';
 import WelcomeGuide from './components/WelcomeGuide';
 import GettingStartedChecklist from './components/GettingStartedChecklist';
@@ -228,6 +229,7 @@ export default function App() {
                     <Route path="/invoices/new" element={<InvoiceBuilder clients={orderedClients} />} />
                     <Route path="/invoices/:id" element={<InvoiceBuilder clients={orderedClients} />} />
                     <Route path="/settings" element={<Settings clients={orderedClients} refetch={refetch} />} />
+                    <Route path="*" element={<NotFound />} />
                   </Routes>
                 </main>
               </div>
@@ -238,6 +240,8 @@ export default function App() {
             </OnboardingGate>
           </ProtectedRoute>
         } />
+        {/* Public 404 — catches anything not matched above */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

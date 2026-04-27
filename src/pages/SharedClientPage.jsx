@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle, Edit2, Eye, Ban, Folder, File, FileText, Image, Film, Download, X, Layers } from 'lucide-react';
+import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle, Edit2, Eye, Ban, Folder, File, FileText, Image, Film, Download, X, Layers, ChevronDown } from 'lucide-react';
 import { formatFileSize, isImageType, isPdfType } from '../utils/cloudinary';
 
 import { getContrastColor } from '../utils/colorContrast';
@@ -25,20 +25,25 @@ function SharedTaskRow({ task, permission, onToggleDone, onTogglePaid }) {
   const canEdit = permission === 'edit';
 
   return (
-    <div className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-all ${
-      task.done ? 'opacity-60' : ''
-    } ${isOverdue && !task.done ? 'border-l-2 border-red-300 pl-3' : ''}`}>
-      {/* Checkbox */}
+    <div className={`group flex items-center gap-3 py-3 px-4 rounded-xl hover:bg-gray-50 transition-all ${
+      isOverdue ? 'border-l-2 border-red-400 pl-3' : ''
+    }`}>
+      {/* Checkbox — mirrors TaskItem exactly */}
       <span
         role="checkbox"
         aria-checked={task.done}
         onClick={canEdit ? onToggleDone : undefined}
         className={`rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-          canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
-        } ${task.done ? 'border-green-500 bg-green-500' : 'border-gray-200'}`}
-        style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          canEdit ? 'cursor-pointer' : 'cursor-default'
+        }`}
+        style={{
+          width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          ...(task.done
+            ? { backgroundColor: 'var(--accent, #ED64A6)', borderColor: 'var(--accent, #ED64A6)' }
+            : { borderColor: '#d1d5db' }),
+        }}
       >
-        {task.done && <Check size={10} strokeWidth={3} className="text-white" />}
+        {task.done && <Check size={11} strokeWidth={3} className="text-white" />}
       </span>
 
       <div className="flex-1 min-w-0">
@@ -46,17 +51,17 @@ function SharedTaskRow({ task, permission, onToggleDone, onTogglePaid }) {
           {task.title}
         </p>
         {task.deadline && (
-          <p className={`text-xs mt-0.5 ${isOverdue ? 'text-red-400' : isToday ? 'text-amber-500' : 'text-gray-400'}`}>
-            {isOverdue ? 'Overdue · ' : isToday ? 'Due today · ' : 'Due '}{formatDate(task.deadline)}
-          </p>
+          <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : isToday ? 'text-amber-500 font-medium' : 'text-gray-400'}`}>
+            Due: {formatDate(task.deadline)}
+          </span>
         )}
       </div>
 
-      {/* Paid toggle — edit only */}
+      {/* Paid badge — edit only */}
       {canEdit && task.done && (
         <button
           onClick={onTogglePaid}
-          className={`flex-shrink-0 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+          className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
             task.paid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
           }`}
         >
@@ -403,31 +408,60 @@ function SharedCampaignsSection({ client }) {
   );
 }
 
+const FILTER_OPTIONS = [
+  { value: 'all',      label: 'All Tasks' },
+  { value: 'overdue',  label: 'Overdue' },
+  { value: 'today',    label: 'Due Today' },
+  { value: 'tomorrow', label: 'Due Tomorrow' },
+];
+
 function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permission }) {
   const navigate = useNavigate();
-  const [newTask, setNewTask] = useState('');
+  const [newTask, setNewTask]     = useState('');
   const [addingTask, setAddingTask] = useState(false);
-  const [filter, setFilter] = useState('all');
-  const todayStr = getTodayStr();
+  const [filter, setFilter]       = useState('all');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterPos, setFilterPos] = useState({ top: 0, left: 0 });
+  const filterBtnRef  = useRef(null);
+  const filterDropRef = useRef(null);
+  const taskInputRef  = useRef(null);
 
-  const textColor = getContrastColor(client.color);
-  const totalTasks = tasks.length;
-  const doneTasks = tasks.filter((t) => t.done).length;
+  const todayStr = getTodayStr();
+  const tomorrowStr = (() => {
+    const n = new Date(); n.setDate(n.getDate() + 1);
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+  })();
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (filterDropRef.current && !filterDropRef.current.contains(e.target) &&
+          filterBtnRef.current && !filterBtnRef.current.contains(e.target))
+        setFilterOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const textColor   = getContrastColor(client.color);
+  const totalTasks  = tasks.length;
+  const doneTasks   = tasks.filter((t) => t.done).length;
   const pendingCount = tasks.filter((t) => !t.done).length;
-  const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  const pct         = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const overdueTasks = tasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr);
   const totalEarned = tasks.filter((t) => t.paid).reduce((s, t) => s + (t.amount || 0), 0);
   const totalPending = tasks.filter((t) => !t.paid && (t.amount || 0) > 0).reduce((s, t) => s + (t.amount || 0), 0);
+  const canEdit     = permission === 'edit';
 
-  const canEdit = permission === 'edit';
-
-  const allFiltered = tasks.filter((t) => {
-    if (filter === 'pending') return !t.done;
-    if (filter === 'done') return t.done;
+  const filterTask = (t) => {
+    if (filter === 'overdue')  return !t.done && t.deadline && t.deadline < todayStr;
+    if (filter === 'today')    return t.deadline === todayStr;
+    if (filter === 'tomorrow') return t.deadline === tomorrowStr;
     return true;
-  });
-  const pendingTasks = allFiltered.filter((t) => !t.done);
+  };
+  const allFiltered    = tasks.filter(filterTask);
+  const pendingTasks   = allFiltered.filter((t) => !t.done);
   const completedTasks = allFiltered.filter((t) => t.done);
+  const currentLabel   = FILTER_OPTIONS.find((o) => o.value === filter)?.label || 'All Tasks';
 
   const handleToggleDone = async (task) => {
     const newDone = !task.done;
@@ -435,11 +469,8 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
       .from('tasks')
       .update({ done: newDone, paid: newDone ? task.paid : false })
       .eq('id', task.id);
-    if (!error) {
-      setTasks((prev) =>
-        prev.map((t) => t.id === task.id ? { ...t, done: newDone, paid: newDone ? t.paid : false } : t)
-      );
-    }
+    if (!error)
+      setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, done: newDone, paid: newDone ? t.paid : false } : t));
   };
 
   const handleTogglePaid = async (task) => {
@@ -455,10 +486,8 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
     const { data, error } = await supabase
       .from('tasks')
       .insert({
-        client_id: client.id,
-        user_id: shareRecord.owner_id,
-        title: newTask.trim(),
-        done: false, paid: false, amount: 0, currency: 'NGN', sort_order: maxSort,
+        client_id: client.id, user_id: shareRecord.owner_id,
+        title: newTask.trim(), done: false, paid: false, amount: 0, currency: 'NGN', sort_order: maxSort,
       })
       .select().single();
     if (!error && data) {
@@ -478,7 +507,7 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
       {/* ── Main column ── */}
       <div className="flex-1 p-4 lg:p-8 lg:pr-4 min-w-0 overflow-y-auto overflow-x-hidden">
 
-        {/* Top bar — WorkBoard logo + "Viewing as" */}
+        {/* Top bar — logo + viewing-as */}
         <div className="flex items-center justify-between mb-6">
           <img src="/favicon.svg" alt="WorkBoard" className="w-8 h-8 rounded-xl opacity-80" />
           <span className="text-xs text-gray-400">
@@ -486,16 +515,13 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
           </span>
         </div>
 
-        {/* Hero banner — identical style to ClientWorkspace */}
+        {/* Hero banner — identical to ClientWorkspace */}
         <div className="rounded-2xl p-6 mb-6 overflow-hidden" style={{ backgroundColor: client.color }}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             {client.logo ? (
               <img src={client.logo} alt={client.name} className="w-14 h-14 rounded-2xl object-contain bg-white p-1 flex-shrink-0" />
             ) : (
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-display font-bold bg-white/50 flex-shrink-0"
-                style={{ color: textColor }}
-              >
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-display font-bold bg-white/50 flex-shrink-0" style={{ color: textColor }}>
                 {client.name.charAt(0)}
               </div>
             )}
@@ -507,91 +533,108 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
                 {totalTasks} task{totalTasks !== 1 ? 's' : ''} total · shared by {shareRecord.owner_name}
               </p>
             </div>
-            {/* Permission badge */}
-            <span
-              className="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/40"
-              style={{ color: textColor }}
-            >
-              <span className="flex items-center gap-1.5">
-                {canEdit ? <Edit2 size={12} /> : <Eye size={12} />}
-                {canEdit ? 'Can edit' : 'View only'}
-              </span>
+            <span className="flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/40" style={{ color: textColor }}>
+              {canEdit ? <Edit2 size={12} /> : <Eye size={12} />}
+              {canEdit ? 'Can edit' : 'View only'}
             </span>
           </div>
         </div>
 
-        {/* Filter bar */}
-        <div className="flex items-center gap-1.5 mb-4">
-          {[
-            { value: 'all', label: 'All Tasks' },
-            { value: 'pending', label: 'Pending' },
-            { value: 'done', label: 'Completed' },
-          ].map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setFilter(f.value)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                filter === f.value ? 'text-white' : 'bg-white text-gray-500 shadow-sm hover:bg-gray-50'
-              }`}
-              style={filter === f.value ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Task card */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 overflow-hidden">
-          <h2 className="font-display text-lg font-semibold text-gray-900 mb-4">
-            Tasks
-            <span className="text-sm font-normal text-gray-400 ml-2">{totalTasks} total</span>
-          </h2>
-
-          {pendingTasks.length === 0 && completedTasks.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <CheckCircle2 size={32} className="mx-auto mb-3 opacity-20" />
-              <p className="text-sm">{filter !== 'all' ? 'No tasks in this filter' : 'No tasks yet.'}</p>
+        {/* Task card — matches ClientWorkspace p-4 sm:p-5 layout */}
+        <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-5">
+          {/* Card header: label + filter dropdown */}
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-semibold text-gray-700">
+              Tasks <span className="font-normal text-gray-400">{totalTasks} total</span>
+            </p>
+            <div className="relative" ref={filterBtnRef}>
+              <button
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setFilterPos({ top: rect.bottom + 6, left: rect.left });
+                  setFilterOpen((v) => !v);
+                }}
+                className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                {currentLabel} <ChevronDown size={12} />
+              </button>
             </div>
-          ) : (
-            <>
-              {pendingTasks.length > 0 && (
-                <div className="mb-4">
-                  {pendingTasks.map((task) => (
-                    <SharedTaskRow key={task.id} task={task} permission={permission}
-                      onToggleDone={() => handleToggleDone(task)}
-                      onTogglePaid={() => handleTogglePaid(task)} />
-                  ))}
-                </div>
-              )}
-              {completedTasks.length > 0 && (
-                <div className={pendingTasks.length > 0 ? 'border-t border-gray-100 pt-3' : ''}>
-                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 px-4">Completed</p>
-                  {completedTasks.map((task) => (
-                    <SharedTaskRow key={task.id} task={task} permission={permission}
-                      onToggleDone={() => handleToggleDone(task)}
-                      onTogglePaid={() => handleTogglePaid(task)} />
-                  ))}
-                </div>
-              )}
-            </>
+          </div>
+
+          {/* Filter dropdown — portal-style fixed */}
+          {filterOpen && (
+            <div
+              ref={filterDropRef}
+              className="fixed bg-white rounded-xl shadow-lg border border-gray-100 z-50 py-1 w-40"
+              style={{ top: filterPos.top, left: filterPos.left }}
+            >
+              {FILTER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => { setFilter(opt.value); setFilterOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors ${
+                    filter === opt.value ? '' : 'text-gray-500 hover:bg-gray-50'
+                  }`}
+                  style={filter === opt.value ? { color: client.color } : {}}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Pending tasks */}
+          {pendingTasks.length > 0 && (
+            <div className="mb-2">
+              {pendingTasks.map((task) => (
+                <SharedTaskRow key={task.id} task={task} permission={permission}
+                  onToggleDone={() => handleToggleDone(task)}
+                  onTogglePaid={() => handleTogglePaid(task)} />
+              ))}
+            </div>
+          )}
+
+          {/* Completed — collapsible like real workspace */}
+          {completedTasks.length > 0 && (
+            <details className={pendingTasks.length > 0 ? 'mt-3' : ''}>
+              <summary className="text-xs font-semibold text-gray-400 cursor-pointer select-none list-none flex items-center gap-1.5 py-2">
+                <ChevronDown size={12} /> {completedTasks.length} completed
+              </summary>
+              <div className="opacity-60 mt-1">
+                {completedTasks.map((task) => (
+                  <SharedTaskRow key={task.id} task={task} permission={permission}
+                    onToggleDone={() => handleToggleDone(task)}
+                    onTogglePaid={() => handleTogglePaid(task)} />
+                ))}
+              </div>
+            </details>
+          )}
+
+          {pendingTasks.length === 0 && completedTasks.length === 0 && (
+            <p className="text-sm text-gray-400 py-4 text-center">
+              {filter !== 'all' ? `No tasks match "${currentLabel}"` : 'No tasks yet.'}
+            </p>
           )}
 
           {/* Add task — edit only */}
           {canEdit && (
             <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
               <input
+                ref={taskInputRef}
                 type="text"
-                placeholder="Add a new task..."
+                placeholder="Add a new task…"
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                className="flex-1 px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 transition-all min-w-0"
+                className="flex-1 px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none transition-all min-w-0"
+                onFocus={(e) => { e.target.style.borderColor = client.color; }}
+                onBlur={(e)  => { e.target.style.borderColor = ''; }}
               />
               <button
                 onClick={handleAddTask}
                 disabled={!newTask.trim() || addingTask}
                 className="flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all flex-shrink-0"
-                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                style={{ backgroundColor: client.color, color: textColor }}
               >
                 {addingTask ? <Loader2 size={14} className="animate-spin" /> : <Plus size={16} />}
                 Add
@@ -601,16 +644,16 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
         </div>
       </div>
 
-      {/* ── Right sidebar — mirrors ClientWorkspace exactly ── */}
+      {/* ── Right sidebar — mirrors ClientWorkspace ── */}
       <div className="w-full lg:w-[260px] lg:flex-shrink-0 p-4 lg:p-5 lg:pl-2 space-y-4 overflow-y-auto overflow-x-hidden">
 
-        {/* Overview */}
+        {/* Overview + progress bar merged (exactly like ClientWorkspace) */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm">
           <p className="text-sm font-semibold text-gray-700 mb-4">Overview</p>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0">
-                <CheckCircle2 size={16} className="text-green-500" />
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${client.color}22` }}>
+                <CheckCircle2 size={16} style={{ color: client.color }} />
               </div>
               <div>
                 <p className="font-mono font-semibold text-gray-900">{doneTasks}</p>
@@ -618,8 +661,8 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
-                <Clock size={16} className="text-amber-500" />
+              <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <Clock size={16} className="text-gray-400" />
               </div>
               <div>
                 <p className="font-mono font-semibold text-gray-900">{pendingCount}</p>
@@ -638,9 +681,24 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
               </div>
             )}
           </div>
+          {/* Progress bar — inside Overview, not a separate card */}
+          {totalTasks > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs text-gray-400">Progress</p>
+                <p className="text-xs font-mono font-semibold text-gray-700">{pct}%</p>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{ width: `${pct}%`, backgroundColor: client.color }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Earnings — only shown to editors with paid tasks */}
+        {/* Earnings — editor only */}
         {canEdit && (totalEarned > 0 || totalPending > 0) && (
           <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm">
             <p className="text-sm font-semibold text-gray-700 mb-3">Earnings</p>
@@ -648,36 +706,18 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
               {totalEarned > 0 && (
                 <div>
                   <p className="text-xs text-gray-400 mb-0.5">Total earned</p>
-                  <p className="font-mono text-xl font-bold text-green-600">
-                    {totalEarned.toLocaleString()}
-                  </p>
+                  <p className="font-mono text-xl font-bold text-green-600">{totalEarned.toLocaleString()}</p>
                 </div>
               )}
               {totalPending > 0 && (
                 <div>
                   <p className="text-xs text-gray-400 mb-0.5">Pending</p>
-                  <p className="font-mono text-lg font-semibold text-amber-500">
-                    {totalPending.toLocaleString()}
-                  </p>
+                  <p className="font-mono text-lg font-semibold text-amber-500">{totalPending.toLocaleString()}</p>
                 </div>
               )}
             </div>
           </div>
         )}
-
-        {/* Completion — colored, same as ClientWorkspace */}
-        <div className="rounded-2xl p-5" style={{ backgroundColor: client.color }}>
-          <p className="text-sm font-semibold mb-3" style={{ color: textColor }}>Completion</p>
-          <div className="flex items-end gap-2 mb-2">
-            <span className="font-mono text-3xl font-bold" style={{ color: textColor }}>{pct}%</span>
-          </div>
-          <div className="h-2 bg-white/40 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-300"
-              style={{ width: `${pct}%`, backgroundColor: textColor, opacity: 0.6 }}
-            />
-          </div>
-        </div>
 
         {/* Campaigns */}
         <SharedCampaignsSection client={client} />

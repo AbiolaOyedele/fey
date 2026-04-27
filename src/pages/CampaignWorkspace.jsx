@@ -48,7 +48,7 @@ function SortableTaskRow({ task, onUpdate, onDelete }) {
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   return (
     <div ref={setNodeRef} style={style}>
-      <TaskItem task={task} onUpdate={onUpdate} onDelete={onDelete} dragListeners={listeners} dragAttributes={attributes} clientId={null} />
+      <TaskItem task={task} onUpdate={onUpdate} onDelete={onDelete} dragListeners={listeners} dragAttributes={attributes} clientId={null} noMoney />
     </div>
   );
 }
@@ -355,7 +355,7 @@ export default function CampaignWorkspace({ clients }) {
               </DndContext>
             ) : (
               pendingTasks.map((task) => (
-                <TaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={() => deleteTask(campaignId, task.id)} clientId={null} />
+                <TaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={() => deleteTask(campaignId, task.id)} clientId={null} noMoney />
               ))
             )}
 
@@ -366,7 +366,7 @@ export default function CampaignWorkspace({ clients }) {
                 </summary>
                 <div className="opacity-60 mt-1">
                   {completedTasks.map((task) => (
-                    <TaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={() => deleteTask(campaignId, task.id)} clientId={null} />
+                    <TaskItem key={task.id} task={task} onUpdate={handleUpdateTask} onDelete={() => deleteTask(campaignId, task.id)} clientId={null} noMoney />
                   ))}
                 </div>
               </details>

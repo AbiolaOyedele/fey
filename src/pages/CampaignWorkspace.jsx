@@ -196,10 +196,11 @@ export default function CampaignWorkspace({ clients }) {
     const uploadId = `${Date.now()}-${file.name}`;
     setUploads((prev) => [...prev, { id: uploadId, name: file.name, progress: 0 }]);
     try {
-      const folder = `workboard/${clientId}/campaigns/${campaignId}`;
-      const { url, publicId } = await uploadToCloudinary(file, folder, (pct) => {
+      const folder = `${clientId}/campaigns/${campaignId}`;
+      const { promise } = uploadToCloudinary(file, folder, (pct) => {
         setUploads((prev) => prev.map((u) => u.id === uploadId ? { ...u, progress: pct } : u));
       });
+      const { url, publicId } = await promise;
       const { error } = await addClientFile({
         client_id: clientId,
         campaign_id: campaignId,

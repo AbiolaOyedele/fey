@@ -38,8 +38,8 @@ export default function ClientFilesCard({ clientId }) {
           <Loader2 size={16} className="animate-spin text-gray-300" />
         </div>
       ) : total === 0 ? (
-        <div className="text-center py-5">
-          <Folder size={22} className="mx-auto text-gray-200 mb-2" />
+        <div className="text-center py-3">
+          <Folder size={18} className="mx-auto text-gray-200 mb-1.5" />
           <p className="text-xs text-gray-400">No files yet</p>
           <p className="text-xs text-gray-300 mt-0.5">Upload files to share with your client</p>
         </div>

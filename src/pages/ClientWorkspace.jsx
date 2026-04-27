@@ -781,7 +781,7 @@ export default function ClientWorkspace({ clients, actions }) {
         </div>
 
         {/* Members panel */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-3">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-gray-700">Members</p>
@@ -800,10 +800,10 @@ export default function ClientWorkspace({ clients, actions }) {
           </div>
 
           {membersLoading ? (
-            <p className="text-xs text-gray-400 text-center py-4">Loading…</p>
+            <p className="text-xs text-gray-400 text-center py-2">Loading…</p>
           ) : members.length === 0 ? (
-            <div className="text-center py-5">
-              <Users size={22} className="mx-auto text-gray-200 mb-2" />
+            <div className="text-center py-3">
+              <Users size={18} className="mx-auto text-gray-200 mb-1.5" />
               <p className="text-xs text-gray-400">No members yet</p>
               <p className="text-xs text-gray-300 mt-0.5">Share this page to invite collaborators</p>
             </div>

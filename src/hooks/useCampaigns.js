@@ -164,6 +164,16 @@ export function useCampaigns(clientId, userId) {
     ));
   }, []);
 
+  const reorderCampaigns = useCallback(async (orderedIds) => {
+    setCampaigns((prev) => {
+      const map = new Map(prev.map((c) => [c.id, c]));
+      return orderedIds.map((id, i) => ({ ...map.get(id), sort_order: i }));
+    });
+    await Promise.all(orderedIds.map((id, i) =>
+      supabase.from('client_campaigns').update({ sort_order: i }).eq('id', id)
+    ));
+  }, []);
+
   const addTasksBulk = useCallback(async (campaignId, titles, currency = 'NGN') => {
     if (!clientId || !userId || !titles.length) return;
     const campaign = campaignsRef.current.find((c) => c.id === campaignId);
@@ -192,6 +202,7 @@ export function useCampaigns(clientId, userId) {
     addCampaign,
     updateCampaign,
     deleteCampaign,
+    reorderCampaigns,
     addTask,
     updateTask,
     deleteTask,

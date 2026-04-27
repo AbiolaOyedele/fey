@@ -20,6 +20,7 @@ import {
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
+  rectSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -128,7 +129,8 @@ export default function ClientWorkspace({ clients, actions }) {
   const isDraggingRef = useRef(false);
 
   // Campaigns
-  const { campaigns, addCampaign } = useCampaigns(id, user?.id);
+  const { campaigns, addCampaign, deleteCampaign, reorderCampaigns } = useCampaigns(id, user?.id);
+  const campaignDraggingRef = useRef(false);
   const [newCampaignName, setNewCampaignName] = useState('');
   const [creatingCampaign, setCreatingCampaign] = useState(false);
   const [newCampaignColor, setNewCampaignColor] = useState('');
@@ -721,17 +723,36 @@ export default function ClientWorkspace({ clients, actions }) {
               </p>
             )}
 
-            {/* Campaign cards grid — same style as client cards */}
+            {/* Campaign cards grid — draggable + deletable, same as client cards */}
             {campaigns.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {campaigns.map((campaign) => (
-                  <CampaignCard
-                    key={campaign.id}
-                    campaign={campaign}
-                    clientId={id}
-                  />
-                ))}
-              </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={() => { campaignDraggingRef.current = true; }}
+                onDragEnd={(event) => {
+                  const { active, over } = event;
+                  setTimeout(() => { campaignDraggingRef.current = false; }, 500);
+                  if (!over || active.id === over.id) return;
+                  const oldI = campaigns.findIndex((c) => c.id === active.id);
+                  const newI = campaigns.findIndex((c) => c.id === over.id);
+                  if (oldI === -1 || newI === -1) return;
+                  reorderCampaigns(arrayMove(campaigns, oldI, newI).map((c) => c.id));
+                }}
+              >
+                <SortableContext items={campaigns.map((c) => c.id)} strategy={rectSortingStrategy}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {campaigns.map((campaign) => (
+                      <CampaignCard
+                        key={campaign.id}
+                        campaign={campaign}
+                        clientId={id}
+                        onDelete={(cId) => deleteCampaign(cId)}
+                        isDraggingRef={campaignDraggingRef}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
           </div>
         </div>

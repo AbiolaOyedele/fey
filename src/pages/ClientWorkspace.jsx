@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ChevronDown, ChevronUp, Plus, Check, CheckCircle2, Clock,
   AlertTriangle, GripVertical, Edit2, Share2, Users, FileText,
-  Mail, Phone, Globe, RotateCcw, XCircle,
+  Mail, Phone, Globe, RotateCcw, XCircle, Layers,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ShareModal from '../components/ShareModal';
@@ -26,6 +26,8 @@ import TaskItem from '../components/TaskItem';
 import EditClientModal from '../components/EditClientModal';
 import ClientFilesCard from '../components/ClientFilesCard';
 import { useClientFiles } from '../hooks/useClientFiles';
+import CampaignCard from '../components/CampaignCard';
+import { useCampaigns } from '../hooks/useCampaigns';
 import { useSettings } from '../contexts/SettingsContext';
 import { getContrastColor } from '../utils/colorContrast';
 
@@ -123,6 +125,21 @@ export default function ClientWorkspace({ clients, actions }) {
   const filterBtnRef = useRef(null);
   const filterDropdownRef = useRef(null);
   const isDraggingRef = useRef(false);
+
+  // Campaigns
+  const {
+    campaigns,
+    addCampaign,
+    updateCampaign,
+    deleteCampaign,
+    addTask: addCampaignTask,
+    updateTask: updateCampaignTask,
+    deleteTask: deleteCampaignTask,
+    reorderTasks: reorderCampaignTasks,
+    addTasksBulk: addCampaignTasksBulk,
+  } = useCampaigns(id, user?.id);
+  const [newCampaignName, setNewCampaignName] = useState('');
+  const [creatingCampaign, setCreatingCampaign] = useState(false);
 
   // File status counts for overview panel
   const { files: allFiles } = useClientFiles(id);
@@ -621,6 +638,91 @@ export default function ClientWorkspace({ clients, actions }) {
               <Plus size={16} />
               Add
             </button>
+          </div>
+
+          {/* ── Campaigns ──────────────────────────────────────── */}
+          <div className="mt-6 pt-5 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Layers size={15} className="text-gray-400" />
+                <p className="text-sm font-semibold text-gray-700">Campaigns</p>
+                {campaigns.length > 0 && (
+                  <span className="text-xs font-mono bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-md">{campaigns.length}</span>
+                )}
+              </div>
+              {!creatingCampaign && (
+                <button
+                  onClick={() => setCreatingCampaign(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed border-gray-300 text-xs font-medium text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
+                >
+                  <Plus size={12} />
+                  New Campaign
+                </button>
+              )}
+            </div>
+
+            {/* New campaign input */}
+            {creatingCampaign && (
+              <div className="flex items-center gap-2 mb-4">
+                <input
+                  autoFocus
+                  type="text"
+                  value={newCampaignName}
+                  onChange={(e) => setNewCampaignName(e.target.value)}
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter' && newCampaignName.trim()) {
+                      await addCampaign(newCampaignName.trim());
+                      setNewCampaignName('');
+                      setCreatingCampaign(false);
+                    }
+                    if (e.key === 'Escape') { setCreatingCampaign(false); setNewCampaignName(''); }
+                  }}
+                  placeholder="Campaign name…"
+                  className="flex-1 px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all min-w-0"
+                />
+                <button
+                  onClick={async () => {
+                    if (!newCampaignName.trim()) return;
+                    await addCampaign(newCampaignName.trim());
+                    setNewCampaignName('');
+                    setCreatingCampaign(false);
+                  }}
+                  disabled={!newCampaignName.trim()}
+                  className="flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all flex-shrink-0"
+                  style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                >
+                  <Plus size={16} />
+                  Create
+                </button>
+                <button
+                  onClick={() => { setCreatingCampaign(false); setNewCampaignName(''); }}
+                  className="px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:bg-gray-100 transition-colors flex-shrink-0"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            {campaigns.length === 0 && !creatingCampaign && (
+              <p className="text-sm text-gray-400 text-center py-4">
+                Group related tasks into campaigns to stay organised.
+              </p>
+            )}
+
+            {campaigns.map((campaign) => (
+              <CampaignCard
+                key={campaign.id}
+                campaign={campaign}
+                currency={settings.currency || 'NGN'}
+                onUpdate={updateCampaign}
+                onDelete={deleteCampaign}
+                onAddTask={addCampaignTask}
+                onAddTasksBulk={addCampaignTasksBulk}
+                onUpdateTask={updateCampaignTask}
+                onDeleteTask={deleteCampaignTask}
+                onReorderTasks={reorderCampaignTasks}
+              />
+            ))}
           </div>
         </div>
         )}

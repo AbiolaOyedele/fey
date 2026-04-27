@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle, Edit2, Eye, Ban, Folder, File, FileText, Image, Film, Download, X, Layers, ChevronDown } from 'lucide-react';
 import { formatFileSize, isImageType, isPdfType } from '../utils/cloudinary';
@@ -84,11 +84,12 @@ function ErrorPage({ message = 'This link is no longer available.' }) {
 }
 
 // ── Welcome page ──────────────────────────────────────────────────────────────
-function WelcomePage({ shareRecord, clientName, onAccept }) {
+function WelcomePage({ shareRecord, clientName, onAccept, prefillCode }) {
   const [name, setName] = useState('');
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(prefillCode || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const codeFromLink = Boolean(prefillCode);
 
   const handleAccept = async () => {
     if (!name.trim()) { setError('Please enter your name'); return; }
@@ -160,20 +161,32 @@ function WelcomePage({ shareRecord, clientName, onAccept }) {
           <input
             autoFocus
             type="text"
-            placeholder="Your name"
+            placeholder="Enter your name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAccept()}
             className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm outline-none focus:border-gray-400 transition-all"
           />
-          <input
-            type="text"
-            placeholder="Invite code (e.g. ABCD-EFGH)"
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === 'Enter' && handleAccept()}
-            className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm outline-none focus:border-gray-400 transition-all font-mono tracking-widest uppercase"
-          />
+
+          {codeFromLink ? (
+            /* Code came from the URL — show it as read-only pill */
+            <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-green-50 border border-green-100">
+              <Check size={14} className="text-green-500 flex-shrink-0" />
+              <span className="text-xs text-green-700 font-medium">Invite code</span>
+              <span className="ml-auto font-mono text-xs font-bold tracking-widest text-green-800">{code}</span>
+            </div>
+          ) : (
+            /* No code in URL — let them type it */
+            <input
+              type="text"
+              placeholder="Invite code (e.g. ABCD-EFGH)"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === 'Enter' && handleAccept()}
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm outline-none focus:border-gray-400 transition-all font-mono tracking-widest uppercase"
+            />
+          )}
+
           {error && <p className="text-xs text-red-500 text-center">{error}</p>}
           <button
             onClick={handleAccept}
@@ -185,7 +198,9 @@ function WelcomePage({ shareRecord, clientName, onAccept }) {
             Accept & View
           </button>
           <p className="text-xs text-gray-400 text-center">
-            You need an invite code from the workspace owner to join.
+            {codeFromLink
+              ? 'Just enter your name to join the workspace.'
+              : 'You need an invite code from the workspace owner to join.'}
           </p>
         </div>
       </div>
@@ -963,6 +978,8 @@ function AccessRevokedPage({ token }) {
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function SharedClientPage() {
   const { token } = useParams();
+  const location = useLocation();
+  const prefillCode = new URLSearchParams(location.search).get('code') || '';
   const [phase, setPhase] = useState('loading'); // loading | error | welcome | dashboard | revoked
   const [shareRecord, setShareRecord] = useState(null);
   const [client, setClient] = useState(null);
@@ -1087,6 +1104,7 @@ export default function SharedClientPage() {
       <WelcomePage
         shareRecord={shareRecord}
         clientName={client?.name || ''}
+        prefillCode={prefillCode}
         onAccept={(m) => {
           setMember(m);
           setMemberPermission(shareRecord?.permission || 'view');

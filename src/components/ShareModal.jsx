@@ -146,9 +146,11 @@ export default function ShareModal({ client, userId, onClose }) {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
+  // Smart link — code embedded so receiver just enters their name
+  const smartLink = (invite) => `${shareLink}?code=${invite.code}`;
+
   const handleCopyInvite = async (invite) => {
-    const text = `You've been invited to view ${client.name} on WorkBoard.\n\nLink: ${shareLink}\nInvite code: ${invite.code}`;
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(smartLink(invite));
     setCopiedCode(invite.id);
     setTimeout(() => setCopiedCode(null), 2000);
   };
@@ -176,7 +178,7 @@ export default function ShareModal({ client, userId, onClose }) {
             </div>
             <div>
               <h2 className="font-display text-base font-semibold text-gray-900">Share {client.name}</h2>
-              <p className="text-xs text-gray-400">Link + unique invite code per person</p>
+              <p className="text-xs text-gray-400">Generate a unique link per person — code included</p>
             </div>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0">
@@ -240,7 +242,7 @@ export default function ShareModal({ client, userId, onClose }) {
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Invite Codes</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Each person needs their own code to join.</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Each generates a smart link — code is pre-filled for the receiver.</p>
                   </div>
                   <button
                     onClick={() => setShowLabelInput((v) => !v)}
@@ -319,25 +321,25 @@ export default function ShareModal({ client, userId, onClose }) {
                             </p>
                           )}
 
+                          {/* Smart link preview */}
+                          {isActive && (
+                            <p className="text-[10px] text-gray-400 font-mono truncate mb-2">
+                              …/share/{shareRecord?.token}?code={invite.code}
+                            </p>
+                          )}
+
                           {/* Actions */}
                           {isActive && (
                             <div className="flex items-center gap-1.5">
                               <button
-                                onClick={() => handleCopyCode(invite)}
-                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium transition-all"
+                                onClick={() => handleCopyInvite(invite)}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all"
                                 style={isCopied
                                   ? { backgroundColor: '#D1FAE5', color: '#065F46' }
-                                  : { backgroundColor: '#F3F4F6', color: '#6B7280' }}
+                                  : { backgroundColor: 'var(--accent, #ED64A6)15', color: 'var(--accent, #ED64A6)' }}
                               >
                                 {isCopied ? <Check size={9} /> : <Copy size={9} />}
-                                {isCopied ? 'Copied' : 'Copy code'}
-                              </button>
-                              <button
-                                onClick={() => handleCopyInvite(invite)}
-                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium bg-gray-100 text-gray-500 hover:bg-gray-200 transition-all"
-                              >
-                                <Copy size={9} />
-                                Copy invite
+                                {isCopied ? 'Copied!' : 'Copy link'}
                               </button>
                               <button
                                 onClick={() => handleRevokeCode(invite)}

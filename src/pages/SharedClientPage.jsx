@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle, Edit2, Eye, Ban, Folder, File, FileText, Image, Film, Download, X } from 'lucide-react';
+import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle, Edit2, Eye, Ban, Folder, File, FileText, Image, Film, Download, X, Layers } from 'lucide-react';
 import { formatFileSize, isImageType, isPdfType } from '../utils/cloudinary';
 
 import { getContrastColor } from '../utils/colorContrast';
@@ -316,6 +316,93 @@ function SharedFilesSection({ clientId }) {
   );
 }
 
+// ── Campaigns section for shared page ────────────────────────────────────────
+function SharedCampaignsSection({ client }) {
+  const [campaigns, setCampaigns] = useState([]);
+  const [expanded, setExpanded] = useState(null);
+  const textColor = getContrastColor(client.color);
+  const todayStr = getTodayStr();
+
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      const [camRes, taskRes] = await Promise.all([
+        supabase.from('client_campaigns').select('*').eq('client_id', client.id).order('sort_order'),
+        supabase.from('campaign_tasks').select('*').eq('client_id', client.id).order('sort_order'),
+      ]);
+      const camps = (camRes.data || []).map((c) => ({
+        ...c,
+        tasks: (taskRes.data || []).filter((t) => t.campaign_id === c.id).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+      }));
+      setCampaigns(camps);
+    };
+    fetchCampaigns();
+  }, [client.id]);
+
+  if (campaigns.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100">
+        <div className="flex items-center gap-2">
+          <Layers size={15} className="text-gray-400" />
+          <h2 className="font-display text-base font-semibold text-gray-900">Campaigns</h2>
+          <span className="text-xs font-mono bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-md">{campaigns.length}</span>
+        </div>
+      </div>
+      <div className="divide-y divide-gray-100">
+        {campaigns.map((campaign) => {
+          const done = campaign.tasks.filter((t) => t.done).length;
+          const total = campaign.tasks.length;
+          const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+          const isOpen = expanded === campaign.id;
+          return (
+            <div key={campaign.id}>
+              {/* Campaign header card */}
+              <button
+                onClick={() => setExpanded(isOpen ? null : campaign.id)}
+                className="w-full text-left px-5 py-4 hover:bg-gray-50 transition-colors flex items-center gap-3"
+              >
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: client.color }}>
+                  <Layers size={14} style={{ color: textColor }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{campaign.name}</p>
+                  <p className="text-xs text-gray-400">{done}/{total} tasks · {pct}%</p>
+                </div>
+                <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: client.color }} />
+                </div>
+              </button>
+              {/* Task list — read-only */}
+              {isOpen && campaign.tasks.length > 0 && (
+                <div className="px-5 pb-4 space-y-1 bg-gray-50">
+                  {campaign.tasks.map((task) => {
+                    const isOverdue = !task.done && task.deadline && task.deadline < todayStr;
+                    return (
+                      <div key={task.id} className={`flex items-center gap-2.5 py-1.5 ${task.done ? 'opacity-50' : ''}`}>
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${task.done ? 'border-green-500 bg-green-500' : 'border-gray-300'}`}>
+                          {task.done && <Check size={9} strokeWidth={3} className="text-white" />}
+                        </div>
+                        <p className={`text-sm flex-1 ${task.done ? 'line-through text-gray-400' : isOverdue ? 'text-red-500' : 'text-gray-700'}`}>{task.title}</p>
+                        {task.deadline && !task.done && (
+                          <span className={`text-xs flex-shrink-0 ${isOverdue ? 'text-red-400' : 'text-gray-400'}`}>{formatDate(task.deadline)}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {isOpen && campaign.tasks.length === 0 && (
+                <p className="px-5 pb-4 text-xs text-gray-400 bg-gray-50">No tasks in this campaign yet.</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permission }) {
   const navigate = useNavigate();
   const [newTask, setNewTask] = useState('');
@@ -591,6 +678,9 @@ function SharedDashboard({ shareRecord, client, tasks, setTasks, member, permiss
             />
           </div>
         </div>
+
+        {/* Campaigns */}
+        <SharedCampaignsSection client={client} />
 
         {/* Files */}
         <SharedFilesSection clientId={client.id} />

@@ -21,6 +21,7 @@ import SharedClientPage from './pages/SharedClientPage';
 import Invoices from './pages/Invoices';
 import InvoiceBuilder from './pages/InvoiceBuilder';
 import ClientFilesPage from './pages/ClientFilesPage';
+import CampaignWorkspace from './pages/CampaignWorkspace';
 import PublicInvoicePage from './pages/PublicInvoicePage';
 import ToastContainer from './components/Toast';
 import WelcomeGuide from './components/WelcomeGuide';
@@ -207,6 +208,7 @@ export default function App() {
                         <Route path="/clients" element={<Clients clients={orderedClients} actions={actions} />} />
                         <Route path="/clients/:id" element={<ClientWorkspace clients={orderedClients} actions={actions} />} />
                         <Route path="/clients/:id/files" element={<ClientFilesPage clients={orderedClients} />} />
+                        <Route path="/clients/:id/campaigns/:campaignId" element={<CampaignWorkspace clients={orderedClients} />} />
                       </>
                     ) : (
                       <Route path="/clients/*" element={<Navigate to="/" replace />} />

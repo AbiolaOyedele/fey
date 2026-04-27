@@ -127,17 +127,7 @@ export default function ClientWorkspace({ clients, actions }) {
   const isDraggingRef = useRef(false);
 
   // Campaigns
-  const {
-    campaigns,
-    addCampaign,
-    updateCampaign,
-    deleteCampaign,
-    addTask: addCampaignTask,
-    updateTask: updateCampaignTask,
-    deleteTask: deleteCampaignTask,
-    reorderTasks: reorderCampaignTasks,
-    addTasksBulk: addCampaignTasksBulk,
-  } = useCampaigns(id, user?.id);
+  const { campaigns, addCampaign } = useCampaigns(id, user?.id);
   const [newCampaignName, setNewCampaignName] = useState('');
   const [creatingCampaign, setCreatingCampaign] = useState(false);
 
@@ -709,20 +699,19 @@ export default function ClientWorkspace({ clients, actions }) {
               </p>
             )}
 
-            {campaigns.map((campaign) => (
-              <CampaignCard
-                key={campaign.id}
-                campaign={campaign}
-                currency={settings.currency || 'NGN'}
-                onUpdate={updateCampaign}
-                onDelete={deleteCampaign}
-                onAddTask={addCampaignTask}
-                onAddTasksBulk={addCampaignTasksBulk}
-                onUpdateTask={updateCampaignTask}
-                onDeleteTask={deleteCampaignTask}
-                onReorderTasks={reorderCampaignTasks}
-              />
-            ))}
+            {/* Campaign cards grid — same style as client cards */}
+            {campaigns.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {campaigns.map((campaign) => (
+                  <CampaignCard
+                    key={campaign.id}
+                    campaign={campaign}
+                    clientId={id}
+                    clientColor={client.color}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
         )}

@@ -66,6 +66,7 @@ export default function App() {
 
   const {
     clients,
+    linkedClients,
     loading,
     error,
     addClient,
@@ -206,7 +207,7 @@ export default function App() {
 
                     {appMode !== 'tasks' ? (
                       <>
-                        <Route path="/clients" element={<Clients clients={orderedClients} actions={actions} />} />
+                        <Route path="/clients" element={<Clients clients={orderedClients} linkedClients={linkedClients || []} actions={actions} />} />
                         <Route path="/clients/:id" element={<ClientWorkspace clients={orderedClients} actions={actions} />} />
                         <Route path="/clients/:id/files" element={<ClientFilesPage clients={orderedClients} />} />
                         <Route path="/clients/:id/campaigns/:campaignId" element={<CampaignWorkspace clients={orderedClients} />} />

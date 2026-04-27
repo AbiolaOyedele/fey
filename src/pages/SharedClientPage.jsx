@@ -182,6 +182,29 @@ function WelcomePage({ shareRecord, clientName, onAccept, prefillCode }) {
       `workboard_member_${shareRecord.token}`,
       JSON.stringify({ id: member.id, name: member.name, codeId: invite.id })
     );
+
+    // Link the shared client to this user's account (if logged in) or queue it for after sign-up
+    const linkedPayload = {
+      token: shareRecord.token,
+      client_name: shareRecord.client_name || '',
+      client_color: shareRecord.client_color || '#D1FAE5',
+      client_logo: shareRecord.client_logo || '',
+      owner_name: shareRecord.owner_name || '',
+    };
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await supabase
+        .from('user_linked_clients')
+        .upsert({ user_id: session.user.id, ...linkedPayload }, { onConflict: 'user_id,token' });
+    } else {
+      // Queue for after login / sign-up
+      const existing = JSON.parse(localStorage.getItem('workboard_pending_shares') || '[]');
+      const already = existing.some((p) => p.token === linkedPayload.token);
+      if (!already) {
+        localStorage.setItem('workboard_pending_shares', JSON.stringify([...existing, linkedPayload]));
+      }
+    }
+
     onAccept({ id: member.id, name: member.name });
     setLoading(false);
   };

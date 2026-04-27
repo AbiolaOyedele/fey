@@ -64,6 +64,7 @@ function transformClients(clients, tasks, retainerPayments, campaignTasks = []) 
 
 export function useSupabaseData(userId) {
   const [clients, setClients] = useState([]);
+  const [linkedClients, setLinkedClients] = useState([]);
   const [loading, setLoading] = useState(!IS_DEMO); // false immediately in demo mode
   const [error, setError] = useState(null);
   const clientsRef = useRef([]);
@@ -78,17 +79,18 @@ export function useSupabaseData(userId) {
     if (IS_DEMO) return; // no Supabase reads in demo mode
     if (!userId) return;  // wait until we know who the user is
     try {
-      const [clientsRes, tasksRes, retainerRes, campaignTasksRes] = await Promise.all([
+      const [clientsRes, tasksRes, retainerRes, campaignTasksRes, linkedRes] = await Promise.all([
         supabase.from('clients').select('*').eq('user_id', userId).order('created_at'),
         supabase.from('tasks').select('*').eq('user_id', userId).order('sort_order', { ascending: true }).order('created_at'),
         supabase.from('retainer_payments').select('*').eq('user_id', userId),
         supabase.from('campaign_tasks').select('*').eq('user_id', userId),
+        supabase.from('user_linked_clients').select('*').eq('user_id', userId).order('created_at'),
       ]);
 
       if (clientsRes.error) throw clientsRes.error;
       if (tasksRes.error) throw tasksRes.error;
       if (retainerRes.error) throw retainerRes.error;
-      // campaign_tasks error is non-fatal — table may not exist yet
+      // campaign_tasks / user_linked_clients errors are non-fatal — tables may not exist yet
 
       setClients(transformClients(
         clientsRes.data || [],
@@ -96,6 +98,7 @@ export function useSupabaseData(userId) {
         retainerRes.data || [],
         campaignTasksRes.data || [],
       ));
+      setLinkedClients(linkedRes.data || []);
 
       setError(null);
     } catch (err) {
@@ -339,6 +342,7 @@ export function useSupabaseData(userId) {
 
   return {
     clients,
+    linkedClients,
     loading,
     error,
     addClient,

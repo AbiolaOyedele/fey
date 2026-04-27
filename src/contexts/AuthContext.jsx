@@ -30,6 +30,19 @@ export function AuthProvider({ children }) {
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         finishLoading(nextSession);
       }
+      // On login or sign-up: flush any pending shared-client links queued while the user was logged out
+      if ((event === 'SIGNED_IN') && nextSession?.user) {
+        const pending = JSON.parse(localStorage.getItem('workboard_pending_shares') || '[]');
+        if (pending.length > 0) {
+          Promise.all(
+            pending.map((payload) =>
+              supabase
+                .from('user_linked_clients')
+                .upsert({ user_id: nextSession.user.id, ...payload }, { onConflict: 'user_id,token' })
+            )
+          ).then(() => localStorage.removeItem('workboard_pending_shares'));
+        }
+      }
     });
 
     // Safety net: if INITIAL_SESSION doesn't fire (edge case), resolve via

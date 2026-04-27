@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, LayoutGrid, List, X, Trash2, Users, Upload, Image, AlertTriangle, GripVertical } from 'lucide-react';
+import { Search, Plus, LayoutGrid, List, X, Trash2, Users, Upload, Image, AlertTriangle, GripVertical, Share2 } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -243,7 +243,56 @@ function SortableListRow({ client, isDraggingRef, onDelete, todayStr }) {
   );
 }
 
-export default function Clients({ clients, actions }) {
+function LinkedClientCard({ linked }) {
+  const navigate = useNavigate();
+  const cardColor = linked.client_color || '#D1FAE5';
+  const textColor = getContrastColor(cardColor);
+
+  return (
+    <div
+      onClick={() => navigate(`/share/${linked.token}`)}
+      className="flex flex-col rounded-2xl p-4 sm:p-5 cursor-pointer hover:shadow-lg transition-shadow duration-150 relative overflow-hidden"
+      style={{ backgroundColor: cardColor }}
+    >
+      {/* Badge row */}
+      <div className="flex items-center justify-between mb-4">
+        <span
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-white/60 backdrop-blur-sm"
+          style={{ color: textColor }}
+        >
+          <Share2 size={11} />
+          Shared workspace
+        </span>
+      </div>
+
+      {/* Name */}
+      <div className="flex-1">
+        <h3 className="font-display text-xl font-bold mb-1" style={{ color: textColor }}>
+          {linked.client_name || 'Shared Client'}
+        </h3>
+        <p className="text-sm opacity-70" style={{ color: textColor }}>
+          Shared by {linked.owner_name || 'someone'}
+        </p>
+      </div>
+
+      {/* Avatar */}
+      <div className="flex items-center justify-end mt-4">
+        {linked.client_logo ? (
+          <img src={linked.client_logo} alt={linked.client_name} className="w-8 h-8 rounded-full object-contain bg-white p-0.5" />
+        ) : (
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/50"
+            style={{ color: textColor }}
+          >
+            {(linked.client_name || '?').charAt(0)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function Clients({ clients, linkedClients = [], actions }) {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [showModal, setShowModal] = useState(false);
@@ -448,6 +497,22 @@ export default function Clients({ clients, actions }) {
         <div className="text-center py-16 text-gray-400">
           <p className="text-lg">No clients found</p>
           <p className="text-sm mt-1">Try a different search or add a new client</p>
+        </div>
+      )}
+
+      {/* Shared with me */}
+      {linkedClients.length > 0 && (
+        <div className="mt-10">
+          <div className="flex items-center gap-2 mb-4">
+            <Share2 size={15} className="text-gray-400" />
+            <h2 className="font-display text-base font-semibold text-gray-700">Shared with me</h2>
+            <span className="text-xs font-mono bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-md">{linkedClients.length}</span>
+          </div>
+          <div className={`grid ${gridCols} gap-4`}>
+            {linkedClients.map((lc) => (
+              <LinkedClientCard key={lc.id} linked={lc} />
+            ))}
+          </div>
         </div>
       )}
 

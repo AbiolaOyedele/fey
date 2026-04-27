@@ -1,8 +1,60 @@
 import { useState, useEffect, useRef } from 'react';
-import { Trash2, Check, Calendar, GripVertical, ChevronDown, ChevronUp, Paperclip } from 'lucide-react';
+import { Trash2, Check, Calendar, GripVertical, ChevronDown, ChevronUp, Paperclip, ExternalLink } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import TaskFileAttachment from './TaskFileAttachment';
 import { useTaskFiles } from '../hooks/useTaskFiles';
+
+// Matches http:// and https:// URLs including query strings and fragments
+const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
+
+function renderWithLinks(text, isDone, onTextClick) {
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  URL_REGEX.lastIndex = 0; // reset stateful regex
+
+  while ((match = URL_REGEX.exec(text)) !== null) {
+    // Text before the link
+    if (match.index > lastIndex) {
+      parts.push(
+        <span key={`t-${lastIndex}`} onClick={onTextClick} className="cursor-text">
+          {text.slice(lastIndex, match.index)}
+        </span>
+      );
+    }
+    // The link itself
+    const url = match[0];
+    parts.push(
+      <a
+        key={`l-${match.index}`}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className={`inline-flex items-center gap-0.5 underline underline-offset-2 decoration-dotted hover:decoration-solid transition-all ${
+          isDone ? 'text-gray-400' : 'text-blue-500 hover:text-blue-700'
+        }`}
+        title={url}
+      >
+        {url.length > 40 ? url.slice(0, 40) + '…' : url}
+        <ExternalLink size={10} className="flex-shrink-0 opacity-70" />
+      </a>
+    );
+    lastIndex = match.index + url.length;
+  }
+
+  // Remaining text after last link
+  if (lastIndex < text.length) {
+    parts.push(
+      <span key={`t-${lastIndex}`} onClick={onTextClick} className="cursor-text">
+        {text.slice(lastIndex)}
+      </span>
+    );
+  }
+
+  // Pure text (no links found) — return null so caller renders plain
+  return parts.length > 0 ? parts : null;
+}
 
 function formatWithCommas(val) {
   const num = parseFloat(String(val).replace(/,/g, ''));
@@ -147,11 +199,11 @@ export default function TaskItem({ task, onUpdate, onDelete, dragListeners, drag
           ) : (
             <span
               onClick={() => setEditing(true)}
-              className={`block text-sm font-medium cursor-text break-words whitespace-normal min-w-0 ${
+              className={`block text-sm font-medium break-words whitespace-normal min-w-0 ${
                 task.done ? 'line-through text-gray-400' : 'text-gray-800'
               }`}
             >
-              {task.title}
+              {renderWithLinks(task.title, task.done, () => setEditing(true)) ?? task.title}
             </span>
           )}
           {task.deadline && (

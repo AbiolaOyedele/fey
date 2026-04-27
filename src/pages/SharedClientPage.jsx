@@ -1,10 +1,50 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle, Edit2, Eye, Ban, Folder, File, FileText, Image, Film, Download, X, Layers, ChevronDown } from 'lucide-react';
+import { Check, Plus, Loader2, Sparkles, CheckCircle2, Clock, AlertTriangle, Edit2, Eye, Ban, Folder, File, FileText, Image, Film, Download, X, Layers, ChevronDown, ExternalLink } from 'lucide-react';
 import { formatFileSize, isImageType, isPdfType } from '../utils/cloudinary';
 
 import { getContrastColor } from '../utils/colorContrast';
+
+// Matches http:// and https:// URLs
+const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
+
+function renderWithLinks(text, isDone) {
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  URL_REGEX.lastIndex = 0;
+
+  while ((match = URL_REGEX.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(<span key={`t-${lastIndex}`}>{text.slice(lastIndex, match.index)}</span>);
+    }
+    const url = match[0];
+    parts.push(
+      <a
+        key={`l-${match.index}`}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className={`inline-flex items-center gap-0.5 underline underline-offset-2 decoration-dotted hover:decoration-solid transition-all ${
+          isDone ? 'text-gray-400' : 'text-blue-500 hover:text-blue-700'
+        }`}
+        title={url}
+      >
+        {url.length > 40 ? url.slice(0, 40) + '…' : url}
+        <ExternalLink size={10} className="flex-shrink-0 opacity-70" />
+      </a>
+    );
+    lastIndex = match.index + url.length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(<span key={`t-end`}>{text.slice(lastIndex)}</span>);
+  }
+
+  return parts.length > 0 ? parts : text;
+}
 
 function getTodayStr() {
   const n = new Date();
@@ -48,7 +88,7 @@ function SharedTaskRow({ task, permission, onToggleDone, onTogglePaid }) {
 
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium break-words ${task.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-          {task.title}
+          {renderWithLinks(task.title, task.done)}
         </p>
         {task.deadline && (
           <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : isToday ? 'text-amber-500 font-medium' : 'text-gray-400'}`}>
@@ -466,7 +506,7 @@ function SharedCampaignView({ campaign, clientName, clientColor, onBack, todaySt
                       style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', borderColor: '#d1d5db' }}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 break-words">{task.title}</p>
+                      <p className="text-sm font-medium text-gray-800 break-words">{renderWithLinks(task.title, false)}</p>
                       {task.deadline && (
                         <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : isToday ? 'text-amber-500 font-medium' : 'text-gray-400'}`}>
                           Due: {formatDate(task.deadline)}
@@ -493,7 +533,7 @@ function SharedCampaignView({ campaign, clientName, clientColor, onBack, todaySt
                     >
                       <Check size={11} strokeWidth={3} style={{ color: tc }} />
                     </span>
-                    <p className="text-sm font-medium text-gray-400 line-through break-words">{task.title}</p>
+                    <p className="text-sm font-medium text-gray-400 line-through break-words">{renderWithLinks(task.title, true)}</p>
                   </div>
                 ))}
               </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { PALETTE } from '../data/defaultClients';
+import { getNextSortOrder } from '../utils/sortOrder';
 
 function getNextCampaignColor(campaigns) {
   const used = new Set(campaigns.map((c) => c.color));
@@ -72,8 +73,7 @@ export function useCampaigns(clientId, userId) {
     if (!clientId || !userId) return;
     // Default to next unused pastel if no color provided
     const finalColor = color || getNextCampaignColor(campaignsRef.current);
-    const maxSort = campaignsRef.current.length > 0
-      ? Math.max(...campaignsRef.current.map((c) => c.sort_order ?? 0)) + 1 : 0;
+    const maxSort = getNextSortOrder(campaignsRef.current);
     const { data, error } = await supabase
       .from('client_campaigns')
       .insert({ name, color: finalColor, logo, sort_order: maxSort, client_id: clientId, user_id: userId })
@@ -103,8 +103,7 @@ export function useCampaigns(clientId, userId) {
   const addTask = useCallback(async (campaignId, title, currency = 'NGN') => {
     if (!clientId || !userId) return;
     const campaign = campaignsRef.current.find((c) => c.id === campaignId);
-    const maxSort = campaign && campaign.tasks.length > 0
-      ? Math.max(...campaign.tasks.map((t) => t.sort_order ?? 0)) + 1 : 0;
+    const maxSort = getNextSortOrder(campaign?.tasks ?? []);
     const { data, error } = await supabase
       .from('campaign_tasks')
       .insert({
@@ -177,8 +176,7 @@ export function useCampaigns(clientId, userId) {
   const addTasksBulk = useCallback(async (campaignId, titles, currency = 'NGN') => {
     if (!clientId || !userId || !titles.length) return;
     const campaign = campaignsRef.current.find((c) => c.id === campaignId);
-    const baseSort = campaign && campaign.tasks.length > 0
-      ? Math.max(...campaign.tasks.map((t) => t.sort_order ?? 0)) + 1 : 0;
+    const baseSort = getNextSortOrder(campaign?.tasks ?? []);
     const rows = titles.map((title, i) => ({
       campaign_id: campaignId, client_id: clientId, user_id: userId,
       title, currency, sort_order: baseSort + i, done: false, paid: false, amount: 0,

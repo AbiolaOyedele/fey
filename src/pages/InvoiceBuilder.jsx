@@ -12,8 +12,7 @@ import InvoiceSendModal from '../components/InvoiceSendModal';
 import { uploadToCloudinary, getFileType, formatFileSize } from '../utils/cloudinary';
 import { supabase } from '../lib/supabase';
 import { Loader2 } from 'lucide-react';
-
-const CURRENCY_SYMBOLS = { NGN:'₦', USD:'$', GBP:'£', EUR:'€', CAD:'CA$', AUD:'A$', JPY:'¥', CHF:'CHF', INR:'₹', ZAR:'R' };
+import { CURRENCY_SYMBOLS } from '../lib/constants';
 const FONTS = ['Default', 'Lato', 'Urbanist', 'Spectral', 'Playfair Display', 'Georgia', 'Courier New'];
 const INVOICE_LAYOUTS = [
   { id: 'left_aligned', label: 'Left Aligned' },

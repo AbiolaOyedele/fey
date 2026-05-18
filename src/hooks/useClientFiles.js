@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { deleteFromCloudinary } from '../utils/fileHelpers';
 
 /**
  * Manages files for a client OR a campaign.
@@ -112,13 +113,7 @@ export function useClientFiles(clientId, { campaignId } = {}) {
   }, []);
 
   const deleteFile = useCallback(async (fileId, publicId, source) => {
-    try {
-      await supabase.functions.invoke('delete-cloudinary-file', {
-        body: { public_id: publicId },
-      });
-    } catch (e) {
-      console.warn('Cloudinary delete failed (continuing):', e);
-    }
+    await deleteFromCloudinary(publicId);
     const table = source === 'task' ? 'task_files' : 'client_files';
     await supabase.from(table).delete().eq('id', fileId);
     setFiles((prev) => prev.filter((f) => f.id !== fileId));

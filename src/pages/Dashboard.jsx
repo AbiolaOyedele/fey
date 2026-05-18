@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bell, Settings, ArrowRight, ChevronLeft, ChevronRight,
@@ -242,12 +242,13 @@ export default function Dashboard({ clients, actions }) {
         supabase.from('client_files').select('id,file_name,status,client_id,created_at').in('client_id', clientIds).in('status', ['amended', 'declined', 'pending']),
         supabase.from('task_files').select('id,file_name,status,client_id,created_at,task_id').in('client_id', clientIds).in('status', ['amended', 'declined', 'pending']),
       ]);
+      const clientMap = new Map(clients.map((c) => [c.id, c.name]));
       const all = [
         ...(cf.data || []).map((f) => ({ ...f, _source: 'client' })),
         ...(tf.data || []).map((f) => ({ ...f, _source: 'task' })),
       ].map((f) => ({
         ...f,
-        clientName: clients.find((c) => c.id === f.client_id)?.name || '',
+        clientName: clientMap.get(f.client_id) || '',
       })).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setFileAlerts(all);
     };
@@ -264,22 +265,38 @@ export default function Dashboard({ clients, actions }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const allTasks = clients.flatMap((c) =>
-    c.tasks.map((t) => ({ ...t, clientId: c.id, clientName: c.name, clientColor: resolveColor(c.color) }))
+  const allTasks = useMemo(() =>
+    clients.flatMap((c) =>
+      c.tasks.map((t) => ({ ...t, clientId: c.id, clientName: c.name, clientColor: resolveColor(c.color) }))
+    ),
+    [clients, resolveColor]
   );
 
-  const tasksDone = allTasks.filter((t) => t.done).length;
-  const tasksPending = allTasks.filter((t) => !t.done).length;
+  const tasksDone = useMemo(() => allTasks.filter((t) => t.done).length, [allTasks]);
+  const tasksPending = useMemo(() => allTasks.filter((t) => !t.done).length, [allTasks]);
 
-  // Deadline groupings for bell
-  const dueTodayTasks = allTasks.filter((t) => !t.done && t.deadline === todayStr);
-  const upcomingTasks = allTasks.filter((t) => !t.done && t.deadline && t.deadline > todayStr)
-    .sort((a, b) => a.deadline.localeCompare(b.deadline))
-    .slice(0, 10);
-  const overdueTasks = allTasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr)
-    .sort((a, b) => a.deadline.localeCompare(b.deadline));
+  const dueTodayTasks = useMemo(() => allTasks.filter((t) => !t.done && t.deadline === todayStr), [allTasks, todayStr]);
+  const upcomingTasks = useMemo(() =>
+    allTasks.filter((t) => !t.done && t.deadline && t.deadline > todayStr)
+      .sort((a, b) => a.deadline.localeCompare(b.deadline))
+      .slice(0, 10),
+    [allTasks, todayStr]
+  );
+  const overdueTasks = useMemo(() =>
+    allTasks.filter((t) => !t.done && t.deadline && t.deadline < todayStr)
+      .sort((a, b) => a.deadline.localeCompare(b.deadline)),
+    [allTasks, todayStr]
+  );
 
-  const bellBadge = dueTodayTasks.length + fileAlerts.filter((f) => f.status === 'amended' || f.status === 'declined').length;
+  const actionableAlerts = useMemo(
+    () => fileAlerts.filter((f) => f.status === 'amended' || f.status === 'declined'),
+    [fileAlerts]
+  );
+  const pendingAlerts = useMemo(
+    () => fileAlerts.filter((f) => f.status === 'pending'),
+    [fileAlerts]
+  );
+  const bellBadge = dueTodayTasks.length + actionableAlerts.length;
   const overdueBadge = overdueTasks.length;
 
   // Only show Overdue tab when there are overdue tasks
@@ -292,28 +309,29 @@ export default function Dashboard({ clients, actions }) {
     if (filter === 'Overdue' && overdueBadge === 0) setFilter('All');
   }, [filter, overdueBadge]);
 
-  const earnedThisMonth = clients.reduce((sum, client) => {
-    const taskEarnings = client.tasks
-      .filter((t) => t.paid && t.createdAt.startsWith(currentMonth))
-      .reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
-    const retainerEarning = client.retainerPaid?.[currentMonth] ? convertAmount(client.retainer, client.retainer_currency || 'NGN') : 0;
-    return sum + taskEarnings + retainerEarning;
-  }, 0);
+  const earnedThisMonth = useMemo(() =>
+    clients.reduce((sum, client) => {
+      const taskEarnings = client.tasks
+        .filter((t) => t.paid && t.createdAt.startsWith(currentMonth))
+        .reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
+      const retainerEarning = client.retainerPaid?.[currentMonth] ? convertAmount(client.retainer, client.retainer_currency || 'NGN') : 0;
+      return sum + taskEarnings + retainerEarning;
+    }, 0),
+    [clients, currentMonth, convertAmount]
+  );
 
-  // Filter clients for All tab grid
-  const filteredClients = clients.filter((c) => {
+  const filteredClients = useMemo(() => clients.filter((c) => {
     if (filter === 'All') return true;
     if (filter === 'Active') return c.tasks.some((t) => !t.done);
     if (filter === 'Completed') return c.tasks.length > 0 && c.tasks.every((t) => t.done);
     if (filter === 'Overdue') return c.tasks.some((t) => !t.done && t.deadline && t.deadline < todayStr);
     if (filter === 'Unpaid') return c.tasks.some((t) => t.done && !t.paid);
     return true;
-  });
+  }), [clients, filter, todayStr]);
 
-  const topClients = filteredClients.slice(0, 6);
+  const topClients = useMemo(() => filteredClients.slice(0, 6), [filteredClients]);
 
-  // Flat task list for non-All tabs
-  const flatTaskList = filter !== 'All' ? clients.flatMap((c) =>
+  const flatTaskList = useMemo(() => filter === 'All' ? [] : clients.flatMap((c) =>
     c.tasks
       .filter((t) => {
         if (filter === 'Active') return !t.done;
@@ -323,41 +341,45 @@ export default function Dashboard({ clients, actions }) {
         return false;
       })
       .map((t) => ({ ...t, clientId: c.id, clientName: c.name, clientColor: resolveColor(c.color) }))
-  ) : [];
+  ), [clients, filter, todayStr, resolveColor]);
 
-  // Group flat tasks by client
-  const tasksByClient = filter !== 'All' ? clients
+  const tasksByClient = useMemo(() => filter === 'All' ? [] : clients
     .map((c) => ({ client: c, tasks: flatTaskList.filter((t) => t.clientId === c.id) }))
-    .filter((g) => g.tasks.length > 0) : [];
+    .filter((g) => g.tasks.length > 0),
+    [clients, filter, flatTaskList]
+  );
 
-  // Activity data for mini bar chart (last 6 months)
-  const monthlyActivity = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const label = d.toLocaleDateString('en-US', { month: 'short' });
-    const earned = clients.reduce((sum, client) => {
-      const te = client.tasks
-        .filter((t) => t.paid && t.createdAt.startsWith(key))
-        .reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
-      const re = client.retainerPaid?.[key] ? convertAmount(client.retainer, client.retainer_currency || 'NGN') : 0;
-      return sum + te + re;
-    }, 0);
-    monthlyActivity.push({ label, earned, key });
-  }
-  const maxEarned = Math.max(...monthlyActivity.map((m) => m.earned), 1);
+  const { monthlyActivity, maxEarned } = useMemo(() => {
+    const activity = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleDateString('en-US', { month: 'short' });
+      const earned = clients.reduce((sum, client) => {
+        const te = client.tasks
+          .filter((t) => t.paid && t.createdAt.startsWith(key))
+          .reduce((s, t) => s + convertAmount(t.amount, t.currency), 0);
+        const re = client.retainerPaid?.[key] ? convertAmount(client.retainer, client.retainer_currency || 'NGN') : 0;
+        return sum + te + re;
+      }, 0);
+      activity.push({ label, earned, key });
+    }
+    return { monthlyActivity: activity, maxEarned: Math.max(...activity.map((m) => m.earned), 1) };
+  }, [clients, convertAmount]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Top 3 clients by earnings
-  const topEarningClients = [...clients]
-    .map((c) => ({
-      ...c,
-      totalEarned: c.tasks.filter((t) => t.paid).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0),
-      completionPct: c.tasks.length > 0
-        ? Math.round((c.tasks.filter((t) => t.done).length / c.tasks.length) * 100)
-        : 0,
-    }))
-    .sort((a, b) => b.totalEarned - a.totalEarned)
-    .slice(0, 3);
+  const topEarningClients = useMemo(() =>
+    [...clients]
+      .map((c) => ({
+        ...c,
+        totalEarned: c.tasks.filter((t) => t.paid).reduce((s, t) => s + convertAmount(t.amount, t.currency), 0),
+        completionPct: c.tasks.length > 0
+          ? Math.round((c.tasks.filter((t) => t.done).length / c.tasks.length) * 100)
+          : 0,
+      }))
+      .sort((a, b) => b.totalEarned - a.totalEarned)
+      .slice(0, 3),
+    [clients, convertAmount]
+  );
 
   const heading = (settings.dashboard_heading || 'Track your\nwork & earnings').replace(/\\n/g, '\n');
   const gridColsDesktop = CARD_COLS[settings.card_size] || 'lg:grid-cols-2';
@@ -459,10 +481,10 @@ export default function Dashboard({ clients, actions }) {
                     ) : (
                       <div className="max-h-80 overflow-y-auto">
                         {/* File alerts — amended + declined first */}
-                        {fileAlerts.filter((f) => f.status === 'amended' || f.status === 'declined').length > 0 && (
+                        {actionableAlerts.length > 0 && (
                           <>
                             <p className="px-4 pt-3 pb-1 text-xs font-semibold text-amber-600 uppercase tracking-wider">Files Need Attention</p>
-                            {fileAlerts.filter((f) => f.status === 'amended' || f.status === 'declined').map((f) => (
+                            {actionableAlerts.map((f) => (
                               <Link
                                 key={f.id}
                                 to={`/clients/${f.client_id}/files`}
@@ -481,10 +503,10 @@ export default function Dashboard({ clients, actions }) {
                           </>
                         )}
                         {/* Pending files */}
-                        {fileAlerts.filter((f) => f.status === 'pending').length > 0 && (
+                        {pendingAlerts.length > 0 && (
                           <>
                             <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Awaiting Review</p>
-                            {fileAlerts.filter((f) => f.status === 'pending').slice(0, 5).map((f) => (
+                            {pendingAlerts.slice(0, 5).map((f) => (
                               <Link
                                 key={f.id}
                                 to={`/clients/${f.client_id}/files`}

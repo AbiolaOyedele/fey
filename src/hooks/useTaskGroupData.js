@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-
-const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
+import { IS_DEMO } from '../lib/constants';
+import { getNextSortOrder } from '../utils/sortOrder';
 
 function transformGroups(groups, tasks) {
   return groups.map((g) => ({
@@ -74,9 +74,7 @@ export function useTaskGroupData(userId) {
 
   const addGroup = useCallback(async (name, color, icon = '') => {
     if (IS_DEMO || !userId) return;
-    const maxSort = groupsRef.current.length > 0
-      ? Math.max(...groupsRef.current.map((g) => g.sort_order ?? 0)) + 1
-      : 0;
+    const maxSort = getNextSortOrder(groupsRef.current);
     const { data, error: err } = await supabase
       .from('task_groups')
       .insert({ name, color, icon, sort_order: maxSort, user_id: userId })
@@ -118,9 +116,7 @@ export function useTaskGroupData(userId) {
 
   const addStandaloneTask = useCallback(async (title) => {
     if (IS_DEMO || !userId) return;
-    const maxSort = standaloneRef.current.length > 0
-      ? Math.max(...standaloneRef.current.map((t) => t.sort_order ?? 0)) + 1
-      : 0;
+    const maxSort = getNextSortOrder(standaloneRef.current);
     const { data, error: err } = await supabase
       .from('standalone_tasks')
       .insert({ title, done: false, task_group_id: null, sort_order: maxSort, user_id: userId })
@@ -164,9 +160,7 @@ export function useTaskGroupData(userId) {
   const addGroupTask = useCallback(async (groupId, title) => {
     if (IS_DEMO || !userId) return;
     const group = groupsRef.current.find((g) => g.id === groupId);
-    const maxSort = group && group.tasks.length > 0
-      ? Math.max(...group.tasks.map((t) => t.sort_order ?? 0)) + 1
-      : 0;
+    const maxSort = getNextSortOrder(group?.tasks ?? []);
     const { data, error: err } = await supabase
       .from('standalone_tasks')
       .insert({ title, done: false, task_group_id: groupId, sort_order: maxSort, user_id: userId })

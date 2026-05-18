@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { deleteFromCloudinary } from '../utils/fileHelpers';
 
 /**
  * Manages files attached to a single task.
@@ -73,14 +74,7 @@ export function useTaskFiles(taskId, enabled = false) {
   }, []);
 
   const deleteFile = useCallback(async (fileId, publicId) => {
-    // Delete from Cloudinary via edge function
-    try {
-      await supabase.functions.invoke('delete-cloudinary-file', {
-        body: { public_id: publicId },
-      });
-    } catch (e) {
-      console.warn('Cloudinary delete failed (continuing):', e);
-    }
+    await deleteFromCloudinary(publicId);
     await supabase.from('task_files').delete().eq('id', fileId);
     setFiles((prev) => prev.filter((f) => f.id !== fileId));
   }, []);

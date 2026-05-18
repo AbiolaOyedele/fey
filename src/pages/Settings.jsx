@@ -9,12 +9,13 @@ import {
   CreditCard, Edit3, Image, Camera, Mail, Lock, AlertTriangle,
   Building2, Phone, Globe, MapPin, FileText, ExternalLink, Link2,
   Plus, Check, Zap, Bell, Star, DollarSign, Shield,
-  ToggleLeft, ArrowRight, Webhook, CheckCircle2,
+  ToggleLeft, ArrowRight, Webhook, CheckCircle2, MessageSquare, Loader2,
 } from 'lucide-react';
 import WhatsNewPopup from '../components/WhatsNewPopup';
 import ChangelogPopup from '../components/ChangelogPopup';
 
 const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
+const BOT_URL = import.meta.env.VITE_BOT_URL || 'http://localhost:3001';
 
 const THEME_COLORS = [
   '#ED64A6', '#F56565', '#ED8936', '#38B2AC',
@@ -23,7 +24,7 @@ const THEME_COLORS = [
 
 const NAV = [
   'Profile', 'Branding', 'Business Info', 'Payments',
-  'General', 'Emails', 'Integrations', 'Billing',
+  'General', 'Emails', 'Integrations', 'WhatsApp', 'Billing',
 ];
 
 const normalizeHex = (val) => { const t = val.trim(); return t.startsWith('#') ? t : `#${t}`; };
@@ -235,6 +236,21 @@ export default function Settings({ clients, refetch }) {
     if (tab && NAV.includes(tab)) setActiveSection(tab);
   }, [searchParams]);
 
+  // Fetch WhatsApp connection status on mount
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from('whatsapp_connections')
+      .select('phone_number, verified, connected_at')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setWaConnection(data || null);
+        if (data?.phone_number) setWaPhone(data.phone_number);
+        setWaLoading(false);
+      });
+  }, [user?.id]);
+
   // ── Shared state ────────────────────────────────────────────────────────────
   const [accentHexInput, setAccentHexInput] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -275,6 +291,17 @@ export default function Settings({ clients, refetch }) {
 
   // ── Page background tab ──────────────────────────────────────────────────────
   const [pageBgTab, setPageBgTab] = useState(settings.page_bg_type || 'color');
+
+  // ── WhatsApp state ───────────────────────────────────────────────────────────
+  const [waConnection, setWaConnection]   = useState(null);
+  const [waLoading, setWaLoading]         = useState(true);
+  const [waPhone, setWaPhone]             = useState('');
+  const [waCodeSent, setWaCodeSent]       = useState(false);
+  const [waCode, setWaCode]               = useState('');
+  const [waSending, setWaSending]         = useState(false);
+  const [waVerifying, setWaVerifying]     = useState(false);
+  const [waError, setWaError]             = useState('');
+  const [waDisconnecting, setWaDisconnecting] = useState(false);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -1465,6 +1492,192 @@ export default function Settings({ clients, refetch }) {
     );
   };
 
+  const renderWhatsApp = () => {
+    const isConnected = waConnection?.verified === true && !waCodeSent;
+    const isPending   = waCodeSent || (waConnection && !waConnection.verified);
+
+    const handleSendCode = async () => {
+      if (!waPhone.trim()) { setWaError('Enter your WhatsApp phone number.'); return; }
+      setWaSending(true);
+      setWaError('');
+      try {
+        const res  = await fetch(`${BOT_URL}/verify/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone_number: waPhone.trim(), user_id: user.id }),
+        });
+        const json = await res.json();
+        if (!res.ok) { setWaError(json.error || 'Failed to send code.'); return; }
+        setWaCodeSent(true);
+        setWaCode('');
+      } catch {
+        setWaError('Could not reach the bot server. Is it running?');
+      } finally {
+        setWaSending(false);
+      }
+    };
+
+    const handleVerify = async () => {
+      if (!waCode.trim()) { setWaError('Enter the 6-digit code.'); return; }
+      setWaVerifying(true);
+      setWaError('');
+      try {
+        const res  = await fetch(`${BOT_URL}/verify/confirm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone_number: waPhone.trim(), code: waCode.trim() }),
+        });
+        const json = await res.json();
+        if (!res.ok) { setWaError(json.error || 'Verification failed.'); return; }
+        const { data } = await supabase
+          .from('whatsapp_connections')
+          .select('phone_number, verified, connected_at')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        setWaConnection(data || null);
+        setWaCodeSent(false);
+        setWaCode('');
+      } catch {
+        setWaError('Could not reach the bot server. Is it running?');
+      } finally {
+        setWaVerifying(false);
+      }
+    };
+
+    const handleDisconnect = async () => {
+      setWaDisconnecting(true);
+      const { error } = await supabase
+        .from('whatsapp_connections')
+        .delete()
+        .eq('user_id', user.id);
+      if (!error) {
+        setWaConnection(null);
+        setWaPhone('');
+        setWaCodeSent(false);
+        setWaCode('');
+      }
+      setWaDisconnecting(false);
+    };
+
+    return (
+      <>
+        <SectionGroup title="Connection">
+          {waLoading ? (
+            <div className="py-8 flex justify-center">
+              <Loader2 size={20} className="animate-spin text-gray-300" />
+            </div>
+          ) : isConnected ? (
+            <div className="py-4">
+              <SettingRow
+                icon={MessageSquare}
+                title="Connected"
+                description={waConnection.phone_number}
+                border={false}
+                action={
+                  <button
+                    onClick={handleDisconnect}
+                    disabled={waDisconnecting}
+                    className="px-3 py-1.5 text-xs font-medium text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    {waDisconnecting ? 'Disconnecting…' : 'Disconnect'}
+                  </button>
+                }
+              >
+                <span className="inline-flex items-center gap-1.5 mt-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  <span className="text-xs text-green-600 font-medium">Active</span>
+                </span>
+              </SettingRow>
+            </div>
+          ) : isPending ? (
+            <div className="py-4 space-y-4">
+              <p className="text-sm text-gray-500">
+                A 6-digit code was sent to{' '}
+                <span className="font-medium text-gray-800">{waPhone}</span> on WhatsApp.
+                Enter it below.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={waCode}
+                  onChange={(e) => { setWaCode(e.target.value.replace(/\D/g, '')); setWaError(''); }}
+                  className={`${inputClass} max-w-[140px] tracking-widest text-center font-mono`}
+                />
+                <button
+                  onClick={handleVerify}
+                  disabled={waVerifying}
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity disabled:opacity-60"
+                  style={{ backgroundColor: 'var(--accent)' }}
+                >
+                  {waVerifying ? 'Verifying…' : 'Verify'}
+                </button>
+              </div>
+              {waError && <p className="text-xs text-red-500">{waError}</p>}
+              <button
+                onClick={() => { setWaError(''); handleSendCode(); }}
+                disabled={waSending}
+                className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors disabled:opacity-50"
+              >
+                {waSending ? 'Sending…' : 'Resend code'}
+              </button>
+            </div>
+          ) : (
+            <div className="py-4 space-y-4">
+              <p className="text-sm text-gray-500">
+                Connect your WhatsApp number to add tasks by sending a message to your Twilio number.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                <input
+                  type="tel"
+                  placeholder="+1 555 000 0000"
+                  value={waPhone}
+                  onChange={(e) => { setWaPhone(e.target.value); setWaError(''); }}
+                  className={`${inputClass} max-w-[220px]`}
+                />
+                <button
+                  onClick={handleSendCode}
+                  disabled={waSending}
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity disabled:opacity-60"
+                  style={{ backgroundColor: 'var(--accent)' }}
+                >
+                  {waSending ? 'Sending…' : 'Connect WhatsApp'}
+                </button>
+              </div>
+              {waError && <p className="text-xs text-red-500">{waError}</p>}
+              <p className="text-xs text-gray-400">
+                Enter your number in international format — e.g. +2348012345678
+              </p>
+            </div>
+          )}
+        </SectionGroup>
+
+        <SectionGroup title="How to use">
+          <div className="py-4 space-y-3">
+            <p className="text-sm text-gray-600">
+              Once connected, send a WhatsApp message to your Twilio number. Tasks are grouped by date automatically.
+            </p>
+            <div className="space-y-2">
+              {[
+                { label: 'Add tasks for today',  example: 'Write blog intro, update invoice, email client' },
+                { label: 'Add to yesterday',     example: 'add to yesterday, write blog intro, update invoice' },
+                { label: 'Add to a past date',   example: 'add to May 16, write blog intro' },
+                { label: 'Add to a past weekday', example: 'add to last Monday, review Q2 report' },
+              ].map(({ label, example }) => (
+                <div key={label} className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
+                  <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
+                  <p className="text-xs text-gray-700 font-mono">{example}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </SectionGroup>
+      </>
+    );
+  };
+
   const renderSection = () => {
     switch (activeSection) {
       case 'Profile':       return renderProfile();
@@ -1474,6 +1687,7 @@ export default function Settings({ clients, refetch }) {
       case 'General':       return renderGeneral();
       case 'Emails':        return renderEmails();
       case 'Integrations':  return renderIntegrations();
+      case 'WhatsApp':      return renderWhatsApp();
       case 'Billing':       return renderBilling();
       default:              return null;
     }

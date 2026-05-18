@@ -1,0 +1,23 @@
+{
+  "name": "workboard-whatsapp-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp webhook server for WorkBoard task creation via Twilio",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@supabase/supabase-js": "^2.103.0",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "twilio": "^5.5.1"
+  }
+}

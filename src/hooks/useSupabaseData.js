@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-
-const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
+import { IS_DEMO } from '../lib/constants';
+import { getNextSortOrder } from '../utils/sortOrder';
 
 // Transform Supabase rows into the app's data shape
 function transformClients(clients, tasks, retainerPayments, campaignTasks = []) {
@@ -243,9 +243,7 @@ export function useSupabaseData(userId) {
     if (IS_DEMO || !userId) return;
     // Compute sort_order as max existing + 1 so new tasks go to the end
     const existingClient = clientsRef.current.find((c) => c.id === clientId);
-    const maxSort = existingClient && existingClient.tasks.length > 0
-      ? Math.max(...existingClient.tasks.map((t) => t.sort_order ?? 0)) + 1
-      : 0;
+    const maxSort = getNextSortOrder(existingClient?.tasks ?? []);
 
     const { data, error: err } = await supabase
       .from('tasks')

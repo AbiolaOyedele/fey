@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { useInvoiceData } from '../hooks/useInvoiceData';
 import NewInvoiceModal from '../components/NewInvoiceModal';
+import { CURRENCY_SYMBOLS } from '../lib/constants';
 
 const STATUS_CONFIG = {
   draft:    { label: 'Draft',    color: 'bg-gray-100 text-gray-600' },
@@ -15,8 +16,6 @@ const STATUS_CONFIG = {
   paid:     { label: 'Paid',     color: 'bg-green-100 text-green-700' },
   overdue:  { label: 'Overdue',  color: 'bg-red-100 text-red-700' },
 };
-
-const CURRENCY_SYMBOLS = { NGN:'₦', USD:'$', GBP:'£', EUR:'€', CAD:'CA$', AUD:'A$', JPY:'¥', CHF:'CHF', INR:'₹', ZAR:'R' };
 
 function fmtDate(d) {
   if (!d) return '—';

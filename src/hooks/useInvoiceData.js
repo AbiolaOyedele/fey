@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-
-const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
+import { IS_DEMO } from '../lib/constants';
 
 export function useInvoiceData(userId) {
   const [invoices, setInvoices] = useState([]);

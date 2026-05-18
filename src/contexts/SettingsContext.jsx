@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { CURRENCY_SYMBOLS } from '../lib/constants';
 
 export const SettingsContext = createContext(null);
 
@@ -389,13 +390,11 @@ export function SettingsProvider({ children }) {
     return n;
   }, [settings.currency, settings.exchange_rates, settings.exchange_rate]);
 
-  const CURRENCY_SYMBOLS = { NGN: '₦', USD: '$', GBP: '£', EUR: '€' };
-
   const formatMoney = useCallback((amount) => {
     const n = Number(amount) || 0;
     const symbol = CURRENCY_SYMBOLS[settings.currency] || '₦';
     return `${symbol}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }, [settings.currency]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [settings.currency]);
 
   const showToast = useCallback((message, action) => {
     const id = Date.now();

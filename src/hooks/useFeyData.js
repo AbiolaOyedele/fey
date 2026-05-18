@@ -45,8 +45,20 @@ export function useFeyData(userId) {
   }, [userId]);
 
   useEffect(() => {
+    if (!userId) return;
     fetchData();
-  }, [fetchData]);
+
+    const channel = supabase
+      .channel(`fey:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'fey_threads', filter: `user_id=eq.${userId}` },
+        () => setTimeout(fetchData, 500),
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [userId, fetchData]);
 
   const toggleTask = useCallback(async (taskId, done) => {
     setThreads((prev) =>

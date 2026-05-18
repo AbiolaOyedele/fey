@@ -52,11 +52,18 @@ function buildReply(tasks, heading) {
         `Got it.`,
         `Noted.`,
         `Done.`,
+        `Logged.`,
+        `On it.`,
+        `Sure thing.`,
       ])
     : pick([
         `Got it.`,
         `Noted.`,
         `All logged.`,
+        `Done.`,
+        `On it.`,
+        `Sorted.`,
+        `Consider it done.`,
       ]);
 
   const captured = n === 1
@@ -64,20 +71,50 @@ function buildReply(tasks, heading) {
         `Pulled 1 task from that`,
         `Found 1 task in there`,
         `Got 1 thing from that`,
+        `Picked out 1 task`,
+        `1 task captured`,
       ])
     : pick([
         `Pulled ${n} tasks from that`,
         `Found ${n} tasks in there`,
         `Got ${n} things from that`,
+        `Picked out ${n} tasks`,
+        `${n} tasks captured`,
+        `${n} things logged`,
       ]);
 
-  const deadline = deadlineCount === 0
-    ? pick([`Check Fey when you're ready.`, `Open Fey to review.`, `Head to Fey when you're free.`])
-    : deadlineCount === 1
-    ? pick([`One has a deadline, so don't leave it too long.`, `One's time-sensitive — check Fey soon.`, `There's a deadline on one of them, worth a look.`])
-    : pick([`${deadlineCount} have deadlines, worth checking soon.`, `${deadlineCount} are time-sensitive — open Fey when you can.`]);
+  const deadlineNote = deadlineCount === 1
+    ? pick([
+        `One has a deadline, so don't leave it too long.`,
+        `One's time-sensitive — worth checking soon.`,
+        `There's a deadline on one of them.`,
+        `One of them has a date attached — keep an eye on it.`,
+        `Heads up, one has a deadline.`,
+      ])
+    : pick([
+        `${deadlineCount} have deadlines, worth checking soon.`,
+        `${deadlineCount} are time-sensitive.`,
+        `Watch those ${deadlineCount} — they have dates attached.`,
+        `${deadlineCount} of them have deadlines coming up.`,
+      ]);
 
-  return `${opener} ${captured} — "${heading}". ${deadline}`;
+  const checkIn = pick([
+    `Check Fey when you're ready.`,
+    `Open Fey to review.`,
+    `Head to Fey when you're free.`,
+    `It's all in Fey.`,
+    `You'll find it all in Fey.`,
+  ]);
+
+  const showCheckIn = Math.random() < 0.33;
+
+  if (deadlineCount > 0) {
+    return `${opener} ${captured} — "${heading}". ${deadlineNote}`;
+  }
+
+  return showCheckIn
+    ? `${opener} ${captured} — "${heading}". ${checkIn}`
+    : `${opener} ${captured} — "${heading}".`;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

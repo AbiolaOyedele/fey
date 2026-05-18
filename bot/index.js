@@ -37,6 +37,57 @@ const DAY_MAP = {
   thursday: 4, friday: 5, saturday: 6,
 };
 
+// ── Reply builder ─────────────────────────────────────────────────────────────
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function buildReply(tasks, heading) {
+  const n = tasks.length;
+  const deadlineCount = tasks.filter((t) => t.deadline).length;
+
+  const opener = n === 1
+    ? pick([
+        `One thing. Locked in 📌`,
+        `Got it — just the one.`,
+        `One task, captured. Easy.`,
+        `Noted. One thing on the list 📋`,
+      ])
+    : n <= 3
+    ? pick([
+        `Noted, noted${n === 3 ? ', noted' : ''}. ${n} tasks locked in 🔐`,
+        `${n} things? On it.`,
+        `Grabbed ${n} from that — sorted.`,
+        `${n} tasks, captured. Let's move.`,
+      ])
+    : pick([
+        `${n} things?? Respect. All logged 🔐`,
+        `That's a list. ${n} tasks captured.`,
+        `Busy busy — ${n} tasks locked in.`,
+        `${n} tasks, no problem. Got them all.`,
+      ]);
+
+  const middle = `"${heading}"`;
+
+  const context = deadlineCount === 1
+    ? pick([`\nOne's got a deadline — don't sleep on it 👀`, `\nHeads up, one has a date attached.`])
+    : deadlineCount > 1
+    ? pick([`\n${deadlineCount} have deadlines. Clock's ticking ⏰`, `\nWatch those ${deadlineCount} dates.`])
+    : '';
+
+  const signoff = pick([
+    `Let's get it.`,
+    `You've got this.`,
+    `Go handle it ✌️`,
+    `Make it happen.`,
+    `No excuses now 😄`,
+    `Time to move.`,
+  ]);
+
+  return `✨ ${opener}\n${middle}${context}\n\n${signoff}`;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function normalizePhone(raw) {
@@ -187,9 +238,7 @@ app.post('/webhook', async (req, res) => {
     const { error: insertError } = await supabase.from('fey_tasks').insert(rows);
     if (insertError) throw insertError;
 
-    return reply(
-      `✨ Fey captured ${tasks.length} task${tasks.length !== 1 ? 's' : ''} — "${heading}"`,
-    );
+    return reply(buildReply(rows, heading));
   } catch (err) {
     console.error('[webhook]', err);
     return reply('❌ Something went wrong. Try again.');

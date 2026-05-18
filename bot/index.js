@@ -1,10 +1,13 @@
 import 'dotenv/config';
+import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import twilio from 'twilio';
 import ws from 'ws';
+
+Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 0.2 });
 import {
   format,
   parse,
@@ -293,8 +296,25 @@ app.post('/webhook', async (req, res) => {
 
     return reply(buildReply(rows, heading));
   } catch (err) {
+    Sentry.captureException(err);
     console.error('[webhook]', err);
-    return reply('❌ Something went wrong. Try again.');
+
+    const status = err?.status ?? err?.statusCode;
+    const isClaudeDown = err?.name === 'APIError' || status === 503 || status === 502 || status === 529;
+    const isRateLimited = status === 429;
+    const isDbError = err?.code === 'PGRST' || typeof err?.details === 'string';
+    const isParseError = err instanceof SyntaxError;
+
+    if (isClaudeDown || isRateLimited) {
+      return reply('Fey is down a bit. Try again in a moment.');
+    }
+    if (isDbError) {
+      return reply("Fey received your message but couldn't save it. Try again.");
+    }
+    if (isParseError) {
+      return reply("Fey couldn't make sense of your message. Try rephrasing it.");
+    }
+    return reply("Something went wrong on our end. Try again shortly.");
   }
 });
 
@@ -338,6 +358,7 @@ app.post('/verify/send', async (req, res) => {
 
     return res.json({ ok: true });
   } catch (err) {
+    Sentry.captureException(err);
     console.error('[verify/send]', err);
     return res.status(500).json({ error: 'Failed to send verification code. Try again.' });
   }
@@ -383,6 +404,7 @@ app.post('/verify/confirm', async (req, res) => {
 
     return res.json({ ok: true });
   } catch (err) {
+    Sentry.captureException(err);
     console.error('[verify/confirm]', err);
     return res.status(500).json({ error: 'Verification failed. Try again.' });
   }

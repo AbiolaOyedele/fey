@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
+    "@sentry/node": "^10.53.1",
     "@supabase/supabase-js": "^2.103.0",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",

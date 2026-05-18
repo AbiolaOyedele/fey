@@ -239,29 +239,50 @@ app.post('/webhook', async (req, res) => {
       return reply("❌ Couldn't extract any tasks from your message. Try again.");
     }
 
-    // ── 4. Insert thread ────────────────────────────────────────────────────
-    const { data: thread, error: threadError } = await supabase
-      .from('fey_threads')
-      .insert({
-        user_id,
-        raw_message: body,
-        heading: String(heading || body).slice(0, 120),
-        message_date: format(date, 'yyyy-MM-dd'),
-      })
-      .select('id')
-      .single();
+    // ── 4. Find or create thread for this date ──────────────────────────────
+    const dateStr = format(date, 'yyyy-MM-dd');
 
-    if (threadError) throw threadError;
+    const { data: existingThread } = await supabase
+      .from('fey_threads')
+      .select('id')
+      .eq('user_id', user_id)
+      .eq('message_date', dateStr)
+      .maybeSingle();
+
+    let threadId;
+
+    if (existingThread) {
+      threadId = existingThread.id;
+    } else {
+      const { data: newThread, error: threadError } = await supabase
+        .from('fey_threads')
+        .insert({
+          user_id,
+          raw_message: body,
+          heading: String(heading || body).slice(0, 120),
+          message_date: dateStr,
+        })
+        .select('id')
+        .single();
+
+      if (threadError) throw threadError;
+      threadId = newThread.id;
+    }
 
     // ── 5. Insert tasks ─────────────────────────────────────────────────────
+    const { count: existingCount } = await supabase
+      .from('fey_tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('thread_id', threadId);
+
     const rows = tasks.map((task, i) => ({
-      thread_id: thread.id,
+      thread_id: threadId,
       user_id,
       title: String(task.title || '').trim(),
       notes: task.notes ? String(task.notes).trim() : null,
       deadline: task.deadline || null,
       done: false,
-      sort_order: i,
+      sort_order: (existingCount ?? 0) + i,
     }));
 
     const { error: insertError } = await supabase.from('fey_tasks').insert(rows);

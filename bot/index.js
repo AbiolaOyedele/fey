@@ -49,43 +49,35 @@ function buildReply(tasks, heading) {
 
   const opener = n === 1
     ? pick([
-        `One thing. Locked in 📌`,
-        `Got it — just the one.`,
-        `One task, captured. Easy.`,
-        `Noted. One thing on the list 📋`,
-      ])
-    : n <= 3
-    ? pick([
-        `Noted, noted${n === 3 ? ', noted' : ''}. ${n} tasks locked in 🔐`,
-        `${n} things? On it.`,
-        `Grabbed ${n} from that — sorted.`,
-        `${n} tasks, captured. Let's move.`,
+        `Got it.`,
+        `Noted.`,
+        `Done.`,
       ])
     : pick([
-        `${n} things?? Respect. All logged 🔐`,
-        `That's a list. ${n} tasks captured.`,
-        `Busy busy — ${n} tasks locked in.`,
-        `${n} tasks, no problem. Got them all.`,
+        `Got it.`,
+        `Noted.`,
+        `All logged.`,
       ]);
 
-  const middle = `"${heading}"`;
+  const captured = n === 1
+    ? pick([
+        `Pulled 1 task from that`,
+        `Found 1 task in there`,
+        `Got 1 thing from that`,
+      ])
+    : pick([
+        `Pulled ${n} tasks from that`,
+        `Found ${n} tasks in there`,
+        `Got ${n} things from that`,
+      ]);
 
-  const context = deadlineCount === 1
-    ? pick([`\nOne's got a deadline — don't sleep on it 👀`, `\nHeads up, one has a date attached.`])
-    : deadlineCount > 1
-    ? pick([`\n${deadlineCount} have deadlines. Clock's ticking ⏰`, `\nWatch those ${deadlineCount} dates.`])
-    : '';
+  const deadline = deadlineCount === 0
+    ? pick([`Check Fey when you're ready.`, `Open Fey to review.`, `Head to Fey when you're free.`])
+    : deadlineCount === 1
+    ? pick([`One has a deadline, so don't leave it too long.`, `One's time-sensitive — check Fey soon.`, `There's a deadline on one of them, worth a look.`])
+    : pick([`${deadlineCount} have deadlines, worth checking soon.`, `${deadlineCount} are time-sensitive — open Fey when you can.`]);
 
-  const signoff = pick([
-    `Let's get it.`,
-    `You've got this.`,
-    `Go handle it ✌️`,
-    `Make it happen.`,
-    `No excuses now 😄`,
-    `Time to move.`,
-  ]);
-
-  return `✨ ${opener}\n${middle}${context}\n\n${signoff}`;
+  return `${opener} ${captured} — "${heading}". ${deadline}`;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

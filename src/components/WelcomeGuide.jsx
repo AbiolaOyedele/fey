@@ -1,7 +1,7 @@
 /**
  * WelcomeGuide — a non-intrusive floating tip card shown to first-time users.
- * Walks through the 6 main areas of WorkBoard, one tip at a time.
- * Dismissed state is stored in localStorage so it never reappears.
+ * Walks through the main areas of WorkBoard, one tip at a time.
+ * Dismissed state is stored in Supabase settings so it never reappears across any device.
  */
 import { useState, useEffect } from 'react';
 import { X, ChevronRight, ChevronLeft, LayoutDashboard, Users, CheckSquare, CreditCard, Settings, Sparkles } from 'lucide-react';
@@ -30,6 +30,11 @@ const STEPS = [
     body: 'Use Task Groups to organise personal to-dos that aren\'t tied to a client — think project phases, admin work, or recurring items.',
   },
   {
+    icon: Sparkles,
+    title: 'Meet Fey ✨',
+    body: 'Your AI task assistant. Send a WhatsApp message to Fey and it extracts tasks, notes, and deadlines automatically — no manual entry needed.',
+  },
+  {
     icon: CreditCard,
     title: 'Payments',
     body: 'A monthly breakdown of everything you\'ve earned and what\'s still pending. Mark tasks and retainers as paid as money comes in.',
@@ -37,31 +42,27 @@ const STEPS = [
   {
     icon: Settings,
     title: 'Settings',
-    body: 'Customise your accent colour, fonts, currency, and dashboard heading. You can also rename "Clients" to whatever fits your workflow.',
+    body: 'Customise your accent colour, fonts, currency, and dashboard heading. Connect WhatsApp for Fey under the WhatsApp tab.',
   },
 ];
 
-const STORAGE_KEY = (userId) => `wb:guide_seen:${userId}`;
-
 export default function WelcomeGuide() {
   const { user } = useAuth();
-  const { settings } = useSettings();
+  const { settings, saveSetting } = useSettings();
   const [step, setStep] = useState(0);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
-    // Only show after onboarding is complete and guide hasn't been dismissed
     if (settings.onboarding_complete !== 'true') return;
-    const seen = localStorage.getItem(STORAGE_KEY(user.id));
-    if (!seen) {
-      const t = setTimeout(() => setVisible(true), 800);
-      return () => clearTimeout(t);
-    }
-  }, [user?.id, settings.onboarding_complete]);
+    // Supabase-persisted dismissed state — survives browser clears and works across devices
+    if (settings.guide_seen === 'true') return;
+    const t = setTimeout(() => setVisible(true), 800);
+    return () => clearTimeout(t);
+  }, [user?.id, settings.onboarding_complete, settings.guide_seen]);
 
   const dismiss = () => {
-    if (user?.id) localStorage.setItem(STORAGE_KEY(user.id), 'true');
+    saveSetting('guide_seen', 'true');
     setVisible(false);
   };
 

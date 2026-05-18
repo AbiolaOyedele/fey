@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Trash2, Check, Calendar, GripVertical } from 'lucide-react';
+import { useState } from 'react';
+import { Trash2, Check, Calendar, GripVertical, Info } from 'lucide-react';
 
 function formatDeadline(dateStr) {
   if (!dateStr) return '';
@@ -8,12 +8,11 @@ function formatDeadline(dateStr) {
 }
 
 
-export default function SimpleTaskItem({ task, onUpdate, onDelete, dragListeners, dragAttributes }) {
+export default function SimpleTaskItem({ task, onUpdate, onDelete, onInfo, dragListeners, dragAttributes }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [deleting, setDeleting] = useState(false);
   const [bouncing, setBouncing] = useState(false);
-  const dateInputRef = useRef(null);
 
   const todayStr = (() => {
     const n = new Date();
@@ -119,27 +118,34 @@ export default function SimpleTaskItem({ task, onUpdate, onDelete, dragListeners
 
       {/* Actions */}
       <div className="flex items-center gap-0.5 flex-shrink-0">
-        {/* Calendar */}
-        <div className="relative">
+        {/* Info (notes) */}
+        {onInfo && (
           <button
-            onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
-            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
-              isOverdue
-                ? 'text-red-400 hover:bg-red-50'
-                : task.deadline
-                ? 'text-amber-400 hover:bg-amber-50'
-                : 'sm:opacity-0 sm:group-hover:opacity-100 text-gray-300 hover:bg-gray-100 hover:text-gray-500'
-            }`}
-            title={task.deadline ? `Due: ${formatDeadline(task.deadline)}` : 'Set deadline'}
+            onClick={() => onInfo(task)}
+            className="w-7 h-7 rounded-lg flex items-center justify-center sm:opacity-0 sm:group-hover:opacity-100 text-gray-300 hover:bg-gray-100 hover:text-gray-500 transition-all"
+            title="View notes"
           >
-            <Calendar size={13} />
+            <Info size={13} />
           </button>
+        )}
+
+        {/* Calendar — div wraps a transparent date input that fills the area; direct click target, no label double-fire */}
+        <div
+          className={`relative w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+            isOverdue
+              ? 'text-red-400 hover:bg-red-50'
+              : task.deadline
+              ? 'text-amber-400 hover:bg-amber-50'
+              : 'sm:opacity-0 sm:group-hover:opacity-100 text-gray-300 hover:bg-gray-100 hover:text-gray-500'
+          }`}
+          title={task.deadline ? `Due: ${formatDeadline(task.deadline)}` : 'Set deadline'}
+        >
+          <Calendar size={13} className="pointer-events-none" />
           <input
-            ref={dateInputRef}
             type="date"
             value={task.deadline || ''}
             onChange={handleDeadlineChange}
-            className="absolute inset-0 opacity-0 w-0 h-0 pointer-events-none"
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
             tabIndex={-1}
           />
         </div>

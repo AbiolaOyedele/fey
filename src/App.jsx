@@ -23,6 +23,8 @@ import InvoiceBuilder from './pages/InvoiceBuilder';
 import ClientFilesPage from './pages/ClientFilesPage';
 import CampaignWorkspace from './pages/CampaignWorkspace';
 import PublicInvoicePage from './pages/PublicInvoicePage';
+import Fey from './pages/Fey';
+import FeyWorkspace from './pages/FeyWorkspace';
 import NotFound from './pages/NotFound';
 import ToastContainer from './components/Toast';
 import WelcomeGuide from './components/WelcomeGuide';
@@ -229,6 +231,8 @@ export default function App() {
                     <Route path="/invoices" element={<Invoices clients={orderedClients} />} />
                     <Route path="/invoices/new" element={<InvoiceBuilder clients={orderedClients} />} />
                     <Route path="/invoices/:id" element={<InvoiceBuilder clients={orderedClients} />} />
+                    <Route path="/fey" element={<Fey />} />
+                    <Route path="/fey/:id" element={<FeyWorkspace />} />
                     <Route path="/settings" element={<Settings clients={orderedClients} refetch={refetch} />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

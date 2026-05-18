@@ -6,21 +6,6 @@ export default function NotFound() {
     <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center"
       style={{ backgroundColor: 'var(--page-bg, #f9fafb)' }}
     >
-      {/* Cat illustration */}
-      <div className="mb-8 select-none" aria-hidden="true">
-        <pre className="text-5xl sm:text-7xl leading-snug font-mono inline-block text-left">
-{`   /\\_/\\
-  ( -.- )
-   > ω <
-  /|   |\\
- (_|   |_)`}
-        </pre>
-        {/* Couch */}
-        <div className="mt-1 text-4xl sm:text-6xl">
-          🛋️
-        </div>
-      </div>
-
       {/* Error number */}
       <p className="font-mono text-8xl sm:text-9xl font-black tracking-tighter mb-2"
         style={{ color: 'var(--accent, #ED64A6)', lineHeight: 1 }}

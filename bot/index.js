@@ -31,8 +31,6 @@ const twilioClient = twilio(
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const BOT_COLORS = ['#E8480C', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
-
 // date-fns Day enum: 0=Sun 1=Mon 2=Tue 3=Wed 4=Thu 5=Fri 6=Sat
 const DAY_MAP = {
   sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
@@ -44,10 +42,6 @@ const DAY_MAP = {
 function normalizePhone(raw) {
   const phone = String(raw).replace(/^whatsapp:/i, '').trim();
   return phone.startsWith('+') ? phone : `+${phone}`;
-}
-
-function randomColor() {
-  return BOT_COLORS[Math.floor(Math.random() * BOT_COLORS.length)];
 }
 
 /**
@@ -85,17 +79,27 @@ function parseDateOverride(message) {
 }
 
 /**
- * Calls Claude Haiku once to extract task titles from a message.
- * Returns a string[]. Strips markdown code fences from the response before parsing.
- * Throws if Claude returns invalid JSON — caller handles the error.
+ * Calls Claude Haiku to analyze a message.
+ * Returns { heading: string, tasks: { title, notes, deadline }[] }.
+ * Strips markdown code fences before parsing. Throws on invalid JSON.
  */
-async function extractTasks(message) {
+async function analyzeMessage(message, date) {
+  const today = format(date, 'yyyy-MM-dd');
+
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
     messages: [{
       role: 'user',
-      content: `Extract individual task titles from this message. Return a JSON array of strings only, no explanation. Message: "${message}"`,
+      content: `Today is ${today}. Analyze this WhatsApp message and return JSON only (no explanation) with:
+- "heading": a short 3-6 word title summarizing the message topic
+- "tasks": array of { "title": string, "notes": string|null, "deadline": "YYYY-MM-DD"|null }
+
+Rules:
+- notes: 1-2 sentences of context if the message provides more detail than just a task name. null if not.
+- deadline: convert relative terms (tomorrow, next Friday, end of week, etc.) to absolute ISO dates based on today. null if not mentioned.
+
+Message: "${message}"`,
     }],
   });
 
@@ -145,75 +149,46 @@ app.post('/webhook', async (req, res) => {
 
     const { user_id } = connection;
 
-    // ── 2. Parse date and strip override prefix ─────────────────────────────
+    // ── 2. Parse date override ──────────────────────────────────────────────
     const { date, body } = parseDateOverride(messageBody);
-    const groupName = format(date, 'MMM d');
 
-    // ── 3. Find or create the task group for that date ──────────────────────
-    let groupId;
-
-    const { data: existingGroup } = await supabase
-      .from('task_groups')
-      .select('id')
-      .eq('user_id', user_id)
-      .eq('name', groupName)
-      .maybeSingle();
-
-    if (existingGroup) {
-      groupId = existingGroup.id;
-    } else {
-      const { data: sortRow } = await supabase
-        .from('task_groups')
-        .select('sort_order')
-        .eq('user_id', user_id)
-        .order('sort_order', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const nextSort = (sortRow?.sort_order ?? -1) + 1;
-
-      const { data: newGroup, error: groupError } = await supabase
-        .from('task_groups')
-        .insert({ user_id, name: groupName, color: randomColor(), icon: null, sort_order: nextSort })
-        .select('id')
-        .single();
-
-      if (groupError) throw groupError;
-      groupId = newGroup.id;
-    }
-
-    // ── 4. Extract tasks via Claude (one call, no retries) ──────────────────
-    const tasks = await extractTasks(body);
+    // ── 3. Analyze message with Claude ─────────────────────────────────────
+    const { heading, tasks } = await analyzeMessage(body, date);
 
     if (!Array.isArray(tasks) || tasks.length === 0) {
       return reply("❌ Couldn't extract any tasks from your message. Try again.");
     }
 
-    // ── 5. Compute starting sort_order within the group ─────────────────────
-    const { data: maxRow } = await supabase
-      .from('standalone_tasks')
-      .select('sort_order')
-      .eq('task_group_id', groupId)
-      .order('sort_order', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // ── 4. Insert thread ────────────────────────────────────────────────────
+    const { data: thread, error: threadError } = await supabase
+      .from('fey_threads')
+      .insert({
+        user_id,
+        raw_message: body,
+        heading: String(heading || body).slice(0, 120),
+        message_date: format(date, 'yyyy-MM-dd'),
+      })
+      .select('id')
+      .single();
 
-    const baseSort = (maxRow?.sort_order ?? -1) + 1;
+    if (threadError) throw threadError;
 
-    // ── 6. Insert tasks ─────────────────────────────────────────────────────
-    const rows = tasks.map((title, i) => ({
+    // ── 5. Insert tasks ─────────────────────────────────────────────────────
+    const rows = tasks.map((task, i) => ({
+      thread_id: thread.id,
       user_id,
-      title: String(title).trim(),
+      title: String(task.title || '').trim(),
+      notes: task.notes ? String(task.notes).trim() : null,
+      deadline: task.deadline || null,
       done: false,
-      task_group_id: groupId,
-      sort_order: baseSort + i,
+      sort_order: i,
     }));
 
-    const { error: insertError } = await supabase.from('standalone_tasks').insert(rows);
+    const { error: insertError } = await supabase.from('fey_tasks').insert(rows);
     if (insertError) throw insertError;
 
     return reply(
-      `✅ Added ${tasks.length} task${tasks.length !== 1 ? 's' : ''} to ${groupName}`,
+      `✨ Fey captured ${tasks.length} task${tasks.length !== 1 ? 's' : ''} — "${heading}"`,
     );
   } catch (err) {
     console.error('[webhook]', err);

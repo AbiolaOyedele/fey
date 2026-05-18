@@ -6,6 +6,18 @@ export const SettingsContext = createContext(null);
 
 const DEFAULT_CHANGELOG = [
   {
+    version: '1.9.1', date: '18 May, 2026',
+    features: [
+      'Fey — AI-powered task assistant connected to WhatsApp. Send a message and Fey extracts tasks, notes, and deadlines automatically.',
+      'WhatsApp integration via Twilio — connect your number in Settings → WhatsApp',
+      'Fey workspace — tap any message thread to see full task detail with notes and deadline panel',
+    ],
+    improvements: [
+      'Date picker now works reliably across all browsers (label-based input replaces showPicker API)',
+    ],
+    fixes: [],
+  },
+  {
     version: '1.8.1', date: '26 Apr, 2026',
     features: [
       'Client contact details — store email, phone, website, tax ID, and address per client from the Edit modal',
@@ -176,6 +188,11 @@ const DEFAULTS = {
   // Onboarding checklist
   checklist_dismissed: 'false',
   checklist_steps: '{}',
+  // Welcome guide
+  guide_seen: 'false',
+  // Fey
+  fey_thread_order: '',
+  fey_sort_mode: 'newest',
 };
 
 export function SettingsProvider({ children }) {

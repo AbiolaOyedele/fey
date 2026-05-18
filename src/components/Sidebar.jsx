@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, Settings, ListTodo, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Settings, ListTodo, FileText, Sparkles } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import WhatsNewPopup, { fetchLatestWhatsNew, getDismissedVersion, dismissVersion } from './WhatsNewPopup';
 
@@ -79,6 +79,10 @@ export default function Sidebar() {
 
           <NavLink to="/invoices" title="Invoices" className={navLinkClass} style={navLinkStyle}>
             <FileText size={20} />
+          </NavLink>
+
+          <NavLink to="/fey" title="Fey" className={navLinkClass} style={navLinkStyle}>
+            <Sparkles size={20} />
           </NavLink>
         </nav>
 
@@ -162,6 +166,13 @@ export default function Sidebar() {
           style={({ isActive }) => isActive ? { color: accent } : {}}
         >
           <FileText size={22} />
+        </NavLink>
+
+        <NavLink to="/fey"
+          className={({ isActive }) => `flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-150 ${isActive ? '' : 'text-gray-400'}`}
+          style={({ isActive }) => isActive ? { color: accent } : {}}
+        >
+          <Sparkles size={22} />
         </NavLink>
 
         <NavLink to="/settings"

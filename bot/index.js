@@ -176,8 +176,11 @@ async function analyzeMessage(message, date) {
 - "tasks": array of { "title": string, "notes": string|null, "deadline": "YYYY-MM-DD"|null }
 
 Rules:
-- notes: 1-2 sentences of context if the message provides more detail than just a task name. null if not.
+- Extract every actionable item, reminder, or thing that needs to be done or followed up on.
+- If the message contains a URL or link, treat it as a task to review or follow up on. Include the full URL in the notes field.
+- notes: 1-2 sentences of context or relevant detail (include URLs here if present). null if there is nothing useful to add.
 - deadline: convert relative terms (tomorrow, next Friday, end of week, etc.) to absolute ISO dates based on today. null if not mentioned.
+- If the message has no clear tasks but contains a link, create a task like "Review link" or "Check [platform] post" with the URL in notes.
 
 Message: "${message}"`,
     }],

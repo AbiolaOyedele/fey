@@ -17,39 +17,6 @@ import { useFeyData } from '../hooks/useFeyData';
 import { getContrastColor } from '../utils/colorContrast';
 import { PALETTE } from '../data/defaultClients';
 
-// PREVIEW ONLY — remove before push
-const MOCK_THREADS = [
-  {
-    id: 'mock-1',
-    heading: 'Client proposal & brand updates',
-    message_date: '2026-05-18',
-    tasks: [
-      { id: 'mt-1', title: 'Send brand refresh proposal', notes: 'Client wants it by end of next week.', deadline: '2026-05-22', done: false, sort_order: 0 },
-      { id: 'mt-2', title: 'Finalise logo', notes: 'Must be completed before other brand assets.', deadline: null, done: true, sort_order: 1 },
-    ],
-  },
-  {
-    id: 'mock-2',
-    heading: 'Studio session prep',
-    message_date: '2026-05-17',
-    tasks: [
-      { id: 'mt-3', title: 'Book studio for Saturday', notes: null, deadline: '2026-05-18', done: true, sort_order: 0 },
-      { id: 'mt-4', title: 'Confirm with sound engineer', notes: null, deadline: null, done: false, sort_order: 1 },
-      { id: 'mt-5', title: 'Prepare session playlist', notes: 'Ready the night before.', deadline: '2026-05-19', done: false, sort_order: 2 },
-    ],
-  },
-  {
-    id: 'mock-3',
-    heading: 'Weekly errands',
-    message_date: '2026-05-16',
-    tasks: [
-      { id: 'mt-6', title: 'Buy groceries', notes: null, deadline: null, done: true, sort_order: 0 },
-      { id: 'mt-7', title: 'Pick up dry cleaning', notes: null, deadline: null, done: true, sort_order: 1 },
-      { id: 'mt-8', title: 'Call dentist to reschedule', notes: null, deadline: null, done: false, sort_order: 2 },
-      { id: 'mt-9', title: 'Pay electricity bill', notes: null, deadline: null, done: false, sort_order: 3 },
-    ],
-  },
-];
 
 const TASK_FILTER_OPTIONS = [
   { value: 'all', label: 'All Tasks' },
@@ -300,12 +267,7 @@ export default function FeyWorkspace() {
   const accent = settings.accent_color || '#ED64A6';
   const todayStr = getTodayStr();
 
-  const { threads: realThreads, loading, updateTask: updateRealTask, deleteTask: deleteRealTask } = useFeyData(user?.id);
-
-  // PREVIEW ONLY — remove before push
-  const usingMock = !loading && realThreads.length === 0;
-  const [mockThreads, setMockThreads] = useState(MOCK_THREADS);
-  const threads = usingMock ? mockThreads : realThreads;
+  const { threads, loading, updateTask, deleteTask } = useFeyData(user?.id);
   const thread = threads.find((t) => t.id === id);
 
   const [taskFilter, setTaskFilter] = useState('all');
@@ -321,27 +283,12 @@ export default function FeyWorkspace() {
   const textColor = thread ? getContrastColor(color) : '#000';
 
   const handleUpdate = useCallback((updated) => {
-    if (usingMock) {
-      setMockThreads((prev) =>
-        prev.map((th) => ({
-          ...th,
-          tasks: th.tasks.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)),
-        })),
-      );
-    } else {
-      updateRealTask(updated.id, { title: updated.title, done: updated.done, deadline: updated.deadline });
-    }
-  }, [usingMock, updateRealTask]);
+    updateTask(updated.id, { title: updated.title, done: updated.done, deadline: updated.deadline });
+  }, [updateTask]);
 
   const handleDelete = useCallback((taskId) => {
-    if (usingMock) {
-      setMockThreads((prev) =>
-        prev.map((th) => ({ ...th, tasks: th.tasks.filter((t) => t.id !== taskId) })),
-      );
-    } else {
-      deleteRealTask(taskId);
-    }
-  }, [usingMock, deleteRealTask]);
+    deleteTask(taskId);
+  }, [deleteTask]);
 
   const handleDragEnd = useCallback((event) => {
     const { active, over } = event;

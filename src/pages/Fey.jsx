@@ -15,39 +15,6 @@ import { useFeyData } from '../hooks/useFeyData';
 import { getContrastColor } from '../utils/colorContrast';
 import { PALETTE } from '../data/defaultClients';
 
-// PREVIEW ONLY — remove before push
-const MOCK_THREADS = [
-  {
-    id: 'mock-1',
-    heading: 'Client proposal & brand updates',
-    message_date: '2026-05-18',
-    tasks: [
-      { id: 'mt-1', title: 'Send brand refresh proposal', notes: 'Client wants it by end of next week.', deadline: '2026-05-22', done: false },
-      { id: 'mt-2', title: 'Finalise logo', notes: 'Must be completed before other brand assets.', deadline: null, done: true },
-    ],
-  },
-  {
-    id: 'mock-2',
-    heading: 'Studio session prep',
-    message_date: '2026-05-17',
-    tasks: [
-      { id: 'mt-3', title: 'Book studio for Saturday', notes: null, deadline: '2026-05-18', done: true },
-      { id: 'mt-4', title: 'Confirm with sound engineer', notes: null, deadline: null, done: false },
-      { id: 'mt-5', title: 'Prepare session playlist', notes: 'Ready the night before.', deadline: '2026-05-19', done: false },
-    ],
-  },
-  {
-    id: 'mock-3',
-    heading: 'Weekly errands',
-    message_date: '2026-05-16',
-    tasks: [
-      { id: 'mt-6', title: 'Buy groceries', notes: null, deadline: null, done: true },
-      { id: 'mt-7', title: 'Pick up dry cleaning', notes: null, deadline: null, done: true },
-      { id: 'mt-8', title: 'Call dentist to reschedule', notes: null, deadline: null, done: false },
-      { id: 'mt-9', title: 'Pay electricity bill', notes: null, deadline: null, done: false },
-    ],
-  },
-];
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest first' },
@@ -166,12 +133,7 @@ export default function Fey() {
   const { settings, saveSetting } = useSettings();
   const accent    = settings.accent_color || '#ED64A6';
 
-  const { threads: realThreads, loading, error, deleteThread } = useFeyData(user?.id);
-
-  // PREVIEW ONLY — remove before push
-  const usingMock = !loading && realThreads.length === 0;
-  const [mockThreads, setMockThreads] = useState(MOCK_THREADS);
-  const threads = usingMock ? mockThreads : realThreads;
+  const { threads, loading, error, deleteThread } = useFeyData(user?.id);
 
   // Sort state — persisted in settings
   const [sortMode, setSortMode] = useState(settings.fey_sort_mode || 'newest');
@@ -247,12 +209,8 @@ export default function Fey() {
   }, [sortedThreads, saveOrder, sortMode, saveSetting]);
 
   const handleDelete = useCallback((thread) => {
-    if (usingMock) {
-      setMockThreads((prev) => prev.filter((t) => t.id !== thread.id));
-    } else {
-      deleteThread(thread.id);
-    }
-  }, [usingMock, deleteThread]);
+    deleteThread(thread.id);
+  }, [deleteThread]);
 
   const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortMode)?.label || 'Newest first';
 

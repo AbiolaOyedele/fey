@@ -50,24 +50,10 @@ function buildReply(tasks, heading) {
   const n = tasks.length;
   const deadlineCount = tasks.filter((t) => t.deadline).length;
 
+  const sharedOpeners = [`Got it.`, `Noted.`, `Done.`, `On it.`];
   const opener = n === 1
-    ? pick([
-        `Got it.`,
-        `Noted.`,
-        `Done.`,
-        `Logged.`,
-        `On it.`,
-        `Sure thing.`,
-      ])
-    : pick([
-        `Got it.`,
-        `Noted.`,
-        `All logged.`,
-        `Done.`,
-        `On it.`,
-        `Sorted.`,
-        `Consider it done.`,
-      ]);
+    ? pick([...sharedOpeners, `Logged.`, `Sure thing.`])
+    : pick([...sharedOpeners, `All logged.`, `Sorted.`, `Consider it done.`]);
 
   const captured = n === 1
     ? pick([
@@ -101,23 +87,22 @@ function buildReply(tasks, heading) {
         `${deadlineCount} of them have deadlines coming up.`,
       ]);
 
-  const checkIn = pick([
-    `Check Fey when you're ready.`,
-    `Open Fey to review.`,
-    `Head to Fey when you're free.`,
-    `It's all in Fey.`,
-    `You'll find it all in Fey.`,
-  ]);
-
-  const showCheckIn = Math.random() < 0.33;
-
   if (deadlineCount > 0) {
     return `${opener} ${captured} — "${heading}". ${deadlineNote}`;
   }
 
-  return showCheckIn
-    ? `${opener} ${captured} — "${heading}". ${checkIn}`
-    : `${opener} ${captured} — "${heading}".`;
+  if (Math.random() < 0.33) {
+    const checkIn = pick([
+      `Check Fey when you're ready.`,
+      `Open Fey to review.`,
+      `Head to Fey when you're free.`,
+      `It's all in Fey.`,
+      `You'll find it all in Fey.`,
+    ]);
+    return `${opener} ${captured} — "${heading}". ${checkIn}`;
+  }
+
+  return `${opener} ${captured} — "${heading}".`;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -238,22 +223,24 @@ app.post('/webhook', async (req, res) => {
     // ── 2. Parse date override ──────────────────────────────────────────────
     const { date, body } = parseDateOverride(messageBody);
 
-    // ── 3. Analyze message with Claude ─────────────────────────────────────
-    const { heading, tasks } = await analyzeMessage(body, date);
+    // ── 3+4. Analyze message and look up today's thread concurrently ────────
+    const dateStr = format(date, 'yyyy-MM-dd');
+
+    const [{ heading, tasks }, { data: existingThread, error: lookupError }] = await Promise.all([
+      analyzeMessage(body, date),
+      supabase
+        .from('fey_threads')
+        .select('id')
+        .eq('user_id', user_id)
+        .eq('message_date', dateStr)
+        .maybeSingle(),
+    ]);
+
+    if (lookupError) throw lookupError;
 
     if (!Array.isArray(tasks) || tasks.length === 0) {
       return reply("❌ Couldn't extract any tasks from your message. Try again.");
     }
-
-    // ── 4. Find or create thread for this date ──────────────────────────────
-    const dateStr = format(date, 'yyyy-MM-dd');
-
-    const { data: existingThread } = await supabase
-      .from('fey_threads')
-      .select('id')
-      .eq('user_id', user_id)
-      .eq('message_date', dateStr)
-      .maybeSingle();
 
     let threadId;
 
@@ -281,7 +268,7 @@ app.post('/webhook', async (req, res) => {
       .select('*', { count: 'exact', head: true })
       .eq('thread_id', threadId);
 
-    const rows = tasks.map((task, i) => ({
+    const rows = tasks.slice(0, 20).map((task, i) => ({
       thread_id: threadId,
       user_id,
       title: String(task.title || '').trim(),
@@ -299,13 +286,13 @@ app.post('/webhook', async (req, res) => {
     Sentry.captureException(err);
     console.error('[webhook]', err);
 
-    const status = err?.status ?? err?.statusCode;
-    const isClaudeDown = err?.name === 'APIError' || status === 503 || status === 502 || status === 529;
-    const isRateLimited = status === 429;
-    const isDbError = err?.code === 'PGRST' || typeof err?.details === 'string';
+    // Anthropic SDK errors carry an HTTP .status; Supabase errors don't
+    const isClaudeError = typeof err?.status === 'number';
+    // Supabase errors are plain objects with a .code string and a .details field
+    const isDbError = !isClaudeError && typeof err?.code === 'string' && err?.details !== undefined;
     const isParseError = err instanceof SyntaxError;
 
-    if (isClaudeDown || isRateLimited) {
+    if (isClaudeError) {
       return reply('Fey is down a bit. Try again in a moment.');
     }
     if (isDbError) {

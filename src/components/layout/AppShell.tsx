@@ -13,8 +13,8 @@ const PUBLIC_ROUTES = ['/login', '/register', '/onboarding']
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''
   const router   = useRouter()
-  const { user, loading: authLoading }             = useAuth()
-  const { settings, settingsLoading } = useSettings()
+  const { user, loading: authLoading }               = useAuth()
+  const { settingsLoading, hasFeySettings } = useSettings()
 
   const isPublic = PUBLIC_ROUTES.includes(pathname)
     || pathname.startsWith('/share/')
@@ -33,11 +33,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       return
     }
 
-    // Logged in but hasn't chosen a workspace slug yet → onboarding
-    if (settings.onboarding_complete !== 'true') {
+    // No fey_settings row at all → brand new Fey user → onboarding.
+    // We check hasFeySettings (not onboarding_complete) so we don't redirect
+    // users from other projects that share this Supabase DB. Those users may
+    // have fey_settings rows with onboarding_complete = 'false' but they are
+    // not new Fey users — the row existing is enough to let them through.
+    if (!hasFeySettings) {
       router.replace('/onboarding')
     }
-  }, [user, loading, isPublic, settings.onboarding_complete, router])
+  }, [user, loading, isPublic, hasFeySettings, router])
 
   if (isPublic) return <>{children}</>
 
@@ -51,8 +55,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!IS_DEMO && !user) return null
 
-  // Don't render the dashboard shell while onboarding redirect is in-flight
-  if (!IS_DEMO && settings.onboarding_complete !== 'true') return null
+  // Don't render the dashboard shell while the onboarding redirect is in-flight
+  if (!IS_DEMO && !hasFeySettings) return null
 
   return (
     <div className="flex flex-col min-h-screen bg-appbg overflow-x-hidden">

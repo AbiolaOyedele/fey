@@ -138,6 +138,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   const settingsValue = {
     settings,
     settingsLoading: false,
+    hasFeySettings: true,
     saveSetting,
     refreshExchangeRate,
     convertAmount,

@@ -8,6 +8,14 @@ import type { Settings, Toast, TrashItem, Client, RestoreResult } from '@/types'
 interface SettingsContextValue {
   settings: Settings
   settingsLoading: boolean
+  /**
+   * True when a fey_settings row exists in the DB for this user.
+   * False when the user is brand new to Fey (no row at all).
+   * Used by AppShell to decide whether to show onboarding — we must NOT
+   * redirect users from other projects that share this Supabase DB but
+   * happen to have onboarding_complete = 'false'.
+   */
+  hasFeySettings: boolean
   saveSetting: (key: string, value: string | number) => Promise<void>
   refreshExchangeRate: () => Promise<void>
   convertAmount: (amount: number, storedCurrency: string) => number
@@ -109,6 +117,7 @@ const DEFAULTS: Settings = {
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULTS)
   const [settingsLoading, setSettingsLoading] = useState(true)
+  const [hasFeySettings, setHasFeySettings] = useState(false)
   const [trash, setTrash] = useState<TrashItem[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
   const [userId, setUserId] = useState<string | null>(null)
@@ -134,6 +143,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         const { data, error } = await supabase.from('fey_settings').select('*').eq('user_id', userId).maybeSingle()
         if (error) throw error
         if (data) {
+          setHasFeySettings(true)
           const merged = { ...DEFAULTS }
           const knownKeys = new Set(Object.keys(DEFAULTS))
           for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
@@ -148,10 +158,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           }
           setSettings(merged)
         } else {
+          // No fey_settings row → brand new Fey user
+          setHasFeySettings(false)
           const localFlag = localStorage.getItem(`wb:onboarding_complete:${userId}`)
           setSettings({ ...DEFAULTS, onboarding_complete: localFlag === 'true' ? 'true' : 'false' })
         }
       } catch {
+        // On error, assume the row exists so we don't wrongly redirect to onboarding
+        setHasFeySettings(true)
         const localFlag = localStorage.getItem(`wb:onboarding_complete:${userId}`)
         setSettings({ ...DEFAULTS, onboarding_complete: localFlag === 'true' ? 'true' : 'false' })
       }
@@ -389,7 +403,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   return (
     <SettingsContext.Provider
       value={{
-        settings, settingsLoading, saveSetting, refreshExchangeRate,
+        settings, settingsLoading, hasFeySettings, saveSetting, refreshExchangeRate,
         convertAmount, formatMoney,
         resolveColor: (color: string) =>
           settings.color_mode === 'accent' ? settings.accent_color : (color || settings.accent_color),

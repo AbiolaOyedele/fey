@@ -3,7 +3,6 @@
 import { use, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ClipboardList, CheckCircle2 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import type { CrmForm, FormField, FormResponse } from '@/types/crm'
 
 function FormFieldInput({
@@ -69,7 +68,7 @@ export default function PortalFormDetailPage({
 }: {
   params: Promise<{ subdomain: string; formId: string }>
 }) {
-  const { subdomain: _subdomain, formId } = use(params)
+  const { subdomain, formId } = use(params)
   const router = useRouter()
 
   const [form,      setForm]      = useState<CrmForm | null>(null)
@@ -84,11 +83,11 @@ export default function PortalFormDetailPage({
 
   useEffect(() => {
     void (async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      setToken(session.access_token)
+      const portalToken = localStorage.getItem(`portal_token_${subdomain}`)
+      if (!portalToken) { setLoading(false); return }
+      setToken(portalToken)
       const res = await fetch('/api/v1/portal/forms', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${portalToken}` },
       })
       if (res.ok) {
         const d = await res.json() as { forms: CrmForm[] }
@@ -98,7 +97,7 @@ export default function PortalFormDetailPage({
       }
       setLoading(false)
     })()
-  }, [formId])
+  }, [subdomain, formId])
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()

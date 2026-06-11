@@ -13,13 +13,14 @@ export async function getOwnerByWorkspaceSlug(
 ): Promise<PortalOwnerBranding | null> {
   const { data, error } = await db
     .from('fey_settings')
-    .select('user_id, company_name, logo, accent_color, font_family, workspace_slug, portal_active')
+    .select('user_id, username, company_name, logo, accent_color, font_family, workspace_slug, workspace_name, portal_active')
     .eq('workspace_slug', workspaceSlug)
     .maybeSingle()
   if (error ?? !data) return null
   const row = data as Record<string, unknown>
   return {
-    business_name: (row.company_name as string | null) ?? 'Workboard',
+    business_name: (row.company_name as string | null) || (row.workspace_name as string | null) || 'Workspace',
+    owner_name:    (row.username as string | null) ?? '',
     logo_url:      (row.logo as string | null) ?? null,
     accent_color:  (row.accent_color as string | null) ?? '#ED64A6',
     font:          (row.font_family as string | null) ?? 'NoirPro',
@@ -157,6 +158,20 @@ export async function getContactById(
     .from('crm_contacts')
     .select('*')
     .eq('id', contactId)
+    .maybeSingle()
+  if (error ?? !data) return null
+  return data as CrmContact
+}
+
+/** Look up a contact by its short invite_code. Used during portal signup. */
+export async function getContactByInviteCode(
+  db: SupabaseClient,
+  inviteCode: string,
+): Promise<CrmContact | null> {
+  const { data, error } = await db
+    .from('crm_contacts')
+    .select('*')
+    .eq('invite_code', inviteCode.toUpperCase())
     .maybeSingle()
   if (error ?? !data) return null
   return data as CrmContact

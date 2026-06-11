@@ -1,7 +1,7 @@
 'use client'
 
-import { use, useState, useCallback } from 'react'
-import { Globe, Copy, Check, ToggleLeft, ToggleRight, Loader2 } from 'lucide-react'
+import { use, useState, useCallback, useEffect } from 'react'
+import { Globe, Link2, Copy, Check, RefreshCw, ToggleLeft, ToggleRight, Loader2 } from 'lucide-react'
 import { useContacts } from '@/hooks/useCrm'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -16,39 +16,91 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
   const [welcomeMsg,    setWelcomeMsg]    = useState(contact?.portal_welcome_message ?? '')
   const [saving,        setSaving]        = useState(false)
   const [copied,        setCopied]        = useState(false)
-  const [subdomain,     setSubdomain]     = useState<string | null>(null)
+  const [copiedLink,    setCopiedLink]    = useState(false)
+  const [inviteCode,    setInviteCode]    = useState<string | null>(null)
+  const [inviteUrl,     setInviteUrl]     = useState<string | null>(null)
+  const [loadingInvite, setLoadingInvite] = useState(false)
+  const [regenLoading,  setRegenLoading]  = useState(false)
 
-  // Load portal subdomain from fey_settings once
-  const loadSubdomain = useCallback(async () => {
-    if (!user?.id || subdomain !== null) return
-    const { data } = await supabase
+  // ── Load invite code ────────────────────────────────────────────────────────
+
+  const loadInvite = useCallback(async (regenerate = false) => {
+    if (!user?.id) return
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) return
+
+    if (regenerate) setRegenLoading(true)
+    else setLoadingInvite(true)
+
+    try {
+      const res = await fetch(
+        `/api/v1/crm/contacts/${id}/invite`,
+        {
+          method:  regenerate ? 'POST' : 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      )
+      if (res.ok) {
+        const data = await res.json() as { invite_code: string; invite_url: string }
+        setInviteCode(data.invite_code)
+        setInviteUrl(data.invite_url)
+      }
+    } finally {
+      setLoadingInvite(false)
+      setRegenLoading(false)
+    }
+  }, [id, user?.id])
+
+  useEffect(() => {
+    void loadInvite()
+  }, [loadInvite])
+
+  // ── Portal URL (workspace slug-based) ────────────────────────────────────────
+
+  const [workspaceSlug, setWorkspaceSlug] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!user?.id) return
+    void supabase
       .from('fey_settings')
-      .select('portal_subdomain')
+      .select('workspace_slug')
       .eq('user_id', user.id)
       .maybeSingle()
-    setSubdomain((data as { portal_subdomain: string | null } | null)?.portal_subdomain ?? '')
-  }, [user?.id, subdomain])
+      .then(({ data }) => {
+        setWorkspaceSlug((data as { workspace_slug: string | null } | null)?.workspace_slug ?? null)
+      })
+  }, [user?.id])
 
-  // Kick off load on first render
-  if (subdomain === null && user?.id) {
-    void loadSubdomain()
-  }
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
+  const portalBase = workspaceSlug ? `https://${workspaceSlug}.${rootDomain}` : null
 
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'yourdomain.com'
-  const portalUrl  = subdomain ? `https://${subdomain}.${rootDomain}` : null
+  // ── Clipboard helpers ────────────────────────────────────────────────────────
 
-  const copyLink = async () => {
-    if (!portalUrl) return
-    await navigator.clipboard.writeText(portalUrl)
+  const copyCode = async () => {
+    if (!inviteCode) return
+    await navigator.clipboard.writeText(inviteCode)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
+
+  const copyLink = async () => {
+    const url = inviteUrl ?? (portalBase && inviteCode ? `${portalBase}/join?code=${inviteCode}` : null)
+    if (!url) return
+    await navigator.clipboard.writeText(url)
+    setCopiedLink(true)
+    setTimeout(() => setCopiedLink(false), 2000)
+  }
+
+  // ── Toggle / welcome ─────────────────────────────────────────────────────────
 
   const togglePortal = async () => {
     if (!contact) return
     const next = !portalEnabled
     setPortalEnabled(next)
     await updateContact(id, { portal_enabled: next })
+    // Load / refresh invite code when enabling
+    if (next) void loadInvite()
   }
 
   const saveWelcome = async () => {
@@ -58,15 +110,17 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
     setSaving(false)
   }
 
+  const displayInviteUrl = inviteUrl ?? (portalBase && inviteCode ? `${portalBase}/join?code=${inviteCode}` : null)
+
   return (
-    <div className="p-6 max-w-xl">
+    <div className="p-6 max-w-xl space-y-4">
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-gray-900">Portal Settings</h2>
-        <p className="text-sm text-gray-400">Manage this client's access to their portal.</p>
+        <p className="text-sm text-gray-400">Manage this client&apos;s access to their portal.</p>
       </div>
 
       {/* Enable / Disable */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-4 shadow-sm">
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-gray-800">Portal access</p>
@@ -88,40 +142,99 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      {/* Portal link */}
-      {portalUrl && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-4 shadow-sm">
-          <p className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-            <Globe size={15} className="text-gray-400" />
-            Portal link
+      {/* Invite link */}
+      {!workspaceSlug && (
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-4">
+          <p className="text-sm text-amber-700 font-medium">No workspace URL configured</p>
+          <p className="text-xs text-amber-600 mt-0.5">
+            Complete your <a href="/setup" className="underline">workspace setup</a> to generate invite links.
           </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 text-xs bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-600 truncate">
-              {portalUrl}
-            </code>
-            <button
-              onClick={() => void copyLink()}
-              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
-          </div>
         </div>
       )}
 
-      {!subdomain && subdomain !== null && (
-        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-4 mb-4">
-          <p className="text-sm text-amber-700 font-medium">No portal subdomain configured</p>
-          <p className="text-xs text-amber-600 mt-0.5">
-            Go to <a href="/settings" className="underline">Settings → Portal</a> to set your subdomain before sharing the portal link.
+      {workspaceSlug && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+              <Link2 size={14} className="text-gray-400" />
+              Invite link
+            </p>
+            <button
+              onClick={() => void loadInvite(true)}
+              disabled={regenLoading}
+              title="Regenerate code"
+              className="flex items-center gap-1.5 text-[12px] text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <RefreshCw size={12} className={regenLoading ? 'animate-spin' : ''} />
+              {regenLoading ? 'Regenerating…' : 'Regenerate'}
+            </button>
+          </div>
+
+          {loadingInvite ? (
+            <div className="flex items-center gap-2 text-[13px] text-gray-400">
+              <Loader2 size={13} className="animate-spin" />
+              Generating code…
+            </div>
+          ) : displayInviteUrl ? (
+            <>
+              {/* Invite URL */}
+              <div className="flex items-center gap-2 mb-3">
+                <code className="flex-1 text-[12px] bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-gray-600 truncate">
+                  {displayInviteUrl}
+                </code>
+                <button
+                  onClick={() => void copyLink()}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-[12px] text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap"
+                >
+                  {copiedLink ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                  {copiedLink ? 'Copied!' : 'Copy link'}
+                </button>
+              </div>
+
+              {/* Short code */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-[12px] text-gray-400">Access code:</span>
+                  <code className="text-[13px] font-mono font-semibold text-gray-800 tracking-widest bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
+                    {inviteCode}
+                  </code>
+                </div>
+                <button
+                  onClick={() => void copyCode()}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-gray-200 text-[12px] text-gray-500 hover:bg-gray-50 transition-colors"
+                >
+                  {copied ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+                  {copied ? 'Copied!' : 'Copy code'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="text-[13px] text-gray-400">No invite code yet. Enable portal access to generate one.</p>
+          )}
+
+          <p className="text-[12px] text-gray-400 mt-3">
+            Share this link with your client so they can join your workspace.
+            The access code is pre-filled automatically.
           </p>
+        </div>
+      )}
+
+      {/* Portal URL */}
+      {portalBase && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+          <p className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <Globe size={14} className="text-gray-400" />
+            Portal URL
+          </p>
+          <code className="block text-[12px] bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-gray-500">
+            {portalBase}
+          </code>
         </div>
       )}
 
       {/* Welcome message */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <label className="block text-sm font-semibold text-gray-800 mb-2">Welcome message</label>
+        <label className="block text-sm font-semibold text-gray-800 mb-1">Welcome message</label>
         <p className="text-[13px] text-gray-400 mb-3">Shown on the portal home page for this client.</p>
         <textarea
           rows={3}

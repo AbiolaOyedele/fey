@@ -1,7 +1,6 @@
 'use client'
 
 import { use, useState, useEffect, useRef, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
 import type { CrmMessage } from '@/types/crm'
 
 function apiFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
@@ -23,34 +22,32 @@ function groupByDate(msgs: CrmMessage[]): Array<{ date: string; messages: CrmMes
 }
 
 function fmtDate(iso: string) {
-  const d = new Date(iso)
+  const d   = new Date(iso)
   const now = new Date()
   if (iso.slice(0, 10) === now.toISOString().slice(0, 10)) return 'Today'
   return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 export default function PortalMessagesPage({ params }: { params: Promise<{ subdomain: string }> }) {
-  const { subdomain: _subdomain } = use(params)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const { subdomain } = use(params)
+  const bottomRef     = useRef<HTMLDivElement>(null)
 
   const [messages, setMessages] = useState<CrmMessage[]>([])
   const [loading,  setLoading]  = useState(true)
   const [token,    setToken]    = useState('')
-  const [userId,   setUserId]   = useState('')
   const [body,     setBody]     = useState('')
   const [sending,  setSending]  = useState(false)
 
   useEffect(() => {
     void (async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      setToken(session.access_token)
-      setUserId(session.user.id)
-      const data = await apiFetch<{ messages: CrmMessage[] }>('/api/v1/portal/messages', session.access_token)
+      const portalToken = localStorage.getItem(`portal_token_${subdomain}`)
+      if (!portalToken) { setLoading(false); return }
+      setToken(portalToken)
+      const data = await apiFetch<{ messages: CrmMessage[] }>('/api/v1/portal/messages', portalToken)
       setMessages(data.messages ?? [])
       setLoading(false)
     })()
-  }, [])
+  }, [subdomain])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -94,7 +91,8 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
               </div>
               <div className="space-y-3">
                 {dayMsgs.map((msg) => {
-                  const isMe = msg.sender_type === 'client' || msg.sender_id === userId
+                  // Portal clients always have sender_type === 'client'
+                  const isMe = msg.sender_type === 'client'
                   return (
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div

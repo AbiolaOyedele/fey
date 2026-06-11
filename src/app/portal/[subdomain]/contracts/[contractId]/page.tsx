@@ -3,7 +3,6 @@
 import { use, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, FileSignature } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import type { CrmContract, ContractContent } from '@/types/crm'
 
 export default function PortalContractDetailPage({
@@ -11,7 +10,7 @@ export default function PortalContractDetailPage({
 }: {
   params: Promise<{ subdomain: string; contractId: string }>
 }) {
-  const { subdomain: _subdomain, contractId } = use(params)
+  const { subdomain, contractId } = use(params)
   const router = useRouter()
 
   const [contract,  setContract]  = useState<CrmContract | null>(null)
@@ -24,11 +23,11 @@ export default function PortalContractDetailPage({
 
   useEffect(() => {
     void (async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      setToken(session.access_token)
+      const portalToken = localStorage.getItem(`portal_token_${subdomain}`)
+      if (!portalToken) { setLoading(false); return }
+      setToken(portalToken)
       const res = await fetch('/api/v1/portal/contracts', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${portalToken}` },
       })
       if (res.ok) {
         const d = await res.json() as { contracts: CrmContract[] }
@@ -36,7 +35,7 @@ export default function PortalContractDetailPage({
       }
       setLoading(false)
     })()
-  }, [contractId])
+  }, [subdomain, contractId])
 
   const sign = useCallback(async () => {
     if (!token || !contract || contract.status === 'signed') return

@@ -154,22 +154,49 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             }
           }
           merged.exchange_rate = Number(merged.exchange_rate) || 1
+
+          // Normalise any boolean DB values to strings (TEXT columns should always
+          // be strings, but guard against type drift in the schema)
+          if (typeof merged.fey_onboarding_complete === 'boolean') {
+            merged.fey_onboarding_complete = merged.fey_onboarding_complete ? 'true' : 'false'
+          }
+          if (typeof merged.onboarding_complete === 'boolean') {
+            merged.onboarding_complete = merged.onboarding_complete ? 'true' : 'false'
+          }
+
+          // localStorage fallback for onboarding flags — survives DB read failures
           if (merged.onboarding_complete !== 'true') {
             const localFlag = localStorage.getItem(`wb:onboarding_complete:${userId}`)
             if (localFlag === 'true') merged.onboarding_complete = 'true'
           }
+          if (merged.fey_onboarding_complete !== 'true') {
+            const localFlag = localStorage.getItem(`fey:onboarding_complete:${userId}`)
+            if (localFlag === 'true') merged.fey_onboarding_complete = 'true'
+          }
+
           setSettings(merged)
         } else {
           // No fey_settings row → brand new Fey user
           setHasFeySettings(false)
-          const localFlag = localStorage.getItem(`wb:onboarding_complete:${userId}`)
-          setSettings({ ...DEFAULTS, onboarding_complete: localFlag === 'true' ? 'true' : 'false' })
+          const wbFlag  = localStorage.getItem(`wb:onboarding_complete:${userId}`)
+          const feyFlag = localStorage.getItem(`fey:onboarding_complete:${userId}`)
+          setSettings({
+            ...DEFAULTS,
+            onboarding_complete:     wbFlag  === 'true' ? 'true' : 'false',
+            fey_onboarding_complete: feyFlag === 'true' ? 'true' : 'false',
+          })
         }
       } catch {
-        // On error, assume the row exists so we don't wrongly redirect to onboarding
+        // On error fall back to localStorage so a transient DB hiccup never
+        // locks the user in the setup loop.
         setHasFeySettings(true)
-        const localFlag = localStorage.getItem(`wb:onboarding_complete:${userId}`)
-        setSettings({ ...DEFAULTS, onboarding_complete: localFlag === 'true' ? 'true' : 'false' })
+        const wbFlag  = localStorage.getItem(`wb:onboarding_complete:${userId}`)
+        const feyFlag = localStorage.getItem(`fey:onboarding_complete:${userId}`)
+        setSettings({
+          ...DEFAULTS,
+          onboarding_complete:     wbFlag  === 'true' ? 'true' : 'false',
+          fey_onboarding_complete: feyFlag === 'true' ? 'true' : 'false',
+        })
       }
 
       try {
@@ -243,6 +270,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettings((prev) => ({ ...prev, [key]: value }))
     if (key === 'onboarding_complete' && userId) {
       try { localStorage.setItem(`wb:onboarding_complete:${userId}`, String(value)) } catch { /* storage unavailable */ }
+    }
+    if (key === 'fey_onboarding_complete' && userId) {
+      try { localStorage.setItem(`fey:onboarding_complete:${userId}`, String(value)) } catch { /* storage unavailable */ }
     }
     if (!userId) return
     const { error } = await supabase.from('fey_settings').upsert({ user_id: userId, [key]: String(value) }, { onConflict: 'user_id' })

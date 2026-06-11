@@ -3,7 +3,6 @@
 import { use, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { MessageSquare, FileSignature, ClipboardList, ArrowRight } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 
 interface OverviewCard {
   label: string
@@ -42,9 +41,8 @@ export default function PortalHome({ params }: { params: Promise<{ subdomain: st
 
   useEffect(() => {
     void (async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { setLoading(false); return }
-      const token = session.access_token
+      const token = localStorage.getItem(`portal_token_${subdomain}`)
+      if (!token) { setLoading(false); return }
 
       const [msgsRes, contractsRes, formsRes, sessionRes] = await Promise.all([
         fetch('/api/v1/portal/messages',  { headers: { Authorization: `Bearer ${token}` } }),

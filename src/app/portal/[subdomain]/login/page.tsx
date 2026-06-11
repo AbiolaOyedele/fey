@@ -1,8 +1,8 @@
 'use client'
 
-import { use, useState, useCallback, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { Suspense, use, useState, useCallback, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Loader2, CheckCircle2 } from 'lucide-react'
 import { portalTokenKey } from '../layout'
 
 interface WorkspaceBranding {
@@ -11,9 +11,11 @@ interface WorkspaceBranding {
   accent_color:  string
 }
 
-export default function PortalLoginPage({ params }: { params: Promise<{ subdomain: string }> }) {
+function PortalLoginInner({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
-  const router = useRouter()
+  const router        = useRouter()
+  const searchParams  = useSearchParams()
+  const justJoined    = searchParams.get('joined') === '1'
 
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
@@ -25,16 +27,10 @@ export default function PortalLoginPage({ params }: { params: Promise<{ subdomai
   useEffect(() => {
     void (async () => {
       try {
-        const res = await fetch(`/api/v1/portal/auth/session`, {
-          headers: { Authorization: 'Bearer invalid' }, // will 401, but we only need the branding
-        })
-        if (!res.ok) {
-          // Fetch branding via the workspace check endpoint instead
-          const brandRes = await fetch(`/api/v1/portal/branding?slug=${encodeURIComponent(subdomain)}`)
-          if (brandRes.ok) {
-            const data = await brandRes.json() as { branding?: WorkspaceBranding }
-            if (data.branding) setBranding(data.branding)
-          }
+        const res = await fetch(`/api/v1/portal/branding?slug=${encodeURIComponent(subdomain)}`)
+        if (res.ok) {
+          const data = await res.json() as WorkspaceBranding
+          setBranding(data)
         }
       } catch {
         // branding is purely cosmetic — non-fatal
@@ -99,6 +95,14 @@ export default function PortalLoginPage({ params }: { params: Promise<{ subdomai
           <p className="text-sm text-gray-500 mt-1">Sign in to your client portal</p>
         </div>
 
+        {/* Success banner after joining */}
+        {justJoined && (
+          <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 mb-4">
+            <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
+            <p className="text-sm text-emerald-700">Account created! Sign in below to access your portal.</p>
+          </div>
+        )}
+
         <form onSubmit={(e) => void handleLogin(e)} className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4 shadow-sm">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -143,12 +147,24 @@ export default function PortalLoginPage({ params }: { params: Promise<{ subdomai
 
         <p className="text-center text-sm text-gray-500 mt-4">
           Don&apos;t have access?{' '}
-          <a href={`/portal/${subdomain}/signup`} className="font-medium text-gray-800 hover:underline">
+          <a href={`/portal/${subdomain}/join`} className="font-medium text-gray-800 hover:underline">
             Request access
           </a>
         </p>
 
       </div>
     </div>
+  )
+}
+
+export default function PortalLoginPage({ params }: { params: Promise<{ subdomain: string }> }) {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 size={20} className="animate-spin text-gray-400" />
+      </div>
+    }>
+      <PortalLoginInner params={params} />
+    </Suspense>
   )
 }

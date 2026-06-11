@@ -3,7 +3,6 @@
 import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileSignature } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import type { CrmContract, ContractStatus } from '@/types/crm'
 
 const STATUS_BADGE: Record<ContractStatus, string> = {
@@ -21,10 +20,10 @@ export default function PortalContractsPage({ params }: { params: Promise<{ subd
 
   useEffect(() => {
     void (async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      const token = localStorage.getItem(`portal_token_${subdomain}`)
+      if (!token) { setLoading(false); return }
       const res = await fetch('/api/v1/portal/contracts', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
         const d = await res.json() as { contracts: CrmContract[] }
@@ -32,7 +31,7 @@ export default function PortalContractsPage({ params }: { params: Promise<{ subd
       }
       setLoading(false)
     })()
-  }, [])
+  }, [subdomain])
 
   return (
     <div className="p-6">

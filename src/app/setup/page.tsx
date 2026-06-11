@@ -161,6 +161,9 @@ export default function SetupPage() {
 
       if (dbErr) throw dbErr
 
+      // Mirror to localStorage so reload survives DB hiccups
+      try { localStorage.setItem(`fey:onboarding_complete:${session.user.id}`, 'true') } catch { /* unavailable */ }
+
       // Update in-memory settings so AppShell stops blocking
       await saveSetting('fey_onboarding_complete', 'true')
 

@@ -28,7 +28,10 @@ export async function GET(req: NextRequest) {
 
     const ownerSettings = await portalRepo.getOwnerSettings(db, portalUser.owner_id)
     const branding: PortalOwnerBranding = {
-      business_name: (ownerSettings?.company_name as string | null) ?? 'Workboard',
+      business_name: (ownerSettings?.company_name as string | null)
+                  ?? (ownerSettings?.workspace_name as string | null)
+                  ?? 'Workspace',
+      owner_name:    (ownerSettings?.username as string | null) ?? '',
       logo_url:      (ownerSettings?.logo as string | null) ?? null,
       accent_color:  (ownerSettings?.accent_color as string | null) ?? '#ED64A6',
       font:          (ownerSettings?.font_family as string | null) ?? 'NoirPro',

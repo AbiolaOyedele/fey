@@ -2,7 +2,6 @@
 
 import { use, useState, useEffect } from 'react'
 import { Folder, Download, FileText, Image, Archive } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import type { CrmFile } from '@/types/crm'
 
 function fileIcon(type: string | null) {
@@ -20,16 +19,16 @@ function fmtSize(bytes: number | null) {
 }
 
 export default function PortalFilesPage({ params }: { params: Promise<{ subdomain: string }> }) {
-  const { subdomain: _subdomain } = use(params)
+  const { subdomain } = use(params)
   const [files,   setFiles]   = useState<CrmFile[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     void (async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      const token = localStorage.getItem(`portal_token_${subdomain}`)
+      if (!token) { setLoading(false); return }
       const res = await fetch('/api/v1/portal/files', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
         const d = await res.json() as { files: CrmFile[] }
@@ -37,7 +36,7 @@ export default function PortalFilesPage({ params }: { params: Promise<{ subdomai
       }
       setLoading(false)
     })()
-  }, [])
+  }, [subdomain])
 
   return (
     <div className="p-6">

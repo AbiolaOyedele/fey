@@ -3,7 +3,6 @@
 import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ClipboardList } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import type { CrmForm, FormStatus } from '@/types/crm'
 
 const STATUS_BADGE: Record<FormStatus, string> = {
@@ -20,10 +19,10 @@ export default function PortalFormsPage({ params }: { params: Promise<{ subdomai
 
   useEffect(() => {
     void (async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      const token = localStorage.getItem(`portal_token_${subdomain}`)
+      if (!token) { setLoading(false); return }
       const res = await fetch('/api/v1/portal/forms', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {
         const d = await res.json() as { forms: CrmForm[] }
@@ -31,7 +30,7 @@ export default function PortalFormsPage({ params }: { params: Promise<{ subdomai
       }
       setLoading(false)
     })()
-  }, [])
+  }, [subdomain])
 
   return (
     <div className="p-6">

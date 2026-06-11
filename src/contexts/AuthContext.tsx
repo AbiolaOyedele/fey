@@ -25,6 +25,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true
     let resolved = false
 
+    // If the URL contains a PKCE code, INITIAL_SESSION fires with null before the
+    // exchange completes. We must not resolve loading as "unauthenticated" in that
+    // window — wait for SIGNED_IN or SIGNED_OUT instead.
+    const hasPkceCode = typeof window !== 'undefined' && window.location.search.includes('code=')
+
     const finishLoading = (nextSession: Session | null) => {
       if (!mounted || resolved) return
       resolved = true
@@ -37,9 +42,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return
       setSession(nextSession)
       setUser(nextSession?.user ?? null)
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        finishLoading(nextSession)
+      } else if (event === 'INITIAL_SESSION' && !hasPkceCode) {
+        // Only resolve immediately on INITIAL_SESSION when there is no pending
+        // PKCE exchange — otherwise wait for the SIGNED_IN event above.
         finishLoading(nextSession)
       }
+
       if (event === 'SIGNED_IN' && nextSession?.user) {
         const pending = JSON.parse(localStorage.getItem('fey_pending_shares') || '[]') as Record<string, unknown>[]
         if (pending.length > 0) {
@@ -54,11 +65,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
+    // Fallback: if neither INITIAL_SESSION nor SIGNED_IN/OUT fires within 3 s
+    // (e.g. network hang), resolve anyway so the UI doesn't spin forever.
     const fallback = setTimeout(async () => {
       if (resolved) return
       const { data: { session: fallbackSession } } = await supabase.auth.getSession()
       finishLoading(fallbackSession)
-    }, 500)
+    }, 3000)
 
     return () => {
       mounted = false
@@ -78,7 +91,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signInWithGoogle = useCallback(async () => {
-    const redirectTo = `${window.location.origin}/`
+    // PKCE flow requires an explicit callback route to exchange the code for a session.
+    // redirectTo must point to /auth/callback — not / — so the exchange happens server-side.
+    const redirectTo = `${window.location.origin}/auth/callback`
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },

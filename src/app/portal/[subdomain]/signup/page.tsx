@@ -3,41 +3,69 @@
 export const dynamic = 'force-dynamic'
 
 import { Suspense, use, useState, useCallback, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { CheckCircle2, Loader2 } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
+import type { PortalOwnerBranding } from '@/types/crm'
 
-function PortalSignupPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
+// ─── Owner branding loader ────────────────────────────────────────────────────
+
+async function fetchBranding(subdomain: string): Promise<PortalOwnerBranding | null> {
+  try {
+    const res = await fetch(`/api/v1/portal/branding?slug=${encodeURIComponent(subdomain)}`)
+    if (!res.ok) return null
+    return res.json() as Promise<PortalOwnerBranding>
+  } catch {
+    return null
+  }
+}
+
+// ─── Inner page ───────────────────────────────────────────────────────────────
+
+function JoinPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
   const searchParams  = useSearchParams()
+  const router        = useRouter()
 
-  const [form, setForm] = useState({ name: '', email: '', password: '', contactId: '' })
-  const [error,   setError]   = useState('')
-  const [success, setSuccess] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [branding,  setBranding]  = useState<PortalOwnerBranding | null>(null)
+  const [form,      setForm]      = useState({ name: '', email: '', password: '' })
+  const [code,      setCode]      = useState('')
+  const [error,     setError]     = useState('')
+  const [loading,   setLoading]   = useState(false)
+  const [loadingBranding, setLoadingBranding] = useState(true)
 
-  // Pre-fill contact_id from ?code= invite link query param
+  // Pull code from URL — it's auto-filled and hidden when present
+  const codeFromUrl = searchParams.get('code') ?? ''
+
   useEffect(() => {
-    const code = searchParams.get('code')
-    if (code) setForm((prev) => ({ ...prev, contactId: code }))
-  }, [searchParams])
+    if (codeFromUrl) setCode(codeFromUrl)
+  }, [codeFromUrl])
+
+  useEffect(() => {
+    void fetchBranding(subdomain).then((b) => {
+      setBranding(b)
+      setLoadingBranding(false)
+    })
+  }, [subdomain])
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }))
 
-  const handleSignup = useCallback(async (e: React.FormEvent) => {
+  const handleJoin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!code.trim()) { setError('Please enter your access code.'); return }
     setError('')
     setLoading(true)
+
     try {
       const res = await fetch('/api/v1/portal/auth/signup', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           workspace_slug: subdomain,
           name:           form.name,
           email:          form.email,
           password:       form.password,
-          contact_id:     form.contactId,
+          invite_code:    code.trim().toUpperCase(),
         }),
       })
       const data = await res.json() as { error?: { message: string } }
@@ -46,134 +74,209 @@ function PortalSignupPageInner({ params }: { params: Promise<{ subdomain: string
         setLoading(false)
         return
       }
-      setSuccess(true)
+      // Account created — redirect to login with a success flag
+      router.replace(`/portal/${subdomain}/login?joined=1`)
     } catch {
       setError('Something went wrong. Please try again.')
-    } finally {
       setLoading(false)
     }
-  }, [subdomain, form])
+  }, [subdomain, form, code, router])
 
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-sm text-center">
-          <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 size={32} className="text-emerald-500" />
-          </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">You&apos;re all set</h2>
-          <p className="text-sm text-gray-500 mb-6">
-            Your account has been created. Sign in to access your portal.
-          </p>
-          <a
-            href={`/portal/${subdomain}/login`}
-            className="inline-block px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-gray-900 hover:opacity-90"
-          >
-            Sign in
-          </a>
-        </div>
-      </div>
-    )
-  }
+  const accent       = branding?.accent_color ?? '#ED64A6'
+  const ownerInitial = (branding?.owner_name ?? branding?.business_name ?? 'W').charAt(0).toUpperCase()
+  const displayName  = branding?.owner_name || branding?.business_name || subdomain
+  const isComplete   = form.name && form.email && form.password.length >= 8 && code
 
-  const isComplete = form.name && form.email && form.password && form.contactId
+  const inputCls = `
+    w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm
+    text-gray-900 outline-none focus:border-gray-400 transition-all
+    placeholder:text-gray-400
+  `.trim()
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Access your client portal with {subdomain}
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#F5F5F7',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '40px 24px',
+      boxSizing: 'border-box',
+    }}>
+      {loadingBranding ? (
+        <Loader2 size={20} className="animate-spin text-gray-400" />
+      ) : (
+        <div style={{ width: '100%', maxWidth: '420px' }}>
+
+          {/* Owner avatar */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '28px', gap: '12px' }}>
+            {branding?.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={branding.logo_url}
+                alt={branding.business_name}
+                style={{ width: '56px', height: '56px', borderRadius: '16px', objectFit: 'cover' }}
+              />
+            ) : (
+              <div style={{
+                width: '56px', height: '56px', borderRadius: '16px',
+                backgroundColor: accent, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontSize: '22px', fontWeight: 600,
+              }}>
+                {ownerInitial}
+              </div>
+            )}
+            <div style={{ textAlign: 'center' }}>
+              <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#111', margin: 0, lineHeight: 1.2 }}>
+                Join {displayName}&apos;s workspace
+              </h1>
+              <p style={{ fontSize: '14px', color: '#6B7280', margin: '6px 0 0' }}>
+                Create your account to access the client portal.
+              </p>
+            </div>
+          </div>
+
+          {/* Form card */}
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: '20px',
+            padding: '28px',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+            boxSizing: 'border-box',
+            width: '100%',
+          }}>
+            <form onSubmit={(e) => void handleJoin(e)} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                  Your name
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={set('name')}
+                  required
+                  autoFocus
+                  autoComplete="name"
+                  placeholder="Jane Smith"
+                  className={inputCls}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                  Email address
+                </label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={set('email')}
+                  required
+                  autoComplete="email"
+                  placeholder="jane@company.com"
+                  className={inputCls}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                  Choose a password
+                </label>
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={set('password')}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  placeholder="Min. 8 characters"
+                  className={inputCls}
+                />
+              </div>
+
+              {/* Access code — hidden if pre-filled from invite link */}
+              {codeFromUrl ? (
+                <input type="hidden" value={code} />
+              ) : (
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                    Access code
+                  </label>
+                  <p style={{ fontSize: '12px', color: '#9CA3AF', marginBottom: '6px' }}>
+                    Found in the invite link your team sent you.
+                  </p>
+                  <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
+                    required
+                    placeholder="e.g. A3B7X9M2"
+                    className={inputCls}
+                    style={{ fontFamily: 'monospace', letterSpacing: '0.1em' }}
+                  />
+                </div>
+              )}
+
+              {error && (
+                <p style={{ fontSize: '13px', color: '#EF4444', backgroundColor: '#FEF2F2', padding: '10px 14px', borderRadius: '12px', margin: 0 }}>
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || !isComplete}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  borderRadius: '50px',
+                  backgroundColor: accent,
+                  color: '#fff',
+                  fontSize: '15px',
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: loading || !isComplete ? 'not-allowed' : 'pointer',
+                  opacity: loading || !isComplete ? 0.45 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'opacity 0.2s',
+                  minHeight: '44px',
+                  marginTop: '4px',
+                }}
+              >
+                {loading && <Loader2 size={16} className="animate-spin" />}
+                {loading ? 'Joining…' : 'Join workspace'}
+              </button>
+            </form>
+          </div>
+
+          <p style={{ textAlign: 'center', fontSize: '13px', color: '#9CA3AF', marginTop: '20px' }}>
+            Already have access?{' '}
+            <a
+              href={`/portal/${subdomain}/login`}
+              style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}
+            >
+              Sign in
+            </a>
           </p>
         </div>
-
-        <form onSubmit={(e) => void handleSignup(e)} className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4 shadow-sm">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={set('name')}
-              required
-              autoComplete="name"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-gray-400 focus:bg-white transition-colors"
-              placeholder="Jane Smith"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={set('email')}
-              required
-              autoComplete="email"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-gray-400 focus:bg-white transition-colors"
-              placeholder="jane@company.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              type="password"
-              value={form.password}
-              onChange={set('password')}
-              required
-              minLength={8}
-              autoComplete="new-password"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-gray-400 focus:bg-white transition-colors"
-              placeholder="Min. 8 characters"
-            />
-          </div>
-
-          {/* Only show access code field if not pre-filled from invite link */}
-          {!searchParams.get('code') && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Access code</label>
-              <p className="text-[12px] text-gray-400 mb-1">Provided in your invite link from the team.</p>
-              <input
-                type="text"
-                value={form.contactId}
-                onChange={set('contactId')}
-                required
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-gray-400 focus:bg-white transition-colors font-mono"
-                placeholder="e.g. a1b2c3d4-…"
-              />
-            </div>
-          )}
-
-          {error && (
-            <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-xl">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading || !isComplete}
-            className="w-full py-2.5 rounded-full text-sm font-semibold text-white bg-gray-900 flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-40 transition-opacity"
-          >
-            {loading && <Loader2 size={15} className="animate-spin" />}
-            {loading ? 'Creating account…' : 'Create account'}
-          </button>
-        </form>
-
-        <p className="text-center text-sm text-gray-500 mt-4">
-          Already have access?{' '}
-          <a href={`/portal/${subdomain}/login`} className="font-medium text-gray-800 hover:underline">
-            Sign in
-          </a>
-        </p>
-      </div>
+      )}
     </div>
   )
 }
 
-export default function PortalSignupPage({ params }: { params: Promise<{ subdomain: string }> }) {
+export default function JoinPage({ params }: { params: Promise<{ subdomain: string }> }) {
   return (
-    <Suspense>
-      <PortalSignupPageInner params={params} />
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', backgroundColor: '#F5F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 size={20} className="animate-spin text-gray-400" />
+      </div>
+    }>
+      <JoinPageInner params={params} />
     </Suspense>
   )
 }

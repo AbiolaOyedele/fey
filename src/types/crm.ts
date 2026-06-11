@@ -15,6 +15,8 @@ export interface CrmContact {
   status: ContactStatus
   portal_enabled: boolean
   portal_welcome_message: string | null
+  /** Short 8-char alphanumeric invite code. Used in join links. */
+  invite_code: string | null
   created_at: string
   updated_at: string
 }
@@ -163,6 +165,8 @@ export interface CrmNotification {
 
 export interface PortalOwnerBranding {
   business_name: string
+  /** Owner's personal name (fey_settings.username) — shown on the join page */
+  owner_name: string
   logo_url: string | null
   accent_color: string
   font: string

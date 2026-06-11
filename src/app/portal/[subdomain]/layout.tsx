@@ -10,7 +10,7 @@ interface PortalSession {
   branding: PortalOwnerBranding
 }
 
-const PUBLIC_PATHS = ['/login', '/signup']
+const PUBLIC_PATHS = ['/login', '/signup', '/join']
 
 /** localStorage key for the portal JWT — scoped to each workspace slug */
 export function portalTokenKey(workspaceSlug: string) {

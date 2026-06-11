@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
 import Sidebar from './Sidebar'
 import ToastContainer from '@/components/ui/Toast'
@@ -12,7 +13,8 @@ const PUBLIC_ROUTES = ['/login', '/register', '/onboarding']
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''
   const router   = useRouter()
-  const { user, loading } = useAuth()
+  const { user, loading: authLoading }             = useAuth()
+  const { settings, settingsLoading } = useSettings()
 
   const isPublic = PUBLIC_ROUTES.includes(pathname)
     || pathname.startsWith('/share/')
@@ -20,16 +22,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     || pathname.startsWith('/portal/')
     || pathname.startsWith('/pay/')
 
-  // Redirect unauthenticated users to /login for protected routes.
-  // Skip in demo mode — demo has no real auth.
+  const loading = authLoading || settingsLoading
+
   useEffect(() => {
     if (IS_DEMO || isPublic || loading) return
-    if (!user) router.replace('/login')
-  }, [user, loading, isPublic, router])
+
+    // Not logged in → login page
+    if (!user) {
+      router.replace('/login')
+      return
+    }
+
+    // Logged in but hasn't chosen a workspace slug yet → onboarding
+    if (settings.onboarding_complete !== 'true') {
+      router.replace('/onboarding')
+    }
+  }, [user, loading, isPublic, settings.onboarding_complete, router])
 
   if (isPublic) return <>{children}</>
 
-  // Show nothing while auth resolves to avoid flash of protected content
   if (!IS_DEMO && loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-appbg">
@@ -38,8 +49,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Don't render protected shell if not authenticated (redirect is in-flight)
   if (!IS_DEMO && !user) return null
+
+  // Don't render the dashboard shell while onboarding redirect is in-flight
+  if (!IS_DEMO && settings.onboarding_complete !== 'true') return null
 
   return (
     <div className="flex flex-col min-h-screen bg-appbg overflow-x-hidden">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requireAuth, handleError, errorResponse } from '@/lib/api-helpers'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Generates a random 8-character uppercase alphanumeric invite code.
@@ -9,17 +10,33 @@ import { requireAuth, handleError, errorResponse } from '@/lib/api-helpers'
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
   let code = ''
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
+  for (let i = 0; i < 8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length))
   return code
+}
+
+/**
+ * Fetches the owner's workspace_slug from fey_settings and builds the full
+ * invite join URL.  Shared by GET (lazy-generate) and POST (regenerate).
+ */
+async function buildInviteUrl(db: SupabaseClient, userId: string, code: string): Promise<string> {
+  const { data } = await db
+    .from('fey_settings')
+    .select('workspace_slug')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  const slug       = (data as { workspace_slug: string | null } | null)?.workspace_slug ?? ''
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
+  return slug
+    ? `https://${slug}.${rootDomain}/join?code=${code}`
+    : `/portal/${slug}/join?code=${code}`
 }
 
 /**
  * GET /api/v1/crm/contacts/[contactId]/invite
  *
- * Returns the contact's current invite code, generating one if it doesn't exist.
- * Response: { invite_code: string, invite_url: string }
+ * Returns the contact's current invite code, generating one if it doesn't
+ * exist yet.  Response: { invite_code: string, invite_url: string }
  */
 export async function GET(
   req: NextRequest,
@@ -48,10 +65,9 @@ export async function GET(
 
     const row = contact as { id: string; owner_id: string; portal_enabled: boolean; invite_code: string | null }
 
-    // Generate a code if one doesn't exist yet
+    // Lazily generate a code — retry up to 5× on (extremely unlikely) collision
     let inviteCode = row.invite_code
     if (!inviteCode) {
-      // Retry up to 5 times on collision (extremely unlikely)
       for (let attempt = 0; attempt < 5; attempt++) {
         const candidate = generateInviteCode()
         const { error: updateErr } = await db
@@ -62,23 +78,9 @@ export async function GET(
       }
     }
 
-    if (!inviteCode) {
-      return errorResponse('INVITE_CODE_FAILED', 'Could not generate invite code.', 500)
-    }
+    if (!inviteCode) return errorResponse('INVITE_CODE_FAILED', 'Could not generate invite code.', 500)
 
-    // Build the full join URL — workspace_slug comes from fey_settings
-    const { data: settings } = await db
-      .from('fey_settings')
-      .select('workspace_slug')
-      .eq('user_id', userId)
-      .maybeSingle()
-
-    const slug      = (settings as { workspace_slug: string | null } | null)?.workspace_slug ?? ''
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
-    const inviteUrl  = slug
-      ? `https://${slug}.${rootDomain}/join?code=${inviteCode}`
-      : `/portal/${slug}/join?code=${inviteCode}`
-
+    const inviteUrl = await buildInviteUrl(db, userId!, inviteCode)
     return NextResponse.json({ invite_code: inviteCode, invite_url: inviteUrl })
   } catch (err) {
     return handleError(err, 'INVITE_CODE_FETCH_FAILED')
@@ -88,7 +90,7 @@ export async function GET(
 /**
  * POST /api/v1/crm/contacts/[contactId]/invite
  *
- * Regenerates the invite code (invalidates the old one).
+ * Regenerates the invite code, invalidating the previous one.
  * Response: { invite_code: string, invite_url: string }
  */
 export async function POST(
@@ -116,7 +118,7 @@ export async function POST(
       return errorResponse('CRM_ACCESS_DENIED', 'Access denied.', 403)
     }
 
-    // Generate new code
+    // Force-generate a fresh code
     let inviteCode: string | null = null
     for (let attempt = 0; attempt < 5; attempt++) {
       const candidate = generateInviteCode()
@@ -127,22 +129,9 @@ export async function POST(
       if (!updateErr) { inviteCode = candidate; break }
     }
 
-    if (!inviteCode) {
-      return errorResponse('INVITE_CODE_FAILED', 'Could not generate invite code.', 500)
-    }
+    if (!inviteCode) return errorResponse('INVITE_CODE_FAILED', 'Could not generate invite code.', 500)
 
-    const { data: settings } = await db
-      .from('fey_settings')
-      .select('workspace_slug')
-      .eq('user_id', userId)
-      .maybeSingle()
-
-    const slug       = (settings as { workspace_slug: string | null } | null)?.workspace_slug ?? ''
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
-    const inviteUrl  = slug
-      ? `https://${slug}.${rootDomain}/join?code=${inviteCode}`
-      : `/portal/${slug}/join?code=${inviteCode}`
-
+    const inviteUrl = await buildInviteUrl(db, userId!, inviteCode)
     return NextResponse.json({ invite_code: inviteCode, invite_url: inviteUrl })
   } catch (err) {
     return handleError(err, 'INVITE_CODE_REGEN_FAILED')

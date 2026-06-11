@@ -3,7 +3,11 @@
 import { use, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import PortalShell from '@/components/portal/PortalShell'
+import { portalTokenKey } from '@/hooks/usePortalAuth'
 import type { PortalOwnerBranding } from '@/types/crm'
+
+// Re-export so existing imports from this layout file keep working
+export { portalTokenKey }
 
 interface PortalSession {
   clientName: string
@@ -11,11 +15,6 @@ interface PortalSession {
 }
 
 const PUBLIC_PATHS = ['/login', '/signup', '/join']
-
-/** localStorage key for the portal JWT — scoped to each workspace slug */
-export function portalTokenKey(workspaceSlug: string) {
-  return `portal_token_${workspaceSlug}`
-}
 
 export default function PortalLayout({
   children,

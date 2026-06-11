@@ -1,4 +1,5 @@
 'use client'
+import { portalTokenKey } from '@/hooks/usePortalAuth'
 
 import { use, useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -41,7 +42,7 @@ export default function PortalHome({ params }: { params: Promise<{ subdomain: st
 
   useEffect(() => {
     void (async () => {
-      const token = localStorage.getItem(`portal_token_${subdomain}`)
+      const token = localStorage.getItem(portalTokenKey(subdomain))
       if (!token) { setLoading(false); return }
 
       const [msgsRes, contractsRes, formsRes, sessionRes] = await Promise.all([

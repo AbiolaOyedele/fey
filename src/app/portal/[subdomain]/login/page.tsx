@@ -1,15 +1,10 @@
 'use client'
 
-import { Suspense, use, useState, useCallback, useEffect } from 'react'
+import { Suspense, use, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, CheckCircle2 } from 'lucide-react'
 import { portalTokenKey } from '../layout'
-
-interface WorkspaceBranding {
-  business_name: string
-  logo_url:      string | null
-  accent_color:  string
-}
+import { usePortalBranding } from '@/hooks/usePortalBranding'
 
 function PortalLoginInner({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
@@ -20,23 +15,8 @@ function PortalLoginInner({ params }: { params: Promise<{ subdomain: string }> }
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [error,    setError]    = useState('')
-  const [loading,  setLoading]  = useState(false)
-  const [branding, setBranding] = useState<WorkspaceBranding | null>(null)
-
-  // Fetch workspace branding so we can show the owner's logo + name on the login page
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch(`/api/v1/portal/branding?slug=${encodeURIComponent(subdomain)}`)
-        if (res.ok) {
-          const data = await res.json() as WorkspaceBranding
-          setBranding(data)
-        }
-      } catch {
-        // branding is purely cosmetic — non-fatal
-      }
-    })()
-  }, [subdomain])
+  const [loading, setLoading] = useState(false)
+  const branding = usePortalBranding(subdomain)
 
   const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()

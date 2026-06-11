@@ -75,6 +75,8 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
   const portalBase = workspaceSlug ? `https://${workspaceSlug}.${rootDomain}` : null
 
+  const displayInviteUrl = inviteUrl ?? (portalBase && inviteCode ? `${portalBase}/join?code=${inviteCode}` : null)
+
   // ── Clipboard helpers ────────────────────────────────────────────────────────
 
   const copyCode = async () => {
@@ -85,9 +87,8 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
   }
 
   const copyLink = async () => {
-    const url = inviteUrl ?? (portalBase && inviteCode ? `${portalBase}/join?code=${inviteCode}` : null)
-    if (!url) return
-    await navigator.clipboard.writeText(url)
+    if (!displayInviteUrl) return
+    await navigator.clipboard.writeText(displayInviteUrl)
     setCopiedLink(true)
     setTimeout(() => setCopiedLink(false), 2000)
   }
@@ -109,8 +110,6 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
     await updateContact(id, { portal_welcome_message: welcomeMsg || null })
     setSaving(false)
   }
-
-  const displayInviteUrl = inviteUrl ?? (portalBase && inviteCode ? `${portalBase}/join?code=${inviteCode}` : null)
 
   return (
     <div className="p-6 max-w-xl space-y-4">

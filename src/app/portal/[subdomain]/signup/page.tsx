@@ -5,19 +5,7 @@ export const dynamic = 'force-dynamic'
 import { Suspense, use, useState, useCallback, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
-import type { PortalOwnerBranding } from '@/types/crm'
-
-// ─── Owner branding loader ────────────────────────────────────────────────────
-
-async function fetchBranding(subdomain: string): Promise<PortalOwnerBranding | null> {
-  try {
-    const res = await fetch(`/api/v1/portal/branding?slug=${encodeURIComponent(subdomain)}`)
-    if (!res.ok) return null
-    return res.json() as Promise<PortalOwnerBranding>
-  } catch {
-    return null
-  }
-}
+import { usePortalBranding } from '@/hooks/usePortalBranding'
 
 // ─── Inner page ───────────────────────────────────────────────────────────────
 
@@ -26,12 +14,11 @@ function JoinPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
   const searchParams  = useSearchParams()
   const router        = useRouter()
 
-  const [branding,  setBranding]  = useState<PortalOwnerBranding | null>(null)
-  const [form,      setForm]      = useState({ name: '', email: '', password: '' })
-  const [code,      setCode]      = useState('')
-  const [error,     setError]     = useState('')
-  const [loading,   setLoading]   = useState(false)
-  const [loadingBranding, setLoadingBranding] = useState(true)
+  const branding = usePortalBranding(subdomain)
+  const [form,    setForm]  = useState({ name: '', email: '', password: '' })
+  const [code,    setCode]  = useState('')
+  const [error,   setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   // Pull code from URL — it's auto-filled and hidden when present
   const codeFromUrl = searchParams.get('code') ?? ''
@@ -39,13 +26,6 @@ function JoinPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
   useEffect(() => {
     if (codeFromUrl) setCode(codeFromUrl)
   }, [codeFromUrl])
-
-  useEffect(() => {
-    void fetchBranding(subdomain).then((b) => {
-      setBranding(b)
-      setLoadingBranding(false)
-    })
-  }, [subdomain])
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }))
@@ -104,7 +84,7 @@ function JoinPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
       padding: '40px 24px',
       boxSizing: 'border-box',
     }}>
-      {loadingBranding ? (
+      {!branding ? (
         <Loader2 size={20} className="animate-spin text-gray-400" />
       ) : (
         <div style={{ width: '100%', maxWidth: '420px' }}>

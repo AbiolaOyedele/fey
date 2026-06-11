@@ -1,4 +1,5 @@
 'use client'
+import { portalTokenKey } from '@/hooks/usePortalAuth'
 
 import { use, useState, useEffect, useRef, useCallback } from 'react'
 import type { CrmMessage } from '@/types/crm'
@@ -40,7 +41,7 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
 
   useEffect(() => {
     void (async () => {
-      const portalToken = localStorage.getItem(`portal_token_${subdomain}`)
+      const portalToken = localStorage.getItem(portalTokenKey(subdomain))
       if (!portalToken) { setLoading(false); return }
       setToken(portalToken)
       const data = await apiFetch<{ messages: CrmMessage[] }>('/api/v1/portal/messages', portalToken)

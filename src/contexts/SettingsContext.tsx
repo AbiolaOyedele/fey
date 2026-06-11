@@ -116,6 +116,20 @@ const DEFAULTS: Settings = {
   fey_onboarding_complete: 'false',
 }
 
+/**
+ * Promotes localStorage-cached onboarding flags onto a settings object.
+ * Used as a write-through cache fallback when the DB row is absent or fails.
+ */
+function mergeLocalFlags(base: Settings, userId: string): Settings {
+  const wbFlag  = localStorage.getItem(`wb:onboarding_complete:${userId}`)
+  const feyFlag = localStorage.getItem(`fey:onboarding_complete:${userId}`)
+  return {
+    ...base,
+    onboarding_complete:     wbFlag  === 'true' ? 'true' : base.onboarding_complete,
+    fey_onboarding_complete: feyFlag === 'true' ? 'true' : base.fey_onboarding_complete,
+  }
+}
+
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULTS)
   const [settingsLoading, setSettingsLoading] = useState(true)
@@ -155,48 +169,22 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           }
           merged.exchange_rate = Number(merged.exchange_rate) || 1
 
-          // Normalise any boolean DB values to strings (TEXT columns should always
-          // be strings, but guard against type drift in the schema)
-          if (typeof merged.fey_onboarding_complete === 'boolean') {
+          // Guard against boolean type drift from the DB schema
+          if (typeof merged.fey_onboarding_complete === 'boolean')
             merged.fey_onboarding_complete = merged.fey_onboarding_complete ? 'true' : 'false'
-          }
-          if (typeof merged.onboarding_complete === 'boolean') {
+          if (typeof merged.onboarding_complete === 'boolean')
             merged.onboarding_complete = merged.onboarding_complete ? 'true' : 'false'
-          }
 
-          // localStorage fallback for onboarding flags — survives DB read failures
-          if (merged.onboarding_complete !== 'true') {
-            const localFlag = localStorage.getItem(`wb:onboarding_complete:${userId}`)
-            if (localFlag === 'true') merged.onboarding_complete = 'true'
-          }
-          if (merged.fey_onboarding_complete !== 'true') {
-            const localFlag = localStorage.getItem(`fey:onboarding_complete:${userId}`)
-            if (localFlag === 'true') merged.fey_onboarding_complete = 'true'
-          }
-
-          setSettings(merged)
+          setSettings(mergeLocalFlags(merged, userId))
         } else {
           // No fey_settings row → brand new Fey user
           setHasFeySettings(false)
-          const wbFlag  = localStorage.getItem(`wb:onboarding_complete:${userId}`)
-          const feyFlag = localStorage.getItem(`fey:onboarding_complete:${userId}`)
-          setSettings({
-            ...DEFAULTS,
-            onboarding_complete:     wbFlag  === 'true' ? 'true' : 'false',
-            fey_onboarding_complete: feyFlag === 'true' ? 'true' : 'false',
-          })
+          setSettings(mergeLocalFlags({ ...DEFAULTS }, userId))
         }
       } catch {
-        // On error fall back to localStorage so a transient DB hiccup never
-        // locks the user in the setup loop.
+        // Transient DB failure — localStorage cache keeps the user out of the setup loop
         setHasFeySettings(true)
-        const wbFlag  = localStorage.getItem(`wb:onboarding_complete:${userId}`)
-        const feyFlag = localStorage.getItem(`fey:onboarding_complete:${userId}`)
-        setSettings({
-          ...DEFAULTS,
-          onboarding_complete:     wbFlag  === 'true' ? 'true' : 'false',
-          fey_onboarding_complete: feyFlag === 'true' ? 'true' : 'false',
-        })
+        setSettings(mergeLocalFlags({ ...DEFAULTS }, userId))
       }
 
       try {

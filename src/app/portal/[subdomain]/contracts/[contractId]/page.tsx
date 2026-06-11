@@ -1,4 +1,5 @@
 'use client'
+import { portalTokenKey } from '@/hooks/usePortalAuth'
 
 import { use, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -23,7 +24,7 @@ export default function PortalContractDetailPage({
 
   useEffect(() => {
     void (async () => {
-      const portalToken = localStorage.getItem(`portal_token_${subdomain}`)
+      const portalToken = localStorage.getItem(portalTokenKey(subdomain))
       if (!portalToken) { setLoading(false); return }
       setToken(portalToken)
       const res = await fetch('/api/v1/portal/contracts', {

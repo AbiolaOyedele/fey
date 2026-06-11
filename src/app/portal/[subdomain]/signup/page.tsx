@@ -2,11 +2,11 @@
 
 export const dynamic = 'force-dynamic'
 
-import { use, useState, useCallback, useEffect } from 'react'
+import { Suspense, use, useState, useCallback, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { CheckCircle2 } from 'lucide-react'
 
-export default function PortalSignupPage({ params }: { params: Promise<{ subdomain: string }> }) {
+function PortalSignupPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
   const searchParams  = useSearchParams()
 
@@ -156,5 +156,13 @@ export default function PortalSignupPage({ params }: { params: Promise<{ subdoma
         </p>
       </div>
     </div>
+  )
+}
+
+export default function PortalSignupPage({ params }: { params: Promise<{ subdomain: string }> }) {
+  return (
+    <Suspense>
+      <PortalSignupPageInner params={params} />
+    </Suspense>
   )
 }

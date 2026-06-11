@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -182,7 +182,7 @@ interface WaConnection { phone_number: string; verified: boolean; connected_at: 
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function SettingsPage() {
+function SettingsPageInner() {
   const {
     settings, saveSetting, refreshExchangeRate,
     trash, restoreFromTrash, deleteForever, showToast, dismissToast,
@@ -1808,5 +1808,13 @@ export default function SettingsPage() {
       {whatsNewOpen  && <WhatsNewPopup  open={whatsNewOpen}  onClose={() => setWhatsNewOpen(false)}  />}
       {changelogOpen && <ChangelogPopup open={changelogOpen} onClose={() => setChangelogOpen(false)} />}
     </>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense>
+      <SettingsPageInner />
+    </Suspense>
   )
 }

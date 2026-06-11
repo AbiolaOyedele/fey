@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useRef, use } from 'react'
+import { Suspense, useState, useEffect, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
@@ -1314,7 +1314,7 @@ function AccessRevokedPage({ token }: AccessRevokedPageProps) {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function SharedClientPage({ params }: { params: Promise<{ token: string }> }) {
+function SharedClientPageInner({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
 
   // Read prefill code from URL search params (useSearchParams requires Suspense boundary;
@@ -1478,5 +1478,13 @@ export default function SharedClientPage({ params }: { params: Promise<{ token: 
       member={member!}
       permission={memberPermission}
     />
+  )
+}
+
+export default function SharedClientPage({ params }: { params: Promise<{ token: string }> }) {
+  return (
+    <Suspense>
+      <SharedClientPageInner params={params} />
+    </Suspense>
   )
 }

@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useRef, useCallback, use } from 'react'
+import { Suspense, useState, useEffect, useRef, useCallback, use } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft, Settings, ChevronDown, Plus, X,
@@ -177,7 +177,7 @@ function LayoutThumb({ id, accent }: LayoutThumbProps) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function EditInvoicePage({ params }: { params: Promise<{ id: string }> }) {
+function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1160,5 +1160,13 @@ export default function EditInvoicePage({ params }: { params: Promise<{ id: stri
         />
       )}
     </div>
+  )
+}
+
+export default function EditInvoicePage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense>
+      <EditInvoicePageInner params={params} />
+    </Suspense>
   )
 }

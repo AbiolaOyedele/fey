@@ -1,8 +1,6 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Loader2, ChevronDown } from 'lucide-react'
@@ -18,7 +16,7 @@ function GoogleIcon() {
   )
 }
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router        = useRouter()
   const pathname      = usePathname()
   const searchParams  = useSearchParams()
@@ -193,5 +191,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageInner />
+    </Suspense>
   )
 }

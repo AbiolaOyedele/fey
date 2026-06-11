@@ -1,14 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 import { createServiceClient } from '@/lib/supabase-server'
 import { handleError, errorResponse } from '@/lib/api-helpers'
-import * as portalService from '@/services/portal.service'
 import * as crmRepo from '@/repositories/crm.repository'
 import * as portalRepo from '@/repositories/portal.repository'
+import { z } from 'zod'
+
+const signupSchema = z.object({
+  workspace_slug: z.string().min(3).max(30).regex(/^[a-z0-9-]+$/, 'Invalid workspace slug format.'),
+  name:           z.string().min(1).max(200).trim(),
+  email:          z.string().email().toLowerCase(),
+  password:       z.string().min(8).max(128),
+  contact_id:     z.string().uuid(),
+})
 
 /**
  * POST /api/v1/portal/auth/signup
- * Creates a Supabase auth user and a portal_users row.
- * Body: { subdomain, name, email, password, contact_id }
+ *
+ * Creates a portal client account scoped to a specific workspace.
+ * Does NOT create a Supabase Auth user — uses bcrypt + custom JWT instead.
+ * The same email can exist in different workspaces without conflict.
+ *
+ * Body: { workspace_slug, name, email, password, contact_id }
  */
 export async function POST(req: NextRequest) {
   let body: unknown
@@ -16,68 +29,80 @@ export async function POST(req: NextRequest) {
     return errorResponse('PORTAL_SIGNUP_INVALID_BODY', 'Invalid request body.', 400)
   }
 
+  const parsed = signupSchema.safeParse(body)
+  if (!parsed.success) {
+    return errorResponse(
+      'PORTAL_SIGNUP_VALIDATION',
+      parsed.error.issues[0]?.message ?? 'Invalid signup details.',
+      400,
+    )
+  }
+
+  const { workspace_slug, name, email, password, contact_id } = parsed.data
+
   try {
-    const payload = await portalService.validateSignupPayload(body)
+    const db = createServiceClient()
 
-    const adminDb = createServiceClient()
+    // 1. Resolve workspace owner
+    const ownerRow = await portalRepo.getOwnerIdByWorkspaceSlug(db, workspace_slug)
+    if (!ownerRow) {
+      return errorResponse('PORTAL_NOT_FOUND', 'Workspace not found.', 404)
+    }
 
-    // 1. Resolve owner from subdomain
-    const branding = await portalRepo.getOwnerBySubdomain(adminDb, payload.subdomain)
-    if (!branding) return errorResponse('PORTAL_NOT_FOUND', 'Portal not found.', 404)
-    if (!branding.portal_active) return errorResponse('PORTAL_INACTIVE', 'This portal is not active.', 403)
+    // 2. Check portal is active
+    const branding = await portalRepo.getOwnerByWorkspaceSlug(db, workspace_slug)
+    if (!branding?.portal_active) {
+      return errorResponse('PORTAL_INACTIVE', 'This portal is not currently active.', 403)
+    }
 
-    // 2. Verify contact exists and belongs to this owner
-    const contact = await portalRepo.getContactById(adminDb, payload.contact_id)
-    if (!contact) return errorResponse('CRM_CONTACT_NOT_FOUND', 'Contact not found.', 404)
+    const { user_id: ownerId, business_email: ownerEmail } = ownerRow
 
-    // Need to resolve ownerId from branding — look up fey_settings row
-    const { data: settingsRow } = await adminDb
-      .from('fey_settings')
-      .select('user_id, business_email')
-      .eq('portal_subdomain', payload.subdomain)
-      .maybeSingle()
-    if (!settingsRow) return errorResponse('PORTAL_OWNER_NOT_FOUND', 'Portal owner not found.', 404)
-    const ownerId    = settingsRow.user_id as string
-    const ownerEmail = (settingsRow.business_email as string | null) ?? ''
-
+    // 3. Verify contact exists and belongs to this owner
+    const contact = await portalRepo.getContactById(db, contact_id)
+    if (!contact) {
+      return errorResponse('CRM_CONTACT_NOT_FOUND', 'Contact not found.', 404)
+    }
     if (contact.owner_id !== ownerId) {
       return errorResponse('PORTAL_ACCESS_DENIED', 'Access denied.', 403)
     }
     if (!contact.portal_enabled) {
-      return errorResponse('PORTAL_DISABLED', 'The portal is not enabled for this contact.', 403)
+      return errorResponse('PORTAL_DISABLED', 'Portal access is not enabled for this contact.', 403)
     }
 
-    // 3. Create Supabase auth user
-    const { data: authData, error: authError } = await adminDb.auth.admin.createUser({
-      email:    payload.email,
-      password: payload.password,
-      email_confirm: true,
-      user_metadata: { name: payload.name, role: 'portal_client' },
-    })
-    if (authError ?? !authData.user) {
-      if (authError?.message?.includes('already registered')) {
-        return errorResponse('PORTAL_SIGNUP_EMAIL_TAKEN', 'An account with this email already exists.', 409)
-      }
-      return errorResponse('PORTAL_SIGNUP_AUTH_FAILED', authError?.message ?? 'Account creation failed.', 400)
+    // 4. Reject duplicate email within this workspace
+    const emailTaken = await portalRepo.portalEmailExistsInWorkspace(db, workspace_slug, email)
+    if (emailTaken) {
+      return errorResponse(
+        'PORTAL_SIGNUP_EMAIL_TAKEN',
+        'An account with this email already exists in this workspace.',
+        409,
+      )
     }
 
-    const newUserId = authData.user.id
+    // 5. Hash password (12 rounds — secure without being unreasonably slow)
+    const password_hash = await bcrypt.hash(password, 12)
 
-    // 4. Create portal_users row
-    await portalRepo.createPortalUser(adminDb, {
-      id:         newUserId,
-      contact_id: payload.contact_id,
-      owner_id:   ownerId,
-      name:       payload.name,
-      email:      payload.email,
+    // 6. Create portal_users row (id generated by DB default gen_random_uuid())
+    const portalUser = await portalRepo.createPortalUser(db, {
+      contact_id,
+      owner_id:       ownerId,
+      workspace_slug,
+      name,
+      email,
+      password_hash,
       avatar_url: null,
-      created_at: new Date().toISOString(),
     })
 
-    // 5. Create in-app notification for owner
-    await crmRepo.createNotification(adminDb, ownerId, payload.contact_id, 'client_signup', `${payload.name} just joined your portal`)
+    // 7. Notify owner in-app
+    await crmRepo.createNotification(
+      db,
+      ownerId,
+      contact_id,
+      'client_signup',
+      `${name} joined your portal`,
+    )
 
-    // 6. Send email to owner if Resend is configured
+    // 8. Email owner (non-fatal)
     try {
       const resendKey = process.env.RESEND_API_KEY
       if (resendKey && ownerEmail) {
@@ -87,16 +112,16 @@ export async function POST(req: NextRequest) {
         await resend.emails.send({
           from:    'Fey Workboard <notifications@feyapp.com>',
           to:      [ownerEmail],
-          subject: `${payload.name} joined your portal`,
-          html: `<p><strong>${payload.name}</strong> (${payload.email}) just signed up to your client portal.</p>
-                 ${appUrl ? `<p><a href="${appUrl}/clients/${payload.contact_id}/messages">View their workspace</a></p>` : ''}`,
+          subject: `${name} joined your portal`,
+          html: `<p><strong>${name}</strong> (${email}) just signed up to your client portal.</p>
+                 ${appUrl ? `<p><a href="${appUrl}/clients/${contact_id}/messages">View their workspace</a></p>` : ''}`,
         })
       }
     } catch {
       // Email failure is non-fatal
     }
 
-    return NextResponse.json({ success: true, userId: newUserId }, { status: 201 })
+    return NextResponse.json({ success: true, userId: portalUser.id }, { status: 201 })
   } catch (err) {
     return handleError(err, 'PORTAL_SIGNUP_FAILED')
   }

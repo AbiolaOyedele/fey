@@ -1,24 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createUserClient } from '@/lib/supabase-server'
-import { requireAuth, handleError } from '@/lib/api-helpers'
-import * as portalRepo from '@/repositories/portal.repository'
+import { createServiceClient } from '@/lib/supabase-server'
+import { requirePortalAuth, handleError } from '@/lib/api-helpers'
 import * as portalService from '@/services/portal.service'
 
 /**
  * POST /api/v1/portal/contracts/[contractId]/sign
+ * Signs a contract on behalf of the authenticated portal client.
  */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ contractId: string }> },
 ) {
   const { contractId } = await params
-  const { user, token, response } = await requireAuth(req.headers.get('authorization'))
+  const { payload, response } = await requirePortalAuth(req.headers.get('authorization'))
   if (response) return response
-  const db = createUserClient(token!)
+  const db = createServiceClient()
   try {
-    const portalUser = await portalRepo.getPortalUser(db, user!.id)
-    if (!portalUser) return NextResponse.json({ error: { code: 'PORTAL_USER_NOT_FOUND', message: 'Portal access not found.' } }, { status: 403 })
-    await portalService.signPortalContract(db, contractId, portalUser.contact_id)
+    await portalService.signPortalContract(db, contractId, payload!.contact_id)
     return new NextResponse(null, { status: 204 })
   } catch (err) {
     return handleError(err, 'PORTAL_CONTRACT_SIGN_FAILED')

@@ -18,11 +18,11 @@ import { z } from 'zod'
 // ── Validation schemas ────────────────────────────────────────────────────────
 
 const portalSignupSchema = z.object({
-  subdomain:  z.string().min(3).max(30).regex(/^[a-z0-9-]+$/, 'Subdomain must be lowercase letters, numbers, and hyphens only'),
-  name:       z.string().min(1).max(200),
-  email:      z.string().email(),
-  password:   z.string().min(8).max(128),
-  contact_id: z.string().uuid(),
+  workspace_slug: z.string().min(3).max(30).regex(/^[a-z0-9-]+$/, 'Workspace slug must be lowercase letters, numbers, and hyphens only'),
+  name:           z.string().min(1).max(200),
+  email:          z.string().email(),
+  password:       z.string().min(8).max(128),
+  contact_id:     z.string().uuid(),
 })
 
 const portalMessageSchema = z.object({
@@ -40,9 +40,9 @@ const portalMessageSchema = z.object({
 
 export async function getOwnerBranding(
   db: SupabaseClient,
-  subdomain: string,
+  workspaceSlug: string,
 ): Promise<PortalOwnerBranding> {
-  const branding = await portalRepo.getOwnerBySubdomain(db, subdomain)
+  const branding = await portalRepo.getOwnerByWorkspaceSlug(db, workspaceSlug)
   if (!branding) throw new AppError(404, 'Portal not found.', 'PORTAL_NOT_FOUND')
   if (!branding.portal_active) throw new AppError(403, 'This portal is not active.', 'PORTAL_INACTIVE')
   return branding
@@ -86,17 +86,16 @@ export async function validateSignupPayload(raw: unknown) {
 
 export async function resolveOwnerForSignup(
   db: SupabaseClient,
-  subdomain: string,
+  workspaceSlug: string,
   contactId: string,
 ): Promise<{ ownerId: string; ownerEmail: string }> {
-  const branding = await portalRepo.getOwnerBySubdomain(db, subdomain)
+  const branding = await portalRepo.getOwnerByWorkspaceSlug(db, workspaceSlug)
   if (!branding) throw new AppError(404, 'Portal not found.', 'PORTAL_NOT_FOUND')
   if (!branding.portal_active) throw new AppError(403, 'This portal is not active.', 'PORTAL_INACTIVE')
 
   const contact = await portalRepo.getContactById(db, contactId)
   if (!contact) throw new AppError(404, 'Contact not found.', 'CRM_CONTACT_NOT_FOUND')
 
-  // Look up owner email from auth.users via admin client — returned by caller
   return { ownerId: contact.owner_id, ownerEmail: '' }
 }
 

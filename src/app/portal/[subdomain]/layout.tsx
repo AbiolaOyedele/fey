@@ -2,7 +2,6 @@
 
 import { use, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import PortalShell from '@/components/portal/PortalShell'
 import type { PortalOwnerBranding } from '@/types/crm'
 
@@ -12,6 +11,11 @@ interface PortalSession {
 }
 
 const PUBLIC_PATHS = ['/login', '/signup']
+
+/** localStorage key for the portal JWT — scoped to each workspace slug */
+export function portalTokenKey(workspaceSlug: string) {
+  return `portal_token_${workspaceSlug}`
+}
 
 export default function PortalLayout({
   children,
@@ -27,25 +31,29 @@ export default function PortalLayout({
   const [session,  setSession]  = useState<PortalSession | null>(null)
   const [loading,  setLoading]  = useState(true)
 
+  // pathname ends with /login or /signup → no session required
   const isPublic = PUBLIC_PATHS.some((p) => pathname.endsWith(p))
 
   useEffect(() => {
     void (async () => {
-      const { data: { session: authSession } } = await supabase.auth.getSession()
-      if (!authSession) {
+      const token = typeof window !== 'undefined'
+        ? localStorage.getItem(portalTokenKey(subdomain))
+        : null
+
+      if (!token) {
         setLoading(false)
         if (!isPublic) router.replace(`/portal/${subdomain}/login`)
         return
       }
-      const token = authSession.access_token
 
-      // Verify portal session via API (confirms this is a portal user, not an owner account)
+      // Verify portal session via API — confirms the JWT is valid and the user exists
       const res = await fetch('/api/v1/portal/auth/session', {
         headers: { Authorization: `Bearer ${token}` },
       })
 
       if (!res.ok) {
-        await supabase.auth.signOut()
+        // Token expired or invalid — clear and redirect to login
+        localStorage.removeItem(portalTokenKey(subdomain))
         setLoading(false)
         if (!isPublic) router.replace(`/portal/${subdomain}/login`)
         return

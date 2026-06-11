@@ -1,8 +1,15 @@
 'use client'
 
-import { use, useState, useCallback } from 'react'
+import { use, useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { Loader2 } from 'lucide-react'
+import { portalTokenKey } from '../layout'
+
+interface WorkspaceBranding {
+  business_name: string
+  logo_url:      string | null
+  accent_color:  string
+}
 
 export default function PortalLoginPage({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
@@ -12,26 +19,84 @@ export default function PortalLoginPage({ params }: { params: Promise<{ subdomai
   const [password, setPassword] = useState('')
   const [error,    setError]    = useState('')
   const [loading,  setLoading]  = useState(false)
+  const [branding, setBranding] = useState<WorkspaceBranding | null>(null)
+
+  // Fetch workspace branding so we can show the owner's logo + name on the login page
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch(`/api/v1/portal/auth/session`, {
+          headers: { Authorization: 'Bearer invalid' }, // will 401, but we only need the branding
+        })
+        if (!res.ok) {
+          // Fetch branding via the workspace check endpoint instead
+          const brandRes = await fetch(`/api/v1/portal/branding?slug=${encodeURIComponent(subdomain)}`)
+          if (brandRes.ok) {
+            const data = await brandRes.json() as { branding?: WorkspaceBranding }
+            if (data.branding) setBranding(data.branding)
+          }
+        }
+      } catch {
+        // branding is purely cosmetic — non-fatal
+      }
+    })()
+  }, [subdomain])
 
   const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const { error: authErr } = await supabase.auth.signInWithPassword({ email, password })
-    if (authErr) {
-      setError('Invalid email or password. Please try again.')
+
+    try {
+      const res = await fetch('/api/v1/portal/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspace_slug: subdomain, email, password }),
+      })
+      const data = await res.json() as { token?: string; error?: { message: string } }
+
+      if (!res.ok || !data.token) {
+        setError(data.error?.message ?? 'Invalid email or password.')
+        setLoading(false)
+        return
+      }
+
+      // Store the portal JWT scoped to this workspace
+      localStorage.setItem(portalTokenKey(subdomain), data.token)
+      router.push(`/portal/${subdomain}`)
+    } catch {
+      setError('Something went wrong. Please try again.')
       setLoading(false)
-      return
     }
-    router.push(`/portal/${subdomain}`)
   }, [email, password, subdomain, router])
+
+  const accentColor = branding?.accent_color ?? '#101010'
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
+
+        {/* Workspace branding header */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Client Portal</h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to access your portal</p>
+          {branding?.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={branding.logo_url}
+              alt={branding.business_name}
+              className="h-10 w-10 rounded-xl object-cover mx-auto mb-3"
+            />
+          ) : (
+            <div
+              className="h-10 w-10 rounded-xl flex items-center justify-center text-white text-base font-bold mx-auto mb-3"
+              style={{ backgroundColor: accentColor }}
+            >
+              {(branding?.business_name ?? subdomain).charAt(0).toUpperCase()}
+            </div>
+          )}
+          <h1 className="text-xl font-semibold text-gray-900">
+            {branding?.business_name ?? subdomain}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">Sign in to your client portal</p>
         </div>
 
         <form onSubmit={(e) => void handleLogin(e)} className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4 shadow-sm">
@@ -68,9 +133,10 @@ export default function PortalLoginPage({ params }: { params: Promise<{ subdomai
           <button
             type="submit"
             disabled={loading || !email || !password}
-            className="w-full py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
-            style={{ backgroundColor: '#101010' }}
+            className="w-full py-2.5 rounded-full text-sm font-semibold text-white flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-40 transition-opacity"
+            style={{ backgroundColor: accentColor }}
           >
+            {loading && <Loader2 size={15} className="animate-spin" />}
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
@@ -81,6 +147,7 @@ export default function PortalLoginPage({ params }: { params: Promise<{ subdomai
             Request access
           </a>
         </p>
+
       </div>
     </div>
   )

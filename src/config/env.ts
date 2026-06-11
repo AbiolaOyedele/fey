@@ -11,6 +11,8 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY:          z.string().min(1).optional(),
   NEXT_PUBLIC_ROOT_DOMAIN:            z.string().min(1).optional(),
   NEXT_PUBLIC_APP_URL:                z.string().url().optional(),
+  // Portal client auth (custom JWT — not Supabase Auth)
+  PORTAL_JWT_SECRET:                  z.string().min(32).optional(),
 })
 
 const parsed = envSchema.safeParse({
@@ -22,6 +24,7 @@ const parsed = envSchema.safeParse({
   SUPABASE_SERVICE_ROLE_KEY:          process.env.SUPABASE_SERVICE_ROLE_KEY,
   NEXT_PUBLIC_ROOT_DOMAIN:            process.env.NEXT_PUBLIC_ROOT_DOMAIN,
   NEXT_PUBLIC_APP_URL:                process.env.NEXT_PUBLIC_APP_URL,
+  PORTAL_JWT_SECRET:                  process.env.PORTAL_JWT_SECRET,
 })
 
 if (!parsed.success) {
@@ -45,4 +48,5 @@ export const env = parsed.success
       SUPABASE_SERVICE_ROLE_KEY:       process.env.SUPABASE_SERVICE_ROLE_KEY,
       NEXT_PUBLIC_ROOT_DOMAIN:         process.env.NEXT_PUBLIC_ROOT_DOMAIN,
       NEXT_PUBLIC_APP_URL:             process.env.NEXT_PUBLIC_APP_URL,
+      PORTAL_JWT_SECRET:               process.env.PORTAL_JWT_SECRET,
     }

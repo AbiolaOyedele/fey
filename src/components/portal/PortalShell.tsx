@@ -7,7 +7,7 @@ import {
   MessageSquare, Folder, FileSignature, ClipboardList,
   CreditCard, FileText, CheckSquare2, Home, Menu, X, LogOut,
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { portalTokenKey } from '@/app/portal/[subdomain]/layout'
 import type { PortalOwnerBranding } from '@/types/crm'
 
 interface PortalShellProps {
@@ -41,9 +41,9 @@ export default function PortalShell({ subdomain, branding, clientName, children 
     return href === '' ? pathname === base || pathname === `${base}/` : pathname.startsWith(full)
   }
 
-  const signOut = async () => {
+  const signOut = () => {
     setSigningOut(true)
-    await supabase.auth.signOut()
+    localStorage.removeItem(portalTokenKey(subdomain))
     router.push(`${base}/login`)
   }
 

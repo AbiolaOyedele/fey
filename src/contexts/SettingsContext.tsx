@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import { CURRENCY_SYMBOLS } from '@/lib/constants'
 import type { Settings, Toast, TrashItem, Client, RestoreResult } from '@/types'
 
@@ -138,20 +139,23 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [hasFeySettings, setHasFeySettings] = useState(false)
   const [trash, setTrash] = useState<TrashItem[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
-  const [userId, setUserId] = useState<string | null>(null)
+
+  // Single source of truth for auth. SettingsProvider sits inside AuthProvider,
+  // so we consume the already-resolved session instead of calling getSession()
+  // a second time. The old duplicate resolution was strictly slower (extra
+  // getSession + DB roundtrip), so it reported settingsLoading=false with DEFAULT
+  // settings while AppShell's redirect check ran — bouncing the user to /setup on
+  // every reload. Deriving userId from useAuth() closes that race.
+  const { user, loading: authLoading } = useAuth()
+  const userId = user?.id ?? null
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserId(session?.user?.id ?? null)
-    })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id ?? null)
-    })
-    return () => subscription.unsubscribe()
-  }, [])
-
-  useEffect(() => {
+    // Hold the loading state until auth has actually resolved. Without this gate
+    // the effect would run on the first render (userId still null) and prematurely
+    // mark loading complete before we know who — or whether — the user is.
+    if (authLoading) return
     if (userId === null) {
+      setSettings(DEFAULTS)
       setSettingsLoading(false)
       return
     }
@@ -204,7 +208,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
       setSettingsLoading(false)
     })()
-  }, [userId])
+  }, [userId, authLoading])
 
   useEffect(() => {
     document.documentElement.style.setProperty('--accent', settings.accent_color)

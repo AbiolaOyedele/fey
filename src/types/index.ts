@@ -142,6 +142,8 @@ export interface Settings {
   whats_new_active: string
   whats_new_version: string
   onboarding_complete: string
+  /** Fey-specific onboarding flag — separate from onboarding_complete (used by Workboard) */
+  fey_onboarding_complete: string
   avatar_url: string
   hourly_rate: string
   cover_image: string

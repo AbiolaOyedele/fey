@@ -165,6 +165,7 @@ export const DEMO_SETTINGS: Settings = {
   whats_new_active: 'false',
   whats_new_version: '',
   onboarding_complete: 'true',
+  fey_onboarding_complete: 'true',
   avatar_url: '',
   hourly_rate: '',
   cover_image: '',

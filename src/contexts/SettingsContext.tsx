@@ -112,6 +112,8 @@ const DEFAULTS: Settings = {
   email_project_activity: 'false', email_chat_from: 'true', email_chat_to: 'true', email_auto_reminders: 'false',
   checklist_dismissed: 'false', checklist_steps: '{}',
   guide_seen: 'false', fey_thread_order: '', fey_sort_mode: 'newest',
+  // Fey-specific onboarding flag — never clashes with Workboard's onboarding_complete
+  fey_onboarding_complete: 'false',
 }
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {

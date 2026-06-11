@@ -8,13 +8,15 @@ import { IS_DEMO } from '@/lib/constants'
 import Sidebar from './Sidebar'
 import ToastContainer from '@/components/ui/Toast'
 
-const PUBLIC_ROUTES = ['/login', '/register', '/onboarding']
+// /onboarding is Workboard's route — Fey uses /setup to avoid clashing.
+// Both apps share the same Next.js codebase and Supabase DB.
+const PUBLIC_ROUTES = ['/login', '/register', '/onboarding', '/setup']
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''
   const router   = useRouter()
   const { user, loading: authLoading }               = useAuth()
-  const { settingsLoading, hasFeySettings } = useSettings()
+  const { settings, settingsLoading } = useSettings()
 
   const isPublic = PUBLIC_ROUTES.includes(pathname)
     || pathname.startsWith('/share/')
@@ -26,22 +28,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (IS_DEMO || isPublic || loading) return
+    if (!user) { router.replace('/login'); return }
 
-    // Not logged in → login page
-    if (!user) {
-      router.replace('/login')
-      return
+    // Fey-specific onboarding check. Uses fey_onboarding_complete, NOT
+    // onboarding_complete — Workboard owns that flag. This way the two apps
+    // never interfere with each other's onboarding flow.
+    if (settings.fey_onboarding_complete !== 'true') {
+      router.replace('/setup')
     }
-
-    // No fey_settings row at all → brand new Fey user → onboarding.
-    // We check hasFeySettings (not onboarding_complete) so we don't redirect
-    // users from other projects that share this Supabase DB. Those users may
-    // have fey_settings rows with onboarding_complete = 'false' but they are
-    // not new Fey users — the row existing is enough to let them through.
-    if (!hasFeySettings) {
-      router.replace('/onboarding')
-    }
-  }, [user, loading, isPublic, hasFeySettings, router])
+  }, [user, loading, isPublic, settings.fey_onboarding_complete, router])
 
   if (isPublic) return <>{children}</>
 
@@ -54,9 +49,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   if (!IS_DEMO && !user) return null
-
-  // Don't render the dashboard shell while the onboarding redirect is in-flight
-  if (!IS_DEMO && !hasFeySettings) return null
+  if (!IS_DEMO && settings.fey_onboarding_complete !== 'true') return null
 
   return (
     <div className="flex flex-col min-h-screen bg-appbg overflow-x-hidden">

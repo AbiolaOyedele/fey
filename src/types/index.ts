@@ -144,6 +144,8 @@ export interface Settings {
   onboarding_complete: string
   /** Fey-specific onboarding flag — separate from onboarding_complete (used by Workboard) */
   fey_onboarding_complete: string
+  /** Set during /setup — the surest signal that Fey onboarding is done */
+  workspace_slug: string
   avatar_url: string
   hourly_rate: string
   cover_image: string

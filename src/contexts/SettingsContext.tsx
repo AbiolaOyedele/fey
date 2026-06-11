@@ -114,6 +114,8 @@ const DEFAULTS: Settings = {
   guide_seen: 'false', fey_thread_order: '', fey_sort_mode: 'newest',
   // Fey-specific onboarding flag — never clashes with Workboard's onboarding_complete
   fey_onboarding_complete: 'false',
+  // Set during /setup — the most reliable completion signal (non-null = setup done)
+  workspace_slug: '',
 }
 
 /**

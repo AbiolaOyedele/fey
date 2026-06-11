@@ -26,17 +26,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const loading = authLoading || settingsLoading
 
+  // Setup is considered done when either:
+  //   (a) the user has a workspace_slug in the DB — set during /setup, the
+  //       most reliable signal since fey_onboarding_complete may be null for
+  //       users who completed setup before that column was added, or
+  //   (b) the in-memory flag is 'true' (covers the instant after finishSetup
+  //       calls saveSetting before the next full DB reload).
+  const setupComplete = !!settings.workspace_slug || settings.fey_onboarding_complete === 'true'
+
   useEffect(() => {
     if (IS_DEMO || isPublic || loading) return
     if (!user) { router.replace('/login'); return }
-
-    // Fey-specific onboarding check. Uses fey_onboarding_complete, NOT
-    // onboarding_complete — Workboard owns that flag. This way the two apps
-    // never interfere with each other's onboarding flow.
-    if (settings.fey_onboarding_complete !== 'true') {
-      router.replace('/setup')
-    }
-  }, [user, loading, isPublic, settings.fey_onboarding_complete, router])
+    if (!setupComplete) { router.replace('/setup') }
+  }, [user, loading, isPublic, setupComplete, router])
 
   if (isPublic) return <>{children}</>
 
@@ -49,7 +51,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   if (!IS_DEMO && !user) return null
-  if (!IS_DEMO && settings.fey_onboarding_complete !== 'true') return null
+  if (!IS_DEMO && !setupComplete) return null
 
   return (
     <div className="flex flex-col min-h-screen bg-appbg overflow-x-hidden">

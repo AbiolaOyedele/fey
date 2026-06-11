@@ -211,4 +211,5 @@ export const DEMO_SETTINGS: Settings = {
   guide_seen: 'false',
   fey_thread_order: '',
   fey_sort_mode: 'newest',
+  workspace_slug: 'demo',
 }

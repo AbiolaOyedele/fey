@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'NoirPro', sans-serif;
+  --font-display: 'NoirPro', sans-serif;
+  --font-mono: inherit;
+
+  --color-primary:  #ED64A6;
+  --color-success:  #48BB78;
+  --color-pending:  #F6AD55;
+  --color-danger:   #FC8181;
+  --color-appbg:    #F7F8FA;
+
+  /* Restore Tailwind v3 shadow scale — v4 shifted everything up one step */
+  --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow:     0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg:  0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl:  0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+@font-face {
+  font-family: 'NoirPro';
+  src: url('/fonts/NoirPro-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'NoirPro';
+  src: url('/fonts/NoirPro-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --body-font: 'NoirPro', sans-serif;
+  --heading-font: 'NoirPro', sans-serif;
+  --accent: #ED64A6;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--body-font);
+  font-weight: 300;
+  background-color: #F7F8FA;
+  color: #1a1a2e;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+@keyframes scaleOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.92); } }
+@keyframes scaleBounce { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-4px); } }
+@keyframes slowRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes pageEnter { from { opacity: 0; } to { opacity: 1; } }
+
+.animate-fadeIn      { animation: fadeIn 200ms ease forwards; }
+.animate-slideDown   { animation: slideDown 150ms ease forwards; }
+.animate-slideUp     { animation: slideUp 200ms ease forwards; }
+.animate-scale-in    { animation: scaleIn 200ms ease forwards; }
+.animate-scale-out   { animation: scaleOut 200ms ease forwards; }
+.animate-scaleBounce { animation: scaleBounce 200ms ease; }
+.animate-shake       { animation: shake 200ms ease; }
+.animate-fadeOut     { animation: fadeOut 200ms ease forwards; }
+.animate-slow-rotate { animation: slowRotate 8s ease-in-out infinite; }
+.page-enter          { animation: pageEnter 200ms ease forwards; }
+
+h1, h2, h3, .font-display {
+  font-family: var(--heading-font);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  appearance: auto;
+  -webkit-appearance: auto;
+}
+
+@media (max-width: 768px) {
+  input, select, textarea { font-size: 16px !important; }
+}
+
+@media print {
+  body * { visibility: hidden; }
+  #invoice-document, #invoice-document * { visibility: visible; }
+  #invoice-document {
+    position: absolute; top: 0; left: 0;
+    width: 100%; max-width: none;
+    border-radius: 0; box-shadow: none; padding: 40px;
+  }
+  .no-print { display: none !important; }
+}

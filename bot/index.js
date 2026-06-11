@@ -211,11 +211,11 @@ app.post('/webhook', async (req, res) => {
 
     if (!connection) {
       return reply(
-        "Your WhatsApp number isn't connected to WorkBoard. Go to Settings to connect.",
+        "Your WhatsApp number isn't connected to Fey. Go to Settings to connect.",
       );
     }
     if (!connection.verified) {
-      return reply("Your number isn't verified yet. Check WorkBoard settings.");
+      return reply("Your number isn't verified yet. Check Fey settings.");
     }
 
     const { user_id } = connection;
@@ -340,7 +340,7 @@ app.post('/verify/send', async (req, res) => {
     await twilioClient.messages.create({
       from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
       to: `whatsapp:${phone}`,
-      body: `Your WorkBoard verification code is: ${code}. It expires in 10 minutes.`,
+      body: `Your Fey verification code is: ${code}. It expires in 10 minutes.`,
     });
 
     return res.json({ ok: true });

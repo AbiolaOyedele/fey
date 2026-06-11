@@ -1,7 +1,7 @@
 {
-  "name": "workboard-whatsapp-bot",
+  "name": "fey-whatsapp-bot",
   "version": "1.0.0",
-  "description": "WhatsApp webhook server for WorkBoard task creation via Twilio",
+  "description": "WhatsApp webhook server for Fey task creation via Twilio",
   "type": "module",
   "main": "index.js",
   "scripts": {

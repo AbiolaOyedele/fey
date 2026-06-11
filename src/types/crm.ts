@@ -1,0 +1,240 @@
+export type ContactStatus  = 'active' | 'idle' | 'completed'
+export type SenderType     = 'owner' | 'client'
+export type ContractStatus = 'draft' | 'sent' | 'signed' | 'declined'
+export type FormStatus     = 'draft' | 'sent' | 'submitted'
+export type UploaderType   = 'owner' | 'client'
+
+export interface CrmContact {
+  id: string
+  owner_id: string
+  name: string
+  email: string | null
+  phone: string | null
+  company: string | null
+  avatar_url: string | null
+  status: ContactStatus
+  portal_enabled: boolean
+  portal_welcome_message: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PortalUser {
+  id: string
+  contact_id: string
+  owner_id: string
+  name: string
+  email: string
+  avatar_url: string | null
+  created_at: string
+}
+
+export interface MessageAttachment {
+  file_name: string
+  file_url: string
+  file_type: string
+  file_size: number
+}
+
+export interface CrmMessage {
+  id: string
+  contact_id: string
+  owner_id: string
+  sender_type: SenderType
+  sender_id: string
+  body: string
+  body_html: string | null
+  attachments: MessageAttachment[]
+  read_at: string | null
+  created_at: string
+}
+
+export interface CrmFile {
+  id: string
+  contact_id: string
+  owner_id: string
+  uploaded_by: string
+  uploader_type: UploaderType
+  file_name: string
+  file_url: string
+  public_id: string
+  file_size: number | null
+  file_type: string | null
+  created_at: string
+}
+
+export interface CrmContract {
+  id: string
+  contact_id: string
+  owner_id: string
+  title: string
+  share_token: string
+  status: ContractStatus
+  content: ContractContent
+  signed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ContractContent {
+  body: string
+  body_html: string
+  effective_date: string | null
+  expiry_date: string | null
+  signature_block: string
+}
+
+export type FormFieldType =
+  | 'title'       // section heading — no input
+  | 'text'        // short answer
+  | 'textarea'    // long answer
+  | 'multiselect' // checkboxes, multiple options
+  | 'select'      // single select / radio
+  | 'file'        // file upload
+  | 'date'        // date picker
+  | 'email'       // email input
+  | 'phone'       // phone input
+
+export interface FormField {
+  id: string
+  type: FormFieldType
+  label: string
+  placeholder: string | null
+  required: boolean
+  options: string[]
+}
+
+// ── Templates ────────────────────────────────────────────────────────────────
+
+export type TemplateType = 'form' | 'contract' | 'invoice'
+
+export interface CrmTemplate {
+  id:         string
+  user_id:    string
+  type:       TemplateType
+  title:      string
+  content:    Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+export interface FormResponse {
+  field_id: string
+  value: unknown
+}
+
+export interface CrmForm {
+  id: string
+  contact_id: string
+  owner_id: string
+  title: string
+  share_token: string
+  status: FormStatus
+  fields: FormField[]
+  responses: FormResponse[]
+  submitted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CrmNotification {
+  id: string
+  owner_id: string
+  contact_id: string | null
+  type: string
+  message: string
+  read_at: string | null
+  created_at: string
+}
+
+export interface PortalOwnerBranding {
+  business_name: string
+  logo_url: string | null
+  accent_color: string
+  font: string
+  subdomain: string
+  portal_active: boolean
+}
+
+// ── API payload shapes ────────────────────────────────────────────────────────
+
+export interface CreateContactPayload {
+  name: string
+  email?: string | null
+  phone?: string | null
+  company?: string | null
+  status?: ContactStatus
+}
+
+export interface UpdateContactPayload {
+  name?: string
+  email?: string | null
+  phone?: string | null
+  company?: string | null
+  status?: ContactStatus
+  portal_enabled?: boolean
+  portal_welcome_message?: string | null
+}
+
+export interface CreateMessagePayload {
+  contact_id: string
+  body: string
+  body_html?: string | null
+  attachments?: MessageAttachment[]
+}
+
+export interface CreateContractPayload {
+  contact_id: string
+  title: string
+  content?: Partial<ContractContent>
+}
+
+export interface UpdateContractPayload {
+  title?: string
+  content?: Partial<ContractContent>
+  status?: ContractStatus
+  signed_at?: string | null
+}
+
+export interface CreateFormPayload {
+  contact_id: string
+  title: string
+  fields?: FormField[]
+}
+
+export interface UpdateFormPayload {
+  title?: string
+  fields?: FormField[]
+  status?: FormStatus
+  responses?: FormResponse[]
+  submitted_at?: string | null
+}
+
+// ── Payment requests (direct link) ───────────────────────────────────────────
+
+export type PaymentRequestStatus = 'pending' | 'paid' | 'expired' | 'cancelled'
+
+export interface CrmPaymentRequest {
+  id: string
+  owner_id: string
+  contact_id: string | null
+  amount: number
+  currency: string
+  description: string
+  message: string
+  status: PaymentRequestStatus
+  share_token: string
+  paystack_reference: string | null
+  paid_at: string | null
+  expires_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PortalSignupPayload {
+  subdomain: string
+  name: string
+  email: string
+  password: string
+  contact_id: string
+}

@@ -1,6 +1,19 @@
 node_modules
 dist
 .DS_Store
-.env
-.env.local
-.env.*.local
+
+# env files
+.env*
+
+# next.js
+/.next/
+/out/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# vercel
+.vercel
+
+supabase/.temp/

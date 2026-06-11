@@ -12,9 +12,17 @@ serve(async (req) => {
     const { public_id } = await req.json();
     if (!public_id) return new Response(JSON.stringify({ error: 'public_id required' }), { status: 400, headers: CORS });
 
-    const cloudName  = Deno.env.get('CLOUDINARY_CLOUD_NAME')!;
-    const apiKey     = Deno.env.get('CLOUDINARY_API_KEY')!;
-    const apiSecret  = Deno.env.get('CLOUDINARY_API_SECRET')!;
+    const cloudName = Deno.env.get('CLOUDINARY_CLOUD_NAME');
+    const apiKey    = Deno.env.get('CLOUDINARY_API_KEY');
+    const apiSecret = Deno.env.get('CLOUDINARY_API_SECRET');
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      console.error('[delete-cloudinary-file] Missing required env vars: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET');
+      return new Response(
+        JSON.stringify({ error: 'File deletion service is not configured. Contact support.' }),
+        { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } },
+      );
+    }
 
     // Build signed deletion request
     const timestamp = Math.floor(Date.now() / 1000).toString();

@@ -1,0 +1,432 @@
+'use client'
+
+import { useState, useCallback } from 'react'
+import { X, Mail, Link2, FileDown, Copy, Check, Eye, EyeOff, Loader2, Send } from 'lucide-react'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
+import { supabase } from '@/lib/supabase'
+
+interface BillTo {
+  name?: string
+  email?: string
+}
+
+interface FromDetails {
+  name?: string
+}
+
+interface SendableInvoice {
+  id?: string | undefined
+  invoice_number?: string | undefined
+  bill_to?: BillTo | undefined
+  from_details?: FromDetails | undefined
+  share_token?: string | undefined
+  share_enabled?: boolean | undefined
+}
+
+interface InvoiceSendModalProps {
+  invoice: SendableInvoice | null
+  onShareUpdate?: ((token: string, enabled: boolean) => void) | undefined
+  onSaveShare?: ((token: string, enabled: boolean) => Promise<void>) | undefined
+  userId?: string | undefined
+  onClose: () => void
+}
+
+type Tab = 'email' | 'link' | 'pdf'
+
+interface TabConfig {
+  id: Tab
+  label: string
+  icon: React.ComponentType<{ size?: number }>
+}
+
+function generateToken(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  return Array.from({ length: 24 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+}
+
+export default function InvoiceSendModal({
+  invoice,
+  onShareUpdate,
+  onSaveShare,
+  onClose,
+}: InvoiceSendModalProps) {
+  const [notice, setNotice] = useState<string | null>(null)
+  const showToast = (msg: string) => {
+    setNotice(msg)
+    setTimeout(() => setNotice(null), 3000)
+  }
+  const [tab, setTab] = useState<Tab>('email')
+
+  // Email tab state
+  const [emailTo, setEmailTo] = useState(invoice?.bill_to?.email ?? '')
+  const [emailSubject, setEmailSubject] = useState(`Invoice ${invoice?.invoice_number ?? ''}`)
+  const [emailBody, setEmailBody] = useState(
+    `Hi ${invoice?.bill_to?.name ?? 'there'},\n\nPlease find attached invoice ${invoice?.invoice_number ?? ''} for your review.\n\nThank you for your business!\n\n${invoice?.from_details?.name ?? ''}`
+  )
+
+  // Link tab state
+  const [shareEnabled, setShareEnabled] = useState(invoice?.share_enabled ?? false)
+  const [shareToken, setShareToken] = useState(invoice?.share_token ?? '')
+  const [savingShare, setSavingShare] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  // Email sending state
+  const [sending, setSending] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+
+  // PDF tab state
+  const [printing, setPrinting] = useState(false)
+
+  const shareUrl = shareToken ? `${window.location.origin}/invoice/${shareToken}` : null
+
+  const handleToggleShare = useCallback(async () => {
+    const newEnabled = !shareEnabled
+    let token = shareToken
+    if (newEnabled && !token) {
+      token = generateToken()
+      setShareToken(token)
+    }
+    setShareEnabled(newEnabled)
+    onShareUpdate?.(token, newEnabled)
+
+    setSavingShare(true)
+    try {
+      await onSaveShare?.(token, newEnabled)
+      showToast(newEnabled ? 'Shareable link enabled' : 'Link disabled')
+    } catch {
+      showToast('Failed to save share settings')
+    } finally {
+      setSavingShare(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shareEnabled, shareToken, onShareUpdate, onSaveShare])
+
+  const handleCopyLink = () => {
+    if (!shareUrl) return
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  const handleSendEmail = async () => {
+    if (!emailTo) {
+      showToast('Enter a recipient email')
+      return
+    }
+    if (!invoice?.id) {
+      showToast('Save the invoice before sending')
+      return
+    }
+
+    setSending(true)
+    try {
+      // Get session token for server-side auth
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        showToast('You must be signed in to send emails')
+        return
+      }
+
+      const res = await fetch('/api/v1/invoices/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+          to: emailTo,
+          subject: emailSubject,
+          body: emailBody,
+        }),
+      })
+
+      const json = await res.json() as { success?: boolean; error?: { message: string } }
+
+      if (!res.ok || !json.success) {
+        showToast(json.error?.message ?? 'Failed to send email. Please try again.')
+        return
+      }
+
+      setEmailSent(true)
+      showToast('Invoice sent successfully!')
+      setTimeout(() => setEmailSent(false), 4000)
+    } catch {
+      showToast('Network error. Please check your connection and try again.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handlePrint = async () => {
+    const el = document.getElementById('invoice-document')
+    if (!el) {
+      showToast('Invoice not found — make sure it is visible')
+      return
+    }
+    setPrinting(true)
+    try {
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        ignoreElements: (elem: Element) => {
+          const s = window.getComputedStyle(elem)
+          return s.position === 'fixed' && !el.contains(elem)
+        },
+        onclone: (clonedDoc: Document) => {
+          const inv = clonedDoc.getElementById('invoice-document')
+          if (!inv) return
+
+          // Remove all buttons (UI controls, trash icons, add buttons)
+          inv.querySelectorAll('button').forEach((b) => b.remove())
+
+          // Remove number inputs — their value already appears in a sibling formatted <span>
+          inv.querySelectorAll('input[type="number"]').forEach((i) => i.remove())
+
+          // Replace date inputs with a readable date string
+          inv.querySelectorAll<HTMLInputElement>('input[type="date"]').forEach((i) => {
+            const span = clonedDoc.createElement('span')
+            if (i.value) {
+              const d = new Date(i.value + 'T00:00:00')
+              span.textContent = d.toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              })
+            }
+            i.replaceWith(span)
+          })
+
+          // Replace text inputs with a span showing their value (not placeholder)
+          inv.querySelectorAll<HTMLInputElement>('input').forEach((i) => {
+            const span = clonedDoc.createElement('span')
+            span.textContent = i.value || ''
+            i.replaceWith(span)
+          })
+
+          // Replace textareas with a div showing their value
+          inv.querySelectorAll<HTMLTextAreaElement>('textarea').forEach((ta) => {
+            const div = clonedDoc.createElement('div')
+            div.textContent = ta.value || ''
+            div.style.whiteSpace = 'pre-wrap'
+            ta.replaceWith(div)
+          })
+
+          // Replace selects with their selected option text
+          inv.querySelectorAll<HTMLSelectElement>('select').forEach((sel) => {
+            const span = clonedDoc.createElement('span')
+            span.textContent = sel.options[sel.selectedIndex]?.text ?? ''
+            sel.replaceWith(span)
+          })
+        },
+      })
+      const imgW = 210
+      const imgH = (canvas.height * imgW) / canvas.width
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [imgW, imgH] })
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgW, imgH)
+      pdf.save(`invoice-${invoice?.invoice_number ?? 'draft'}.pdf`)
+    } catch (err) {
+      showToast('Failed to generate PDF')
+      console.error(err)
+    } finally {
+      setPrinting(false)
+    }
+  }
+
+  const tabs: TabConfig[] = [
+    { id: 'email', label: 'Email', icon: Mail },
+    { id: 'link', label: 'Share Link', icon: Link2 },
+    { id: 'pdf', label: 'PDF', icon: FileDown },
+  ]
+
+  const inputCls =
+    'w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:border-gray-400 bg-white'
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="font-display text-base font-bold text-gray-900">Send Invoice</h2>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
+            <X size={18} />
+          </button>
+        </div>
+
+        {notice && (
+          <div className="mx-6 mt-3 px-4 py-2.5 rounded-xl bg-gray-800 text-white text-xs font-medium text-center">
+            {notice}
+          </div>
+        )}
+
+        {/* Tabs */}
+        <div className="flex border-b border-gray-100 px-6">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`flex items-center gap-1.5 px-3 py-3 text-sm font-medium border-b-2 mr-2 transition-colors ${
+                tab === id ? 'border-current' : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+              style={tab === id ? { color: 'var(--accent)', borderColor: 'var(--accent)' } : {}}
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Email tab */}
+        {tab === 'email' && (
+          <div className="p-6 space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">To</label>
+              <input
+                value={emailTo}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmailTo(e.target.value)}
+                placeholder="client@example.com"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Subject</label>
+              <input
+                value={emailSubject}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmailSubject(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Message</label>
+              <textarea
+                value={emailBody}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEmailBody(e.target.value)}
+                rows={6}
+                className={`${inputCls} resize-none`}
+              />
+            </div>
+            <button
+              onClick={() => void handleSendEmail()}
+              disabled={sending || emailSent}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed transition-opacity"
+              style={{ backgroundColor: emailSent ? '#16a34a' : 'var(--accent)' }}
+            >
+              {sending ? (
+                <><Loader2 size={15} className="animate-spin" /> Sending…</>
+              ) : emailSent ? (
+                <><Check size={15} /> Sent!</>
+              ) : (
+                <><Send size={15} /> Send Invoice</>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Link tab */}
+        {tab === 'link' && (
+          <div className="p-6 space-y-4">
+            {!invoice?.id && (
+              <p className="text-sm text-amber-600 bg-amber-50 rounded-xl px-4 py-3">
+                Save the invoice first to enable sharing.
+              </p>
+            )}
+
+            <div className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50">
+              <div className="flex items-center gap-3">
+                {shareEnabled ? (
+                  <Eye size={16} className="text-green-600" />
+                ) : (
+                  <EyeOff size={16} className="text-gray-400" />
+                )}
+                <div>
+                  <p className="text-sm font-medium text-gray-800">
+                    {shareEnabled ? 'Link is active' : 'Link is disabled'}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {shareEnabled ? 'Anyone with the link can view' : 'Enable to share with client'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleToggleShare}
+                disabled={!invoice?.id || savingShare}
+                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${
+                  shareEnabled ? '' : 'bg-gray-200'
+                }`}
+                style={shareEnabled ? { backgroundColor: 'var(--accent)' } : {}}
+              >
+                <span
+                  className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                    shareEnabled ? 'left-6' : 'left-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {shareEnabled && shareUrl && (
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                  Shareable URL
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    value={shareUrl}
+                    readOnly
+                    className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 bg-gray-50 focus:outline-none truncate"
+                  />
+                  <button
+                    onClick={handleCopyLink}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex-shrink-0"
+                  >
+                    {copied ? (
+                      <Check size={14} className="text-green-600" />
+                    ) : (
+                      <Copy size={14} />
+                    )}
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mt-1.5">
+                  Client can view and download — no login required.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PDF tab */}
+        {tab === 'pdf' && (
+          <div className="p-6 space-y-4">
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-center">
+              <FileDown size={28} className="mx-auto mb-2 text-gray-400" />
+              <p className="text-sm font-medium text-gray-700 mb-1">Download as PDF</p>
+              <p className="text-xs text-gray-400">
+                Generates a PDF file and downloads it directly — no print dialog.
+              </p>
+            </div>
+            <button
+              onClick={handlePrint}
+              disabled={printing}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-60"
+              style={{ backgroundColor: 'var(--accent)' }}
+            >
+              {printing ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <FileDown size={15} />
+              )}
+              {printing ? 'Preparing…' : 'Download PDF'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

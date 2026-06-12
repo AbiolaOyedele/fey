@@ -5,6 +5,7 @@ import type {
   MessageAttachment, ContractContent, FormField, FormResponse,
   PortalInvoice, PortalPayment, PortalTask, PaymentRequestStatus,
 } from '@/types/crm'
+import { resolveWorkspaceName } from '@/utils/workspace'
 
 // ── Owner lookup by workspace_slug ────────────────────────────────────────────
 
@@ -20,7 +21,9 @@ export async function getOwnerByWorkspaceSlug(
   if (error ?? !data) return null
   const row = data as Record<string, unknown>
   return {
-    business_name: (row.company_name as string | null) || (row.workspace_name as string | null) || 'Workspace',
+    // The workspace/brand name shown to clients — company name, else the
+    // prettified slug. Never the owner's personal name (username/workspace_name).
+    business_name: resolveWorkspaceName(row.company_name as string | null, row.workspace_slug as string | null),
     owner_name:    (row.username as string | null) ?? '',
     logo_url:      (row.logo as string | null) ?? null,
     accent_color:  (row.accent_color as string | null) ?? '#ED64A6',

@@ -63,8 +63,9 @@ function JoinPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
   }, [subdomain, form, code, router])
 
   const accent       = branding?.accent_color ?? '#ED64A6'
-  const ownerInitial = (branding?.owner_name ?? branding?.business_name ?? 'W').charAt(0).toUpperCase()
-  const displayName  = branding?.owner_name || branding?.business_name || subdomain
+  // Use the workspace/brand name (company or slug), not the owner's personal name.
+  const displayName  = branding?.business_name || subdomain
+  const ownerInitial = displayName.charAt(0).toUpperCase()
   const isComplete   = form.name && form.email && form.password.length >= 8 && code
 
   const inputCls = `

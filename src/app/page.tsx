@@ -13,6 +13,7 @@ import { useSupabaseData } from '@/hooks/useSupabaseData'
 import { supabase } from '@/lib/supabase'
 import { getContrastColor } from '@/utils/colorContrast'
 import { resolveWorkspaceName } from '@/utils/workspace'
+import { useGreeting } from '@/hooks/useGreeting'
 import type { Task } from '@/types'
 
 const CARD_COLS: Record<string, string> = {
@@ -386,13 +387,14 @@ export default function DashboardPage() {
     return { monthlyActivity: activity, maxEarned: Math.max(...activity.map((m) => m.earned), 1) }
   }, [clients, convertAmount]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Heading defaults to the workspace name (company or slug). The legacy
-  // "Track your work & earnings" placeholder is treated as "not customized".
+  // Heading defaults to a per-session rotating greeting built from the workspace
+  // name (company or slug) — e.g. "Welcome, Acme Studio". A custom
+  // dashboard_heading (anything other than the legacy placeholder) wins.
   const workspaceName = resolveWorkspaceName(settings.company_name, settings.workspace_slug)
+  const greeting = useGreeting(workspaceName)
   const rawHeading = (settings.dashboard_heading ?? '').replace(/\\n/g, '\n')
-  const heading = (!rawHeading.trim() || rawHeading === 'Track your\nwork & earnings')
-    ? workspaceName
-    : rawHeading
+  const isCustomHeading = !!rawHeading.trim() && rawHeading !== 'Track your\nwork & earnings'
+  const heading = isCustomHeading ? rawHeading : greeting
   const gridColsDesktop = CARD_COLS[settings.card_size] ?? 'lg:grid-cols-2'
 
   const OverdueDropdown = () => (

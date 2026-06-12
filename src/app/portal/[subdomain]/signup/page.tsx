@@ -6,6 +6,7 @@ import { Suspense, use, useState, useCallback, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { usePortalBranding } from '@/hooks/usePortalBranding'
+import { usePortalBase, portalBasePath } from '@/hooks/usePortalBase'
 
 // ─── Inner page ───────────────────────────────────────────────────────────────
 
@@ -15,6 +16,7 @@ function JoinPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
   const router        = useRouter()
 
   const branding = usePortalBranding(subdomain)
+  const base     = usePortalBase(subdomain)
   const [form,    setForm]  = useState({ name: '', email: '', password: '' })
   const [code,    setCode]  = useState('')
   const [error,   setError] = useState('')
@@ -55,7 +57,7 @@ function JoinPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
         return
       }
       // Account created — redirect to login with a success flag
-      router.replace(`/portal/${subdomain}/login?joined=1`)
+      router.replace(`${portalBasePath(subdomain)}/login?joined=1`)
     } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
@@ -238,7 +240,7 @@ function JoinPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
           <p style={{ textAlign: 'center', fontSize: '13px', color: '#9CA3AF', marginTop: '20px' }}>
             Already have access?{' '}
             <a
-              href={`/portal/${subdomain}/login`}
+              href={`${base}/login`}
               style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}
             >
               Sign in

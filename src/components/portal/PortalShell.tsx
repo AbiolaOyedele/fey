@@ -8,6 +8,7 @@ import { portalTokenKey } from '@/app/portal/[subdomain]/layout'
 import PortalWorkspaceTabs, { PORTAL_SECTIONS } from './PortalWorkspaceTabs'
 import UpdateBanner from '@/components/ui/UpdateBanner'
 import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
+import { usePortalBase } from '@/hooks/usePortalBase'
 import type { PortalOwnerBranding } from '@/types/crm'
 
 interface PortalShellProps {
@@ -26,16 +27,16 @@ export default function PortalShell({ subdomain, branding, clientName, children 
   const [open, setOpen]           = useState(false)
   const [signingOut, setSigningOut] = useState(false)
 
-  const base   = `/portal/${subdomain}`
+  const base   = usePortalBase(subdomain)   // for link hrefs (/client or /portal/<slug>)
   const accent = branding.accent_color || '#ED64A6'
   const updateAvailable = useUpdatePrompt()
 
-  const isDashboard = pathname === base || pathname === `${base}/`
-  const isWorkspace = WORKSPACE_ROUTES.some((r) => pathname.startsWith(`${base}${r}`))
-
-  // Show the section tab bar when the client is inside one of the workspace
-  // sections (not on the dashboard or the workspace hub).
-  const showTabs = PORTAL_SECTIONS.some((s) => pathname.startsWith(`${base}${s.path}`))
+  // Active-state is derived from the section, stripping whichever base form the
+  // pathname has (/portal/<slug>/X or /client/X) — robust to the proxy rewrite.
+  const section = (pathname.replace(`/portal/${subdomain}`, '').replace(/^\/client/, '')) || '/'
+  const isDashboard = section === '/'
+  const isWorkspace = WORKSPACE_ROUTES.some((r) => section.startsWith(r))
+  const showTabs    = PORTAL_SECTIONS.some((s) => section.startsWith(s.path))
 
   const signOut = () => {
     setSigningOut(true)

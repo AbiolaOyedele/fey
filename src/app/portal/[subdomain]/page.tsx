@@ -4,6 +4,7 @@ import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { use, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { MessageSquare, FileSignature, ClipboardList, ArrowRight } from 'lucide-react'
+import { usePortalBase } from '@/hooks/usePortalBase'
 
 interface OverviewCard {
   label: string
@@ -13,10 +14,10 @@ interface OverviewCard {
   accent: string
 }
 
-function StatCard({ card, subdomain }: { card: OverviewCard; subdomain: string }) {
+function StatCard({ card, base }: { card: OverviewCard; base: string }) {
   return (
     <Link
-      href={`/portal/${subdomain}${card.href}`}
+      href={`${base}${card.href}`}
       className="bg-white rounded-2xl border border-gray-100 p-5 hover:border-gray-200 hover:shadow-sm transition-all group"
     >
       <div className="flex items-start justify-between mb-3">
@@ -33,6 +34,7 @@ function StatCard({ card, subdomain }: { card: OverviewCard; subdomain: string }
 
 export default function PortalHome({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
+  const base = usePortalBase(subdomain)
 
   const [unreadMessages, setUnreadMessages]     = useState(0)
   const [pendingContracts, setPendingContracts] = useState(0)
@@ -98,7 +100,7 @@ export default function PortalHome({ params }: { params: Promise<{ subdomain: st
 
           <div className="grid grid-cols-2 gap-4">
             {cards.map((card) => (
-              <StatCard key={card.label} card={card} subdomain={subdomain} />
+              <StatCard key={card.label} card={card} base={base} />
             ))}
           </div>
         </>

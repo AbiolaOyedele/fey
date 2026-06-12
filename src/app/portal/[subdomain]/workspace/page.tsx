@@ -6,6 +6,7 @@ import {
   MessageSquare, Folder, FileSignature,
   ClipboardList, CreditCard, FileText, CheckSquare2, ArrowRight,
 } from 'lucide-react'
+import { usePortalBase } from '@/hooks/usePortalBase'
 
 interface Section {
   label: string
@@ -17,7 +18,7 @@ interface Section {
 
 export default function WorkspacePage({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
-  const base = `/portal/${subdomain}`
+  const base = usePortalBase(subdomain)
 
   const sections: Section[] = [
     {

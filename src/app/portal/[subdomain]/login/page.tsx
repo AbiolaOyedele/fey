@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, CheckCircle2 } from 'lucide-react'
 import { portalTokenKey } from '../layout'
 import { usePortalBranding } from '@/hooks/usePortalBranding'
+import { usePortalBase, portalBasePath } from '@/hooks/usePortalBase'
 
 function PortalLoginInner({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
@@ -17,6 +18,7 @@ function PortalLoginInner({ params }: { params: Promise<{ subdomain: string }> }
   const [error,    setError]    = useState('')
   const [loading, setLoading] = useState(false)
   const branding = usePortalBranding(subdomain)
+  const base     = usePortalBase(subdomain)
 
   const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,7 +41,7 @@ function PortalLoginInner({ params }: { params: Promise<{ subdomain: string }> }
 
       // Store the portal JWT scoped to this workspace
       localStorage.setItem(portalTokenKey(subdomain), data.token)
-      router.push(`/portal/${subdomain}`)
+      router.push(portalBasePath(subdomain))
     } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
@@ -127,7 +129,7 @@ function PortalLoginInner({ params }: { params: Promise<{ subdomain: string }> }
 
         <p className="text-center text-sm text-gray-500 mt-4">
           Don&apos;t have access?{' '}
-          <a href={`/portal/${subdomain}/join`} className="font-medium text-gray-800 hover:underline">
+          <a href={`${base}/join`} className="font-medium text-gray-800 hover:underline">
             Request access
           </a>
         </p>

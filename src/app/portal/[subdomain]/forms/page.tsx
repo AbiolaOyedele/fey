@@ -1,5 +1,6 @@
 'use client'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
+import { portalBasePath } from '@/hooks/usePortalBase'
 
 import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -55,7 +56,7 @@ export default function PortalFormsPage({ params }: { params: Promise<{ subdomai
           {forms.map((f) => (
             <div
               key={f.id}
-              onClick={() => router.push(`/portal/${subdomain}/forms/${f.id}`)}
+              onClick={() => router.push(`${portalBasePath(subdomain)}/forms/${f.id}`)}
               className="flex items-center gap-3 h-14 px-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 cursor-pointer transition-colors"
             >
               <ClipboardList size={16} className="text-gray-400 flex-shrink-0" />

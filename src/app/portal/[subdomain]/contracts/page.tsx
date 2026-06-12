@@ -1,5 +1,6 @@
 'use client'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
+import { portalBasePath } from '@/hooks/usePortalBase'
 
 import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -56,7 +57,7 @@ export default function PortalContractsPage({ params }: { params: Promise<{ subd
           {contracts.map((c) => (
             <div
               key={c.id}
-              onClick={() => router.push(`/portal/${subdomain}/contracts/${c.id}`)}
+              onClick={() => router.push(`${portalBasePath(subdomain)}/contracts/${c.id}`)}
               className="flex items-center gap-3 h-14 px-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 cursor-pointer transition-colors"
             >
               <FileSignature size={16} className="text-gray-400 flex-shrink-0" />

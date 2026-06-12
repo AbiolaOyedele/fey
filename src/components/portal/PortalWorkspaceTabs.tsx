@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { usePortalBase } from '@/hooks/usePortalBase'
 
 /**
  * The client-facing workspace sections, in the same order as the owner's
@@ -31,7 +32,9 @@ interface PortalWorkspaceTabsProps {
  */
 export default function PortalWorkspaceTabs({ subdomain, accent }: PortalWorkspaceTabsProps) {
   const pathname = usePathname() ?? ''
-  const base = `/portal/${subdomain}`
+  const base = usePortalBase(subdomain)
+  // Active-state from the section, stripping either base form (proxy-rewrite safe).
+  const section = (pathname.replace(`/portal/${subdomain}`, '').replace(/^\/client/, '')) || '/'
 
   return (
     <div
@@ -40,7 +43,7 @@ export default function PortalWorkspaceTabs({ subdomain, accent }: PortalWorkspa
     >
       {PORTAL_SECTIONS.map(({ label, path }) => {
         const href = `${base}${path}`
-        const isActive = pathname === href || pathname.startsWith(`${href}/`)
+        const isActive = section === path || section.startsWith(`${path}/`)
         return (
           <Link
             key={path}

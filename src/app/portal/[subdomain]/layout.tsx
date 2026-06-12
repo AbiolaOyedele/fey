@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import PortalShell from '@/components/portal/PortalShell'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
+import { portalBasePath } from '@/hooks/usePortalBase'
 import type { PortalOwnerBranding } from '@/types/crm'
 
 // Re-export so existing imports from this layout file keep working
@@ -41,7 +42,7 @@ export default function PortalLayout({
 
       if (!token) {
         setLoading(false)
-        if (!isPublic) router.replace(`/portal/${subdomain}/login`)
+        if (!isPublic) router.replace(`${portalBasePath(subdomain)}/login`)
         return
       }
 
@@ -54,7 +55,7 @@ export default function PortalLayout({
         // Token expired or invalid — clear and redirect to login
         localStorage.removeItem(portalTokenKey(subdomain))
         setLoading(false)
-        if (!isPublic) router.replace(`/portal/${subdomain}/login`)
+        if (!isPublic) router.replace(`${portalBasePath(subdomain)}/login`)
         return
       }
 

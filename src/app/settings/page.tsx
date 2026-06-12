@@ -234,9 +234,9 @@ function SettingsPageInner() {
   const [clientsLabelInput, setClientsLabelInput] = useState(settings.clients_label || 'Clients')
 
   // ── CRM & Portal state ────────────────────────────────────────────────────
-  const [portalSubdomain,      setPortalSubdomain]      = useState('')
+  // The workspace slug (= subdomain) is set at onboarding and shown read-only
+  // from settings.workspace_slug. Only portal_active is editable here.
   const [portalActive,         setPortalActive]         = useState(false)
-  const [portalSubdomainError, setPortalSubdomainError] = useState('')
   const [portalSaving,         setPortalSaving]         = useState(false)
   const [portalLoaded,         setPortalLoaded]         = useState(false)
 
@@ -1362,16 +1362,15 @@ function SettingsPageInner() {
   // ── CRM & Portal ───────────────────────────────────────────────────────────
 
   const renderCrmAndPortal = (): React.ReactNode => {
-    // Lazy-load portal settings from fey_settings
+    // Lazy-load the portal_active flag (the slug comes from settings.workspace_slug)
     if (!portalLoaded && user?.id) {
       void supabase
         .from('fey_settings')
-        .select('portal_subdomain, portal_active')
+        .select('portal_active')
         .eq('user_id', user.id)
         .maybeSingle()
         .then(({ data }) => {
-          const row = data as { portal_subdomain: string | null; portal_active: boolean | null } | null
-          setPortalSubdomain(row?.portal_subdomain ?? '')
+          const row = data as { portal_active: boolean | null } | null
           setPortalActive(row?.portal_active ?? false)
           setPortalLoaded(true)
         })
@@ -1379,16 +1378,10 @@ function SettingsPageInner() {
 
     const savePortal = async (): Promise<void> => {
       if (!user?.id) return
-      const slug = portalSubdomain.trim().toLowerCase()
-      if (slug && !/^[a-z0-9-]{3,30}$/.test(slug)) {
-        setPortalSubdomainError('Use 3–30 lowercase letters, numbers, or hyphens.')
-        return
-      }
-      setPortalSubdomainError('')
       setPortalSaving(true)
       await supabase
         .from('fey_settings')
-        .upsert({ user_id: user.id, portal_subdomain: slug || null, portal_active: portalActive }, { onConflict: 'user_id' })
+        .upsert({ user_id: user.id, portal_active: portalActive }, { onConflict: 'user_id' })
       setPortalSaving(false)
       showToast('Portal settings saved')
     }
@@ -1439,30 +1432,26 @@ function SettingsPageInner() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Subdomain</label>
-              <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:border-gray-400 focus-within:bg-white transition-all">
-                <input
-                  type="text"
-                  value={portalSubdomain}
-                  onChange={(e) => { setPortalSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); setPortalSubdomainError('') }}
-                  placeholder="yourname"
-                  className="flex-1 px-3 py-2.5 text-sm bg-transparent outline-none"
-                />
-                <span className="pr-3 text-sm text-gray-400">.{rootDomain}</span>
-              </div>
-              {portalSubdomainError && <p className="text-xs text-red-500 mt-1.5">{portalSubdomainError}</p>}
-              {portalSubdomain && !portalSubdomainError && (
-                <div className="mt-2 flex items-center gap-2">
-                  <Globe size={12} className="text-gray-400" />
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Your workspace URL</label>
+              {settings.workspace_slug ? (
+                <div className="flex items-center gap-2">
+                  <Globe size={14} className="text-gray-400 flex-shrink-0" />
                   <a
-                    href={`https://${portalSubdomain}.${rootDomain}`}
+                    href={`https://${settings.workspace_slug}.${rootDomain}`}
                     target="_blank" rel="noreferrer"
-                    className="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700"
+                    className="text-sm font-medium text-gray-700 underline underline-offset-2 hover:text-gray-900"
                   >
-                    {portalSubdomain}.{rootDomain}
+                    {settings.workspace_slug}.{rootDomain}
                   </a>
                 </div>
+              ) : (
+                <p className="text-sm text-gray-400">
+                  Not set yet — <a href="/setup" className="underline">finish workspace setup</a> to get your address.
+                </p>
               )}
+              <p className="text-xs text-gray-400 mt-1.5">
+                Your workspace and client portal both live here. Chosen during onboarding.
+              </p>
             </div>
           </div>
 

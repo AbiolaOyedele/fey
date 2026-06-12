@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
+import { env } from '@/config/env'
 import Sidebar from './Sidebar'
 import ToastContainer from '@/components/ui/Toast'
 import UpdateBanner from '@/components/ui/UpdateBanner'
@@ -43,6 +44,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (!user) { router.replace('/login'); return }
     if (!setupComplete) { router.replace('/setup') }
   }, [user, loading, isPublic, setupComplete, router])
+
+  // Keep the owner on their own workspace subdomain (<slug>.theruff.agency).
+  // Cookie SSO carries the session across subdomains, so this is a seamless hard
+  // redirect. Skipped on localhost / preview (non-root hosts) and on the portal.
+  useEffect(() => {
+    if (IS_DEMO || isPublic || loading || !user || !setupComplete) return
+    if (typeof window === 'undefined') return
+    const slug = settings.workspace_slug
+    if (!slug) return
+    const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
+    const host = window.location.hostname
+    if (!host.endsWith(rootDomain)) return       // localhost / *.vercel.app
+    if (host === `${slug}.${rootDomain}`) return  // already on the right subdomain
+    window.location.href = `https://${slug}.${rootDomain}${window.location.pathname}${window.location.search}`
+  }, [user, loading, isPublic, setupComplete, settings.workspace_slug])
 
   if (isPublic) return <>{children}</>
 

@@ -6,6 +6,7 @@ import { Loader2, Check, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { supabase } from '@/lib/supabase'
+import { env } from '@/config/env'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -171,7 +172,15 @@ export default function SetupPage() {
       // Update in-memory settings so AppShell stops blocking
       await saveSetting('fey_onboarding_complete', 'true')
 
-      router.replace('/')
+      // Land the owner on their own workspace subdomain. Cookie SSO carries the
+      // session across, so they stay logged in. On localhost we just go home.
+      const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
+      const host = window.location.hostname
+      if (host.endsWith(rootDomain) && host !== `${slug}.${rootDomain}`) {
+        window.location.href = `https://${slug}.${rootDomain}/`
+      } else {
+        router.replace('/')
+      }
     } catch (err) {
       setError('Something went wrong. Please try again.')
       console.error('[setup]', err)

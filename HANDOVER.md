@@ -98,6 +98,8 @@ required.
 | Portal section tabs | ✅ `PortalWorkspaceTabs` — Messages·Files·Contracts·Forms·Payments·Invoices·Tasks on every section page |
 | Portal sections wired to data | ✅ All 7 live. Invoices/Payments/Tasks read-only via new portal APIs (sent-only, no drafts/pricing) |
 | New contact → portal access | ✅ `portal_enabled: true` by default on creation |
+| Workspace name (portal + dashboard) | ✅ `resolveWorkspaceName()` — company name or prettified slug, never the owner's personal name |
+| "New update" reload prompt | ✅ Build-SHA compare (`NEXT_PUBLIC_BUILD_ID` vs `GET /api/v1/version`); `UpdateBanner` in AppShell + PortalShell |
 | Workspace hub page | ✅ Grid cards to all sections |
 | `/portal/[slug]/join?code=` route | ✅ Re-exports signup page; `/join` is a public path |
 | Portal pages auth (localStorage JWT) | ✅ All pages use `portalTokenKey(subdomain)` |

@@ -1,52 +1,86 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
-import { ArrowRight, MessageSquare, FileText, ClipboardList, UserPlus, Settings, Users } from 'lucide-react'
+import {
+  ArrowUpRight, Plus, Users, MessageSquare,
+  ClipboardList, UserPlus, Settings, MoreHorizontal, Eye,
+} from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCrmPending } from '@/hooks/useCrmPending'
 import { useContacts } from '@/hooks/useCrm'
 import { resolveWorkspaceName } from '@/utils/workspace'
 import { useGreeting } from '@/hooks/useGreeting'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { ContactStatus } from '@/types/crm'
 
-function statusVariant(status: ContactStatus): 'default' | 'secondary' | 'outline' {
-  if (status === 'active') return 'default'
-  if (status === 'completed') return 'outline'
-  return 'secondary'
+// ─── Donut ring chart ────────────────────────────────────────────────────────
+
+interface DonutSegment { label: string; count: number; color: string }
+
+function DonutChart({ segments, total }: { segments: DonutSegment[]; total: number }) {
+  const r = 52
+  const stroke = 10
+  const circ = 2 * Math.PI * r
+
+  let cumulative = 0
+  const arcs = segments.map((seg) => {
+    const len = total > 0 ? (seg.count / total) * circ : 0
+    const arc = { ...seg, len, offset: cumulative }
+    cumulative += len
+    return arc
+  })
+
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120" className="-rotate-90">
+      {total === 0 ? (
+        <circle cx="60" cy="60" r={r} fill="none" stroke="#F3F4F6" strokeWidth={stroke} />
+      ) : (
+        arcs.map((arc) => (
+          <circle
+            key={arc.label}
+            cx="60" cy="60" r={r}
+            fill="none"
+            stroke={arc.color}
+            strokeWidth={stroke}
+            strokeLinecap="butt"
+            strokeDasharray={`${arc.len} ${circ}`}
+            strokeDashoffset={-arc.offset}
+          />
+        ))
+      )}
+    </svg>
+  )
 }
 
-function statusLabel(status: ContactStatus): string {
-  if (status === 'active') return 'Active'
-  if (status === 'completed') return 'Completed'
-  return 'Idle'
+// ─── Progress bar row ─────────────────────────────────────────────────────────
+
+function ProgressBar({ label, count, max, color }: { label: string; count: number; max: number; color: string }) {
+  const pct = max > 0 ? Math.max((count / max) * 100, count > 0 ? 5 : 0) : 0
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs text-gray-500">{label}</span>
+        <span className="text-xs font-mono font-semibold text-gray-700">{count}</span>
+      </div>
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
+      </div>
+    </div>
+  )
 }
+
+// ─── Relative time ────────────────────────────────────────────────────────────
 
 function relativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const days = Math.floor(diff / 86400000)
+  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000)
   if (days === 0) return 'Today'
   if (days === 1) return 'Yesterday'
   if (days < 7) return `${days}d ago`
-  if (days < 30) return `${Math.floor(days / 7)}w ago`
-  return `${Math.floor(days / 30)}mo ago`
+  return `${Math.floor(days / 7)}w ago`
 }
 
-const STAT_SKELETON = (
-  <Card className="shadow-sm border-gray-100">
-    <CardHeader className="pb-2">
-      <Skeleton className="h-3 w-24" />
-    </CardHeader>
-    <CardContent>
-      <Skeleton className="h-8 w-12 mb-1" />
-      <Skeleton className="h-3 w-32" />
-    </CardContent>
-  </Card>
-)
+// ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -54,56 +88,47 @@ export default function DashboardPage() {
   const pending = useCrmPending(user?.id)
   const { contacts, loading: contactsLoading } = useContacts()
 
+  const accent = settings.accent_color ?? '#ED64A6'
+
   const workspaceName = resolveWorkspaceName(settings.company_name, settings.workspace_slug)
   const greeting = useGreeting(workspaceName)
   const rawHeading = (settings.dashboard_heading ?? '').replace(/\\n/g, '\n')
   const isCustomHeading = !!rawHeading.trim() && rawHeading !== 'Track your\nwork & earnings'
   const heading = isCustomHeading ? rawHeading : greeting
 
-  const recentClients = contacts.slice(0, 5)
-  const hasAttention = (pending.unreadMessages + pending.pendingContracts + pending.pendingForms) > 0
+  const statusCounts = useMemo(() => ({
+    active:    contacts.filter((c) => c.status === 'active').length,
+    idle:      contacts.filter((c) => c.status === 'idle').length,
+    completed: contacts.filter((c) => c.status === 'completed').length,
+  }), [contacts])
 
-  const stats = [
-    {
-      label: 'Total clients',
-      value: pending.loaded ? pending.contactCount : null,
-      icon: <Users size={14} className="text-gray-400" />,
-      href: '/clients',
-    },
-    {
-      label: 'Unread messages',
-      value: pending.loaded ? pending.unreadMessages : null,
-      icon: <MessageSquare size={14} className="text-gray-400" />,
-      href: '/clients',
-    },
-    {
-      label: 'Pending contracts',
-      value: pending.loaded ? pending.pendingContracts : null,
-      icon: <FileText size={14} className="text-gray-400" />,
-      href: '/clients',
-    },
-    {
-      label: 'Pending forms',
-      value: pending.loaded ? pending.pendingForms : null,
-      icon: <ClipboardList size={14} className="text-gray-400" />,
-      href: '/clients',
-    },
-  ]
+  const dominantStatus = statusCounts.active >= statusCounts.idle && statusCounts.active >= statusCounts.completed
+    ? 'active'
+    : statusCounts.idle >= statusCounts.completed
+      ? 'idle'
+      : 'completed'
+
+  const totalPending = pending.unreadMessages + pending.pendingContracts + pending.pendingForms
+  const recentClients = contacts.slice(0, 4)
+  const portalUrl = settings.workspace_slug ? `${settings.workspace_slug}.theruff.agency` : null
 
   return (
     <div className="min-h-screen p-4 md:p-6 lg:p-8 page-enter">
-      {/* Hero heading */}
-      <div className="flex items-start justify-between gap-4 mb-6 lg:mb-8">
-        <div>
-          <h1
-            className="font-display text-[20px] leading-snug font-normal text-gray-700"
-            style={{ whiteSpace: 'pre-wrap' }}
-          >
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between gap-4 mb-6 lg:mb-8">
+        <div className="flex items-center gap-3">
+          {settings.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={settings.logo} alt="" className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 flex-shrink-0" />
+          ) : (
+            <div className="w-9 h-9 bg-gray-900 rounded-xl flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-sm">F</span>
+            </div>
+          )}
+          <h1 className="font-display text-[20px] leading-snug font-normal text-gray-700" style={{ whiteSpace: 'pre-wrap' }}>
             {heading}
           </h1>
-          {settings.dashboard_subtitle && (
-            <p className="text-gray-500 text-sm mt-2">{settings.dashboard_subtitle}</p>
-          )}
         </div>
         <Link
           href="/settings"
@@ -113,168 +138,330 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Getting started — shown only when workspace has no clients yet */}
-      {pending.loaded && pending.contactCount === 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 lg:p-8 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Welcome to your workspace 👋</h2>
-          <p className="text-sm text-gray-500 mt-1.5 mb-5 max-w-lg leading-relaxed">
-            This is your home base. Add your first client to start sending them messages,
-            files, contracts, forms and invoices through their portal — or set up your
-            workspace branding first.
-          </p>
-          <div className="flex flex-wrap gap-3">
+      {/* ── Top row ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
+
+        {/* Left: Workspace overview */}
+        <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col justify-between min-h-[220px]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              {(['All', 'Active', 'Idle', 'Completed'] as const).map((s) => (
+                <span
+                  key={s}
+                  className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500"
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+            {portalUrl && (
+              <span className="text-[11px] text-gray-400 font-mono flex-shrink-0 truncate max-w-[160px]">
+                {portalUrl}
+              </span>
+            )}
+          </div>
+
+          <div className="my-5">
+            <p className="text-xs text-gray-400 mb-1">Total Clients</p>
+            <div className="flex items-center gap-3">
+              {pending.loaded ? (
+                <p className="font-display text-5xl font-normal text-gray-900 tabular-nums leading-none">
+                  {pending.contactCount}
+                </p>
+              ) : (
+                <Skeleton className="h-12 w-16" />
+              )}
+              <Eye size={16} className="text-gray-300 mt-1" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
             <Link
               href="/clients?new=1"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity flex-shrink-0"
+              style={{ backgroundColor: accent }}
             >
-              <UserPlus size={15} /> Add your first client
+              <UserPlus size={14} /> Add Client
             </Link>
             <Link
-              href="/settings"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors"
+              href="/clients"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors flex-shrink-0"
             >
-              <Settings size={15} /> Set up workspace
+              View all clients
+            </Link>
+            <div className="flex-1" />
+            <Link
+              href="/clients"
+              className="w-11 h-11 rounded-full flex items-center justify-center text-white shadow-md hover:opacity-90 transition-opacity flex-shrink-0"
+              style={{ backgroundColor: accent }}
+            >
+              <ArrowUpRight size={18} />
             </Link>
           </div>
         </div>
-      )}
 
-      {/* Stats grid — 4 columns */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-4">
-        {pending.loaded
-          ? stats.map((s) => (
-              <Link key={s.label} href={s.href} className="block group">
-                <Card className="shadow-sm border-gray-100 transition-shadow group-hover:shadow-md">
-                  <CardHeader className="pb-1">
-                    <CardTitle className="flex items-center gap-1.5 font-normal text-muted-foreground text-xs">
-                      {s.icon}
-                      {s.label}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="font-semibold text-2xl tabular-nums text-gray-900">
-                      {s.value ?? 0}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))
-          : Array.from({ length: 4 }).map((_, i) => <div key={i}>{STAT_SKELETON}</div>)
-        }
+        {/* Right: Pending hero (accent card) */}
+        <div
+          className="lg:col-span-2 rounded-2xl p-6 flex flex-col justify-between min-h-[220px] relative overflow-hidden"
+          style={{ backgroundColor: accent }}
+        >
+          {/* decorative bg circles */}
+          <div className="absolute -bottom-8 -right-8 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+          <div className="absolute -top-10 -right-12 w-44 h-44 rounded-full bg-white/10 pointer-events-none" />
+
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-black/25 text-white">
+              PENDING
+              <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center">
+                <Plus size={10} />
+              </span>
+            </div>
+            <MoreHorizontal size={16} className="text-white/50" />
+          </div>
+
+          <div className="relative z-10">
+            <p className="text-white/70 text-xs mb-1.5">Needs your attention</p>
+            <div className="flex items-center gap-2.5">
+              {pending.loaded ? (
+                <p className="font-display text-4xl font-normal text-white tabular-nums leading-none">
+                  {totalPending}
+                </p>
+              ) : (
+                <Skeleton className="h-10 w-12 bg-white/20" />
+              )}
+              {totalPending > 0 && (
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/20 text-white">
+                  {totalPending} item{totalPending !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 relative z-10">
+            {[
+              { label: 'Messages',  value: pending.unreadMessages },
+              { label: 'Contracts', value: pending.pendingContracts },
+            ].map((s) => (
+              <div key={s.label} className="bg-white/15 rounded-xl px-3 py-2.5">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-white/70 text-[11px]">{s.label}</span>
+                  <Eye size={11} className="text-white/40" />
+                </div>
+                <p className="text-white font-semibold text-xl tabular-nums leading-none">
+                  {pending.loaded ? s.value : '—'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Needs attention (inline highlight when there are pending items) */}
-      {hasAttention && (
-        <div
-          className="rounded-2xl border mb-4 p-4 flex items-center justify-between gap-4"
-          style={{ backgroundColor: `var(--accent, #ED64A6)18`, borderColor: `var(--accent, #ED64A6)30` }}
-        >
-          <p className="text-sm font-medium text-gray-800">
-            You have {pending.unreadMessages > 0 ? `${pending.unreadMessages} unread message${pending.unreadMessages !== 1 ? 's' : ''}` : ''}
-            {pending.unreadMessages > 0 && (pending.pendingContracts > 0 || pending.pendingForms > 0) ? ', ' : ''}
-            {pending.pendingContracts > 0 ? `${pending.pendingContracts} pending contract${pending.pendingContracts !== 1 ? 's' : ''}` : ''}
-            {pending.pendingContracts > 0 && pending.pendingForms > 0 ? ', ' : ''}
-            {pending.pendingForms > 0 ? `${pending.pendingForms} pending form${pending.pendingForms !== 1 ? 's' : ''}` : ''}
-            {' '}that need your attention.
-          </p>
-          <Link
-            href="/clients"
-            className="flex-shrink-0 flex items-center gap-1 text-sm font-semibold hover:gap-2 transition-all"
-            style={{ color: 'var(--accent, #ED64A6)' }}
-          >
-            Review <ArrowRight size={14} />
-          </Link>
-        </div>
-      )}
+      {/* ── Bottom row ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-      {/* Recent clients table */}
-      {(contactsLoading || contacts.length > 0) && (
-        <Card className="shadow-sm border-gray-100">
-          <CardHeader className="border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base font-semibold text-gray-900">Recent clients</CardTitle>
-                <CardDescription className="text-xs text-gray-400 mt-0.5">Your latest 5 clients</CardDescription>
-              </div>
-              <Link
-                href="/clients"
-                className="flex items-center gap-1 text-xs font-medium hover:gap-2 transition-all"
-                style={{ color: 'var(--accent, #ED64A6)' }}
-              >
-                View all <ArrowRight size={12} />
-              </Link>
+        {/* Client status donut */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Users size={14} className="text-gray-400" />
+              <p className="text-sm font-semibold text-gray-800">Client Status</p>
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
+            <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
+              {new Date().toLocaleString('en-US', { month: 'long' })}
+            </span>
+          </div>
+
+          <div className="flex justify-center py-2">
             {contactsLoading ? (
-              <div className="p-6 space-y-3">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
+              <Skeleton className="w-[120px] h-[120px] rounded-full" />
+            ) : (
+              <div className="relative">
+                <DonutChart
+                  total={contacts.length}
+                  segments={[
+                    { label: 'Active',    count: statusCounts.active,    color: accent },
+                    { label: 'Idle',      count: statusCounts.idle,      color: '#E5E7EB' },
+                    { label: 'Completed', count: statusCounts.completed, color: '#48BB78' },
+                  ]}
+                />
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <p className="font-semibold text-xl text-gray-900 tabular-nums leading-none">{contacts.length}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">total</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {contacts.length > 0 && (
+            <p className="text-[11px] text-gray-400 text-center my-3">
+              ✦ Most clients are{' '}
+              <span className="font-medium" style={{ color: dominantStatus === 'active' ? accent : dominantStatus === 'completed' ? '#48BB78' : '#9CA3AF' }}>
+                {dominantStatus}
+              </span>
+            </p>
+          )}
+
+          <div className="space-y-2 mt-2">
+            {[
+              { label: 'Active',    count: statusCounts.active,    color: accent },
+              { label: 'Idle',      count: statusCounts.idle,      color: '#9CA3AF' },
+              { label: 'Completed', count: statusCounts.completed, color: '#48BB78' },
+            ].map((s) => (
+              <div key={s.label} className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-xs text-gray-500">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                  {s.label}
+                </span>
+                <span className="text-xs font-semibold text-gray-700 tabular-nums">
+                  {contactsLoading ? '…' : s.count}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Pending work */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <ClipboardList size={14} className="text-gray-400" />
+              <p className="text-sm font-semibold text-gray-800">Pending</p>
+            </div>
+            <span
+              className="text-xs font-mono px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: `${accent}15`, color: accent }}
+            >
+              {totalPending} items
+            </span>
+          </div>
+
+          <div className="my-5">
+            {pending.loaded ? (
+              <p className="font-display text-4xl font-normal text-gray-900 tabular-nums leading-none">{totalPending}</p>
+            ) : (
+              <Skeleton className="h-10 w-12" />
+            )}
+            <p className="text-xs text-gray-400 mt-1.5">items needing your review</p>
+          </div>
+
+          <div className="space-y-4">
+            <ProgressBar
+              label="Unread messages"
+              count={pending.unreadMessages}
+              max={Math.max(totalPending, 1)}
+              color={accent}
+            />
+            <ProgressBar
+              label="Pending contracts"
+              count={pending.pendingContracts}
+              max={Math.max(totalPending, 1)}
+              color="#F6AD55"
+            />
+            <ProgressBar
+              label="Pending forms"
+              count={pending.pendingForms}
+              max={Math.max(totalPending, 1)}
+              color="#48BB78"
+            />
+            <ProgressBar
+              label="Active clients"
+              count={statusCounts.active}
+              max={Math.max(pending.contactCount, 1)}
+              color="#9CA3AF"
+            />
+          </div>
+        </div>
+
+        {/* Recent clients */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <MessageSquare size={14} className="text-gray-400" />
+              <p className="text-sm font-semibold text-gray-800">Recent Clients</p>
+            </div>
+            <MoreHorizontal size={16} className="text-gray-300" />
+          </div>
+
+          <div className="space-y-0">
+            {contactsLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 py-3">
+                  <Skeleton className="w-9 h-9 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-2.5 w-32" />
+                  </div>
+                  <Skeleton className="h-3 w-10" />
+                </div>
+              ))
+            ) : recentClients.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10">
+                <Users size={28} className="text-gray-200 mb-3" />
+                <p className="text-xs text-gray-400 mb-4">No clients yet</p>
+                <Link
+                  href="/clients?new=1"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold text-white hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: accent }}
+                >
+                  <UserPlus size={12} /> Add first client
+                </Link>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent border-gray-100">
-                    <TableHead className="pl-6 text-xs">Client</TableHead>
-                    <TableHead className="hidden sm:table-cell text-xs">Company</TableHead>
-                    <TableHead className="text-xs">Status</TableHead>
-                    <TableHead className="hidden md:table-cell text-xs">Portal</TableHead>
-                    <TableHead className="pr-6 text-right text-xs">Added</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentClients.map((c) => (
-                    <TableRow
-                      key={c.id}
-                      className="h-14 hover:bg-gray-50/50 border-gray-50 cursor-pointer"
-                      onClick={() => window.location.assign(`/clients/${c.id}/messages`)}
+              recentClients.map((c, i) => (
+                <Link
+                  key={c.id}
+                  href={`/clients/${c.id}/messages`}
+                  className="flex items-center gap-3 py-3 -mx-2 px-2 rounded-xl hover:bg-gray-50 transition-colors"
+                  style={{ borderBottom: i < recentClients.length - 1 ? '1px solid #F9FAFB' : 'none' }}
+                >
+                  {c.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.avatar_url} alt={c.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold text-white flex-shrink-0"
+                      style={{ backgroundColor: accent }}
                     >
-                      <TableCell className="pl-6">
-                        <div className="flex items-center gap-2.5">
-                          {c.avatar_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={c.avatar_url} alt={c.name} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
-                          ) : (
-                            <div
-                              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold text-white flex-shrink-0"
-                              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
-                            >
-                              {c.name.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <span className="font-medium text-sm text-gray-900 truncate max-w-[120px]">{c.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                        {c.company ?? '—'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={statusVariant(c.status)}
-                          className="text-xs capitalize"
-                          style={c.status === 'active' ? { backgroundColor: 'var(--accent, #ED64A6)', color: 'white', borderColor: 'transparent' } : {}}
-                        >
-                          {statusLabel(c.status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant={c.portal_enabled ? 'secondary' : 'outline'} className="text-xs">
-                          {c.portal_enabled ? 'Enabled' : 'Disabled'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="pr-6 text-right text-sm text-muted-foreground">
-                        {relativeTime(c.created_at)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      {c.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{c.name}</p>
+                    <p className="text-xs text-gray-400 truncate">{c.email ?? c.company ?? 'No contact info'}</p>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span className="text-[10px] text-gray-400">{relativeTime(c.created_at)}</span>
+                    <span
+                      className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                      style={
+                        c.status === 'active'
+                          ? { backgroundColor: `${accent}18`, color: accent }
+                          : c.status === 'completed'
+                            ? { backgroundColor: '#ECFDF5', color: '#059669' }
+                            : { backgroundColor: '#F3F4F6', color: '#9CA3AF' }
+                      }
+                    >
+                      {c.status}
+                    </span>
+                  </div>
+                </Link>
+              ))
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+
+          {contacts.length > 4 && (
+            <Link
+              href="/clients"
+              className="flex items-center justify-center gap-1 mt-3 pt-3 border-t border-gray-50 text-xs font-medium transition-colors hover:opacity-80"
+              style={{ color: accent }}
+            >
+              View all clients <ArrowUpRight size={12} />
+            </Link>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

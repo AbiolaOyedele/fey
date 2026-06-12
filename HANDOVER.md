@@ -2,24 +2,57 @@
 
 **Last updated:** 2026-06-12
 **Production:** https://dashboard.theruff.agency (demo mode OFF — real Supabase)
-**Latest commit deployed:** `8852b65`
-**Status:** Reload→`/setup` loop fixed at root cause and live. TypeScript clean (`npx tsc --noEmit` = 0 errors).
+**Latest commit deployed:** `7d3d25d`
+**Status:** Invite links + reload→`/setup` loop both fixed at root cause and live. TypeScript clean (`npx tsc --noEmit` = 0 errors).
 
 ---
 
 ## Checkpoint — where we are right now
 
-This session shipped the client-portal invite system and **fixed the reload loop at
-its root cause**. All work below is deployed to production.
+This session shipped the client-portal invite system, **fixed the broken invite
+links**, and **fixed the reload loop at its root cause**. All work below is deployed.
 
 ### Commits this session (newest first)
 
 | Commit | What |
 |---|---|
+| `7d3d25d` | **Invite link routing fix** — links now resolve to the join form (path-based URL) instead of the portal dashboard. `/setup` sets `portal_active: true`. |
 | `8852b65` | **Reload race fix** — `SettingsProvider` now consumes `useAuth()` instead of resolving the session a second time. The real fix for the reload loop. |
 | `a15dcc5` | `workspace_slug` added as the primary setup-completion signal in AppShell + `Settings` type + DEFAULTS. Defensive; complements the race fix. |
 | `d02d314` | Cleanup — extracted shared helpers (`buildInviteUrl`, `mergeLocalFlags`, `usePortalAuth`, `usePortalBranding`). |
 | `c893315` | Portal: invite codes, portal-JWT auth fix across 7 pages, first reload-to-setup attempt. |
+
+---
+
+## The invite-link bug — root cause (resolved)
+
+Clicking an invite link showed the **portal dashboard**, not a signup form, at a URL
+like `dashboard.theruff.agency/portal/signup?code=<UUID>`. Two independent defects:
+
+1. **`clients/[id]/layout.tsx` "Copy invite link"** (the ⋯-menu button actually being
+   used) built the URL by hand: wrong column (`portal_subdomain`, always null →
+   empty slug), the **contact UUID** as the code, and the old `/signup` path. Empty
+   slug → `/portal/signup?code=<uuid>`, which Next resolves to `[subdomain]="signup"`.
+   The portal layout treats any path ending in `/signup` as public, so it rendered
+   the **dashboard** with no auth. Now it calls the invite API and copies the
+   returned `invite_url` — same single source of truth as the other two consumers.
+
+2. **`buildInviteUrl`** emitted `https://<slug>.theruff.agency/join` — but **subdomain
+   routing is not wired** (no middleware/rewrite, no root `/join` route), so that URL
+   404s. Switched to the **path-based** form `<host>/portal/<slug>/join?code=...`,
+   which hits `/portal/[subdomain]/join` directly and resolves. `portal-settings`
+   fallback + "Portal URL" card updated to match.
+
+Also: signup is gated by `portal_active` (workspace) + `portal_enabled` (contact).
+Fey's `/setup` never set `portal_active`, so the API rejected every client with
+`PORTAL_INACTIVE`. `/setup` now sets `portal_active: true` (mirrors Workboard). The
+existing `bigbb` workspace + its contacts were enabled directly in the DB (one-time).
+
+**Working invite link form:** `https://dashboard.theruff.agency/portal/<slug>/join?code=<8-char-code>`
+
+**Files:** `src/app/api/v1/crm/contacts/[contactId]/invite/route.ts`,
+`src/app/clients/[id]/layout.tsx`, `src/app/clients/[id]/portal-settings/page.tsx`,
+`src/app/setup/page.tsx`.
 
 ---
 
@@ -55,13 +88,15 @@ required.
 | Area | Status |
 |---|---|
 | Reload→`/setup` loop | ✅ Fixed at root cause (race), deployed |
+| Invite links resolve to join form | ✅ Fixed — path-based URL, verified end-to-end |
 | Google OAuth / PKCE callback | ✅ `/auth/callback`, waits for SIGNED_IN when `?code=` present |
-| Portal invite code system | ✅ 8-char codes, GET/POST API, copy UI — **needs SQL (below)** |
+| Portal invite code system | ✅ 8-char codes, GET/POST API, copy UI. `invite_code` column live in DB |
+| "Copy invite link" (contact ⋯ menu) | ✅ Now calls the invite API (was the broken one) |
 | Add Contact modal → invite link | ✅ Success step shows link + copy |
 | Portal settings page → invite link | ✅ Short code + URL + regenerate |
 | Portal sidebar (Dashboard + Workspace) | ✅ |
 | Workspace hub page | ✅ Grid cards to all sections |
-| `/join?code=` route | ✅ Re-exports signup page |
+| `/portal/[slug]/join?code=` route | ✅ Re-exports signup page; `/join` is a public path |
 | Portal pages auth (localStorage JWT) | ✅ All 7 pages use `portalTokenKey(subdomain)` |
 | Login branding + "joined" banner | ✅ |
 
@@ -69,17 +104,11 @@ required.
 
 ## Outstanding action items
 
-### 1. SQL — required for invite codes (Supabase project `rwpyomkbzpmvbnbuduko`)
+### 1. No SQL outstanding ✅
 
-```sql
-ALTER TABLE crm_contacts ADD COLUMN IF NOT EXISTS invite_code TEXT UNIQUE;
-```
-
-Until this runs, invite codes cannot be generated or stored. **This is the only SQL
-still needed** — the old `UPDATE fey_settings SET fey_onboarding_complete='true'`
-workaround is no longer necessary, because the reload fix derives completion from
-`workspace_slug` (which existing users already have) and no longer depends on that
-flag.
+The `crm_contacts.invite_code` column exists in the DB (codes are live, e.g.
+`A2CDAEE7`). The old `fey_onboarding_complete` UPDATE is moot — the reload fix
+derives completion from `workspace_slug`.
 
 ### 2. Vercel env vars
 
@@ -87,26 +116,44 @@ flag.
   `replace_with_output_of_openssl_rand_-base64_32`. Generate with
   `openssl rand -base64 32` and set on Vercel:
   `vercel env add PORTAL_JWT_SECRET production`. **Portal login fails until this is a
-  real value in production.**
-- `NEXT_PUBLIC_ROOT_DOMAIN=theruff.agency` — set in `.env.local`; add to Vercel for
-  correctness (prod currently falls back to the hardcoded `'theruff.agency'`, so
-  invite URLs happen to be right, but set it explicitly).
+  real value in production.** (Confirm whether prod already has one set — if portal
+  login currently works in prod, a value is already configured there.)
+- `NEXT_PUBLIC_ROOT_DOMAIN=theruff.agency` — set in `.env.local`. No longer used for
+  invite URLs (those are now derived from the request host), but harmless to set.
 
-### 3. Subdomain proxy
+### 3. Per-contact portal access is opt-in
 
-Confirm `[slug].theruff.agency` routes to `/portal/[slug]` (Vercel wildcard domain +
-rewrite/middleware). Check `vercel.json` / middleware if not already wired.
+Signup requires `portal_active` (workspace) **and** `portal_enabled` (contact).
+`/setup` now sets `portal_active: true` for new workspaces. But each **new contact**
+defaults to `portal_enabled = false` — the owner must toggle "Portal access" ON in
+the contact's **Portal Settings** tab before that client's invite link works.
+(Consider defaulting new contacts to enabled, or auto-enabling when a link is first
+copied, to remove this footgun — deferred, would change behavior.)
+
+### 4. Subdomain routing — future enhancement (optional)
+
+Branded URLs like `bigbb.theruff.agency/join` do **not** work — there is no
+middleware/rewrite mapping a host subdomain to `/portal/[subdomain]`, and no root
+`/join` route. Invite links are intentionally **path-based**
+(`dashboard.theruff.agency/portal/<slug>/join?code=...`) and work today. To get the
+prettier subdomain form later: add `src/middleware.ts` that rewrites
+`<slug>.theruff.agency/<path>` → `/portal/<slug>/<path>`, **excluding** `dashboard`,
+`www`, apex, `/_next`, and `/api`. Then `buildInviteUrl` can switch back to the
+subdomain form.
 
 ---
 
 ## What to test next
 
-1. **Reload fix** — hard-refresh `dashboard.theruff.agency` several times
+1. **Invite flow (works now)** — the live links are
+   `dashboard.theruff.agency/portal/bigbb/join?code=A2CDAEE7` (Biggy) and
+   `...?code=1636970E` (Biiiiii). Open → fill name/email/password → submit →
+   redirected to login with "Account created" banner → sign in → portal with
+   Dashboard + Workspace sidebar. For a brand-new client, copy the link from the
+   contact's ⋯ menu or Portal Settings.
+2. **Reload fix** — hard-refresh `dashboard.theruff.agency` several times
    (Cmd+Shift+R first to drop the old bundle). Should land on the dashboard every
    time. Logged-out reload → `/login`. Brand-new account → `/setup` (correct).
-2. **Invite flow (after SQL + JWT secret)** — create a client → copy invite link →
-   open `/join?code=XXXXXXXX` → register → redirected to login with success banner →
-   sign in → portal with Dashboard + Workspace sidebar.
 3. **Portal sections** — messages, files, contracts, forms each load data using the
    portal client JWT (not the owner's Supabase session).
 
@@ -197,6 +244,15 @@ reload→`/setup` race (it resolved slower than AuthContext and reported
 Fey owns `fey_onboarding_complete`; Workboard (shares the same Supabase DB) owns
 `onboarding_complete`. Keep them separate so the two apps never gate each other.
 `workspace_slug` (set during `/setup`) is the most reliable "setup done" signal.
+
+### ⚠️ Invite URLs come from ONE place
+The invite API (`/api/v1/crm/contacts/[contactId]/invite`) is the single source of
+truth — it returns `{ invite_code, invite_url }`. **Never hand-build invite URLs** in
+components. Doing so is what produced the `/portal/signup?code=<uuid>` bug (wrong
+column, contact UUID as code, no subdomain segment → rendered the dashboard). All
+three consumers (contact ⋯ menu, Portal Settings, Add Contact modal) call the API.
+The URL is **path-based** (`<host>/portal/<slug>/join?code=<code>`) because subdomain
+routing isn't wired — see Outstanding item #4.
 
 ### Dynamic route params (React 19)
 ```tsx

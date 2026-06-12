@@ -20,6 +20,10 @@ const envSchema = z.object({
   // Shared secret for the retention cron. While unset, the prune endpoint is
   // disabled — nothing is ever auto-deleted until you configure this.
   CRON_SECRET:                        z.string().min(1).optional(),
+  // Cloudinary admin — used to delete attachment files during the retention sweep.
+  NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME:  z.string().min(1).optional(),
+  CLOUDINARY_API_KEY:                 z.string().min(1).optional(),
+  CLOUDINARY_API_SECRET:              z.string().min(1).optional(),
 })
 
 const parsed = envSchema.safeParse({
@@ -35,6 +39,9 @@ const parsed = envSchema.safeParse({
   NEXT_PUBLIC_BUILD_ID:               process.env.NEXT_PUBLIC_BUILD_ID,
   VERCEL_GIT_COMMIT_SHA:              process.env.VERCEL_GIT_COMMIT_SHA,
   CRON_SECRET:                        process.env.CRON_SECRET,
+  NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME:  process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY:                 process.env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET:              process.env.CLOUDINARY_API_SECRET,
 })
 
 if (!parsed.success) {
@@ -62,4 +69,7 @@ export const env = parsed.success
       NEXT_PUBLIC_BUILD_ID:            process.env.NEXT_PUBLIC_BUILD_ID,
       VERCEL_GIT_COMMIT_SHA:           process.env.VERCEL_GIT_COMMIT_SHA,
       CRON_SECRET:                     process.env.CRON_SECRET,
+      NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+      CLOUDINARY_API_KEY:              process.env.CLOUDINARY_API_KEY,
+      CLOUDINARY_API_SECRET:           process.env.CLOUDINARY_API_SECRET,
     }

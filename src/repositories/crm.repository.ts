@@ -451,21 +451,24 @@ export async function markNotificationsRead(
 }
 
 /**
- * Deletes a single owner's messages older than `retentionDays`. Returns how many
- * rows were removed. Note: attachment files in Cloudinary are not removed here.
+ * Deletes a single owner's messages older than `retentionDays`. Returns the
+ * count plus the Cloudinary URLs of any attachments on the deleted messages, so
+ * the caller can clean up the files too.
  */
 export async function pruneOldMessages(
   db: SupabaseClient,
   ownerId: string,
   retentionDays: number,
-): Promise<number> {
+): Promise<{ count: number; fileUrls: string[] }> {
   const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString()
   const { data, error } = await db
     .from('crm_messages')
     .delete()
     .eq('owner_id', ownerId)
     .lt('created_at', cutoff)
-    .select('id')
+    .select('id, attachments')
   if (error) throw error
-  return (data ?? []).length
+  const rows = (data ?? []) as Array<{ id: string; attachments: MessageAttachment[] | null }>
+  const fileUrls = rows.flatMap((r) => (r.attachments ?? []).map((a) => a.file_url)).filter(Boolean)
+  return { count: rows.length, fileUrls }
 }

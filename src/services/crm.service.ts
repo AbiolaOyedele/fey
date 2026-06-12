@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { AppError } from '@/lib/errors'
 import * as repo from '@/repositories/crm.repository'
+import { destroyCloudinaryAsset } from '@/lib/cloudinary-server'
 import type {
   CrmContact,
   CrmMessage,
@@ -301,14 +302,20 @@ export async function markAllNotificationsRead(db: SupabaseClient, ownerId: stri
  */
 export async function pruneExpiredMessages(
   db: SupabaseClient,
-): Promise<{ owners: number; deleted: number }> {
+): Promise<{ owners: number; deleted: number; filesDeleted: number }> {
   const { data } = await db.from('fey_settings').select('user_id, message_retention_days')
   const owners = (data ?? []) as Array<{ user_id: string; message_retention_days: string | null }>
   let deleted = 0
+  let filesDeleted = 0
   for (const o of owners) {
     const days = Number(o.message_retention_days)
     const retention = Number.isFinite(days) && days > 0 ? days : 60
-    deleted += await repo.pruneOldMessages(db, o.user_id, retention)
+    const { count, fileUrls } = await repo.pruneOldMessages(db, o.user_id, retention)
+    deleted += count
+    // Best-effort attachment cleanup — never blocks the sweep.
+    for (const url of fileUrls) {
+      if (await destroyCloudinaryAsset(url)) filesDeleted++
+    }
   }
-  return { owners: owners.length, deleted }
+  return { owners: owners.length, deleted, filesDeleted }
 }

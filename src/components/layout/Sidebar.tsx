@@ -77,13 +77,16 @@ export default function Sidebar() {
   const topClass = IS_DEMO ? 'top-8' : 'top-0'
   const clientsLabel = settings.clients_label || 'Clients'
 
+  // `expanded` = pinned open (persisted, shifts content). `hovering` = transient
+  // hover-peek (overlay, doesn't shift content). `showExpanded` drives the visuals.
   const [expanded, setExpanded] = useState(false)
+  const [hovering, setHovering] = useState(false)
+  const showExpanded = expanded || hovering
 
-  // Restore the pinned state, then keep a CSS var in sync so AppShell's main
-  // content margin follows the sidebar width.
   useEffect(() => {
     try { if (localStorage.getItem(SIDEBAR_KEY) === 'true') setExpanded(true) } catch { /* unavailable */ }
   }, [])
+  // Only the pinned width shifts content — hover-peek floats over it.
   useEffect(() => {
     document.documentElement.style.setProperty('--sidebar-w', expanded ? '216px' : '72px')
   }, [expanded])
@@ -100,12 +103,14 @@ export default function Sidebar() {
     <>
       {/* Desktop sidebar */}
       <aside
-        className={`hidden lg:flex fixed left-0 ${topClass} bottom-0 bg-white border-r border-gray-100 flex-col z-10 transition-[width] duration-200 ${
-          expanded ? 'w-[216px] px-3 items-stretch' : 'w-[72px] items-center'
-        }`}
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
+        className={`hidden lg:flex fixed left-0 ${topClass} bottom-0 bg-white border-r border-gray-100 flex-col z-20 transition-[width] duration-200 ${
+          showExpanded ? 'w-[216px] px-3 items-stretch' : 'w-[72px] items-center'
+        } ${hovering && !expanded ? 'shadow-2xl' : ''}`}
       >
         {/* Logo */}
-        <Link href="/" className={`flex items-center gap-2.5 pt-5 pb-4 ${expanded ? 'px-1' : 'justify-center'}`}>
+        <Link href="/" className={`flex items-center gap-2.5 pt-5 pb-4 ${showExpanded ? 'px-1' : 'justify-center'}`}>
           {settings.logo ? (
             <Image
               src={settings.logo}
@@ -119,41 +124,41 @@ export default function Sidebar() {
               <span className="text-white font-bold text-sm">F</span>
             </div>
           )}
-          {expanded && (
+          {showExpanded && (
             <span className="font-semibold text-gray-900 truncate">{settings.company_name || 'Fey'}</span>
           )}
         </Link>
 
-        <nav className={`flex-1 flex flex-col gap-1 pt-2 ${expanded ? 'items-stretch' : 'items-center'}`}>
-          <NavItem href="/" label="Dashboard" exact accent={accent} expanded={expanded} icon={<LayoutDashboard size={20} />} />
+        <nav className={`flex-1 flex flex-col gap-1 pt-2 ${showExpanded ? 'items-stretch' : 'items-center'}`}>
+          <NavItem href="/" label="Dashboard" exact accent={accent} expanded={showExpanded} icon={<LayoutDashboard size={20} />} />
 
           {appMode !== 'tasks' && (
-            <NavItem href="/clients" label={clientsLabel} accent={accent} expanded={expanded} icon={<Users size={20} />} />
+            <NavItem href="/clients" label={clientsLabel} accent={accent} expanded={showExpanded} icon={<Users size={20} />} />
           )}
 
           {appMode !== 'clients' && (
-            <NavItem href="/tasks" label="Tasks" accent={accent} expanded={expanded} icon={<ListTodo size={20} />} />
+            <NavItem href="/tasks" label="Tasks" accent={accent} expanded={showExpanded} icon={<ListTodo size={20} />} />
           )}
 
-          <NavItem href="/payments" label="Payments" accent={accent} expanded={expanded} icon={<CreditCard size={20} />} />
-          <NavItem href="/invoices" label="Invoices" accent={accent} expanded={expanded} icon={<FileText size={20} />} />
-          <NavItem href="/fey" label="Fey" accent={accent} expanded={expanded} subtle icon={<Sparkles size={20} />} />
+          <NavItem href="/payments" label="Payments" accent={accent} expanded={showExpanded} icon={<CreditCard size={20} />} />
+          <NavItem href="/invoices" label="Invoices" accent={accent} expanded={showExpanded} icon={<FileText size={20} />} />
+          <NavItem href="/fey" label="Fey" accent={accent} expanded={showExpanded} subtle icon={<Sparkles size={20} />} />
         </nav>
 
-        <div className={`pb-3 pt-3 border-t border-gray-100 flex flex-col gap-2 ${expanded ? 'items-stretch' : 'items-center'}`}>
-          <div className={expanded ? 'px-1' : ''}>
+        <div className={`pb-3 pt-3 border-t border-gray-100 flex flex-col gap-2 ${showExpanded ? 'items-stretch' : 'items-center'}`}>
+          <div className={showExpanded ? 'px-1' : ''}>
             <NotificationBell accent={accent} />
           </div>
-          <NavItem href="/settings" label="Settings" accent={accent} expanded={expanded} icon={<Settings size={20} />} />
+          <NavItem href="/settings" label="Settings" accent={accent} expanded={showExpanded} icon={<Settings size={20} />} />
           <button
             onClick={toggle}
-            title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+            title={expanded ? 'Collapse sidebar' : 'Keep sidebar open'}
             className={`flex items-center rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-all duration-200 ${
-              expanded ? 'w-full gap-3 px-3 h-10' : 'w-10 h-10 justify-center'
+              showExpanded ? 'w-full gap-3 px-3 h-10' : 'w-10 h-10 justify-center'
             }`}
           >
             <span className="flex-shrink-0">{expanded ? <ChevronsLeft size={20} /> : <ChevronsRight size={20} />}</span>
-            {expanded && <span className="text-sm font-medium">Collapse</span>}
+            {showExpanded && <span className="text-sm font-medium">{expanded ? 'Collapse' : 'Keep open'}</span>}
           </button>
         </div>
       </aside>

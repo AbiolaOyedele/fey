@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Plus, Users } from 'lucide-react'
 import { useContacts } from '@/hooks/useCrm'
@@ -24,6 +24,14 @@ export default function CrmContactsPage() {
   const [statusFilter, setStatusFilter] = useState<ContactStatus | 'all'>('all')
   const [selected,    setSelected]    = useState<string | null>(null)
   const [showModal,   setShowModal]   = useState(false)
+
+  // Deep link from the dashboard ("Add your first client") opens the modal.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('new') === '1') {
+      setShowModal(true)
+      window.history.replaceState(null, '', '/clients')
+    }
+  }, [])
 
   const filtered = useMemo(() => {
     return contacts.filter((c) => {

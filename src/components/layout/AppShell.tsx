@@ -22,6 +22,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const updateAvailable = useUpdatePrompt()
 
   const isPublic = PUBLIC_ROUTES.includes(pathname)
+    || pathname.startsWith('/auth/')
     || pathname.startsWith('/share/')
     || pathname.startsWith('/invoice/')
     || pathname.startsWith('/portal/')

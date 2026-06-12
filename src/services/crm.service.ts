@@ -117,7 +117,10 @@ export async function createContact(
   if (!parsed.success) {
     throw new AppError(400, parsed.error.issues[0]?.message ?? 'Invalid input.', 'CRM_CONTACT_VALIDATION_ERROR')
   }
-  return repo.createContact(db, ownerId, parsed.data as CreateContactPayload)
+  // New contacts get portal access on by default, so the invite link works the
+  // moment it's copied — no separate "enable portal access" toggle step needed.
+  // (The owner can still revoke access per-contact in Portal Settings.)
+  return repo.createContact(db, ownerId, { ...parsed.data, portal_enabled: true } as CreateContactPayload)
 }
 
 export async function updateContact(

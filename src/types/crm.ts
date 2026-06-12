@@ -182,6 +182,7 @@ export interface CreateContactPayload {
   phone?: string | null
   company?: string | null
   status?: ContactStatus
+  portal_enabled?: boolean
 }
 
 export interface UpdateContactPayload {

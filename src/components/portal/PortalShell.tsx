@@ -6,6 +6,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Briefcase, Menu, X, LogOut } from 'lucide-react'
 import { portalTokenKey } from '@/app/portal/[subdomain]/layout'
 import PortalWorkspaceTabs, { PORTAL_SECTIONS } from './PortalWorkspaceTabs'
+import UpdateBanner from '@/components/ui/UpdateBanner'
+import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
 import type { PortalOwnerBranding } from '@/types/crm'
 
 interface PortalShellProps {
@@ -26,6 +28,7 @@ export default function PortalShell({ subdomain, branding, clientName, children 
 
   const base   = `/portal/${subdomain}`
   const accent = branding.accent_color || '#ED64A6'
+  const updateAvailable = useUpdatePrompt()
 
   const isDashboard = pathname === base || pathname === `${base}/`
   const isWorkspace = WORKSPACE_ROUTES.some((r) => pathname.startsWith(`${base}${r}`))
@@ -148,6 +151,8 @@ export default function PortalShell({ subdomain, branding, clientName, children 
           {children}
         </main>
       </div>
+
+      <UpdateBanner show={updateAvailable} accent={accent} />
     </div>
   )
 }

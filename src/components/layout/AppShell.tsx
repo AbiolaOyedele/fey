@@ -7,6 +7,8 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
 import Sidebar from './Sidebar'
 import ToastContainer from '@/components/ui/Toast'
+import UpdateBanner from '@/components/ui/UpdateBanner'
+import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
 
 // /onboarding is Workboard's route — Fey uses /setup to avoid clashing.
 // Both apps share the same Next.js codebase and Supabase DB.
@@ -17,6 +19,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router   = useRouter()
   const { user, loading: authLoading }               = useAuth()
   const { settings, settingsLoading } = useSettings()
+  const updateAvailable = useUpdatePrompt()
 
   const isPublic = PUBLIC_ROUTES.includes(pathname)
     || pathname.startsWith('/share/')
@@ -62,6 +65,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <ToastContainer />
+      <UpdateBanner show={updateAvailable} accent={settings.accent_color} />
     </div>
   )
 }

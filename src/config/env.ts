@@ -13,6 +13,10 @@ const envSchema = z.object({
   NEXT_PUBLIC_APP_URL:                z.string().url().optional(),
   // Portal client auth (custom JWT — not Supabase Auth)
   PORTAL_JWT_SECRET:                  z.string().min(32).optional(),
+  // Build/version detection (set on Vercel). Used to prompt clients to reload
+  // after a new deploy. NEXT_PUBLIC_BUILD_ID is inlined at build time.
+  NEXT_PUBLIC_BUILD_ID:               z.string().optional(),
+  VERCEL_GIT_COMMIT_SHA:              z.string().optional(),
 })
 
 const parsed = envSchema.safeParse({
@@ -25,6 +29,8 @@ const parsed = envSchema.safeParse({
   NEXT_PUBLIC_ROOT_DOMAIN:            process.env.NEXT_PUBLIC_ROOT_DOMAIN,
   NEXT_PUBLIC_APP_URL:                process.env.NEXT_PUBLIC_APP_URL,
   PORTAL_JWT_SECRET:                  process.env.PORTAL_JWT_SECRET,
+  NEXT_PUBLIC_BUILD_ID:               process.env.NEXT_PUBLIC_BUILD_ID,
+  VERCEL_GIT_COMMIT_SHA:              process.env.VERCEL_GIT_COMMIT_SHA,
 })
 
 if (!parsed.success) {
@@ -49,4 +55,6 @@ export const env = parsed.success
       NEXT_PUBLIC_ROOT_DOMAIN:         process.env.NEXT_PUBLIC_ROOT_DOMAIN,
       NEXT_PUBLIC_APP_URL:             process.env.NEXT_PUBLIC_APP_URL,
       PORTAL_JWT_SECRET:               process.env.PORTAL_JWT_SECRET,
+      NEXT_PUBLIC_BUILD_ID:            process.env.NEXT_PUBLIC_BUILD_ID,
+      VERCEL_GIT_COMMIT_SHA:           process.env.VERCEL_GIT_COMMIT_SHA,
     }

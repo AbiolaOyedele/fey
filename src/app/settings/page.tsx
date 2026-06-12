@@ -1449,7 +1449,7 @@ function SettingsPageInner() {
         <SectionGroup title="CRM features">
           <div className="py-3 space-y-3">
             {[
-              { label: 'Contacts',           desc: 'Manage clients, contacts, and their details', live: true },
+              { label: 'Clients',            desc: 'Manage your clients and their details', live: true },
               { label: 'Messaging',          desc: 'Send and receive messages with contacts', live: true },
               { label: 'Files',              desc: 'Share files with contacts via portal', live: true },
               { label: 'Contracts',          desc: 'Build, send, and collect signatures', live: true },

@@ -53,7 +53,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
       // Fetch invite link in background
       void fetchInvite(contact.id)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create contact.')
+      setError(err instanceof Error ? err.message : 'Failed to create client.')
     } finally {
       setSaving(false)
     }
@@ -100,7 +100,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
         <div className="bg-white rounded-2xl w-full max-w-md flex flex-col overflow-hidden animate-scaleIn shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900">Contact created</h2>
+            <h2 className="text-lg font-bold text-gray-900">Client created</h2>
             <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors">
               <X size={18} />
             </button>
@@ -200,7 +200,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
       <div className="bg-white rounded-2xl w-full max-w-md flex flex-col overflow-hidden animate-scaleIn shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900">New Contact</h2>
+          <h2 className="text-lg font-bold text-gray-900">New Client</h2>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition-colors">
             <X size={18} />
           </button>
@@ -280,7 +280,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
             className="flex-1 py-2.5 rounded-full text-sm font-semibold text-white disabled:opacity-40 transition-opacity"
             style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
-            {saving ? 'Creating…' : 'Add Contact'}
+            {saving ? 'Creating…' : 'Add Client'}
           </button>
         </div>
       </div>

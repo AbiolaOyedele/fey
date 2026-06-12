@@ -118,7 +118,7 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
             className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
           >
             <ArrowLeft size={15} />
-            Contacts
+            Clients
           </button>
 
           {contact && (
@@ -164,7 +164,7 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
                     className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
                   >
                     <Edit2 size={14} className="text-gray-400" />
-                    Edit contact
+                    Edit client
                   </button>
                   <button
                     onClick={() => void handleCopyInviteLink()}
@@ -188,7 +188,7 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
                       className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
                     >
                       <Trash2 size={14} />
-                      Delete contact
+                      Delete client
                     </button>
                   )}
                 </div>

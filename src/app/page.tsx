@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   Bell, Settings, ArrowRight, ChevronLeft, ChevronRight,
   CheckCircle2, Clock, Users, CreditCard,
-  AlertTriangle, TriangleAlert, Calendar,
+  AlertTriangle, TriangleAlert, Calendar, UserPlus,
 } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -573,7 +573,35 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Getting started — shown until the first client exists */}
+        {clients.length === 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 lg:p-8 mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">Welcome to your workspace 👋</h2>
+            <p className="text-sm text-gray-500 mt-1.5 mb-5 max-w-lg leading-relaxed">
+              This is your home base. Add your first client to start sending them messages,
+              files, contracts, forms and invoices through their portal — or set up your
+              workspace branding first.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/clients"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+              >
+                <UserPlus size={15} /> Add your first client
+              </Link>
+              <Link
+                href="/settings"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                <Settings size={15} /> Set up workspace
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Filter pills — desktop */}
+        {clients.length > 0 && (
         <div className="hidden md:flex items-center gap-2 mb-6 overflow-x-auto pb-1 scrollbar-none">
           {visibleFilters.map((f) => (
             <button
@@ -598,8 +626,10 @@ export default function DashboardPage() {
             </button>
           ))}
         </div>
+        )}
 
         {/* Filter dropdown — mobile */}
+        {clients.length > 0 && (
         <div className="md:hidden mb-6">
           <select
             value={filter}
@@ -612,9 +642,10 @@ export default function DashboardPage() {
             ))}
           </select>
         </div>
+        )}
 
         {/* All tab: client cards grid */}
-        {filter === 'All' && (
+        {filter === 'All' && clients.length > 0 && (
           <>
             <p className="text-sm text-gray-500 font-medium mb-4">{settings.clients_label || 'Clients'}</p>
             <div className={`grid grid-cols-1 sm:grid-cols-2 ${gridColsDesktop} gap-4`}>

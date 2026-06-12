@@ -77,7 +77,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col min-h-screen bg-appbg overflow-x-hidden">
       <div className="flex flex-1 overflow-x-hidden">
         <Sidebar />
-        <main className="flex-1 min-w-0 ml-0 lg:ml-[72px] pb-16 lg:pb-0 page-enter">
+        <main className="flex-1 min-w-0 ml-0 lg:ml-[var(--sidebar-w,72px)] pb-16 lg:pb-0 page-enter transition-[margin] duration-200">
           {children}
         </main>
       </div>

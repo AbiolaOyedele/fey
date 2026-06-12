@@ -16,9 +16,9 @@ function generateInviteCode(): string {
 
 /**
  * Fetches the owner's workspace_slug and builds the branded invite join URL on
- * the workspace subdomain — https://<slug>.theruff.agency/portal/join?code=...
- * The subdomain middleware injects the slug, so the path stays clean. Falls back
- * to a path-based URL on the current host if no slug is set yet.
+ * the workspace subdomain — https://<slug>.theruff.agency/join?code=...
+ * The subdomain proxy (src/proxy.ts) rewrites /join → /portal/<slug>/signup.
+ * Falls back to a path-based URL on the current host if no slug is set yet.
  */
 async function buildInviteUrl(req: NextRequest, db: SupabaseClient, userId: string, code: string): Promise<string> {
   const { data } = await db
@@ -29,7 +29,7 @@ async function buildInviteUrl(req: NextRequest, db: SupabaseClient, userId: stri
 
   const slug       = (data as { workspace_slug: string | null } | null)?.workspace_slug ?? ''
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
-  if (slug) return `https://${slug}.${rootDomain}/portal/join?code=${code}`
+  if (slug) return `https://${slug}.${rootDomain}/join?code=${code}`
 
   const proto = req.headers.get('x-forwarded-proto') ?? 'https'
   const host  = req.headers.get('host') ?? rootDomain

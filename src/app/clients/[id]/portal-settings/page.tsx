@@ -78,7 +78,7 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
   const portalBase = workspaceSlug ? `https://${workspaceSlug}.${rootDomain}` : null
 
-  const displayInviteUrl = inviteUrl ?? (portalBase && inviteCode ? `${portalBase}/portal/join?code=${inviteCode}` : null)
+  const displayInviteUrl = inviteUrl ?? (portalBase && inviteCode ? `${portalBase}/join?code=${inviteCode}` : null)
 
   // ── Clipboard helpers ────────────────────────────────────────────────────────
 

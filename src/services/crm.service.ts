@@ -293,3 +293,22 @@ export async function getNotifications(db: SupabaseClient, ownerId: string): Pro
 export async function markAllNotificationsRead(db: SupabaseClient, ownerId: string): Promise<void> {
   return repo.markNotificationsRead(db, ownerId)
 }
+
+/**
+ * Retention sweep: deletes each owner's messages older than their configured
+ * retention (message_retention_days, default 60). A value of 0 means keep
+ * forever. Returns totals for logging.
+ */
+export async function pruneExpiredMessages(
+  db: SupabaseClient,
+): Promise<{ owners: number; deleted: number }> {
+  const { data } = await db.from('fey_settings').select('user_id, message_retention_days')
+  const owners = (data ?? []) as Array<{ user_id: string; message_retention_days: string | null }>
+  let deleted = 0
+  for (const o of owners) {
+    const days = Number(o.message_retention_days)
+    const retention = Number.isFinite(days) && days > 0 ? days : 60
+    deleted += await repo.pruneOldMessages(db, o.user_id, retention)
+  }
+  return { owners: owners.length, deleted }
+}

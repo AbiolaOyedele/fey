@@ -207,6 +207,7 @@ export const DEMO_SETTINGS: Settings = {
   email_chat_to: 'true',
   email_auto_reminders: 'true',
   portal_read_receipts: 'true',
+  message_retention_days: '60',
   checklist_dismissed: 'false',
   checklist_steps: '',
   guide_seen: 'false',

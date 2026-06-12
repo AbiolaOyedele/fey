@@ -17,6 +17,9 @@ const envSchema = z.object({
   // after a new deploy. NEXT_PUBLIC_BUILD_ID is inlined at build time.
   NEXT_PUBLIC_BUILD_ID:               z.string().optional(),
   VERCEL_GIT_COMMIT_SHA:              z.string().optional(),
+  // Shared secret for the retention cron. While unset, the prune endpoint is
+  // disabled — nothing is ever auto-deleted until you configure this.
+  CRON_SECRET:                        z.string().min(1).optional(),
 })
 
 const parsed = envSchema.safeParse({
@@ -31,6 +34,7 @@ const parsed = envSchema.safeParse({
   PORTAL_JWT_SECRET:                  process.env.PORTAL_JWT_SECRET,
   NEXT_PUBLIC_BUILD_ID:               process.env.NEXT_PUBLIC_BUILD_ID,
   VERCEL_GIT_COMMIT_SHA:              process.env.VERCEL_GIT_COMMIT_SHA,
+  CRON_SECRET:                        process.env.CRON_SECRET,
 })
 
 if (!parsed.success) {
@@ -57,4 +61,5 @@ export const env = parsed.success
       PORTAL_JWT_SECRET:               process.env.PORTAL_JWT_SECRET,
       NEXT_PUBLIC_BUILD_ID:            process.env.NEXT_PUBLIC_BUILD_ID,
       VERCEL_GIT_COMMIT_SHA:           process.env.VERCEL_GIT_COMMIT_SHA,
+      CRON_SECRET:                     process.env.CRON_SECRET,
     }

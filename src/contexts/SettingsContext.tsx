@@ -112,6 +112,7 @@ const DEFAULTS: Settings = {
   email_acceptance: 'true', email_payment_received: 'true', email_stripe: 'true',
   email_project_activity: 'false', email_chat_from: 'true', email_chat_to: 'true', email_auto_reminders: 'false',
   portal_read_receipts: 'true',
+  message_retention_days: '60',
   checklist_dismissed: 'false', checklist_steps: '{}',
   guide_seen: 'false', fey_thread_order: '', fey_sort_mode: 'newest',
   // Fey-specific onboarding flag — never clashes with Workboard's onboarding_complete

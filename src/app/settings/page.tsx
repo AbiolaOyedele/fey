@@ -1484,8 +1484,25 @@ function SettingsPageInner() {
             icon={CheckCircle2}
             title="Read receipts"
             description="Let clients see when you've read their messages. You'll always see when clients have read yours."
-            border={false}
             action={<Toggle checked={settings.portal_read_receipts !== 'false'} onChange={(v) => void saveSetting('portal_read_receipts', v ? 'true' : 'false')} />}
+          />
+          <SettingRow
+            icon={Trash2}
+            title="Message retention"
+            description="Messages older than this are automatically deleted. Longer retention comes with Pro."
+            border={false}
+            action={
+              <select
+                value={settings.message_retention_days || '60'}
+                onChange={(e) => void saveSetting('message_retention_days', e.target.value)}
+                className="text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:outline-none focus:border-gray-400"
+              >
+                <option value="30">30 days</option>
+                <option value="60">60 days</option>
+                <option value="90">90 days</option>
+                <option value="180" disabled>180 days (Pro)</option>
+              </select>
+            }
           />
         </SectionGroup>
 

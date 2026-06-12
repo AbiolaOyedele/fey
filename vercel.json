@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/v1/cron/prune-messages", "schedule": "0 3 * * *" }
+  ]
+}

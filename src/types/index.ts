@@ -187,6 +187,8 @@ export interface Settings {
   email_chat_to: string
   /** When 'true', portal clients can see read receipts on their sent messages. Owners always see client reads. */
   portal_read_receipts: string
+  /** Days to keep messages before the retention cron deletes them. Default 60. */
+  message_retention_days: string
   email_auto_reminders: string
   checklist_dismissed: string
   checklist_steps: string

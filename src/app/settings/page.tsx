@@ -234,11 +234,17 @@ function SettingsPageInner() {
   const [clientsLabelInput, setClientsLabelInput] = useState(settings.clients_label || 'Clients')
 
   // ── CRM & Portal state ────────────────────────────────────────────────────
-  // The workspace slug (= subdomain) is set at onboarding and shown read-only
-  // from settings.workspace_slug. Only portal_active is editable here.
+  // The workspace slug (= subdomain) is set at onboarding, shown from
+  // settings.workspace_slug, and changeable via the rename flow below.
   const [portalActive,         setPortalActive]         = useState(false)
   const [portalSaving,         setPortalSaving]         = useState(false)
   const [portalLoaded,         setPortalLoaded]         = useState(false)
+  const [renaming,             setRenaming]             = useState(false)
+  const [newSlug,              setNewSlug]              = useState('')
+  const [slugState,            setSlugState]            = useState<'idle' | 'checking' | 'available' | 'taken'>('idle')
+  const [slugReason,           setSlugReason]           = useState('')
+  const [renameSaving,         setRenameSaving]         = useState(false)
+  const slugCheckTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── WhatsApp state ─────────────────────────────────────────────────────────
   const [waConnection,   setWaConnection]   = useState<WaConnection | null>(null)
@@ -1386,6 +1392,55 @@ function SettingsPageInner() {
       showToast('Portal settings saved')
     }
 
+    // ── Rename workspace (change subdomain) ──────────────────────────────────
+    const checkRenameSlug = async (value: string): Promise<void> => {
+      if (value === settings.workspace_slug) { setSlugState('idle'); return }
+      setSlugState('checking')
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token ?? ''
+        const res = await fetch(`/api/v1/workspace/check-slug?slug=${encodeURIComponent(value)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const json = await res.json() as { available: boolean; reason?: string }
+        if (json.available) { setSlugState('available'); setSlugReason('') }
+        else { setSlugState('taken'); setSlugReason(json.reason ?? 'Not available.') }
+      } catch { setSlugState('idle') }
+    }
+
+    const handleSlugInput = (raw: string): void => {
+      const cleaned = raw.toLowerCase().replace(/[^a-z0-9-]/g, '')
+      setNewSlug(cleaned)
+      setSlugState('idle')
+      if (slugCheckTimeout.current) clearTimeout(slugCheckTimeout.current)
+      if (cleaned.length >= 3) slugCheckTimeout.current = setTimeout(() => void checkRenameSlug(cleaned), 500)
+    }
+
+    const doRename = async (): Promise<void> => {
+      if (slugState !== 'available' || renameSaving) return
+      setRenameSaving(true)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token ?? ''
+        const res = await fetch('/api/v1/workspace/rename', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body:    JSON.stringify({ slug: newSlug }),
+        })
+        const json = await res.json() as { success?: boolean; error?: { message: string } }
+        if (!res.ok || !json.success) {
+          showToast(json.error?.message ?? 'Could not change your workspace URL')
+          return
+        }
+        // Update in-memory settings — AppShell then redirects to the new subdomain.
+        await saveSetting('workspace_slug', newSlug)
+        showToast('Workspace URL updated')
+        setRenaming(false)
+      } finally {
+        setRenameSaving(false)
+      }
+    }
+
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'yourdomain.com'
 
     return (
@@ -1433,25 +1488,81 @@ function SettingsPageInner() {
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">Your workspace URL</label>
-              {settings.workspace_slug ? (
-                <div className="flex items-center gap-2">
-                  <Globe size={14} className="text-gray-400 flex-shrink-0" />
-                  <a
-                    href={`https://${settings.workspace_slug}.${rootDomain}`}
-                    target="_blank" rel="noreferrer"
-                    className="text-sm font-medium text-gray-700 underline underline-offset-2 hover:text-gray-900"
-                  >
-                    {settings.workspace_slug}.{rootDomain}
-                  </a>
-                </div>
+
+              {!renaming ? (
+                <>
+                  {settings.workspace_slug ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Globe size={14} className="text-gray-400 flex-shrink-0" />
+                      <a
+                        href={`https://${settings.workspace_slug}.${rootDomain}`}
+                        target="_blank" rel="noreferrer"
+                        className="text-sm font-medium text-gray-700 underline underline-offset-2 hover:text-gray-900"
+                      >
+                        {settings.workspace_slug}.{rootDomain}
+                      </a>
+                      <button
+                        onClick={() => { setNewSlug(settings.workspace_slug); setSlugState('idle'); setSlugReason(''); setRenaming(true) }}
+                        className="text-xs text-gray-400 underline underline-offset-2 hover:text-gray-700"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">
+                      Not set yet — <a href="/setup" className="underline">finish workspace setup</a> to get your address.
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1.5">
+                    Your workspace and client portal both live here. Chosen during onboarding.
+                  </p>
+                </>
               ) : (
-                <p className="text-sm text-gray-400">
-                  Not set yet — <a href="/setup" className="underline">finish workspace setup</a> to get your address.
-                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:border-gray-400 focus-within:bg-white transition-all">
+                    <input
+                      type="text"
+                      value={newSlug}
+                      onChange={(e) => handleSlugInput(e.target.value)}
+                      placeholder="your-workspace"
+                      autoFocus
+                      className="flex-1 px-3 py-2.5 text-sm bg-transparent outline-none"
+                    />
+                    <span className="pr-3 text-sm text-gray-400">.{rootDomain}</span>
+                  </div>
+
+                  {slugState === 'checking' && <p className="text-xs text-gray-400">Checking availability…</p>}
+                  {slugState === 'taken'    && <p className="text-xs text-red-500">{slugReason}</p>}
+                  {slugState === 'available' && (
+                    <p className="text-xs text-emerald-600">{newSlug}.{rootDomain} is available</p>
+                  )}
+
+                  <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                    <p className="text-[11px] text-amber-700 leading-snug">
+                      Existing invite links will stop working — you&apos;ll need to copy &amp; re-share them.
+                      Clients who already joined stay registered and can still log in.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <button
+                      onClick={() => void doRename()}
+                      disabled={slugState !== 'available' || renameSaving}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-40 transition-opacity"
+                      style={{ backgroundColor: 'var(--accent)' }}
+                    >
+                      {renameSaving && <Loader2 size={12} className="animate-spin" />}
+                      {renameSaving ? 'Changing…' : 'Change URL'}
+                    </button>
+                    <button
+                      onClick={() => { setRenaming(false); setSlugState('idle'); setSlugReason('') }}
+                      className="px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-100 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               )}
-              <p className="text-xs text-gray-400 mt-1.5">
-                Your workspace and client portal both live here. Chosen during onboarding.
-              </p>
             </div>
           </div>
 

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Briefcase, Menu, X, LogOut } from 'lucide-react'
 import { portalTokenKey } from '@/app/portal/[subdomain]/layout'
+import PortalWorkspaceTabs, { PORTAL_SECTIONS } from './PortalWorkspaceTabs'
 import type { PortalOwnerBranding } from '@/types/crm'
 
 interface PortalShellProps {
@@ -28,6 +29,10 @@ export default function PortalShell({ subdomain, branding, clientName, children 
 
   const isDashboard = pathname === base || pathname === `${base}/`
   const isWorkspace = WORKSPACE_ROUTES.some((r) => pathname.startsWith(`${base}${r}`))
+
+  // Show the section tab bar when the client is inside one of the workspace
+  // sections (not on the dashboard or the workspace hub).
+  const showTabs = PORTAL_SECTIONS.some((s) => pathname.startsWith(`${base}${s.path}`))
 
   const signOut = () => {
     setSigningOut(true)
@@ -85,7 +90,7 @@ export default function PortalShell({ subdomain, branding, clientName, children 
       {/* Nav */}
       <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
         <NavItem href={base}                    icon={LayoutDashboard} label="Dashboard" active={isDashboard} />
-        <NavItem href={`${base}/messages`}      icon={Briefcase}       label="Workspace"  active={isWorkspace} />
+        <NavItem href={`${base}/workspace`}     icon={Briefcase}       label="Workspace"  active={isWorkspace} />
       </nav>
 
       {/* Footer */}
@@ -135,6 +140,9 @@ export default function PortalShell({ subdomain, branding, clientName, children 
             </button>
           )}
         </div>
+
+        {/* Section tabs — the client's equivalent of the owner's ContactTabs */}
+        {showTabs && <PortalWorkspaceTabs subdomain={subdomain} accent={accent} />}
 
         <main className="flex-1 overflow-y-auto bg-[#F5F5F7]">
           {children}

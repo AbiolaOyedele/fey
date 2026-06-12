@@ -15,15 +15,10 @@ function generateInviteCode(): string {
 }
 
 /**
- * Fetches the owner's workspace_slug from fey_settings and builds the full
- * invite join URL.  Shared by GET (lazy-generate) and POST (regenerate).
- *
- * NOTE: subdomain routing ([slug].theruff.agency) is not wired — there is no
- * middleware/rewrite mapping a host's subdomain to /portal/[subdomain]. So we
- * emit the PATH-based URL (<host>/portal/<slug>/join), which hits the
- * /portal/[subdomain]/join route directly and actually resolves. The host is
- * taken from the request so the link points back at whatever domain the owner
- * is using (e.g. dashboard.theruff.agency).
+ * Fetches the owner's workspace_slug and builds the branded invite join URL on
+ * the workspace subdomain — https://<slug>.theruff.agency/portal/join?code=...
+ * The subdomain middleware injects the slug, so the path stays clean. Falls back
+ * to a path-based URL on the current host if no slug is set yet.
  */
 async function buildInviteUrl(req: NextRequest, db: SupabaseClient, userId: string, code: string): Promise<string> {
   const { data } = await db
@@ -32,9 +27,12 @@ async function buildInviteUrl(req: NextRequest, db: SupabaseClient, userId: stri
     .eq('user_id', userId)
     .maybeSingle()
 
-  const slug  = (data as { workspace_slug: string | null } | null)?.workspace_slug ?? ''
+  const slug       = (data as { workspace_slug: string | null } | null)?.workspace_slug ?? ''
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
+  if (slug) return `https://${slug}.${rootDomain}/portal/join?code=${code}`
+
   const proto = req.headers.get('x-forwarded-proto') ?? 'https'
-  const host  = req.headers.get('host') ?? process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
+  const host  = req.headers.get('host') ?? rootDomain
   return `${proto}://${host}/portal/${slug}/join?code=${code}`
 }
 

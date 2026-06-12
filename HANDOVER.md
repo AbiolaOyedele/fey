@@ -100,6 +100,10 @@ required.
 | New contact → portal access | ✅ `portal_enabled: true` by default on creation |
 | Workspace name (portal + dashboard) | ✅ `resolveWorkspaceName()` — company name or prettified slug, never the owner's personal name |
 | "New update" reload prompt | ✅ Build-SHA compare (`NEXT_PUBLIC_BUILD_ID` vs `GET /api/v1/version`); `UpdateBanner` in AppShell + PortalShell |
+| Dashboard rotating greeting | ✅ `useGreeting()` — 5 variations, per-session |
+| Messages: file attachments | ✅ Owner + portal composers; Cloudinary upload; rendered both sides |
+| Messages: read receipts | ✅ "Sent → Read" (live for owner); `portal_read_receipts` setting gates client visibility |
+| Portal activity ("last active") | ⚠️ Code live, **needs SQL** (`last_seen_at`); "Active" filter = portal-active |
 | Workspace hub page | ✅ Grid cards to all sections |
 | `/portal/[slug]/join?code=` route | ✅ Re-exports signup page; `/join` is a public path |
 | Portal pages auth (localStorage JWT) | ✅ All pages use `portalTokenKey(subdomain)` |
@@ -109,11 +113,15 @@ required.
 
 ## Outstanding action items
 
-### 1. No SQL outstanding ✅
+### 1. SQL — one column for portal activity
 
-The `crm_contacts.invite_code` column exists in the DB (codes are live, e.g.
-`A2CDAEE7`). The old `fey_onboarding_complete` UPDATE is moot — the reload fix
-derives completion from `workspace_slug`.
+```sql
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
+```
+
+Until this runs, the "last active" text and the portal-activity "Active" filter
+stay empty (the code is resilient — nothing breaks, the feature is just dormant).
+`crm_contacts.invite_code` already exists (codes live, e.g. `A2CDAEE7`).
 
 ### 2. Vercel env vars
 

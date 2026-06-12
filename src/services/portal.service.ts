@@ -12,6 +12,9 @@ import type {
   PortalOwnerBranding,
   MessageAttachment,
   FormResponse,
+  PortalInvoice,
+  PortalPayment,
+  PortalTask,
 } from '@/types/crm'
 import { z } from 'zod'
 
@@ -170,6 +173,29 @@ export async function submitPortalForm(
   responses: FormResponse[],
 ): Promise<void> {
   return portalRepo.submitForm(db, formId, contactId, responses)
+}
+
+// ── Portal invoices / payments / tasks (read-only) ────────────────────────────
+
+export async function getPortalInvoices(
+  db: SupabaseClient,
+  contactId: string,
+): Promise<PortalInvoice[]> {
+  return portalRepo.listPortalInvoices(db, contactId)
+}
+
+export async function getPortalPayments(
+  db: SupabaseClient,
+  contactId: string,
+): Promise<PortalPayment[]> {
+  return portalRepo.listPortalPayments(db, contactId)
+}
+
+export async function getPortalTasks(
+  db: SupabaseClient,
+  contactId: string,
+): Promise<PortalTask[]> {
+  return portalRepo.listPortalTasks(db, contactId)
 }
 
 // ── Notify owner ──────────────────────────────────────────────────────────────

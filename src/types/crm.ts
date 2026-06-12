@@ -258,3 +258,35 @@ export interface PortalSignupPayload {
   password:       string
   contact_id:     string
 }
+
+// ── Portal read models (client-facing subsets) ───────────────────────────────
+// Deliberately omit owner-internal fields (e.g. task pricing, draft invoices).
+
+export interface PortalInvoice {
+  id:             string
+  invoice_number: string
+  status:         string
+  amount:         number
+  currency:       string
+  due_date:       string | null
+  share_token:    string | null
+  share_enabled:  boolean
+  created_at:     string
+}
+
+export interface PortalPayment {
+  id:          string
+  description: string
+  amount:      number
+  currency:    string
+  status:      PaymentRequestStatus
+  share_token: string | null
+  created_at:  string
+}
+
+export interface PortalTask {
+  id:         string
+  title:      string
+  done:       boolean
+  created_at: string
+}

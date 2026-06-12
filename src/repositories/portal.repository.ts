@@ -3,6 +3,7 @@ import type {
   CrmContact, CrmMessage, CrmFile, CrmContract, CrmForm,
   PortalUser, CreatePortalUserPayload, PortalOwnerBranding,
   MessageAttachment, ContractContent, FormField, FormResponse,
+  PortalInvoice, PortalPayment, PortalTask, PaymentRequestStatus,
 } from '@/types/crm'
 
 // ── Owner lookup by workspace_slug ────────────────────────────────────────────
@@ -335,6 +336,82 @@ export async function submitForm(
     .eq('contact_id', contactId)
     .eq('status', 'sent')
   if (error) throw error
+}
+
+// ── Portal invoices ───────────────────────────────────────────────────────────
+// Invoices link to a CRM contact via crm_contact_id. Only surface invoices the
+// owner has actually sent — never drafts or voided ones.
+
+export async function listPortalInvoices(
+  db: SupabaseClient,
+  contactId: string,
+): Promise<PortalInvoice[]> {
+  const { data, error } = await db
+    .from('invoices')
+    .select('id, invoice_number, status, totals, currency, due_date, share_token, share_enabled, created_at')
+    .eq('crm_contact_id', contactId)
+    .in('status', ['sent', 'viewed', 'paid', 'overdue'])
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id:             row.id as string,
+    invoice_number: (row.invoice_number as string | null) ?? '',
+    status:         row.status as string,
+    amount:         (row.totals as { total?: number } | null)?.total ?? 0,
+    currency:       (row.currency as string | null) ?? 'USD',
+    due_date:       (row.due_date as string | null) ?? null,
+    share_token:    (row.share_token as string | null) ?? null,
+    share_enabled:  (row.share_enabled as boolean | null) ?? false,
+    created_at:     row.created_at as string,
+  }))
+}
+
+// ── Portal payment requests ─────────────────────────────────────────────────
+// crm_payment_requests are payment links the owner sends to a contact. Show
+// everything except cancelled ones (those were withdrawn).
+
+export async function listPortalPayments(
+  db: SupabaseClient,
+  contactId: string,
+): Promise<PortalPayment[]> {
+  const { data, error } = await db
+    .from('crm_payment_requests')
+    .select('id, description, amount, currency, status, share_token, created_at')
+    .eq('contact_id', contactId)
+    .in('status', ['pending', 'paid', 'expired'])
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id:          row.id as string,
+    description: (row.description as string | null) ?? '',
+    amount:      (row.amount as number | null) ?? 0,
+    currency:    (row.currency as string | null) ?? 'USD',
+    status:      row.status as PaymentRequestStatus,
+    share_token: (row.share_token as string | null) ?? null,
+    created_at:  row.created_at as string,
+  }))
+}
+
+// ── Portal tasks ──────────────────────────────────────────────────────────────
+// Tasks link to a CRM contact via client_id. Surface only title + done status —
+// pricing (amount/paid) stays internal to the owner.
+
+export async function listPortalTasks(
+  db: SupabaseClient,
+  contactId: string,
+): Promise<PortalTask[]> {
+  const { data, error } = await db
+    .from('tasks')
+    .select('id, title, done, created_at')
+    .eq('client_id', contactId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id:         row.id as string,
+    title:      row.title as string,
+    done:       (row.done as boolean | null) ?? false,
+    created_at: row.created_at as string,
+  }))
 }
 
 // ── Owner settings lookup ─────────────────────────────────────────────────────

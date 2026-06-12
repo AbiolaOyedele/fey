@@ -115,15 +115,20 @@ required.
 
 ## Outstanding action items
 
-### 1. SQL — one column for portal activity
+### 1. SQL — three columns (run once; see migration 20260612_message_settings.sql)
 
 ```sql
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
+ALTER TABLE fey_settings ADD COLUMN IF NOT EXISTS portal_read_receipts   text NOT NULL DEFAULT 'true';
+ALTER TABLE fey_settings ADD COLUMN IF NOT EXISTS message_retention_days text NOT NULL DEFAULT '60';
 ```
 
-Until this runs, the "last active" text and the portal-activity "Active" filter
-stay empty (the code is resilient — nothing breaks, the feature is just dormant).
-`crm_contacts.invite_code` already exists (codes live, e.g. `A2CDAEE7`).
+All code is resilient to these being absent (nothing breaks), but until they run:
+- `last_seen_at` → "last active" text + portal-activity "Active" filter stay empty
+- `portal_read_receipts` → the Settings → Messages toggle won't persist (defaults on)
+- `message_retention_days` → the retention selector won't persist (cron uses 60)
+
+`crm_contacts.invite_code` already exists.
 
 ### 1b. Vercel env — `CRON_SECRET` (turns on message retention)
 

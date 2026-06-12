@@ -222,6 +222,24 @@ export async function createPortalMessage(
   return rowToMessage(data)
 }
 
+/**
+ * Marks the owner's messages to this contact as read. Called when the client
+ * opens their portal messages, so the owner can see read receipts. Only touches
+ * rows that are still unread, so repeat calls are cheap no-ops.
+ */
+export async function markOwnerMessagesRead(
+  db: SupabaseClient,
+  contactId: string,
+): Promise<void> {
+  const { error } = await db
+    .from('crm_messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('contact_id', contactId)
+    .eq('sender_type', 'owner')
+    .is('read_at', null)
+  if (error) throw error
+}
+
 function rowToMessage(row: Record<string, unknown>): CrmMessage {
   return {
     id:          row.id as string,

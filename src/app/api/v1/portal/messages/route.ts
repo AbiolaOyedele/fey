@@ -13,8 +13,10 @@ export async function GET(req: NextRequest) {
   if (response) return response
   const db = createServiceClient()
   try {
-    const messages = await portalService.getPortalMessages(db, payload!.contact_id)
-    return NextResponse.json({ messages })
+    const { messages, read_receipts } = await portalService.getPortalMessageView(
+      db, payload!.contact_id, payload!.owner_id,
+    )
+    return NextResponse.json({ messages, read_receipts })
   } catch (err) {
     return handleError(err, 'PORTAL_MESSAGES_GET_FAILED')
   }

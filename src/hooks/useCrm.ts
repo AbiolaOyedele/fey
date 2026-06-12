@@ -222,12 +222,20 @@ export function useMessages(contactId: string | null) {
           const msg = rowToMessage(row)
           setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
         })
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'crm_messages', filter: `contact_id=eq.${contactId}` },
+        (payload) => {
+          // Catches read_at flipping when the client opens the thread, so the
+          // owner's "Sent" → "Read" indicator updates live.
+          const msg = rowToMessage(payload.new as Record<string, unknown>)
+          setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)))
+        })
       .subscribe()
     channelRef.current = channel
     return () => { if (channelRef.current) void supabase.removeChannel(channelRef.current) }
   }, [contactId, fetchMessages])
 
-  const sendMessage = useCallback(async (body: string, bodyHtml: string | null) => {
+  const sendMessage = useCallback(async (body: string, bodyHtml: string | null, attachments: MessageAttachment[] = []) => {
     if (!contactId) return
     const session = await getSession()
     if (!session) throw new Error('Not authenticated')
@@ -240,7 +248,7 @@ export function useMessages(contactId: string | null) {
         sender_id:   session.user.id,
         body,
         body_html:   bodyHtml ?? null,
-        attachments: [],
+        attachments,
       })
       .select()
       .single()

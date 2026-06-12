@@ -2,13 +2,13 @@
 
 import { useEffect, useRef } from 'react'
 import { MessageSquare, Paperclip } from 'lucide-react'
-import type { CrmMessage } from '@/types/crm'
+import type { CrmMessage, MessageAttachment } from '@/types/crm'
 import RichTextComposer from './RichTextComposer'
 
 interface MessageThreadProps {
   messages: CrmMessage[]
   ownerId: string
-  onSend: (text: string, html: string) => Promise<void>
+  onSend: (text: string, html: string, attachments: MessageAttachment[]) => Promise<void>
   showWelcomeBanner?: boolean
   loading?: boolean
 }
@@ -120,7 +120,10 @@ export default function MessageThread({ messages, ownerId, onSend, showWelcomeBa
                           ))}
                         </div>
                       )}
-                      <span className="text-[10px] text-gray-300 px-1">{formatTime(msg.created_at)}</span>
+                      <span className="text-[10px] text-gray-300 px-1">
+                        {formatTime(msg.created_at)}
+                        {isOwner && (msg.read_at ? ' · Read' : ' · Sent')}
+                      </span>
                     </div>
                   </div>
                 )
@@ -133,7 +136,7 @@ export default function MessageThread({ messages, ownerId, onSend, showWelcomeBa
 
       {/* Composer */}
       <div className="flex-shrink-0 px-6 pb-6 pt-2">
-        <RichTextComposer onSend={(text, html) => void onSend(text, html)} />
+        <RichTextComposer onSend={(text, html, attachments) => void onSend(text, html, attachments)} />
       </div>
     </div>
   )

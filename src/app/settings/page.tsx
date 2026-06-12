@@ -1478,6 +1478,17 @@ function SettingsPageInner() {
           </div>
         </SectionGroup>
 
+        {/* Messages */}
+        <SectionGroup title="Messages">
+          <SettingRow
+            icon={CheckCircle2}
+            title="Read receipts"
+            description="Let clients see when you've read their messages. You'll always see when clients have read yours."
+            border={false}
+            action={<Toggle checked={settings.portal_read_receipts !== 'false'} onChange={(v) => void saveSetting('portal_read_receipts', v ? 'true' : 'false')} />}
+          />
+        </SectionGroup>
+
         {/* CRM notification toggles (soon) */}
         <SectionGroup title="CRM notifications">
           <SettingRow icon={Bell} title="Form submitted" description="Notify you when a client submits a form" badge={<SoonBadge />}

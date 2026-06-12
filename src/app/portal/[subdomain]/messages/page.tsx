@@ -2,7 +2,11 @@
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 
 import { use, useState, useEffect, useRef, useCallback } from 'react'
-import type { CrmMessage } from '@/types/crm'
+import { Paperclip, X, Loader2, Send } from 'lucide-react'
+import { uploadToCloudinary, formatFileSize } from '@/utils/cloudinary'
+import type { CrmMessage, MessageAttachment } from '@/types/crm'
+
+const MAX_FILE_BYTES = 25 * 1024 * 1024 // 25 MB
 
 function apiFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   return fetch(path, {
@@ -32,20 +36,25 @@ function fmtDate(iso: string) {
 export default function PortalMessagesPage({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
   const bottomRef     = useRef<HTMLDivElement>(null)
+  const fileRef       = useRef<HTMLInputElement>(null)
 
-  const [messages, setMessages] = useState<CrmMessage[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [token,    setToken]    = useState('')
-  const [body,     setBody]     = useState('')
-  const [sending,  setSending]  = useState(false)
+  const [messages, setMessages]   = useState<CrmMessage[]>([])
+  const [loading,  setLoading]    = useState(true)
+  const [token,    setToken]      = useState('')
+  const [body,     setBody]       = useState('')
+  const [sending,  setSending]    = useState(false)
+  const [attachments, setAttachments] = useState<MessageAttachment[]>([])
+  const [uploading,   setUploading]   = useState(0)
+  const [readReceipts, setReadReceipts] = useState(true)
 
   useEffect(() => {
     void (async () => {
       const portalToken = localStorage.getItem(portalTokenKey(subdomain))
       if (!portalToken) { setLoading(false); return }
       setToken(portalToken)
-      const data = await apiFetch<{ messages: CrmMessage[] }>('/api/v1/portal/messages', portalToken)
+      const data = await apiFetch<{ messages: CrmMessage[]; read_receipts?: boolean }>('/api/v1/portal/messages', portalToken)
       setMessages(data.messages ?? [])
+      setReadReceipts(data.read_receipts ?? true)
       setLoading(false)
     })()
   }, [subdomain])
@@ -54,17 +63,38 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  const handleFiles = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    for (const file of Array.from(files)) {
+      if (file.size > MAX_FILE_BYTES) continue
+      setUploading((n) => n + 1)
+      try {
+        const { url, size } = await uploadToCloudinary(file, 'portal-messages').promise
+        setAttachments((prev) => [
+          ...prev,
+          { file_name: file.name, file_url: url, file_type: file.type || 'application/octet-stream', file_size: size },
+        ])
+      } catch {
+        /* swallow — user can retry */
+      } finally {
+        setUploading((n) => n - 1)
+      }
+    }
+    if (fileRef.current) fileRef.current.value = ''
+  }, [])
+
   const send = useCallback(async () => {
-    if (!body.trim() || !token) return
+    if ((!body.trim() && attachments.length === 0) || !token || uploading > 0) return
     setSending(true)
     const data = await apiFetch<{ message: CrmMessage }>('/api/v1/portal/messages', token, {
       method: 'POST',
-      body: JSON.stringify({ body: body.trim(), body_html: null }),
+      body: JSON.stringify({ body: body.trim() || '(file)', body_html: null, attachments }),
     })
     setMessages((prev) => [...prev, data.message])
     setBody('')
+    setAttachments([])
     setSending(false)
-  }, [body, token])
+  }, [body, token, attachments, uploading])
 
   const groups = groupByDate(messages)
 
@@ -96,20 +126,42 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
                   const isMe = msg.sender_type === 'client'
                   return (
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      <div
-                        className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                          isMe ? 'text-white' : 'bg-white border border-gray-100 text-gray-800'
-                        }`}
-                        style={isMe ? { backgroundColor: '#101010' } : {}}
-                      >
-                        {msg.body_html ? (
-                          <div dangerouslySetInnerHTML={{ __html: msg.body_html }} className="prose prose-sm max-w-none" />
-                        ) : (
-                          msg.body
+                      <div className={`max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'} gap-1`}>
+                        <div
+                          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                            isMe ? 'text-white' : 'bg-white border border-gray-100 text-gray-800'
+                          }`}
+                          style={isMe ? { backgroundColor: '#101010' } : {}}
+                        >
+                          {msg.body_html ? (
+                            <div dangerouslySetInnerHTML={{ __html: msg.body_html }} className="prose prose-sm max-w-none" />
+                          ) : (
+                            msg.body
+                          )}
+                        </div>
+
+                        {msg.attachments.length > 0 && (
+                          <div className={`flex flex-wrap gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                            {msg.attachments.map((att, i) => (
+                              <a
+                                key={i}
+                                href={att.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                              >
+                                <Paperclip size={11} className="text-gray-400" />
+                                <span className="max-w-[180px] truncate">{att.file_name}</span>
+                                {att.file_size > 0 && <span className="text-gray-400">{formatFileSize(att.file_size)}</span>}
+                              </a>
+                            ))}
+                          </div>
                         )}
-                        <p className={`text-[10px] mt-1.5 ${isMe ? 'text-white/50' : 'text-gray-400'}`}>
+
+                        <span className="text-[10px] text-gray-400 px-1">
                           {new Date(msg.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                          {isMe && readReceipts && (msg.read_at ? ' · Read' : ' · Sent')}
+                        </span>
                       </div>
                     </div>
                   )
@@ -123,7 +175,38 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
 
       {/* Composer */}
       <div className="flex-shrink-0 border-t border-gray-100 bg-white px-4 py-3">
-        <div className="flex items-end gap-3">
+        {(attachments.length > 0 || uploading > 0) && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {attachments.map((att, i) => (
+              <span key={i} className="inline-flex items-center gap-1.5 text-[12px] bg-gray-100 text-gray-700 rounded-lg pl-2 pr-1 py-1">
+                <Paperclip size={11} className="text-gray-400" />
+                <span className="max-w-[160px] truncate">{att.file_name}</span>
+                <button
+                  type="button"
+                  onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}
+                  className="w-4 h-4 rounded flex items-center justify-center hover:bg-gray-200 text-gray-400 hover:text-gray-700 transition-colors"
+                >
+                  <X size={11} />
+                </button>
+              </span>
+            ))}
+            {uploading > 0 && (
+              <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-400 px-2 py-1">
+                <Loader2 size={11} className="animate-spin" /> Uploading…
+              </span>
+            )}
+          </div>
+        )}
+        <div className="flex items-end gap-2">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            title="Attach file"
+            className="p-2.5 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors flex-shrink-0"
+          >
+            <Paperclip size={18} />
+          </button>
+          <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => void handleFiles(e.target.files)} />
           <textarea
             rows={1}
             value={body}
@@ -134,10 +217,11 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
           />
           <button
             onClick={() => void send()}
-            disabled={sending || !body.trim()}
-            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40 transition-opacity flex-shrink-0"
+            disabled={sending || uploading > 0 || (!body.trim() && attachments.length === 0)}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40 transition-opacity flex-shrink-0 flex items-center gap-1.5"
             style={{ backgroundColor: '#101010' }}
           >
+            <Send size={13} />
             Send
           </button>
         </div>

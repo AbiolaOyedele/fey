@@ -111,6 +111,23 @@ export async function getPortalMessages(
   return portalRepo.listPortalMessages(db, contactId)
 }
 
+/**
+ * Portal message view for the client: marks the owner's messages read (so the
+ * owner sees read receipts), returns the thread, and whether the owner allows
+ * the client to see read receipts on their own sent messages.
+ */
+export async function getPortalMessageView(
+  db: SupabaseClient,
+  contactId: string,
+  ownerId: string,
+): Promise<{ messages: CrmMessage[]; read_receipts: boolean }> {
+  await portalRepo.markOwnerMessagesRead(db, contactId)
+  const messages = await portalRepo.listPortalMessages(db, contactId)
+  const settings = await portalRepo.getOwnerSettings(db, ownerId)
+  const read_receipts = String(settings?.portal_read_receipts ?? 'true') !== 'false'
+  return { messages, read_receipts }
+}
+
 export async function sendPortalMessage(
   db: SupabaseClient,
   portalUser: PortalUser,

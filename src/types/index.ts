@@ -185,6 +185,8 @@ export interface Settings {
   email_project_activity: string
   email_chat_from: string
   email_chat_to: string
+  /** When 'true', portal clients can see read receipts on their sent messages. Owners always see client reads. */
+  portal_read_receipts: string
   email_auto_reminders: string
   checklist_dismissed: string
   checklist_steps: string

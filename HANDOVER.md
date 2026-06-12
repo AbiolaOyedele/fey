@@ -108,6 +108,7 @@ required.
 | Message retention | ⚠️ Built + safe. Daily cron deletes msgs older than `message_retention_days` (60). **Dormant until `CRON_SECRET` is set on Vercel.** |
 | Owner OAuth sign-in | ✅ Fixed — client-side PKCE exchange (`/auth/callback/page.tsx`); server route was reading cookies it couldn't see |
 | Cross-subdomain SSO | ✅ Cookie-based sessions (`@supabase/ssr` `createBrowserClient`, cookie domain `.theruff.agency`). One owner login spans dashboard + all subdomains. One-time re-login after deploy. Rollback: `vercel rollback`. |
+| Owner stays on their subdomain | ✅ `/setup` redirects to `<slug>.theruff.agency`; AppShell hard-redirects a logged-in owner off dashboard/apex onto their subdomain (cookie SSO keeps session). Settings → Client portal shows the real `workspace_slug` URL (read-only), not the legacy `portal_subdomain`. |
 | Workspace hub page | ✅ Grid cards to all sections |
 | `/portal/[slug]/join?code=` route | ✅ Re-exports signup page; `/join` is a public path |
 | Portal pages auth (localStorage JWT) | ✅ All pages use `portalTokenKey(subdomain)` |

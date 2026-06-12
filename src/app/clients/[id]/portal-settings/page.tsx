@@ -72,8 +72,11 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
       })
   }, [user?.id])
 
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
-  const portalBase = workspaceSlug ? `https://${workspaceSlug}.${rootDomain}` : null
+  // Path-based portal URL — subdomain routing isn't wired, so the working form
+  // is <origin>/portal/<slug>. The invite API already returns the correct
+  // absolute invite_url; this fallback only fires if that request hasn't landed.
+  const origin     = typeof window !== 'undefined' ? window.location.origin : ''
+  const portalBase = workspaceSlug ? `${origin}/portal/${workspaceSlug}` : null
 
   const displayInviteUrl = inviteUrl ?? (portalBase && inviteCode ? `${portalBase}/join?code=${inviteCode}` : null)
 

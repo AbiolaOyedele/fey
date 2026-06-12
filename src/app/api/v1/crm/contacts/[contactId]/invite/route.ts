@@ -17,19 +17,25 @@ function generateInviteCode(): string {
 /**
  * Fetches the owner's workspace_slug from fey_settings and builds the full
  * invite join URL.  Shared by GET (lazy-generate) and POST (regenerate).
+ *
+ * NOTE: subdomain routing ([slug].theruff.agency) is not wired — there is no
+ * middleware/rewrite mapping a host's subdomain to /portal/[subdomain]. So we
+ * emit the PATH-based URL (<host>/portal/<slug>/join), which hits the
+ * /portal/[subdomain]/join route directly and actually resolves. The host is
+ * taken from the request so the link points back at whatever domain the owner
+ * is using (e.g. dashboard.theruff.agency).
  */
-async function buildInviteUrl(db: SupabaseClient, userId: string, code: string): Promise<string> {
+async function buildInviteUrl(req: NextRequest, db: SupabaseClient, userId: string, code: string): Promise<string> {
   const { data } = await db
     .from('fey_settings')
     .select('workspace_slug')
     .eq('user_id', userId)
     .maybeSingle()
 
-  const slug       = (data as { workspace_slug: string | null } | null)?.workspace_slug ?? ''
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
-  return slug
-    ? `https://${slug}.${rootDomain}/join?code=${code}`
-    : `/portal/${slug}/join?code=${code}`
+  const slug  = (data as { workspace_slug: string | null } | null)?.workspace_slug ?? ''
+  const proto = req.headers.get('x-forwarded-proto') ?? 'https'
+  const host  = req.headers.get('host') ?? process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
+  return `${proto}://${host}/portal/${slug}/join?code=${code}`
 }
 
 /**
@@ -80,7 +86,7 @@ export async function GET(
 
     if (!inviteCode) return errorResponse('INVITE_CODE_FAILED', 'Could not generate invite code.', 500)
 
-    const inviteUrl = await buildInviteUrl(db, userId!, inviteCode)
+    const inviteUrl = await buildInviteUrl(req, db, userId!, inviteCode)
     return NextResponse.json({ invite_code: inviteCode, invite_url: inviteUrl })
   } catch (err) {
     return handleError(err, 'INVITE_CODE_FETCH_FAILED')
@@ -131,7 +137,7 @@ export async function POST(
 
     if (!inviteCode) return errorResponse('INVITE_CODE_FAILED', 'Could not generate invite code.', 500)
 
-    const inviteUrl = await buildInviteUrl(db, userId!, inviteCode)
+    const inviteUrl = await buildInviteUrl(req, db, userId!, inviteCode)
     return NextResponse.json({ invite_code: inviteCode, invite_url: inviteUrl })
   } catch (err) {
     return handleError(err, 'INVITE_CODE_REGEN_FAILED')

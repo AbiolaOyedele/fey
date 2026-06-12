@@ -6,7 +6,6 @@ import { ArrowLeft, MoreHorizontal, Edit2, Trash2, Copy, Check, Search } from 'l
 import { supabase } from '@/lib/supabase'
 import ContactTabs from '@/components/crm/ContactTabs'
 import ClientSearchDialog from '@/components/crm/ClientSearchDialog'
-import { env } from '@/config/env'
 
 interface ContactDetailLayoutProps {
   children: React.ReactNode
@@ -41,7 +40,6 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
   const [copied,      setCopied]      = useState(false)
   const [confirmDel,  setConfirmDel]  = useState(false)
   const [searchOpen,  setSearchOpen]  = useState(false)
-  const [subdomain,   setSubdomain]   = useState<string | null>(null)
 
   // ⌘K / Ctrl+K keyboard shortcut
   useEffect(() => {
@@ -66,29 +64,24 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
   }, [])
 
   const handleCopyInviteLink = async () => {
-    // Lazy-load the subdomain once, then cache it in state
-    let slug = subdomain
-    if (slug === null) {
+    // Single source of truth for the invite URL: the invite API returns the
+    // short access code AND the correct path-based join URL. Building the URL
+    // by hand here is what produced the broken /portal/signup?code=<uuid> link.
+    try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        const { data } = await supabase
-          .from('fey_settings')
-          .select('portal_subdomain')
-          .eq('user_id', session.user.id)
-          .maybeSingle()
-        slug = (data as { portal_subdomain: string | null } | null)?.portal_subdomain ?? ''
-        setSubdomain(slug)
-      }
+      const token = session?.access_token
+      if (!token) return
+      const res = await fetch(`/api/v1/crm/contacts/${id}/invite`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const data = await res.json() as { invite_url: string }
+      await navigator.clipboard.writeText(data.invite_url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } finally {
+      setMenuOpen(false)
     }
-
-    const origin = env.NEXT_PUBLIC_APP_URL ?? window.location.origin
-    const link = slug
-      ? `${origin}/portal/${slug}/signup?code=${id}`
-      : `${origin}/portal/signup?code=${id}` // fallback if no subdomain set yet
-    await navigator.clipboard.writeText(link)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-    setMenuOpen(false)
   }
 
   const handleDelete = async () => {

@@ -146,7 +146,10 @@ export default function SetupPage() {
       // Save name
       await saveSetting('username', name.trim())
 
-      // Upsert workspace slug + name + mark fey onboarding complete
+      // Upsert workspace slug + name + mark fey onboarding complete.
+      // portal_active: true — a freshly set-up workspace has its client portal
+      // live by default (mirrors Workboard onboarding). Without this the portal
+      // signup API rejects every client with PORTAL_INACTIVE.
       const { error: dbErr } = await supabase
         .from('fey_settings')
         .upsert(
@@ -155,6 +158,7 @@ export default function SetupPage() {
             workspace_slug:          slug,
             workspace_name:          name.trim(),
             fey_onboarding_complete: 'true',
+            portal_active:           true,
           },
           { onConflict: 'user_id' },
         )

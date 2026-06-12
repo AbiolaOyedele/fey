@@ -19,6 +19,9 @@ export interface CrmContact {
   invite_code: string | null
   created_at: string
   updated_at: string
+  /** Last time this client was active on their portal. Merged in client-side
+   *  from /api/v1/crm/activity — not a column on crm_contacts. */
+  last_seen_at?: string | null
 }
 
 export interface PortalUser {

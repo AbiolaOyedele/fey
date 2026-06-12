@@ -1,5 +1,6 @@
 'use client'
 
+import { relativeTime, isActiveWithin } from '@/utils/relativeTime'
 import type { CrmContact, ContactStatus } from '@/types/crm'
 
 const STATUS_CONFIG: Record<ContactStatus, { dot: string; label: string }> = {
@@ -30,18 +31,6 @@ const AVATAR_COLORS = [
 function avatarColor(id: string) {
   const idx = id.charCodeAt(0) % AVATAR_COLORS.length
   return AVATAR_COLORS[idx] ?? AVATAR_COLORS[0]!
-}
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60_000)
-  if (mins < 1)    return 'just now'
-  if (mins < 60)   return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24)    return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  if (days < 7)    return `${days}d ago`
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 export default function ContactListRow({ contact, selected, onClick }: ContactListRowProps) {
@@ -86,7 +75,13 @@ export default function ContactListRow({ contact, selected, onClick }: ContactLi
           <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${status?.dot ?? 'bg-gray-300'}`} />
           <span className="text-[11px] text-gray-400">{status?.label ?? contact.status}</span>
         </div>
-        <span className="text-[11px] text-gray-300">{relativeTime(contact.updated_at)}</span>
+        {contact.last_seen_at ? (
+          <span className={`text-[11px] ${isActiveWithin(contact.last_seen_at) ? 'text-gray-500 font-medium' : 'text-gray-300'}`}>
+            {isActiveWithin(contact.last_seen_at) ? 'Active ' : 'Seen '}{relativeTime(contact.last_seen_at)}
+          </span>
+        ) : (
+          <span className="text-[11px] text-gray-300">{relativeTime(contact.updated_at)}</span>
+        )}
       </div>
     </button>
   )

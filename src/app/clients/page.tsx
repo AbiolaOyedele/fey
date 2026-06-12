@@ -6,6 +6,7 @@ import { Search, Plus, Users } from 'lucide-react'
 import { useContacts } from '@/hooks/useCrm'
 import ContactListRow from '@/components/crm/ContactListRow'
 import AddContactModal from '@/components/crm/AddContactModal'
+import { isActiveWithin } from '@/utils/relativeTime'
 import type { ContactStatus, CreateContactPayload } from '@/types/crm'
 
 const STATUS_FILTERS: { label: string; value: ContactStatus | 'all' }[] = [
@@ -30,7 +31,11 @@ export default function CrmContactsPage() {
         || c.name.toLowerCase().includes(search.toLowerCase())
         || (c.company?.toLowerCase().includes(search.toLowerCase()) ?? false)
         || (c.email?.toLowerCase().includes(search.toLowerCase()) ?? false)
-      const matchStatus = statusFilter === 'all' || c.status === statusFilter
+      // "Active" now means recently active on the portal (not the manual status).
+      const matchStatus =
+        statusFilter === 'all'    ? true
+        : statusFilter === 'active' ? isActiveWithin(c.last_seen_at)
+        : c.status === statusFilter
       return matchSearch && matchStatus
     })
   }, [contacts, search, statusFilter])

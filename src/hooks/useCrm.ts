@@ -117,7 +117,20 @@ export function useContacts() {
         .eq('owner_id', session.user.id)
         .order('created_at', { ascending: false })
       if (err) throw err
-      setContacts((data ?? []) as CrmContact[])
+      let rows = (data ?? []) as CrmContact[]
+
+      // Merge in each client's last portal activity (best-effort)
+      try {
+        const res = await fetch('/api/v1/crm/activity', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+        if (res.ok) {
+          const { activity } = await res.json() as { activity: Record<string, string> }
+          rows = rows.map((c) => ({ ...c, last_seen_at: activity[c.id] ?? null }))
+        }
+      } catch { /* activity is optional — show contacts regardless */ }
+
+      setContacts(rows)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load contacts')

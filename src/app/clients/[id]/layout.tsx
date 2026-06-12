@@ -6,6 +6,7 @@ import { ArrowLeft, MoreHorizontal, Edit2, Trash2, Copy, Check, Search } from 'l
 import { supabase } from '@/lib/supabase'
 import ContactTabs from '@/components/crm/ContactTabs'
 import ClientSearchDialog from '@/components/crm/ClientSearchDialog'
+import { relativeTime, isActiveWithin } from '@/utils/relativeTime'
 
 interface ContactDetailLayoutProps {
   children: React.ReactNode
@@ -25,6 +26,8 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
   // ── Fetch only this contact's name — no full-list round-trip ─────────────
   const [contact, setContact] = useState<ContactSummary | null>(null)
 
+  const [lastSeen, setLastSeen] = useState<string | null>(null)
+
   useEffect(() => {
     void (async () => {
       const { data } = await supabase
@@ -33,6 +36,17 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
         .eq('id', id)
         .single()
       if (data) setContact(data as ContactSummary)
+
+      // Last portal activity (best-effort)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const res = await fetch('/api/v1/crm/activity', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (res.ok) {
+        const { activity } = await res.json() as { activity: Record<string, string> }
+        setLastSeen(activity[id] ?? null)
+      }
     })()
   }, [id])
 
@@ -113,6 +127,11 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
               <span className="text-sm font-medium text-gray-900 truncate">{contact.name}</span>
               {contact.company && (
                 <span className="text-xs text-gray-400 flex-shrink-0 hidden sm:inline">· {contact.company}</span>
+              )}
+              {lastSeen && (
+                <span className="text-xs text-gray-400 flex-shrink-0 hidden md:inline">
+                  · {isActiveWithin(lastSeen) ? 'Active' : 'Last seen'} {relativeTime(lastSeen)}
+                </span>
               )}
             </>
           )}

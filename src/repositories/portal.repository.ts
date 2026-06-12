@@ -100,6 +100,41 @@ export async function getPortalUserByContactAndOwner(
   return data as PortalUser
 }
 
+/**
+ * Records that the portal user was just active. Best-effort: the last_seen_at
+ * column may not exist yet, so any error is swallowed (feature stays dormant
+ * until the column is added).
+ */
+export async function touchPortalUserLastSeen(
+  db: SupabaseClient,
+  portalUserId: string,
+): Promise<void> {
+  await db
+    .from('portal_users')
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq('id', portalUserId)
+}
+
+/**
+ * Last-seen timestamp for every portal user under an owner, keyed by contact_id.
+ * Resilient to the column not existing yet (returns {}).
+ */
+export async function listPortalLastSeenByOwner(
+  db: SupabaseClient,
+  ownerId: string,
+): Promise<Record<string, string>> {
+  const { data, error } = await db
+    .from('portal_users')
+    .select('contact_id, last_seen_at')
+    .eq('owner_id', ownerId)
+  if (error || !data) return {}
+  const map: Record<string, string> = {}
+  for (const row of data as Array<{ contact_id: string; last_seen_at: string | null }>) {
+    if (row.last_seen_at) map[row.contact_id] = row.last_seen_at
+  }
+  return map
+}
+
 export async function portalEmailExistsInWorkspace(
   db: SupabaseClient,
   workspaceSlug: string,

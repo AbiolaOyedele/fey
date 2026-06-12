@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requirePortalAuth, handleError } from '@/lib/api-helpers'
 import * as portalRepo from '@/repositories/portal.repository'
+import { resolveWorkspaceName } from '@/utils/workspace'
 import type { PortalOwnerBranding } from '@/types/crm'
 
 /**
@@ -26,11 +27,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: { code: 'PORTAL_ACCESS_DENIED', message: 'Access denied.' } }, { status: 403 })
     }
 
+    // Record portal activity (best-effort — dormant until last_seen_at exists)
+    void portalRepo.touchPortalUserLastSeen(db, portalUser.id)
+
     const ownerSettings = await portalRepo.getOwnerSettings(db, portalUser.owner_id)
     const branding: PortalOwnerBranding = {
-      business_name: (ownerSettings?.company_name as string | null)
-                  ?? (ownerSettings?.workspace_name as string | null)
-                  ?? 'Workspace',
+      business_name: resolveWorkspaceName(
+        ownerSettings?.company_name as string | null,
+        ownerSettings?.workspace_slug as string | null,
+      ),
       owner_name:    (ownerSettings?.username as string | null) ?? '',
       logo_url:      (ownerSettings?.logo as string | null) ?? null,
       accent_color:  (ownerSettings?.accent_color as string | null) ?? '#ED64A6',

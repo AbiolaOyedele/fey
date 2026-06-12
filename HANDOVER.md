@@ -106,6 +106,8 @@ required.
 | Portal activity ("last active") | ⚠️ Code live, **needs SQL** (`last_seen_at`); "Active" filter = portal-active |
 | Subdomain routing | ✅ `src/proxy.ts` (already existed) — `<slug>.theruff.agency/` = owner app, `/join` `/client-login` `/client/*` = portal. Invite links use `<slug>.theruff.agency/join`. Verified live. |
 | Message retention | ⚠️ Built + safe. Daily cron deletes msgs older than `message_retention_days` (60). **Dormant until `CRON_SECRET` is set on Vercel.** |
+| Owner OAuth sign-in | ✅ Fixed — client-side PKCE exchange (`/auth/callback/page.tsx`); server route was reading cookies it couldn't see |
+| Cross-subdomain SSO | ✅ Cookie-based sessions (`@supabase/ssr` `createBrowserClient`, cookie domain `.theruff.agency`). One owner login spans dashboard + all subdomains. One-time re-login after deploy. Rollback: `vercel rollback`. |
 | Workspace hub page | ✅ Grid cards to all sections |
 | `/portal/[slug]/join?code=` route | ✅ Re-exports signup page; `/join` is a public path |
 | Portal pages auth (localStorage JWT) | ✅ All pages use `portalTokenKey(subdomain)` |

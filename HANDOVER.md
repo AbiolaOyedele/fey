@@ -114,7 +114,17 @@ required.
 | Rename workspace | ✅ Settings → Client portal → "Change". `POST /api/v1/workspace/rename` updates `fey_settings` + `portal_users` slug; old invite links break (warned), clients stay registered. |
 | "Contacts" → "Clients" | ✅ All user-facing labels renamed (data layer `crm_contacts`/`useContacts` unchanged). |
 | Collapsible sidebar | ✅ Toggle (persisted) expands to show labels; `--sidebar-w` CSS var syncs AppShell content margin. |
-| Dashboard welcome card | ✅ Getting-started card (Add first client / Set up workspace) shown until the first client exists. |
+| Dashboard welcome card | ✅ Getting-started card (Add first client / Set up workspace) shown until the first client exists (Fey clients AND CRM contacts both 0). |
+| Add-client deep link | ✅ `/clients?new=1` auto-opens the Add Client modal. |
+| Sidebar hover-peek | ✅ Hovering the collapsed rail expands it as an overlay (no content shift); toggle still pins. |
+| Dashboard "Needs attention" | ✅ `useCrmPending` head-counts: unread client messages, sent-unsigned contracts, sent-unsubmitted forms. |
+
+### ⚠️ Architecture note — two "client" models
+The **dashboard grid** uses Fey `clients` (table `clients`, app='fey', with tasks/earnings).
+The **/clients page + portal + messaging** use `crm_contacts`. They are SEPARATE tables.
+"Add a client" creates a `crm_contact`, which does NOT appear in the dashboard's Fey-clients
+grid. The dashboard does not yet surface CRM clients (only the "Needs attention" counts do).
+A real follow-up is to reconcile the dashboard onto `crm_contacts` (the current primary model).
 | Workspace hub page | ✅ Grid cards to all sections |
 | `/portal/[slug]/join?code=` route | ✅ Re-exports signup page; `/join` is a public path |
 | Portal pages auth (localStorage JWT) | ✅ All pages use `portalTokenKey(subdomain)` |

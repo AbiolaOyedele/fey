@@ -104,6 +104,8 @@ required.
 | Messages: file attachments | ✅ Owner + portal composers; Cloudinary upload; rendered both sides |
 | Messages: read receipts | ✅ "Sent → Read" (live for owner); `portal_read_receipts` setting gates client visibility |
 | Portal activity ("last active") | ⚠️ Code live, **needs SQL** (`last_seen_at`); "Active" filter = portal-active |
+| Subdomain routing | ✅ `src/proxy.ts` (already existed) — `<slug>.theruff.agency/` = owner app, `/join` `/client-login` `/client/*` = portal. Invite links use `<slug>.theruff.agency/join`. Verified live. |
+| Message retention | ⚠️ Built + safe. Daily cron deletes msgs older than `message_retention_days` (60). **Dormant until `CRON_SECRET` is set on Vercel.** |
 | Workspace hub page | ✅ Grid cards to all sections |
 | `/portal/[slug]/join?code=` route | ✅ Re-exports signup page; `/join` is a public path |
 | Portal pages auth (localStorage JWT) | ✅ All pages use `portalTokenKey(subdomain)` |
@@ -122,6 +124,27 @@ ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
 Until this runs, the "last active" text and the portal-activity "Active" filter
 stay empty (the code is resilient — nothing breaks, the feature is just dormant).
 `crm_contacts.invite_code` already exists (codes live, e.g. `A2CDAEE7`).
+
+### 1b. Vercel env — `CRON_SECRET` (turns on message retention)
+
+```
+vercel env add CRON_SECRET production   # any long random string
+```
+
+Until set, the retention cron returns 503 and **nothing is deleted**. Once set,
+the daily cron (3am UTC) prunes messages older than each owner's
+`message_retention_days` (default 60). Redeploy after adding so the cron picks it up.
+
+### 1c. Supabase — allow owner login on subdomains
+
+For owner **Google** login to work on `<slug>.theruff.agency`, add this redirect
+URL in Supabase → Auth → URL Configuration → Redirect URLs:
+
+```
+https://*.theruff.agency/auth/callback
+```
+
+Email/password login already works on subdomains without this.
 
 ### 2. Vercel env vars
 

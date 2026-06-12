@@ -94,10 +94,13 @@ required.
 | "Copy invite link" (contact ⋯ menu) | ✅ Now calls the invite API (was the broken one) |
 | Add Contact modal → invite link | ✅ Success step shows link + copy |
 | Portal settings page → invite link | ✅ Short code + URL + regenerate |
-| Portal sidebar (Dashboard + Workspace) | ✅ |
+| Portal sidebar (Dashboard + Workspace) | ✅ "Workspace" → /workspace hub |
+| Portal section tabs | ✅ `PortalWorkspaceTabs` — Messages·Files·Contracts·Forms·Payments·Invoices·Tasks on every section page |
+| Portal sections wired to data | ✅ All 7 live. Invoices/Payments/Tasks read-only via new portal APIs (sent-only, no drafts/pricing) |
+| New contact → portal access | ✅ `portal_enabled: true` by default on creation |
 | Workspace hub page | ✅ Grid cards to all sections |
 | `/portal/[slug]/join?code=` route | ✅ Re-exports signup page; `/join` is a public path |
-| Portal pages auth (localStorage JWT) | ✅ All 7 pages use `portalTokenKey(subdomain)` |
+| Portal pages auth (localStorage JWT) | ✅ All pages use `portalTokenKey(subdomain)` |
 | Login branding + "joined" banner | ✅ |
 
 ---
@@ -121,14 +124,13 @@ derives completion from `workspace_slug`.
 - `NEXT_PUBLIC_ROOT_DOMAIN=theruff.agency` — set in `.env.local`. No longer used for
   invite URLs (those are now derived from the request host), but harmless to set.
 
-### 3. Per-contact portal access is opt-in
+### 3. Portal access gating — resolved ✅
 
 Signup requires `portal_active` (workspace) **and** `portal_enabled` (contact).
-`/setup` now sets `portal_active: true` for new workspaces. But each **new contact**
-defaults to `portal_enabled = false` — the owner must toggle "Portal access" ON in
-the contact's **Portal Settings** tab before that client's invite link works.
-(Consider defaulting new contacts to enabled, or auto-enabling when a link is first
-copied, to remove this footgun — deferred, would change behavior.)
+`/setup` now sets `portal_active: true` for new workspaces, and **new contacts are
+created with `portal_enabled: true`** (in `crm.service.ts`) so invite links work
+immediately. Owners can still revoke per-contact in Portal Settings. Contacts created
+before this change keep their old value — toggle them on if needed.
 
 ### 4. Subdomain routing — future enhancement (optional)
 

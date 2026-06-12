@@ -112,6 +112,9 @@ required.
 | Clean portal URLs on subdomain | ✅ `usePortalBase`/`portalBasePath` — links use `/client/*` on the subdomain, `/portal/<slug>/*` on dashboard. Active-state derives the section robustly. |
 | Retention deletes Cloudinary files | ✅ Prune sweep parses each attachment URL → signed Cloudinary destroy (best-effort). Reports `filesDeleted`. |
 | Rename workspace | ✅ Settings → Client portal → "Change". `POST /api/v1/workspace/rename` updates `fey_settings` + `portal_users` slug; old invite links break (warned), clients stay registered. |
+| "Contacts" → "Clients" | ✅ All user-facing labels renamed (data layer `crm_contacts`/`useContacts` unchanged). |
+| Collapsible sidebar | ✅ Toggle (persisted) expands to show labels; `--sidebar-w` CSS var syncs AppShell content margin. |
+| Dashboard welcome card | ✅ Getting-started card (Add first client / Set up workspace) shown until the first client exists. |
 | Workspace hub page | ✅ Grid cards to all sections |
 | `/portal/[slug]/join?code=` route | ✅ Re-exports signup page; `/join` is a public path |
 | Portal pages auth (localStorage JWT) | ✅ All pages use `portalTokenKey(subdomain)` |

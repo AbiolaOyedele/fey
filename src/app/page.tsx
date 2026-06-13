@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import Link from 'next/link'
 import {
-  ArrowUpRight, Plus, Users, MessageSquare, Paperclip,
+  ArrowUpRight, Users, MessageSquare, Paperclip,
   ClipboardList, UserPlus, Settings, MoreHorizontal, Eye,
   FileText, FileImage, FileSpreadsheet, File as FileIcon,
 } from 'lucide-react'
@@ -15,45 +15,6 @@ import { useContacts } from '@/hooks/useCrm'
 import { resolveWorkspaceName } from '@/utils/workspace'
 import { useGreeting } from '@/hooks/useGreeting'
 import { Skeleton } from '@/components/ui/skeleton'
-
-// ─── Donut ring chart ────────────────────────────────────────────────────────
-
-interface DonutSegment { label: string; count: number; color: string }
-
-function DonutChart({ segments, total }: { segments: DonutSegment[]; total: number }) {
-  const r = 52
-  const stroke = 10
-  const circ = 2 * Math.PI * r
-
-  let cumulative = 0
-  const arcs = segments.map((seg) => {
-    const len = total > 0 ? (seg.count / total) * circ : 0
-    const arc = { ...seg, len, offset: cumulative }
-    cumulative += len
-    return arc
-  })
-
-  return (
-    <svg width="120" height="120" viewBox="0 0 120 120" className="-rotate-90">
-      {total === 0 ? (
-        <circle cx="60" cy="60" r={r} fill="none" stroke="#F3F4F6" strokeWidth={stroke} />
-      ) : (
-        arcs.map((arc) => (
-          <circle
-            key={arc.label}
-            cx="60" cy="60" r={r}
-            fill="none"
-            stroke={arc.color}
-            strokeWidth={stroke}
-            strokeLinecap="butt"
-            strokeDasharray={`${arc.len} ${circ}`}
-            strokeDashoffset={-arc.offset}
-          />
-        ))
-      )}
-    </svg>
-  )
-}
 
 // ─── Progress bar row ─────────────────────────────────────────────────────────
 
@@ -142,19 +103,9 @@ export default function DashboardPage() {
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-4 mb-6 lg:mb-8">
-        <div className="flex items-center gap-3">
-          {settings.logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={settings.logo} alt="" className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 flex-shrink-0" />
-          ) : (
-            <div className="w-9 h-9 bg-gray-900 rounded-xl flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-sm">F</span>
-            </div>
-          )}
-          <h1 className="font-display text-[20px] leading-snug font-normal text-gray-700" style={{ whiteSpace: 'pre-wrap' }}>
-            {heading}
-          </h1>
-        </div>
+        <h1 className="font-display text-[20px] leading-snug font-normal text-gray-700" style={{ whiteSpace: 'pre-wrap' }}>
+          {heading}
+        </h1>
         <Link
           href="/settings"
           className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors flex-shrink-0"
@@ -163,11 +114,9 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* ── Top row ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
-
-        {/* Left: Workspace overview */}
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col justify-between min-h-[220px]">
+      {/* ── Workspace overview ── */}
+      <div className="mb-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col justify-between min-h-[220px]">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               {(['All', 'Active', 'Idle', 'Completed'] as const).map((s) => (
@@ -224,61 +173,6 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
-
-        {/* Right: Pending hero (accent card) */}
-        <div
-          className="lg:col-span-2 rounded-2xl p-6 flex flex-col justify-between min-h-[220px] relative overflow-hidden"
-          style={{ backgroundColor: accent }}
-        >
-          {/* decorative bg circles */}
-          <div className="absolute -bottom-8 -right-8 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
-          <div className="absolute -top-10 -right-12 w-44 h-44 rounded-full bg-white/10 pointer-events-none" />
-
-          <div className="flex items-center justify-between relative z-10">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-black/25 text-white">
-              PENDING
-              <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center">
-                <Plus size={10} />
-              </span>
-            </div>
-            <MoreHorizontal size={16} className="text-white/50" />
-          </div>
-
-          <div className="relative z-10">
-            <p className="text-white/70 text-xs mb-1.5">Needs your attention</p>
-            <div className="flex items-center gap-2.5">
-              {pending.loaded ? (
-                <p className="font-display text-4xl font-normal text-white tabular-nums leading-none">
-                  {totalPending}
-                </p>
-              ) : (
-                <Skeleton className="h-10 w-12 bg-white/20" />
-              )}
-              {totalPending > 0 && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/20 text-white">
-                  {totalPending} item{totalPending !== 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 relative z-10">
-            {[
-              { label: 'Messages',  value: pending.unreadMessages },
-              { label: 'Contracts', value: pending.pendingContracts },
-            ].map((s) => (
-              <div key={s.label} className="bg-white/15 rounded-xl px-3 py-2.5">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-white/70 text-[11px]">{s.label}</span>
-                  <Eye size={11} className="text-white/40" />
-                </div>
-                <p className="text-white font-semibold text-xl tabular-nums leading-none">
-                  {pending.loaded ? s.value : '—'}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* ── Bottom row ── */}
@@ -296,29 +190,32 @@ export default function DashboardPage() {
             </span>
           </div>
 
-          <div className="flex justify-center py-2">
+          <div className="py-1">
             {contactsLoading ? (
-              <Skeleton className="w-[120px] h-[120px] rounded-full" />
+              <Skeleton className="h-10 w-16" />
             ) : (
-              <div className="relative">
-                <DonutChart
-                  total={contacts.length}
-                  segments={[
-                    { label: 'Active',    count: statusCounts.active,    color: accent },
-                    { label: 'Idle',      count: statusCounts.idle,      color: '#E5E7EB' },
-                    { label: 'Completed', count: statusCounts.completed, color: '#48BB78' },
-                  ]}
-                />
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <p className="font-semibold text-xl text-gray-900 tabular-nums leading-none">{contacts.length}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">total</p>
-                </div>
-              </div>
+              <>
+                <p className="font-display text-4xl font-normal text-gray-900 tabular-nums leading-none">{contacts.length}</p>
+                <p className="text-xs text-gray-400 mt-1.5">total clients</p>
+              </>
             )}
           </div>
 
+          {/* Stacked proportion bar */}
           {contacts.length > 0 && (
-            <p className="text-[11px] text-gray-400 text-center my-3">
+            <div className="flex h-2 rounded-full overflow-hidden my-4 bg-gray-100">
+              {[
+                { count: statusCounts.active,    color: accent },
+                { count: statusCounts.idle,      color: '#9CA3AF' },
+                { count: statusCounts.completed, color: '#48BB78' },
+              ].filter((s) => s.count > 0).map((s, i) => (
+                <div key={i} style={{ width: `${(s.count / contacts.length) * 100}%`, backgroundColor: s.color }} />
+              ))}
+            </div>
+          )}
+
+          {contacts.length > 0 && (
+            <p className="text-[11px] text-gray-400 my-3">
               ✦ Most clients are{' '}
               <span className="font-medium" style={{ color: dominantStatus === 'active' ? accent : dominantStatus === 'completed' ? '#48BB78' : '#9CA3AF' }}>
                 {dominantStatus}

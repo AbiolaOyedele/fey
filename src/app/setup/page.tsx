@@ -10,7 +10,7 @@ import { env } from '@/config/env'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Step = 'name' | 'workspace'
+type Step = 'name' | 'workspace' | 'url'
 type SlugState = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -33,7 +33,8 @@ export default function SetupPage() {
   const { saveSetting } = useSettings()
 
   const [step,      setStep]      = useState<Step>('name')
-  const [name,      setName]      = useState('')
+  const [name,          setName]          = useState('')
+  const [workspaceName, setWorkspaceName] = useState('')
   const [slug,      setSlug]      = useState('')
   const [slugState, setSlugState] = useState<SlugState>('idle')
   const [slugReason,setSlugReason]= useState('')
@@ -42,6 +43,7 @@ export default function SetupPage() {
 
   const cardRef      = useRef<HTMLDivElement>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const workspaceNameInputRef = useRef<HTMLInputElement>(null)
   const slugInputRef = useRef<HTMLInputElement>(null)
   const checkTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -70,6 +72,7 @@ export default function SetupPage() {
   // Auto-focus
   useEffect(() => {
     if (step === 'name') nameInputRef.current?.focus()
+    else if (step === 'workspace') workspaceNameInputRef.current?.focus()
     else slugInputRef.current?.focus()
   }, [step])
 
@@ -114,23 +117,33 @@ export default function SetupPage() {
 
   // ── Advance step ──────────────────────────────────────────────────────────
 
-  const goToWorkspace = () => {
-    if (!name.trim()) return
+  const animateOut = (then: () => void) => {
     const el = cardRef.current
     if (el) {
       el.style.transition = 'transform 0.25s ease, opacity 0.25s ease'
       el.style.transform = 'scale(0.94)'
       el.style.opacity = '0'
     }
-    setTimeout(() => {
-      // Suggest a slug from the name
+    setTimeout(then, 250)
+  }
+
+  // Step 1 → 2: owner name → workspace name
+  const goToWorkspace = () => {
+    if (!name.trim()) return
+    animateOut(() => setStep('workspace'))
+  }
+
+  // Step 2 → 3: workspace name → URL (suggest a slug from the workspace name)
+  const goToUrl = () => {
+    if (!workspaceName.trim()) return
+    animateOut(() => {
       if (!slug) {
-        const suggested = toSlug(name.trim())
+        const suggested = toSlug(workspaceName.trim())
         setSlug(suggested)
         void checkSlug(suggested)
       }
-      setStep('workspace')
-    }, 250)
+      setStep('url')
+    })
   }
 
   // ── Finish setup ─────────────────────────────────────────────────────────
@@ -144,20 +157,23 @@ export default function SetupPage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { setError('Session expired. Please sign in again.'); setSaving(false); return }
 
-      // Save name
+      // Save the owner's own name (used for the dashboard greeting + their
+      // member identity).
       await saveSetting('username', name.trim())
 
-      // Upsert workspace slug + name + mark fey onboarding complete.
-      // portal_active: true — a freshly set-up workspace has its client portal
-      // live by default (mirrors Workboard onboarding). Without this the portal
-      // signup API rejects every client with PORTAL_INACTIVE.
+      // Upsert workspace slug + name + mark fey onboarding complete. The
+      // workspace name is distinct from the owner's name (e.g. owner "Abiola",
+      // workspace "Rivary Inc"). portal_active: true — a freshly set-up
+      // workspace has its client portal live by default.
       const { error: dbErr } = await supabase
         .from('fey_settings')
         .upsert(
           {
             user_id:                 session.user.id,
+            username:                name.trim(),
             workspace_slug:          slug,
-            workspace_name:          name.trim(),
+            workspace_name:          workspaceName.trim(),
+            company_name:            workspaceName.trim(),
             fey_onboarding_complete: 'true',
             portal_active:           true,
           },
@@ -195,7 +211,7 @@ export default function SetupPage() {
       console.error('[setup]', err)
       setSaving(false)
     }
-  }, [slug, slugState, name, saving, saveSetting, router])
+  }, [slug, slugState, name, workspaceName, saving, saveSetting, router])
 
   // ─── Shared styles ────────────────────────────────────────────────────────
 
@@ -250,6 +266,43 @@ export default function SetupPage() {
         style={{ ...btnPrimary, opacity: name.trim() ? 1 : 0.45, cursor: name.trim() ? 'pointer' : 'not-allowed' }}
       >
         Continue
+      </button>
+    </>
+  )
+
+  const workspaceNameCard = (
+    <>
+      <h2 style={{ fontFamily: 'var(--heading-font)', fontSize: '1.6rem', fontWeight: 400, margin: '0 0 8px', color: '#111', lineHeight: 1.3 }}>
+        What&apos;s your workspace called?
+      </h2>
+      <p style={{ fontSize: '14px', color: muted, margin: '0 0 24px' }}>
+        Your business or team name — e.g. Rivary Inc. You can change it later.
+      </p>
+
+      <input
+        ref={workspaceNameInputRef}
+        type="text"
+        value={workspaceName}
+        onChange={(e) => setWorkspaceName(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && workspaceName.trim()) goToUrl() }}
+        placeholder="Workspace name"
+        className={inputCls}
+        style={{ marginBottom: '20px' }}
+      />
+
+      <button
+        onClick={goToUrl}
+        disabled={!workspaceName.trim()}
+        style={{ ...btnPrimary, opacity: workspaceName.trim() ? 1 : 0.45, cursor: workspaceName.trim() ? 'pointer' : 'not-allowed' }}
+      >
+        Continue
+      </button>
+
+      <button
+        onClick={() => setStep('name')}
+        style={{ background: 'none', border: 'none', fontSize: '13px', color: muted, cursor: 'pointer', marginTop: '12px', width: '100%' }}
+      >
+        ← Back
       </button>
     </>
   )
@@ -312,7 +365,7 @@ export default function SetupPage() {
       </button>
 
       <button
-        onClick={() => setStep('name')}
+        onClick={() => setStep('workspace')}
         style={{ background: 'none', border: 'none', fontSize: '13px', color: muted, cursor: 'pointer', marginTop: '12px', width: '100%' }}
       >
         ← Back
@@ -322,7 +375,7 @@ export default function SetupPage() {
 
   // ─── Progress dots ────────────────────────────────────────────────────────
 
-  const steps: Step[] = ['name', 'workspace']
+  const steps: Step[] = ['name', 'workspace', 'url']
   const stepIndex = steps.indexOf(step)
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -360,7 +413,7 @@ export default function SetupPage() {
           boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
         }}
       >
-        {step === 'name' ? nameCard : workspaceCard}
+        {step === 'name' ? nameCard : step === 'workspace' ? workspaceNameCard : workspaceCard}
       </div>
     </div>
   )

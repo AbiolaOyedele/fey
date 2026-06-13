@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { ChevronsUpDown, Plus, Check, Loader2, X } from 'lucide-react'
+import { ChevronsUpDown, Plus, Check, Loader2, X, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { workspaceUrl } from '@/utils/host'
@@ -16,9 +16,10 @@ async function authHeader(): Promise<Record<string, string>> {
 }
 
 export default function WorkspaceSwitcher({ accent }: { accent: string }) {
-  const { workspace, memberships } = useWorkspace()
+  const { workspace, role, memberships } = useWorkspace()
   const [open, setOpen] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [showDelete, setShowDelete] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -87,11 +88,94 @@ export default function WorkspaceSwitcher({ accent }: { accent: string }) {
               </span>
               Create workspace
             </button>
+            {role === 'owner' && workspace && (
+              <button
+                onClick={() => { setShowDelete(true); setOpen(false) }}
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 transition-colors text-left text-sm text-red-500"
+              >
+                <span className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0">
+                  <Trash2 size={13} />
+                </span>
+                Delete workspace
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {showCreate && <CreateWorkspaceModal accent={accent} onClose={() => setShowCreate(false)} />}
+      {showDelete && workspace && (
+        <DeleteWorkspaceModal
+          workspaceId={workspace.id}
+          workspaceName={workspace.name}
+          otherSlug={memberships.find((m) => m.workspace.id !== workspace.id)?.workspace.slug ?? null}
+          onClose={() => setShowDelete(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function DeleteWorkspaceModal({
+  workspaceId, workspaceName, otherSlug, onClose,
+}: {
+  workspaceId: string
+  workspaceName: string
+  otherSlug: string | null
+  onClose: () => void
+}) {
+  const [confirm, setConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const matches = confirm.trim() === workspaceName
+
+  const doDelete = async () => {
+    if (!matches || deleting) return
+    setDeleting(true); setError(null)
+    try {
+      const res = await fetch(`/api/v1/workspace/${workspaceId}`, { method: 'DELETE', headers: await authHeader() })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null) as { error?: { message?: string } } | null
+        throw new Error(body?.error?.message ?? 'Could not delete workspace')
+      }
+      // Move to another workspace if one exists, else back to the app root.
+      window.location.href = otherSlug ? workspaceUrl(otherSlug) : '/'
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong')
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-4" onMouseDown={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 animate-scale-in" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-gray-900">Delete workspace</h2>
+          <button onClick={onClose} className="text-gray-300 hover:text-gray-500"><X size={18} /></button>
+        </div>
+        <p className="text-sm text-gray-500 mb-4 leading-relaxed">
+          This permanently deletes <strong className="text-gray-800">{workspaceName}</strong> — its team, roles,
+          invites, and internal chats. Your clients and their data are not deleted. This can&apos;t be undone.
+        </p>
+        <label className="block text-xs font-medium text-gray-500 mb-1">
+          Type <span className="font-semibold text-gray-700">{workspaceName}</span> to confirm
+        </label>
+        <input
+          autoFocus
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          className="w-full mb-3 px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 focus:outline-none focus:border-gray-400 focus:bg-white transition-colors"
+        />
+        {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+        <button
+          onClick={() => void doDelete()}
+          disabled={!matches || deleting}
+          className="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+        >
+          {deleting && <Loader2 size={14} className="animate-spin" />}
+          Delete workspace
+        </button>
+      </div>
     </div>
   )
 }

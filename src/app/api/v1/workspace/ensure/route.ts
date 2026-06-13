@@ -31,11 +31,16 @@ export async function POST(req: NextRequest) {
     // Pull identity/slug from the owner's settings to name the workspace.
     const { data: settings } = await db
       .from('fey_settings')
-      .select('company_name, workspace_name, workspace_slug')
+      .select('company_name, workspace_name, workspace_slug, username')
       .eq('user_id', userId)
       .maybeSingle()
-    const s = settings as { company_name: string | null; workspace_name: string | null; workspace_slug: string | null } | null
+    const s = settings as { company_name: string | null; workspace_name: string | null; workspace_slug: string | null; username: string | null } | null
     const name = s?.workspace_name?.trim() || s?.company_name?.trim() || 'My workspace'
+    // The owner's member identity prefers their typed name, then Google metadata.
+    const ownerName = s?.username?.trim()
+      || (user!.user_metadata?.full_name as string | undefined)
+      || (user!.user_metadata?.name as string | undefined)
+      || (user!.email ?? '').split('@')[0]
 
     const { data: ws, error: wsErr } = await db
       .from('workspaces')
@@ -50,9 +55,7 @@ export async function POST(req: NextRequest) {
       user_id: userId,
       role: 'owner',
       email: user!.email ?? null,
-      name: (user!.user_metadata?.full_name as string | undefined)
-         ?? (user!.user_metadata?.name as string | undefined)
-         ?? (user!.email ?? '').split('@')[0],
+      name: ownerName,
     })
     if (memErr) throw memErr
 

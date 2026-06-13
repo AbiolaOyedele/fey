@@ -80,8 +80,20 @@ export default function DashboardPage() {
 
   const accent = settings.accent_color ?? '#ED64A6'
 
-  const workspaceName = resolveWorkspaceName(settings.company_name, settings.workspace_slug)
-  const greeting = useGreeting(workspaceName)
+  // Greeting uses the signed-in person's first name. For the owner this is the
+  // name they set during onboarding (settings.username); for everyone else it
+  // falls back to their auth profile name, then their email handle.
+  const meta = user?.user_metadata as Record<string, unknown> | undefined
+  const firstName = (
+    (settings.username as string | undefined)
+    || (meta?.full_name as string | undefined)
+    || (meta?.name as string | undefined)
+    || (user?.email ?? '').split('@')[0]
+    || 'there'
+  ).trim().split(/\s+/)[0]
+  // Workspace name comes from the active workspace; falls back to legacy settings.
+  const workspaceName = workspace?.name ?? resolveWorkspaceName(settings.company_name, settings.workspace_slug)
+  const greeting = useGreeting(firstName)
   const rawHeading = (settings.dashboard_heading ?? '').replace(/\\n/g, '\n')
   const isCustomHeading = !!rawHeading.trim() && rawHeading !== 'Track your\nwork & earnings'
   const heading = isCustomHeading ? rawHeading : greeting
@@ -107,6 +119,11 @@ export default function DashboardPage() {
 
       {/* ── Header ── */}
       <div className="mb-6 lg:mb-8">
+        {workspaceName && (
+          <p className="text-xs font-medium uppercase tracking-wide mb-1" style={{ color: accent }}>
+            {workspaceName}
+          </p>
+        )}
         <h1 className="font-display text-xl leading-snug font-normal text-gray-700" style={{ whiteSpace: 'pre-wrap' }}>
           {heading}
         </h1>

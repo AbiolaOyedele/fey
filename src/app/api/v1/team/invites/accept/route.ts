@@ -4,7 +4,7 @@ import { createServiceClient } from '@/lib/supabase-server'
 import { requireAuth, handleError, errorResponse } from '@/lib/api-helpers'
 import { sendInviteAccepted } from '@/services/email.service'
 
-const bodySchema = z.object({ token: z.string().min(8) })
+const bodySchema = z.object({ token: z.string().min(8), name: z.string().trim().min(1).max(80).optional() })
 
 /**
  * POST /api/v1/team/invites/accept
@@ -17,8 +17,11 @@ export async function POST(req: NextRequest) {
   if (response) return response
 
   let token: string
+  let providedName: string | undefined
   try {
-    token = bodySchema.parse(await req.json()).token
+    const parsed = bodySchema.parse(await req.json())
+    token = parsed.token
+    providedName = parsed.name
   } catch {
     return errorResponse('TEAM_ACCEPT_INVALID_INPUT', 'Invalid invite.', 400)
   }
@@ -48,7 +51,10 @@ export async function POST(req: NextRequest) {
       return errorResponse('TEAM_ACCEPT_EMAIL_MISMATCH', 'This invite was sent to a different email address.', 403)
     }
 
+    // Prefer the name the teammate typed on the accept screen, then their
+    // provider profile, then the email prefix.
     const displayName =
+      providedName ??
       (user!.user_metadata?.full_name as string | undefined) ??
       (user!.user_metadata?.name as string | undefined) ??
       callerEmail.split('@')[0]

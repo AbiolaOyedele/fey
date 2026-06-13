@@ -224,9 +224,11 @@ interface FileListProps {
   onUpload:   (file: File) => Promise<void>
   onDelete:   (id: string) => Promise<void>
   uploading?: boolean
+  /** Whether the current user may delete files (owner/admin). Members can't. */
+  canDelete?: boolean
 }
 
-export default function FileList({ files, loading, ownerId, onUpload, onDelete, uploading = false }: FileListProps) {
+export default function FileList({ files, loading, onUpload, onDelete, uploading = false, canDelete = true }: FileListProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<CrmFile | null>(null)
   const [mode, setMode] = useViewMode('files', 'list')
@@ -293,7 +295,7 @@ export default function FileList({ files, loading, ownerId, onUpload, onDelete, 
             <GridCard
               key={file.id}
               file={file}
-              isOwn={file.uploaded_by === ownerId}
+              isOwn={canDelete}
               onPreview={() => setPreview(file)}
               onDelete={() => void handleDelete(file.id)}
             />
@@ -304,7 +306,6 @@ export default function FileList({ files, loading, ownerId, onUpload, onDelete, 
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
           {files.map((file) => {
-            const isOwn = file.uploaded_by === ownerId
             const cat   = fileCategory(file.file_type)
             return (
               <div key={file.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 transition-colors group">
@@ -326,7 +327,7 @@ export default function FileList({ files, loading, ownerId, onUpload, onDelete, 
                   <a href={file.file_url} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors" title="Download">
                     <Download size={14} />
                   </a>
-                  {isOwn && (
+                  {canDelete && (
                     <button onClick={() => void handleDelete(file.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Delete">
                       <Trash2 size={14} />
                     </button>
@@ -342,7 +343,7 @@ export default function FileList({ files, loading, ownerId, onUpload, onDelete, 
       {preview && (
         <PreviewModal
           file={preview}
-          isOwn={preview.uploaded_by === ownerId}
+          isOwn={canDelete}
           onClose={() => setPreview(null)}
           onDelete={() => void handleDelete(preview.id)}
         />

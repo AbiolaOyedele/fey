@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { FileText, ExternalLink, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import type { Invoice } from '@/types'
 import type { CrmContact } from '@/types/crm'
 
@@ -25,6 +26,7 @@ export default function InvoicesTab({ params }: { params: Promise<{ id: string }
   const { id } = use(params)
   const router = useRouter()
   const { user } = useAuth()
+  const { canManage } = useWorkspace()
 
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [contact,  setContact]  = useState<CrmContact | null>(null)
@@ -144,15 +146,17 @@ export default function InvoicesTab({ params }: { params: Promise<{ id: string }
             {loading ? '…' : `${invoices.length} invoice${invoices.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <button
-          onClick={() => void handleNew()}
-          disabled={creating}
-          className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-          style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
-        >
-          <Plus size={14} />
-          {creating ? 'Creating…' : 'New Invoice'}
-        </button>
+        {canManage && (
+          <button
+            onClick={() => void handleNew()}
+            disabled={creating}
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+          >
+            <Plus size={14} />
+            {creating ? 'Creating…' : 'New Invoice'}
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -165,15 +169,19 @@ export default function InvoicesTab({ params }: { params: Promise<{ id: string }
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <FileText size={32} className="text-gray-200 mb-3" />
           <p className="text-[15px] font-medium text-gray-500 mb-1">No invoices yet</p>
-          <p className="text-[13px] text-gray-400 mb-5">Create an invoice for this contact.</p>
-          <button
-            onClick={() => void handleNew()}
-            disabled={creating}
-            className="px-5 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
-          >
-            {creating ? 'Creating…' : '+ New Invoice'}
-          </button>
+          {canManage && (
+            <>
+              <p className="text-[13px] text-gray-400 mb-5">Create an invoice for this contact.</p>
+              <button
+                onClick={() => void handleNew()}
+                disabled={creating}
+                className="px-5 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+              >
+                {creating ? 'Creating…' : '+ New Invoice'}
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">

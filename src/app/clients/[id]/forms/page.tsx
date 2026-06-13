@@ -4,6 +4,7 @@ import { use, useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, ClipboardList, LayoutTemplate, X, ChevronDown, LayoutGrid, List } from 'lucide-react'
 import { useForms } from '@/hooks/useCrm'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import { useViewMode } from '@/hooks/useViewMode'
 import { supabase } from '@/lib/supabase'
 import type { CrmForm, FormStatus, CrmTemplate, FormField } from '@/types/crm'
@@ -165,6 +166,7 @@ export default function FormsTab({ params }: { params: Promise<{ id: string }> }
   const { id } = use(params)
   const router = useRouter()
   const { forms, loading, createForm, updateForm } = useForms(id)
+  const { canManage } = useWorkspace()
   const [mode, setMode] = useViewMode('forms', 'list')
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
 
@@ -191,7 +193,9 @@ export default function FormsTab({ params }: { params: Promise<{ id: string }> }
         </div>
         <div className="flex items-center gap-2">
           <ViewToggle mode={mode} onChange={setMode} />
-          <NewFormDropdown onBlank={() => void handleBlank()} onFromTemplate={() => setShowTemplatePicker(true)} />
+          {canManage && (
+            <NewFormDropdown onBlank={() => void handleBlank()} onFromTemplate={() => setShowTemplatePicker(true)} />
+          )}
         </div>
       </div>
 
@@ -207,15 +211,19 @@ export default function FormsTab({ params }: { params: Promise<{ id: string }> }
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <ClipboardList size={32} className="text-gray-200 mb-3" />
           <p className="text-[15px] font-medium text-gray-500 mb-1">No forms yet</p>
-          <p className="text-[13px] text-gray-400">Build intake forms or questionnaires for this client.</p>
-          <div className="flex gap-2 mt-5">
-            <button onClick={() => void handleBlank()} className="px-5 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
-              + Blank Form
-            </button>
-            <button onClick={() => setShowTemplatePicker(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors">
-              <LayoutTemplate size={14} /> From Template
-            </button>
-          </div>
+          {canManage && (
+            <>
+              <p className="text-[13px] text-gray-400">Build intake forms or questionnaires for this client.</p>
+              <div className="flex gap-2 mt-5">
+                <button onClick={() => void handleBlank()} className="px-5 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
+                  + Blank Form
+                </button>
+                <button onClick={() => setShowTemplatePicker(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors">
+                  <LayoutTemplate size={14} /> From Template
+                </button>
+              </div>
+            </>
+          )}
         </div>
       ) : mode === 'grid' ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

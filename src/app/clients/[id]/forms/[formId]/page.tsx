@@ -3,6 +3,7 @@
 import { use } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForms, useContacts } from '@/hooks/useCrm'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import FormBuilder from '@/components/crm/FormBuilder'
 import type { UpdateFormPayload } from '@/types/crm'
 
@@ -11,6 +12,7 @@ export default function FormDetailPage({ params }: { params: Promise<{ id: strin
   const router = useRouter()
   const { contacts } = useContacts()
   const { forms, updateForm, sendForm } = useForms(id)
+  const { canManage } = useWorkspace()
 
   const form    = forms.find((f) => f.id === formId)
   const contact = contacts.find((c) => c.id === id)
@@ -39,6 +41,7 @@ export default function FormDetailPage({ params }: { params: Promise<{ id: strin
       onSave={async (_id, payload: UpdateFormPayload) => { await updateForm(formId, payload) }}
       onSend={async (_id, to) => { await sendForm(formId, to) }}
       onBack={() => router.push(`/clients/${id}/forms`)}
+      readOnly={!canManage}
     />
   )
 }

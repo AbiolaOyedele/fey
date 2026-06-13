@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import { useInvoiceData } from '@/hooks/useInvoiceData'
 import InvoiceSendModal from '@/components/ui/InvoiceSendModal'
 import type { Invoice } from '@/types'
@@ -184,6 +185,7 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
   const returnTo = searchParams.get('returnTo') ?? '/invoices'
   const { user } = useAuth()
   const { settings } = useSettings()
+  const { canManage } = useWorkspace()
   const { fetchInvoice, updateInvoice } = useInvoiceData(user?.id)
 
   const accent = settings.accent_color || '#ED64A6'
@@ -560,6 +562,7 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
 
         {saveMsg && <span className="text-xs text-gray-500">{saveMsg}</span>}
 
+        {canManage && (<>
         {/* Save dropdown */}
         <div className="relative flex">
           <button
@@ -598,6 +601,8 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
         >
           <Send size={14} />Send
         </button>
+        </>)}
+        {!canManage && <span className="text-xs text-gray-400">View only</span>}
 
         <button onClick={() => setShowSettingsPanel((o) => !o)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors" title="Invoice settings">
           <Settings size={16} />

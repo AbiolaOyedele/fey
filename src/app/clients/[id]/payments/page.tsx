@@ -9,6 +9,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import type { Invoice } from '@/types'
 import type { CrmPaymentRequest } from '@/types/crm'
 
@@ -394,6 +395,7 @@ export default function PaymentsTab({ params }: { params: Promise<{ id: string }
   const router  = useRouter()
   const { user } = useAuth()
   const { settings } = useSettings()
+  const { canManage } = useWorkspace()
 
   const [tasks,    setTasks]    = useState<TaskRow[]>([])
   const [requests, setRequests] = useState<CrmPaymentRequest[]>([])
@@ -504,7 +506,7 @@ export default function PaymentsTab({ params }: { params: Promise<{ id: string }
             {loading ? '…' : `${requests.length} request${requests.length !== 1 ? 's' : ''} · ${tasks.length} billable task${tasks.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <RequestDropdown onSelect={(opt) => setModal(opt)} />
+        {canManage && <RequestDropdown onSelect={(opt) => setModal(opt)} />}
       </div>
 
       {/* Summary cards */}

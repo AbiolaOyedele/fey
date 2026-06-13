@@ -362,10 +362,12 @@ interface FormBuilderProps {
   contactEmail: string | null
   onSave:  (id: string, payload: UpdateFormPayload) => Promise<void>
   onSend:  (id: string, to: string) => Promise<void>
+  /** When true, hides all edit/save/send controls (members get view-only). */
+  readOnly?: boolean
   onBack:  () => void
 }
 
-export default function FormBuilder({ form, contactEmail, onSave, onSend, onBack }: FormBuilderProps) {
+export default function FormBuilder({ form, contactEmail, onSave, onSend, onBack, readOnly = false }: FormBuilderProps) {
   const uid     = useId()
   const makeId  = useCallback(() => `${uid}-${Math.random().toString(36).slice(2, 8)}`, [uid])
 
@@ -479,6 +481,8 @@ export default function FormBuilder({ form, contactEmail, onSave, onSend, onBack
           className="flex-1 text-base font-semibold text-gray-900 bg-transparent border-none outline-none placeholder-gray-300"
           placeholder="Form title…"
         />
+        {readOnly && <span className="text-xs text-gray-400">View only</span>}
+        {!readOnly && (
         <div className="flex items-center gap-2">
           {/* Use template */}
           <button
@@ -517,6 +521,7 @@ export default function FormBuilder({ form, contactEmail, onSave, onSend, onBack
             Send to Client
           </button>
         </div>
+        )}
       </div>
 
       {/* Two-column body */}

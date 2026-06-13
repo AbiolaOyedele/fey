@@ -18,6 +18,8 @@ interface ContractBuilderProps {
   onSave: (id: string, payload: Partial<CrmContract>) => Promise<void>
   onSend: (id: string, to: string) => Promise<void>
   onBack: () => void
+  /** When true, hides all edit/save/send controls (members get view-only). */
+  readOnly?: boolean
 }
 
 interface PartyDetails {
@@ -76,6 +78,7 @@ export default function ContractBuilder({
   onSave,
   onSend,
   onBack,
+  readOnly = false,
 }: ContractBuilderProps) {
   const { settings } = useSettings()
 
@@ -261,6 +264,9 @@ export default function ContractBuilder({
 
         {saveMsg && <span className="text-xs text-gray-500">{saveMsg}</span>}
 
+        {readOnly && <span className="text-xs text-gray-400 ml-auto">View only</span>}
+
+        {!readOnly && (<>
         {/* Rich text format buttons */}
         <div className="hidden md:flex items-center gap-0.5 border-r border-gray-100 pr-3">
           {([
@@ -352,6 +358,7 @@ export default function ContractBuilder({
         >
           <Settings size={16} />
         </button>
+        </>)}
       </div>
 
       {/* ── Settings panel (floating, right-aligned) ── */}

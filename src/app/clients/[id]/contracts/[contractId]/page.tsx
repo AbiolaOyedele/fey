@@ -3,6 +3,7 @@
 import { use } from 'react'
 import { useRouter } from 'next/navigation'
 import { useContracts, useContacts } from '@/hooks/useCrm'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import ContractBuilder from '@/components/crm/ContractBuilder'
 import type { CrmContract } from '@/types/crm'
 
@@ -11,6 +12,7 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
   const router = useRouter()
   const { contacts } = useContacts()
   const { contracts, updateContract, sendContract } = useContracts(id)
+  const { canManage } = useWorkspace()
 
   const contract = contracts.find((c) => c.id === contractId)
   const contact  = contacts.find((c) => c.id === id)
@@ -40,6 +42,7 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
       onSave={async (_id, payload) => { await updateContract(contractId, payload as Partial<CrmContract>) }}
       onSend={async (_id, to) => { await sendContract(contractId, to) }}
       onBack={() => router.push(`/clients/${id}/contracts`)}
+      readOnly={!canManage}
     />
   )
 }

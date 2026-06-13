@@ -4,11 +4,13 @@ import { use, useState, useCallback, useEffect } from 'react'
 import { Globe, Link2, Copy, Check, RefreshCw, ToggleLeft, ToggleRight, Loader2 } from 'lucide-react'
 import { useContacts } from '@/hooks/useCrm'
 import { useAuth } from '@/contexts/AuthContext'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import { supabase } from '@/lib/supabase'
 
 export default function PortalSettingsTab({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { user } = useAuth()
+  const { canManage } = useWorkspace()
   const { contacts, updateContact } = useContacts()
   const contact = contacts.find((c) => c.id === id)
 
@@ -112,6 +114,15 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
     setSaving(true)
     await updateContact(id, { portal_welcome_message: welcomeMsg || null })
     setSaving(false)
+  }
+
+  if (!canManage) {
+    return (
+      <div className="p-6 max-w-xl">
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">Portal Settings</h2>
+        <p className="text-sm text-gray-400">Only owners and admins can manage a client&apos;s portal settings.</p>
+      </div>
+    )
   }
 
   return (

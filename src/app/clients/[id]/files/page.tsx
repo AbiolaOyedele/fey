@@ -3,6 +3,7 @@
 import { use, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCrmFiles } from '@/hooks/useCrm'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import FileList from '@/components/crm/FileList'
 
 async function uploadToCloudinary(file: File): Promise<{ url: string; publicId: string }> {
@@ -19,6 +20,7 @@ async function uploadToCloudinary(file: File): Promise<{ url: string; publicId: 
 export default function FilesTab({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { user }  = useAuth()
+  const { canManage } = useWorkspace()
   const { files, loading, addFile, removeFile } = useCrmFiles(id)
   const [uploading, setUploading] = useState(false)
 
@@ -49,6 +51,7 @@ export default function FilesTab({ params }: { params: Promise<{ id: string }> }
       onUpload={handleUpload}
       onDelete={(fileId) => removeFile(fileId)}
       uploading={uploading}
+      canDelete={canManage}
     />
   )
 }

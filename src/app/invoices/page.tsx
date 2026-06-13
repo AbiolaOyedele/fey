@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import { useInvoiceData } from '@/hooks/useInvoiceData'
 import NewInvoiceModal from '@/components/ui/NewInvoiceModal'
 import { CURRENCY_SYMBOLS } from '@/lib/constants'
@@ -172,6 +173,7 @@ export default function InvoicesPage() {
   const router = useRouter()
   const { user } = useAuth()
   const { settings } = useSettings()
+  const { canManage } = useWorkspace()
   const { invoices, loading, error, fetchInvoices, updateInvoice, deleteInvoice } = useInvoiceData(user?.id)
 
   const rows = invoices
@@ -274,13 +276,15 @@ export default function InvoicesPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-2xl font-semibold text-gray-900">Invoices</h1>
-        <button
-          onClick={() => setShowNewModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: 'var(--accent)' }}
-        >
-          <Plus size={16} />New Invoice
-        </button>
+        {canManage && (
+          <button
+            onClick={() => setShowNewModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: 'var(--accent)' }}
+          >
+            <Plus size={16} />New Invoice
+          </button>
+        )}
       </div>
 
       {/* Stat cards */}

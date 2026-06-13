@@ -11,7 +11,6 @@ import {
 } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
-import NotificationBell from '@/components/crm/NotificationBell'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
 
 const SIDEBAR_KEY = 'fey:sidebar_expanded'
@@ -131,12 +130,6 @@ export default function Sidebar() {
           )}
         </Link>
 
-        {showExpanded && (
-          <div className="pb-1">
-            <WorkspaceSwitcher accent={accent} />
-          </div>
-        )}
-
         <nav className={`flex-1 flex flex-col gap-1 pt-2 ${showExpanded ? 'items-stretch' : 'items-center'}`}>
           <NavItem href="/" label="Dashboard" exact accent={accent} expanded={showExpanded} icon={<LayoutDashboard size={20} />} />
 
@@ -156,9 +149,7 @@ export default function Sidebar() {
         </nav>
 
         <div className={`pb-3 pt-3 border-t border-gray-100 flex flex-col gap-2 ${showExpanded ? 'items-stretch' : 'items-center'}`}>
-          <div className={showExpanded ? 'px-1' : ''}>
-            <NotificationBell accent={accent} />
-          </div>
+          {showExpanded && <WorkspaceSwitcher accent={accent} />}
           <NavItem href="/settings" label="Settings" accent={accent} expanded={showExpanded} icon={<Settings size={20} />} />
           <button
             onClick={toggle}

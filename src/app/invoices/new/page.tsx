@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import { useInvoiceData } from '@/hooks/useInvoiceData'
 import InvoiceSendModal from '@/components/ui/InvoiceSendModal'
 import type { Invoice } from '@/types'
@@ -182,7 +183,13 @@ function NewInvoicePageInner() {
   const searchParams = useSearchParams()
   const { user } = useAuth()
   const { settings, saveSetting } = useSettings()
+  const { canManage, loading: wsLoading } = useWorkspace()
   const { createInvoice, updateInvoice } = useInvoiceData(user?.id)
+
+  // Members can't create invoices — bounce them back to the list.
+  useEffect(() => {
+    if (!wsLoading && !canManage) router.replace('/invoices')
+  }, [wsLoading, canManage, router])
 
   const accent = settings.accent_color || '#ED64A6'
 

@@ -4,6 +4,7 @@ import { use, useState, useEffect, useRef, useCallback } from 'react'
 import { CheckCircle2, Circle, ListTodo, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { useWorkspace } from '@/hooks/useWorkspace'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ interface TaskRow {
 export default function TasksTab({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { user } = useAuth()
+  const { canManage } = useWorkspace()
 
   const [tasks,    setTasks]    = useState<TaskRow[]>([])
   const [loading,  setLoading]  = useState(true)
@@ -122,6 +124,7 @@ export default function TasksTab({ params }: { params: Promise<{ id: string }> }
       )}
 
       {/* Add task input */}
+      {canManage && (
       <div className="mb-4">
         <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-2xl px-4 py-2.5 focus-within:border-gray-400 transition-colors shadow-sm">
           <Plus size={15} className="text-gray-300 flex-shrink-0" />
@@ -147,6 +150,7 @@ export default function TasksTab({ params }: { params: Promise<{ id: string }> }
         </div>
         {error && <p className="text-xs text-red-500 mt-1.5 px-1">{error}</p>}
       </div>
+      )}
 
       {/* Task list */}
       {loading ? (
@@ -188,13 +192,15 @@ export default function TasksTab({ params }: { params: Promise<{ id: string }> }
                 {task.done ? 'Done' : 'Open'}
               </span>
 
-              <button
-                onClick={() => void handleDelete(task.id)}
-                className="p-1.5 rounded-lg hover:bg-red-50 text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
-                title="Delete task"
-              >
-                <Trash2 size={14} />
-              </button>
+              {canManage && (
+                <button
+                  onClick={() => void handleDelete(task.id)}
+                  className="p-1.5 rounded-lg hover:bg-red-50 text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                  title="Delete task"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
             </div>
           ))}
         </div>

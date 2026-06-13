@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import Link from 'next/link'
 import {
   ArrowUpRight, Users, MessageSquare, Paperclip,
-  ClipboardList, UserPlus, Settings, MoreHorizontal, Eye,
+  ClipboardList, UserPlus, MoreHorizontal, Eye,
   FileText, FileImage, FileSpreadsheet, File as FileIcon,
 } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
@@ -106,16 +106,10 @@ export default function DashboardPage() {
     <div className="min-h-screen p-4 md:p-6 lg:p-8 page-enter">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between gap-4 mb-6 lg:mb-8">
+      <div className="mb-6 lg:mb-8">
         <h1 className="font-display text-[20px] leading-snug font-normal text-gray-700" style={{ whiteSpace: 'pre-wrap' }}>
           {heading}
         </h1>
-        <Link
-          href="/settings"
-          className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-gray-400 hover:text-gray-600 shadow-sm transition-colors flex-shrink-0"
-        >
-          <Settings size={16} />
-        </Link>
       </div>
 
       {/* ── Workspace overview ── */}

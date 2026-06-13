@@ -37,20 +37,20 @@ async function buildInviteUrl(req: NextRequest, db: SupabaseClient, userId: stri
 }
 
 /**
- * GET /api/v1/crm/contacts/[contactId]/invite
+ * GET /api/v1/crm/contacts/[id]/invite
  *
  * Returns the contact's current invite code, generating one if it doesn't
  * exist yet.  Response: { invite_code: string, invite_url: string }
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ contactId: string }> },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { user, response } = await requireAuth(req.headers.get('authorization'))
   const userId = user?.id
   if (response) return response
 
-  const { contactId } = await params
+  const { id: contactId } = await params
 
   try {
     const db = createServiceClient()
@@ -92,20 +92,20 @@ export async function GET(
 }
 
 /**
- * POST /api/v1/crm/contacts/[contactId]/invite
+ * POST /api/v1/crm/contacts/[id]/invite
  *
  * Regenerates the invite code, invalidating the previous one.
  * Response: { invite_code: string, invite_url: string }
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ contactId: string }> },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { user, response } = await requireAuth(req.headers.get('authorization'))
   const userId = user?.id
   if (response) return response
 
-  const { contactId } = await params
+  const { id: contactId } = await params
 
   try {
     const db = createServiceClient()

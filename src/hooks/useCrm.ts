@@ -18,6 +18,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { activeWorkspaceSlug } from '@/utils/host'
 import type {
   CrmContact, CrmMessage, CrmFile, CrmContract, CrmForm, CrmNotification,
   ContractContent, FormField, FormResponse, MessageAttachment,
@@ -33,31 +34,39 @@ async function getSession() {
 }
 
 // ── Effective workspace owner ─────────────────────────────────────────────────
-// CRM data is keyed on `owner_id` = the workspace owner. For the owner this is
-// their own uid (so nothing changes); for an invited teammate it resolves to the
-// workspace owner's uid, giving them shared access. Falls back to the caller's
-// own id if no membership is found, preserving solo behavior.
-let _ownerCacheUser: string | null = null
-let _ownerCacheId:   string | null = null
+// CRM data is keyed on `owner_id` = the workspace owner. The ACTIVE workspace is
+// the one whose slug matches the current subdomain (<slug>.theruff.agency); on
+// localhost/apex we fall back to the user's first membership. For an owner this
+// resolves to their own uid (nothing changes); for an invited teammate it
+// resolves to that workspace's owner, granting shared access. Cache is keyed on
+// (user, slug) so switching subdomains re-resolves.
+let _ownerCacheKey: string | null = null
+let _ownerCacheId:  string | null = null
 
 async function getEffectiveOwnerId(): Promise<string | null> {
   const session = await getSession()
   const uid = session?.user?.id ?? null
   if (!uid) return null
-  if (_ownerCacheUser === uid && _ownerCacheId) return _ownerCacheId
+
+  const slug = activeWorkspaceSlug()
+  const cacheKey = `${uid}:${slug ?? ''}`
+  if (_ownerCacheKey === cacheKey && _ownerCacheId) return _ownerCacheId
 
   const { data } = await supabase
     .from('workspace_members')
-    .select('workspaces(owner_id)')
+    .select('workspaces(slug, owner_id, created_at)')
     .eq('user_id', uid)
     .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
 
-  const ws = (data as { workspaces: { owner_id: string } | { owner_id: string }[] | null } | null)?.workspaces
-  const ownerId = (Array.isArray(ws) ? ws[0]?.owner_id : ws?.owner_id) ?? uid
-  _ownerCacheUser = uid
-  _ownerCacheId   = ownerId
+  type WsRow = { slug: string | null; owner_id: string; created_at: string }
+  const rows = ((data ?? []) as Array<{ workspaces: WsRow | WsRow[] | null }>)
+    .map((r) => (Array.isArray(r.workspaces) ? r.workspaces[0] : r.workspaces))
+    .filter((w): w is WsRow => !!w)
+
+  const match = slug ? rows.find((w) => w.slug === slug) : undefined
+  const ownerId = match?.owner_id ?? rows[0]?.owner_id ?? uid
+  _ownerCacheKey = cacheKey
+  _ownerCacheId  = ownerId
   return ownerId
 }
 

@@ -1,55 +1,61 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { activeWorkspaceSlug } from '@/utils/host'
 import { canManageTeam, type Workspace, type WorkspaceRole } from '@/types/team'
 
+export interface WorkspaceMembership {
+  workspace: Workspace
+  role:      WorkspaceRole
+}
+
 interface WorkspaceState {
+  /** The active workspace — the one matching the current subdomain, else the first. */
   workspace: Workspace | null
   role:      WorkspaceRole | null
-  /** True for owner/admin — gates create/edit/send/delete on client data. */
+  /** True for owner/admin of the active workspace — gates manage actions. */
   canManage: boolean
+  /** Every workspace the user belongs to (for the switcher). */
+  memberships: WorkspaceMembership[]
   loading:   boolean
   error:     string | null
   refetch:   () => void
 }
 
 /**
- * Resolves the current user's workspace and their role within it. A user
- * belongs to exactly one workspace today (the one backfilled from their owner
- * account, or one they were invited into). RLS guarantees they only ever see
- * memberships they're part of.
+ * Loads all workspaces the user belongs to and resolves the ACTIVE one from the
+ * current subdomain (<slug>.theruff.agency). On localhost / apex it falls back
+ * to the first membership. RLS guarantees the user only sees their own
+ * memberships.
  */
 export function useWorkspace(): WorkspaceState {
   const { user } = useAuth()
-  const [workspace, setWorkspace] = useState<Workspace | null>(null)
-  const [role,      setRole]      = useState<WorkspaceRole | null>(null)
-  const [loading,   setLoading]   = useState(true)
-  const [error,     setError]     = useState<string | null>(null)
+  const [memberships, setMemberships] = useState<WorkspaceMembership[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState<string | null>(null)
 
-  const fetchWorkspace = useCallback(async () => {
-    if (!user) { setLoading(false); return }
+  const fetchWorkspaces = useCallback(async () => {
+    if (!user) { setMemberships([]); setLoading(false); return }
     setLoading(true)
     try {
-      const { data: membership, error: mErr } = await supabase
+      const { data, error: mErr } = await supabase
         .from('workspace_members')
-        .select('role, workspace_id, workspaces ( id, name, slug, owner_id, created_at )')
+        .select('role, workspaces ( id, name, slug, owner_id, created_at )')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle()
       if (mErr) throw mErr
 
-      if (!membership) { setWorkspace(null); setRole(null); setError(null); return }
+      const rows = (data ?? []) as unknown as Array<{ role: WorkspaceRole; workspaces: Workspace | Workspace[] | null }>
+      const list: WorkspaceMembership[] = rows
+        .map((r) => {
+          const ws = Array.isArray(r.workspaces) ? r.workspaces[0] ?? null : r.workspaces
+          return ws ? { workspace: ws, role: r.role } : null
+        })
+        .filter((m): m is WorkspaceMembership => m !== null)
 
-      const row = membership as unknown as {
-        role: WorkspaceRole
-        workspaces: Workspace | Workspace[] | null
-      }
-      const ws = Array.isArray(row.workspaces) ? row.workspaces[0] ?? null : row.workspaces
-      setWorkspace(ws)
-      setRole(row.role)
+      setMemberships(list)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load workspace')
@@ -58,7 +64,25 @@ export function useWorkspace(): WorkspaceState {
     }
   }, [user])
 
-  useEffect(() => { void fetchWorkspace() }, [fetchWorkspace])
+  useEffect(() => { void fetchWorkspaces() }, [fetchWorkspaces])
 
-  return { workspace, role, canManage: canManageTeam(role), loading, error, refetch: fetchWorkspace }
+  const active = useMemo<WorkspaceMembership | null>(() => {
+    if (memberships.length === 0) return null
+    const slug = activeWorkspaceSlug()
+    if (slug) {
+      const match = memberships.find((m) => m.workspace.slug === slug)
+      if (match) return match
+    }
+    return memberships[0]
+  }, [memberships])
+
+  return {
+    workspace: active?.workspace ?? null,
+    role:      active?.role ?? null,
+    canManage: canManageTeam(active?.role ?? null),
+    memberships,
+    loading,
+    error,
+    refetch: fetchWorkspaces,
+  }
 }

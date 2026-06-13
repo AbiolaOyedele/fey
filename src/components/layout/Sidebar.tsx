@@ -12,6 +12,7 @@ import {
 import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
 import NotificationBell from '@/components/crm/NotificationBell'
+import WorkspaceSwitcher from './WorkspaceSwitcher'
 
 const SIDEBAR_KEY = 'fey:sidebar_expanded'
 
@@ -129,6 +130,12 @@ export default function Sidebar() {
             <span className="font-semibold text-gray-900 truncate">{settings.company_name || 'Fey'}</span>
           )}
         </Link>
+
+        {showExpanded && (
+          <div className="pb-1">
+            <WorkspaceSwitcher accent={accent} />
+          </div>
+        )}
 
         <nav className={`flex-1 flex flex-col gap-1 pt-2 ${showExpanded ? 'items-stretch' : 'items-center'}`}>
           <NavItem href="/" label="Dashboard" exact accent={accent} expanded={showExpanded} icon={<LayoutDashboard size={20} />} />

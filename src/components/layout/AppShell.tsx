@@ -12,6 +12,7 @@ import ToastContainer from '@/components/ui/Toast'
 import UpdateBanner from '@/components/ui/UpdateBanner'
 import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
 import { useWorkspace } from '@/hooks/useWorkspace'
+import { activeWorkspaceSlug } from '@/utils/host'
 
 // /onboarding is Workboard's route — Fey uses /setup to avoid clashing.
 // Both apps share the same Next.js codebase and Supabase DB.
@@ -22,7 +23,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router   = useRouter()
   const { user, loading: authLoading }               = useAuth()
   const { settings, settingsLoading } = useSettings()
-  const { workspace, loading: workspaceLoading, refetch: refetchWorkspace } = useWorkspace()
+  const { workspace, memberships, loading: workspaceLoading, refetch: refetchWorkspace } = useWorkspace()
   const updateAvailable = useUpdatePrompt()
 
   // A teammate who signed up via an invite link has a stashed token. Consume it
@@ -81,21 +82,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (!setupComplete) { router.replace('/setup') }
   }, [user, loading, isPublic, setupComplete, inviteResolving, router])
 
-  // Keep the owner on their own workspace subdomain (<slug>.theruff.agency).
-  // Cookie SSO carries the session across subdomains, so this is a seamless hard
-  // redirect. Skipped on localhost / preview (non-root hosts) and on the portal.
+  // Keep the user on a workspace subdomain (<slug>.theruff.agency). They may
+  // belong to several workspaces; stay put on any one they're a member of (this
+  // is what makes the switcher work). Only redirect from the apex / an
+  // unaffiliated host to a sensible default. Cookie SSO carries the session.
   useEffect(() => {
     if (IS_DEMO || isPublic || loading || !user || !setupComplete) return
     if (typeof window === 'undefined') return
-    // Owners use their own slug; invited members ride the workspace's slug.
-    const slug = settings.workspace_slug ?? workspace?.slug
-    if (!slug) return
     const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
     const host = window.location.hostname
     if (!host.endsWith(rootDomain)) return       // localhost / *.vercel.app
-    if (host === `${slug}.${rootDomain}`) return  // already on the right subdomain
-    window.location.href = `https://${slug}.${rootDomain}${window.location.pathname}${window.location.search}`
-  }, [user, loading, isPublic, setupComplete, settings.workspace_slug, workspace?.slug])
+
+    const memberSlugs = memberships.map((m) => m.workspace.slug).filter((s): s is string => !!s)
+    const currentSlug = activeWorkspaceSlug()
+    if (currentSlug && memberSlugs.includes(currentSlug)) return  // on one of my workspaces — stay
+
+    const target = settings.workspace_slug ?? memberSlugs[0] ?? workspace?.slug
+    if (!target) return
+    if (host === `${target}.${rootDomain}`) return
+    window.location.href = `https://${target}.${rootDomain}${window.location.pathname}${window.location.search}`
+  }, [user, loading, isPublic, setupComplete, settings.workspace_slug, workspace?.slug, memberships])
 
   if (isPublic) return <>{children}</>
 

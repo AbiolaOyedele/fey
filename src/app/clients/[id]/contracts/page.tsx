@@ -37,9 +37,9 @@ function ContractRow({ contract, onClick }: { contract: CrmContract; onClick: ()
   return (
     <div onClick={onClick} className="flex items-center gap-3 h-14 px-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 transition-colors cursor-pointer">
       <FileSignature size={16} className="text-gray-400 flex-shrink-0" />
-      <span className="flex-1 text-[14px] font-medium text-gray-900 truncate">{contract.title}</span>
-      <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full capitalize ${STATUS_BADGE[contract.status]}`}>{contract.status}</span>
-      <span className="text-[12px] text-gray-400 flex-shrink-0">
+      <span className="flex-1 text-sm font-medium text-gray-900 truncate">{contract.title}</span>
+      <span className={`text-2xs font-semibold px-2.5 py-0.5 rounded-full capitalize ${STATUS_BADGE[contract.status]}`}>{contract.status}</span>
+      <span className="text-xs text-gray-400 flex-shrink-0">
         {new Date(contract.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
       </span>
     </div>
@@ -55,17 +55,17 @@ function ContractCard({ contract, onClick }: { contract: CrmContract; onClick: (
         <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0">
           <FileSignature size={16} className="text-gray-400" />
         </div>
-        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${STATUS_BADGE[contract.status]}`}>{contract.status}</span>
+        <span className={`text-3xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${STATUS_BADGE[contract.status]}`}>{contract.status}</span>
       </div>
       <div>
-        <p className="text-[14px] font-semibold text-gray-900 leading-snug line-clamp-2">{contract.title}</p>
-        <p className="text-[11px] text-gray-400 mt-1">
+        <p className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">{contract.title}</p>
+        <p className="text-2xs text-gray-400 mt-1">
           {new Date(contract.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
         </p>
       </div>
       {contract.signed_at && (
         <div className="mt-auto pt-2 border-t border-gray-50">
-          <p className="text-[11px] text-emerald-500 font-medium flex items-center gap-1">
+          <p className="text-2xs text-emerald-500 font-medium flex items-center gap-1">
             <CheckCircle2 size={11} />
             Signed {new Date(contract.signed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
           </p>
@@ -211,10 +211,10 @@ export default function ContractsTab({ params }: { params: Promise<{ id: string 
       ) : contracts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <FileSignature size={32} className="text-gray-200 mb-3" />
-          <p className="text-[15px] font-medium text-gray-500 mb-1">No contracts yet</p>
+          <p className="text-sm2 font-medium text-gray-500 mb-1">No contracts yet</p>
           {canManage && (
             <>
-              <p className="text-[13px] text-gray-400">Create your first contract for this client.</p>
+              <p className="text-xs2 text-gray-400">Create your first contract for this client.</p>
               <div className="flex gap-2 mt-5">
                 <button onClick={() => void handleBlank()} className="px-5 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
                   + Blank Contract

@@ -107,9 +107,9 @@ function GridCard({ file, isOwn, onPreview, onDelete }: { file: CrmFile; isOwn: 
 
       {/* Caption */}
       <div className="p-3">
-        <p className="text-[13px] font-medium text-gray-900 truncate leading-snug">{file.file_name}</p>
-        <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
-          <span className={`inline-block text-[9px] font-bold uppercase px-1 py-0.5 rounded ${BG_MAP[cat]} ${CLR_MAP[cat]}`}>
+        <p className="text-xs2 font-medium text-gray-900 truncate leading-snug">{file.file_name}</p>
+        <p className="text-2xs text-gray-400 mt-0.5 flex items-center gap-1">
+          <span className={`inline-block text-4xs font-bold uppercase px-1 py-0.5 rounded ${BG_MAP[cat]} ${CLR_MAP[cat]}`}>
             {cat === 'other' ? (file.file_type?.split('/')[1] ?? 'file') : cat}
           </span>
           {formatBytes(file.file_size)}
@@ -284,8 +284,8 @@ export default function FileList({ files, loading, onUpload, onDelete, uploading
       ) : files.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <FileText size={32} className="text-gray-200 mb-3" />
-          <p className="text-[15px] font-medium text-gray-500 mb-1">No files yet</p>
-          <p className="text-[13px] text-gray-400">Upload files to share with this client.</p>
+          <p className="text-sm2 font-medium text-gray-500 mb-1">No files yet</p>
+          <p className="text-xs2 text-gray-400">Upload files to share with this client.</p>
         </div>
 
       /* ── Grid view ── */
@@ -311,9 +311,9 @@ export default function FileList({ files, loading, onUpload, onDelete, uploading
               <div key={file.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 transition-colors group">
                 <FileThumbnail file={file} onClick={() => setPreview(file)} />
                 <button onClick={() => setPreview(file)} className="flex-1 min-w-0 text-left">
-                  <p className="text-[14px] font-medium text-gray-900 truncate">{file.file_name}</p>
-                  <p className="text-[12px] text-gray-400 flex items-center gap-1.5 mt-0.5">
-                    <span className={`inline-block text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-md ${BG_MAP[cat]} ${CLR_MAP[cat]}`}>
+                  <p className="text-sm font-medium text-gray-900 truncate">{file.file_name}</p>
+                  <p className="text-xs text-gray-400 flex items-center gap-1.5 mt-0.5">
+                    <span className={`inline-block text-3xs font-semibold uppercase px-1.5 py-0.5 rounded-md ${BG_MAP[cat]} ${CLR_MAP[cat]}`}>
                       {cat === 'other' ? (file.file_type?.split('/')[1] ?? 'file') : cat}
                     </span>
                     {formatBytes(file.file_size)}

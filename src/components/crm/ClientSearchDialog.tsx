@@ -234,7 +234,7 @@ export default function ClientSearchDialog({ contactId, contactName, onClose }: 
               <X size={13} />
             </button>
           )}
-          <kbd className="hidden sm:inline-flex items-center text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded font-mono flex-shrink-0">
+          <kbd className="hidden sm:inline-flex items-center text-3xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded font-mono flex-shrink-0">
             ESC
           </kbd>
         </div>
@@ -268,7 +268,7 @@ export default function ClientSearchDialog({ contactId, contactName, onClose }: 
               <div key={type}>
                 {/* Section label */}
                 <div className="px-4 pt-3 pb-1">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{TYPE_LABEL[type]}</p>
+                  <p className="text-3xs font-bold uppercase tracking-widest text-gray-400">{TYPE_LABEL[type]}</p>
                 </div>
 
                 {group.map((r) => {
@@ -288,7 +288,7 @@ export default function ClientSearchDialog({ contactId, contactName, onClose }: 
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">{r.title}</p>
-                        <p className="text-[11px] text-gray-400 truncate">{r.sub}</p>
+                        <p className="text-2xs text-gray-400 truncate">{r.sub}</p>
                       </div>
                       <ArrowRight size={13} className={`flex-shrink-0 transition-opacity ${isFocused ? 'opacity-50' : 'opacity-0'} text-gray-400`} />
                     </button>

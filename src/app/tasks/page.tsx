@@ -286,8 +286,8 @@ export default function TasksPage() {
               {standaloneTasks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-14 text-center">
                   <ListTodo size={28} strokeWidth={1.5} className="text-gray-200 mb-3" />
-                  <p className="text-[15px] font-medium text-gray-500">No tasks yet</p>
-                  <p className="text-[13px] text-gray-400 mt-0.5">Type above to add your first task</p>
+                  <p className="text-sm2 font-medium text-gray-500">No tasks yet</p>
+                  <p className="text-xs2 text-gray-400 mt-0.5">Type above to add your first task</p>
                 </div>
               ) : (
                 <DndContext
@@ -338,8 +338,8 @@ export default function TasksPage() {
             {groups.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-14 text-center">
                 <FolderOpen size={28} strokeWidth={1.5} className="text-gray-200 mb-3" />
-                <p className="text-[15px] font-medium text-gray-500">No groups yet</p>
-                <p className="text-[13px] text-gray-400 mt-0.5">Create a group to organise related tasks</p>
+                <p className="text-sm2 font-medium text-gray-500">No groups yet</p>
+                <p className="text-xs2 text-gray-400 mt-0.5">Create a group to organise related tasks</p>
               </div>
             ) : (
               <DndContext

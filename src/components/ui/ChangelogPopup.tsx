@@ -96,7 +96,7 @@ export default function ChangelogPopup({ open: controlledOpen, onClose }: Change
                     </div>
                     {entry.features && entry.features.length > 0 && (
                       <div className="mb-1.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">New Features</p>
+                        <p className="text-3xs font-semibold uppercase tracking-wider text-gray-400 mb-1">New Features</p>
                         <ul className="space-y-0.5">
                           {entry.features.map((f, j) => (
                             <li key={j} className="text-xs text-gray-600 flex gap-1.5">
@@ -109,7 +109,7 @@ export default function ChangelogPopup({ open: controlledOpen, onClose }: Change
                     )}
                     {entry.improvements && entry.improvements.length > 0 && (
                       <div className="mb-1.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Improvements</p>
+                        <p className="text-3xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Improvements</p>
                         <ul className="space-y-0.5">
                           {entry.improvements.map((f, j) => (
                             <li key={j} className="text-xs text-gray-600 flex gap-1.5">
@@ -122,7 +122,7 @@ export default function ChangelogPopup({ open: controlledOpen, onClose }: Change
                     )}
                     {entry.fixes && entry.fixes.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Bug Fixes</p>
+                        <p className="text-3xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Bug Fixes</p>
                         <ul className="space-y-0.5">
                           {entry.fixes.map((f, j) => (
                             <li key={j} className="text-xs text-gray-600 flex gap-1.5">
@@ -189,7 +189,7 @@ export default function ChangelogPopup({ open: controlledOpen, onClose }: Change
 
                     {entry.features && entry.features.length > 0 && (
                       <div className="mb-1.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">New Features</p>
+                        <p className="text-3xs font-semibold uppercase tracking-wider text-gray-400 mb-1">New Features</p>
                         <ul className="space-y-0.5">
                           {entry.features.map((f, j) => (
                             <li key={j} className="text-xs text-gray-600 flex gap-1.5">
@@ -203,7 +203,7 @@ export default function ChangelogPopup({ open: controlledOpen, onClose }: Change
 
                     {entry.improvements && entry.improvements.length > 0 && (
                       <div className="mb-1.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Improvements</p>
+                        <p className="text-3xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Improvements</p>
                         <ul className="space-y-0.5">
                           {entry.improvements.map((f, j) => (
                             <li key={j} className="text-xs text-gray-600 flex gap-1.5">
@@ -217,7 +217,7 @@ export default function ChangelogPopup({ open: controlledOpen, onClose }: Change
 
                     {entry.fixes && entry.fixes.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Bug Fixes</p>
+                        <p className="text-3xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Bug Fixes</p>
                         <ul className="space-y-0.5">
                           {entry.fixes.map((f, j) => (
                             <li key={j} className="text-xs text-gray-600 flex gap-1.5">

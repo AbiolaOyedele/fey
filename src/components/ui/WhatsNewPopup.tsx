@@ -99,7 +99,7 @@ export default function WhatsNewPopup({ open, onClose }: WhatsNewPopupProps) {
                 c8.043-8.04,11.909-19.133,10.609-30.434c-1.989-17.273,4.955-34.037,18.576-44.845c8.907-7.07,14.017-17.647,14.017-29.02
                 S289.886,125.549,280.977,118.478z"/>
             </svg>
-            <span className="relative z-10 text-white font-bold text-[10px]">New</span>
+            <span className="relative z-10 text-white font-bold text-3xs">New</span>
           </div>
 
           <p className="font-mono text-3xl font-bold text-white leading-none mb-1">

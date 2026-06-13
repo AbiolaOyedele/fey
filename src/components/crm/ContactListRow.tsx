@@ -63,8 +63,8 @@ export default function ContactListRow({ contact, selected, onClick }: ContactLi
 
       {/* Text */}
       <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-medium text-gray-900 truncate leading-snug">{contact.name}</p>
-        <p className="text-[12px] text-gray-400 truncate leading-snug">
+        <p className="text-sm font-medium text-gray-900 truncate leading-snug">{contact.name}</p>
+        <p className="text-xs text-gray-400 truncate leading-snug">
           {contact.company ?? contact.email ?? 'No details'}
         </p>
       </div>
@@ -73,14 +73,14 @@ export default function ContactListRow({ contact, selected, onClick }: ContactLi
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
         <div className="flex items-center gap-1.5">
           <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${status?.dot ?? 'bg-gray-300'}`} />
-          <span className="text-[11px] text-gray-400">{status?.label ?? contact.status}</span>
+          <span className="text-2xs text-gray-400">{status?.label ?? contact.status}</span>
         </div>
         {contact.last_seen_at ? (
-          <span className={`text-[11px] ${isActiveWithin(contact.last_seen_at) ? 'text-gray-500 font-medium' : 'text-gray-300'}`}>
+          <span className={`text-2xs ${isActiveWithin(contact.last_seen_at) ? 'text-gray-500 font-medium' : 'text-gray-300'}`}>
             {isActiveWithin(contact.last_seen_at) ? 'Active ' : 'Seen '}{relativeTime(contact.last_seen_at)}
           </span>
         ) : (
-          <span className="text-[11px] text-gray-300">{relativeTime(contact.updated_at)}</span>
+          <span className="text-2xs text-gray-300">{relativeTime(contact.updated_at)}</span>
         )}
       </div>
     </button>

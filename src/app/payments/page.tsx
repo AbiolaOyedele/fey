@@ -266,8 +266,8 @@ export default function PaymentsPage() {
         {months.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <TrendingUp size={32} className="text-gray-200 mb-4" />
-            <p className="text-[15px] font-medium text-gray-600 mb-1">No payments yet</p>
-            <p className="text-[13px] text-gray-400">Mark tasks as paid to see your earnings here</p>
+            <p className="text-sm2 font-medium text-gray-600 mb-1">No payments yet</p>
+            <p className="text-xs2 text-gray-400">Mark tasks as paid to see your earnings here</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -350,7 +350,7 @@ export default function PaymentsPage() {
                         // Shared avatar element
                         const avatar = (
                           <div
-                            className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-3xs font-bold flex-shrink-0"
                             style={{ backgroundColor: cd.color, color: textColor }}
                           >
                             {cd.name.charAt(0)}
@@ -362,10 +362,10 @@ export default function PaymentsPage() {
                             {cd.isDeleted ? (
                               <div className="flex items-center gap-2 h-9">
                                 {avatar}
-                                <span className="text-[13px] font-medium text-gray-500 truncate flex-1 min-w-0">
+                                <span className="text-xs2 font-medium text-gray-500 truncate flex-1 min-w-0">
                                   {cd.name}
                                 </span>
-                                <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                <span className="text-3xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full flex-shrink-0">
                                   deleted
                                 </span>
                                 {cd.earned > 0 && (
@@ -380,7 +380,7 @@ export default function PaymentsPage() {
                                 className="flex items-center gap-2 h-9 hover:bg-gray-50 -mx-2 px-2 rounded-lg transition-colors"
                               >
                                 {avatar}
-                                <span className="text-[13px] font-medium text-gray-500 truncate flex-1 min-w-0 hover:text-gray-700 transition-colors">
+                                <span className="text-xs2 font-medium text-gray-500 truncate flex-1 min-w-0 hover:text-gray-700 transition-colors">
                                   {cd.name}
                                 </span>
                                 {cd.earned > 0 && (

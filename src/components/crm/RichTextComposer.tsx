@@ -151,7 +151,7 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
       {(attachments.length > 0 || uploading > 0) && (
         <div className="flex flex-wrap gap-1.5 px-4 pb-2">
           {attachments.map((att, i) => (
-            <span key={i} className="inline-flex items-center gap-1.5 text-[12px] bg-gray-100 text-gray-700 rounded-lg pl-2 pr-1 py-1">
+            <span key={i} className="inline-flex items-center gap-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg pl-2 pr-1 py-1">
               <Paperclip size={11} className="text-gray-400" />
               <span className="max-w-[160px] truncate">{att.file_name}</span>
               <span className="text-gray-400">{formatFileSize(att.file_size)}</span>
@@ -165,7 +165,7 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
             </span>
           ))}
           {uploading > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-400 rounded-lg px-2 py-1">
+            <span className="inline-flex items-center gap-1.5 text-xs text-gray-400 rounded-lg px-2 py-1">
               <Loader2 size={11} className="animate-spin" />
               Uploading…
             </span>
@@ -173,11 +173,11 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
         </div>
       )}
 
-      {error && <p className="text-[12px] text-red-500 px-4 pb-1">{error}</p>}
+      {error && <p className="text-xs text-red-500 px-4 pb-1">{error}</p>}
 
       {/* Send row */}
       <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100">
-        <span className="text-[11px] text-gray-300">⌘ Enter to send</span>
+        <span className="text-2xs text-gray-300">⌘ Enter to send</span>
         <button
           type="button"
           onClick={handleSend}

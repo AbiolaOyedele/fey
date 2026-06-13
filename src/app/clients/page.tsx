@@ -125,10 +125,10 @@ export default function CrmContactsPage() {
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
               <Users size={28} className="text-gray-200 mb-3" />
-              <p className="text-[14px] font-medium text-gray-500 mb-1">
+              <p className="text-sm font-medium text-gray-500 mb-1">
                 {search || statusFilter !== 'all' ? 'No clients found' : 'No clients yet'}
               </p>
-              <p className="text-[12px] text-gray-400">
+              <p className="text-xs text-gray-400">
                 {search || statusFilter !== 'all'
                   ? 'Try a different search or filter'
                   : 'Add your first client to get started'}
@@ -162,8 +162,8 @@ export default function CrmContactsPage() {
       <div className="flex-1 flex flex-col items-center justify-center bg-appbg">
         <div className="text-center">
           <Users size={40} className="text-gray-200 mx-auto mb-4" />
-          <p className="text-[15px] font-medium text-gray-500">Select a client</p>
-          <p className="text-[13px] text-gray-400 mt-1">Choose from the list to view their workspace</p>
+          <p className="text-sm2 font-medium text-gray-500">Select a client</p>
+          <p className="text-xs2 text-gray-400 mt-1">Choose from the list to view their workspace</p>
         </div>
       </div>
 

@@ -445,7 +445,7 @@ export default function ContractBuilder({
           {/* From / To */}
           <div className="grid grid-cols-2 gap-6 mb-6">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">From</p>
+              <p className="text-3xs font-bold uppercase tracking-widest opacity-40 mb-2">From</p>
               {(['name', 'email', 'phone', 'address', 'website', 'tax_id'] as const).map((field) => (
                 <input
                   key={field}
@@ -457,7 +457,7 @@ export default function ContractBuilder({
               ))}
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">To</p>
+              <p className="text-3xs font-bold uppercase tracking-widest opacity-40 mb-2">To</p>
               {(['name', 'email', 'phone', 'address', 'website', 'tax_id'] as const).map((field) => (
                 <input
                   key={field}
@@ -473,7 +473,7 @@ export default function ContractBuilder({
           {/* Dates */}
           <div className="flex flex-wrap gap-4 mb-6 text-sm">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest opacity-40 mr-2">Effective Date</span>
+              <span className="text-3xs font-bold uppercase tracking-widest opacity-40 mr-2">Effective Date</span>
               <input
                 type="date"
                 value={effectiveDate}
@@ -482,7 +482,7 @@ export default function ContractBuilder({
               />
             </div>
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest opacity-40 mr-2">Expiry Date</span>
+              <span className="text-3xs font-bold uppercase tracking-widest opacity-40 mr-2">Expiry Date</span>
               <input
                 type="date"
                 value={expiryDate}
@@ -507,7 +507,7 @@ export default function ContractBuilder({
 
           {/* Notes */}
           <div className="border-t border-gray-100 pt-5 mb-6">
-            <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">Notes</p>
+            <p className="text-3xs font-bold uppercase tracking-widest opacity-40 mb-2">Notes</p>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -524,7 +524,7 @@ export default function ContractBuilder({
                 <input
                   value={sec.title}
                   onChange={(e) => updateSection(sec.id, 'title', e.target.value)}
-                  className="text-[10px] font-bold uppercase tracking-widest opacity-40 bg-transparent border-none outline-none hover:opacity-60 w-full"
+                  className="text-3xs font-bold uppercase tracking-widest opacity-40 bg-transparent border-none outline-none hover:opacity-60 w-full"
                 />
                 <button
                   onClick={() => removeSection(sec.id)}
@@ -560,13 +560,13 @@ export default function ContractBuilder({
           <div className="border-t border-gray-100 pt-5">
             <div className="grid grid-cols-2 gap-8">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-3">Signed by Provider</p>
+                <p className="text-3xs font-bold uppercase tracking-widest opacity-40 mb-3">Signed by Provider</p>
                 <div className="h-10 border-b border-gray-200" />
                 <p className="text-xs text-gray-400 mt-1">{fromDetails.name || 'Provider'}</p>
                 <p className="text-xs text-gray-300 mt-0.5">Date: ___________</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-3">Signed by Client</p>
+                <p className="text-3xs font-bold uppercase tracking-widest opacity-40 mb-3">Signed by Client</p>
                 {contract.status === 'signed' ? (
                   <>
                     <div className="h-10 border-b border-emerald-300 flex items-end pb-1">
@@ -594,7 +594,7 @@ export default function ContractBuilder({
 
           {/* Footer */}
           <div className="border-t border-gray-100 mt-8 pt-4 flex items-center justify-between">
-            <p className="text-[10px] opacity-30">Created with Fey</p>
+            <p className="text-3xs opacity-30">Created with Fey</p>
           </div>
         </div>
       </div>

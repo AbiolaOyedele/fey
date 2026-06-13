@@ -140,7 +140,7 @@ function FeyTaskItem({ task, onUpdate, onDelete, onOpenNotes, dragListeners, dra
         </div>
 
         {task.deadline && (
-          <span className={`flex-shrink-0 text-[11px] font-medium px-1.5 py-0.5 rounded-md leading-none ${
+          <span className={`flex-shrink-0 text-2xs font-medium px-1.5 py-0.5 rounded-md leading-none ${
             isOverdue ? 'bg-red-50 text-red-500' : isToday ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-400'
           }`}>
             {fmtDeadline(task.deadline)}
@@ -461,7 +461,7 @@ export default function FeyWorkspacePage({ params }: { params: Promise<{ id: str
 
               {completedTasks.length > 0 && (
                 <div className={pendingTasks.length > 0 ? 'border-t border-gray-100' : ''}>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-4 pt-3 pb-1">
+                  <p className="text-2xs font-semibold text-gray-400 uppercase tracking-wider px-4 pt-3 pb-1">
                     Completed
                   </p>
                   <div className="divide-y divide-gray-50">

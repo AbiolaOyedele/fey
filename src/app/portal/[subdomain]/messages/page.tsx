@@ -148,7 +148,7 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
                                 href={att.file_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                                className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
                               >
                                 <Paperclip size={11} className="text-gray-400" />
                                 <span className="max-w-[180px] truncate">{att.file_name}</span>
@@ -158,7 +158,7 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
                           </div>
                         )}
 
-                        <span className="text-[10px] text-gray-400 px-1">
+                        <span className="text-3xs text-gray-400 px-1">
                           {new Date(msg.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                           {isMe && readReceipts && (msg.read_at ? ' · Read' : ' · Sent')}
                         </span>
@@ -178,7 +178,7 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
         {(attachments.length > 0 || uploading > 0) && (
           <div className="flex flex-wrap gap-1.5 mb-2">
             {attachments.map((att, i) => (
-              <span key={i} className="inline-flex items-center gap-1.5 text-[12px] bg-gray-100 text-gray-700 rounded-lg pl-2 pr-1 py-1">
+              <span key={i} className="inline-flex items-center gap-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg pl-2 pr-1 py-1">
                 <Paperclip size={11} className="text-gray-400" />
                 <span className="max-w-[160px] truncate">{att.file_name}</span>
                 <button
@@ -191,7 +191,7 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
               </span>
             ))}
             {uploading > 0 && (
-              <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-400 px-2 py-1">
+              <span className="inline-flex items-center gap-1.5 text-xs text-gray-400 px-2 py-1">
                 <Loader2 size={11} className="animate-spin" /> Uploading…
               </span>
             )}

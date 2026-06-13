@@ -58,14 +58,14 @@ export default function PortalPaymentsPage({ params }: { params: Promise<{ subdo
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <CreditCard size={32} className="text-gray-200 mb-3" />
-          <p className="text-[15px] font-medium text-gray-500">Couldn&apos;t load your payments</p>
-          <button onClick={() => void load()} className="text-[13px] mt-2 underline text-gray-500 hover:text-gray-700">Try again</button>
+          <p className="text-sm2 font-medium text-gray-500">Couldn&apos;t load your payments</p>
+          <button onClick={() => void load()} className="text-xs2 mt-2 underline text-gray-500 hover:text-gray-700">Try again</button>
         </div>
       ) : payments.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <CreditCard size={32} className="text-gray-200 mb-3" />
-          <p className="text-[15px] font-medium text-gray-500">No payment requests yet</p>
-          <p className="text-[13px] text-gray-400 mt-1">Payment requests sent to you will appear here.</p>
+          <p className="text-sm2 font-medium text-gray-500">No payment requests yet</p>
+          <p className="text-xs2 text-gray-400 mt-1">Payment requests sent to you will appear here.</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
@@ -75,19 +75,19 @@ export default function PortalPaymentsPage({ params }: { params: Promise<{ subdo
                 <CreditCard size={16} className="text-gray-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-medium text-gray-900 truncate">{p.description || 'Payment request'}</p>
-                <p className="text-[12px] text-gray-400">
+                <p className="text-sm font-medium text-gray-900 truncate">{p.description || 'Payment request'}</p>
+                <p className="text-xs text-gray-400">
                   {new Date(p.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </p>
               </div>
-              <span className="text-[14px] font-semibold text-gray-900 flex-shrink-0">{fmtMoney(p.amount, p.currency)}</span>
-              <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full capitalize flex-shrink-0 ${STATUS_BADGE[p.status] ?? 'bg-gray-100 text-gray-600'}`}>
+              <span className="text-sm font-semibold text-gray-900 flex-shrink-0">{fmtMoney(p.amount, p.currency)}</span>
+              <span className={`text-2xs font-semibold px-2.5 py-0.5 rounded-full capitalize flex-shrink-0 ${STATUS_BADGE[p.status] ?? 'bg-gray-100 text-gray-600'}`}>
                 {p.status}
               </span>
               {p.status === 'pending' && p.share_token && (
                 <a
                   href={`/pay/${p.share_token}`}
-                  className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold text-white hover:opacity-90 transition-opacity"
+                  className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold text-white hover:opacity-90 transition-opacity"
                   style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
                 >
                   Pay

@@ -374,12 +374,12 @@ export default function FilePreviewModal({
                 {currentFile.file_name}
               </h2>
               <span
-                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${statusCfg.cls}`}
+                className={`text-3xs font-semibold px-2 py-0.5 rounded-full capitalize ${statusCfg.cls}`}
               >
                 {statusCfg.label}
               </span>
               {currentFile.version > 1 && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
+                <span className="text-3xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
                   v{currentFile.version}
                 </span>
               )}

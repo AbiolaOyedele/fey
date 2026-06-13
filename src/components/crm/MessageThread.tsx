@@ -77,8 +77,8 @@ export default function MessageThread({ messages, ownerId, onSend, showWelcomeBa
             <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
               <MessageSquare size={22} className="text-gray-300" />
             </div>
-            <p className="text-[15px] font-medium text-gray-500">No messages yet</p>
-            <p className="text-[13px] text-gray-400 mt-1">Start the conversation below.</p>
+            <p className="text-sm2 font-medium text-gray-500">No messages yet</p>
+            <p className="text-xs2 text-gray-400 mt-1">Start the conversation below.</p>
           </div>
         )}
 
@@ -86,7 +86,7 @@ export default function MessageThread({ messages, ownerId, onSend, showWelcomeBa
           <div key={group.date}>
             <div className="flex items-center gap-3 my-4">
               <div className="flex-1 h-px bg-gray-100" />
-              <span className="text-[11px] text-gray-400 flex-shrink-0">{group.date}</span>
+              <span className="text-2xs text-gray-400 flex-shrink-0">{group.date}</span>
               <div className="flex-1 h-px bg-gray-100" />
             </div>
 
@@ -113,14 +113,14 @@ export default function MessageThread({ messages, ownerId, onSend, showWelcomeBa
                               href={att.file_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[11px] px-2 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                              className="text-2xs px-2 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
                             >
                               <Paperclip size={10} className="inline-block mr-1" />{att.file_name}
                             </a>
                           ))}
                         </div>
                       )}
-                      <span className="text-[10px] text-gray-300 px-1">
+                      <span className="text-3xs text-gray-300 px-1">
                         {formatTime(msg.created_at)}
                         {isOwner && (msg.read_at ? ' · Read' : ' · Sent')}
                       </span>

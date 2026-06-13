@@ -23,7 +23,7 @@ export default function UpdateBanner({ show, accent }: UpdateBannerProps) {
         <RefreshCw size={17} className="flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold leading-tight">A new update is ready</p>
-          <p className="text-[12px] text-white/75 leading-tight mt-0.5">Refresh to get the latest version.</p>
+          <p className="text-xs text-white/75 leading-tight mt-0.5">Refresh to get the latest version.</p>
         </div>
         <button
           onClick={() => window.location.reload()}

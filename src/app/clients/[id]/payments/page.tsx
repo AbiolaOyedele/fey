@@ -185,7 +185,7 @@ function InvoicePickerModal({ contactId, userId, onClose, onNew }: InvoicePicker
                 >
                   <FileText size={15} className="text-gray-400 flex-shrink-0" />
                   <span className="flex-1 text-sm font-medium text-gray-900 truncate">{inv.invoice_number || 'Untitled Invoice'}</span>
-                  <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${STATUS_BADGE[inv.status] ?? 'bg-gray-100 text-gray-600'}`}>{inv.status}</span>
+                  <span className={`text-3xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${STATUS_BADGE[inv.status] ?? 'bg-gray-100 text-gray-600'}`}>{inv.status}</span>
                 </button>
               ))}
             </div>
@@ -303,7 +303,7 @@ function DirectLinkModal({ contactId, userId, defaultCurrency, onClose, onCreate
                   {copied ? <><Check size={12} />Copied</> : <><Copy size={12} />Copy</>}
                 </button>
               </div>
-              <p className="text-[11px] text-gray-400 mt-1.5">
+              <p className="text-2xs text-gray-400 mt-1.5">
                 They&apos;ll enter their email and pay securely via Paystack.
               </p>
             </div>
@@ -533,8 +533,8 @@ export default function PaymentsTab({ params }: { params: Promise<{ id: string }
       ) : !hasData ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <CreditCard size={32} className="text-gray-200 mb-3" />
-          <p className="text-[15px] font-medium text-gray-500 mb-1">No payments yet</p>
-          <p className="text-[13px] text-gray-400">Request a payment via invoice or send a direct payment link.</p>
+          <p className="text-sm2 font-medium text-gray-500 mb-1">No payments yet</p>
+          <p className="text-xs2 text-gray-400">Request a payment via invoice or send a direct payment link.</p>
           <div className="flex gap-2 mt-5">
             <button onClick={() => setModal('invoice')} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
               <FileText size={13} />Via Invoice
@@ -555,11 +555,11 @@ export default function PaymentsTab({ params }: { params: Promise<{ id: string }
                   <div key={req.id} className="flex items-center gap-3 h-16 px-4 border-b border-gray-50 last:border-0 group">
                     <Link2 size={15} className="text-gray-400 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-medium text-gray-900 truncate">{req.description || 'Payment request'}</p>
-                      <p className="text-[11px] text-gray-400">{shortDate(req.created_at)}</p>
+                      <p className="text-xs2 font-medium text-gray-900 truncate">{req.description || 'Payment request'}</p>
+                      <p className="text-2xs text-gray-400">{shortDate(req.created_at)}</p>
                     </div>
-                    <span className="text-[13px] font-semibold text-gray-800">{fmt(req.amount, req.currency)}</span>
-                    <span className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${REQUEST_STATUS_BADGE[req.status] ?? ''}`}>
+                    <span className="text-xs2 font-semibold text-gray-800">{fmt(req.amount, req.currency)}</span>
+                    <span className={`flex items-center gap-1 text-3xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${REQUEST_STATUS_BADGE[req.status] ?? ''}`}>
                       {REQUEST_STATUS_ICON[req.status]}
                       {req.status}
                     </span>
@@ -604,9 +604,9 @@ export default function PaymentsTab({ params }: { params: Promise<{ id: string }
                 {tasks.map((task) => (
                   <div key={task.id} className="flex items-center gap-3 h-14 px-4 border-b border-gray-50 last:border-0">
                     <CreditCard size={15} className="text-gray-400 flex-shrink-0" />
-                    <span className="flex-1 text-[13px] font-medium text-gray-900 truncate">{task.title}</span>
-                    <span className="text-[13px] font-semibold text-gray-800">{fmt(task.amount, task.currency)}</span>
-                    <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${task.paid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    <span className="flex-1 text-xs2 font-medium text-gray-900 truncate">{task.title}</span>
+                    <span className="text-xs2 font-semibold text-gray-800">{fmt(task.amount, task.currency)}</span>
+                    <span className={`text-3xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${task.paid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                       {task.paid ? 'Paid' : 'Unpaid'}
                     </span>
                   </div>

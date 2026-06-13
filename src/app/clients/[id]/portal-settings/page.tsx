@@ -137,7 +137,7 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-gray-800">Portal access</p>
-            <p className="text-[13px] text-gray-400 mt-0.5">
+            <p className="text-xs2 text-gray-400 mt-0.5">
               {portalEnabled
                 ? 'This client can log in and view their portal.'
                 : 'Enable to let this client access their client portal.'}
@@ -176,7 +176,7 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
               onClick={() => void loadInvite(true)}
               disabled={regenLoading}
               title="Regenerate code"
-              className="flex items-center gap-1.5 text-[12px] text-gray-400 hover:text-gray-600 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors"
             >
               <RefreshCw size={12} className={regenLoading ? 'animate-spin' : ''} />
               {regenLoading ? 'Regenerating…' : 'Regenerate'}
@@ -184,7 +184,7 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
           </div>
 
           {loadingInvite ? (
-            <div className="flex items-center gap-2 text-[13px] text-gray-400">
+            <div className="flex items-center gap-2 text-xs2 text-gray-400">
               <Loader2 size={13} className="animate-spin" />
               Generating code…
             </div>
@@ -192,12 +192,12 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
             <>
               {/* Invite URL */}
               <div className="flex items-center gap-2 mb-3">
-                <code className="flex-1 text-[12px] bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-gray-600 truncate">
+                <code className="flex-1 text-xs bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-gray-600 truncate">
                   {displayInviteUrl}
                 </code>
                 <button
                   onClick={() => void copyLink()}
-                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-[12px] text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap"
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap"
                 >
                   {copiedLink ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
                   {copiedLink ? 'Copied!' : 'Copy link'}
@@ -207,14 +207,14 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
               {/* Short code */}
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 flex-1">
-                  <span className="text-[12px] text-gray-400">Access code:</span>
-                  <code className="text-[13px] font-mono font-semibold text-gray-800 tracking-widest bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
+                  <span className="text-xs text-gray-400">Access code:</span>
+                  <code className="text-xs2 font-mono font-semibold text-gray-800 tracking-widest bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
                     {inviteCode}
                   </code>
                 </div>
                 <button
                   onClick={() => void copyCode()}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-gray-200 text-[12px] text-gray-500 hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 transition-colors"
                 >
                   {copied ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
                   {copied ? 'Copied!' : 'Copy code'}
@@ -222,10 +222,10 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
               </div>
             </>
           ) : (
-            <p className="text-[13px] text-gray-400">No invite code yet. Enable portal access to generate one.</p>
+            <p className="text-xs2 text-gray-400">No invite code yet. Enable portal access to generate one.</p>
           )}
 
-          <p className="text-[12px] text-gray-400 mt-3">
+          <p className="text-xs text-gray-400 mt-3">
             Share this link with your client so they can join your workspace.
             The access code is pre-filled automatically.
           </p>
@@ -239,7 +239,7 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
             <Globe size={14} className="text-gray-400" />
             Portal URL
           </p>
-          <code className="block text-[12px] bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-gray-500">
+          <code className="block text-xs bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-gray-500">
             {portalBase}
           </code>
         </div>
@@ -248,7 +248,7 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
       {/* Welcome message */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
         <label className="block text-sm font-semibold text-gray-800 mb-1">Welcome message</label>
-        <p className="text-[13px] text-gray-400 mb-3">Shown on the portal home page for this client.</p>
+        <p className="text-xs2 text-gray-400 mb-3">Shown on the portal home page for this client.</p>
         <textarea
           rows={3}
           value={welcomeMsg}

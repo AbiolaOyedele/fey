@@ -84,10 +84,10 @@ export default function PortalShell({ subdomain, branding, clientName, children 
           </div>
         )}
         <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-gray-900 truncate leading-tight">
+          <p className="text-xs2 font-semibold text-gray-900 truncate leading-tight">
             {branding.business_name}
           </p>
-          <p className="text-[11px] text-gray-400 truncate">Client Portal</p>
+          <p className="text-2xs text-gray-400 truncate">Client Portal</p>
         </div>
       </div>
 
@@ -100,13 +100,13 @@ export default function PortalShell({ subdomain, branding, clientName, children 
       {/* Footer */}
       <div className="px-3 py-3 border-t" style={{ borderColor: '#EBEBEB' }}>
         <div className="px-2 py-1.5 mb-1">
-          <p className="text-[11px] text-gray-400">Signed in as</p>
-          <p className="text-[13px] font-medium text-gray-700 truncate">{clientName}</p>
+          <p className="text-2xs text-gray-400">Signed in as</p>
+          <p className="text-xs2 font-medium text-gray-700 truncate">{clientName}</p>
         </div>
         <button
           onClick={() => void signOut()}
           disabled={signingOut}
-          className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-[13px] text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-xs2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
         >
           <LogOut size={14} />
           {signingOut ? 'Signing out…' : 'Sign out'}

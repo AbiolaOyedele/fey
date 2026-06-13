@@ -53,8 +53,8 @@ export default function PortalFilesPage({ params }: { params: Promise<{ subdomai
       ) : files.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Folder size={32} className="text-gray-200 mb-3" />
-          <p className="text-[15px] font-medium text-gray-500">No files yet</p>
-          <p className="text-[13px] text-gray-400 mt-1">Files shared with you will appear here.</p>
+          <p className="text-sm2 font-medium text-gray-500">No files yet</p>
+          <p className="text-xs2 text-gray-400 mt-1">Files shared with you will appear here.</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
@@ -62,10 +62,10 @@ export default function PortalFilesPage({ params }: { params: Promise<{ subdomai
             <div key={file.id} className="flex items-center gap-3 h-14 px-4 border-b border-gray-100 last:border-b-0">
               <span className="text-gray-400 flex-shrink-0">{fileIcon(file.file_type)}</span>
               <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-medium text-gray-900 truncate">{file.file_name}</p>
-                {file.file_size && <p className="text-[11px] text-gray-400">{fmtSize(file.file_size)}</p>}
+                <p className="text-sm font-medium text-gray-900 truncate">{file.file_name}</p>
+                {file.file_size && <p className="text-2xs text-gray-400">{fmtSize(file.file_size)}</p>}
               </div>
-              <span className="text-[11px] text-gray-400 flex-shrink-0 hidden sm:inline">
+              <span className="text-2xs text-gray-400 flex-shrink-0 hidden sm:inline">
                 {new Date(file.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
               </span>
               <a

@@ -93,8 +93,8 @@ export default function WorkspacePage({ params }: { params: Promise<{ subdomain:
               <Icon size={18} style={{ color }} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold text-gray-900">{label}</p>
-              <p className="text-[12px] text-gray-400 truncate">{description}</p>
+              <p className="text-sm font-semibold text-gray-900">{label}</p>
+              <p className="text-xs text-gray-400 truncate">{description}</p>
             </div>
             <ArrowRight size={14} className="text-gray-300 group-hover:text-gray-500 flex-shrink-0 transition-colors" />
           </Link>

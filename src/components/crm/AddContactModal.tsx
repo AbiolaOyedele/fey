@@ -115,7 +115,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-900">{createdName} added</p>
-                <p className="text-[12px] text-gray-400">Share the invite link so they can join your portal.</p>
+                <p className="text-xs text-gray-400">Share the invite link so they can join your portal.</p>
               </div>
             </div>
 
@@ -127,7 +127,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
               </p>
 
               {loadingInvite ? (
-                <div className="flex items-center gap-2 text-[13px] text-gray-400 py-2">
+                <div className="flex items-center gap-2 text-xs2 text-gray-400 py-2">
                   <Loader2 size={13} className="animate-spin" />
                   Generating invite link…
                 </div>
@@ -140,7 +140,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
                     </code>
                     <button
                       onClick={() => void copyUrl()}
-                      className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-[12px] text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap"
+                      className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap"
                     >
                       {copiedUrl ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
                       {copiedUrl ? 'Copied!' : 'Copy link'}
@@ -151,14 +151,14 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
                   {inviteCode && (
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-2 flex-1">
-                        <span className="text-[12px] text-gray-400">Access code:</span>
-                        <code className="text-[13px] font-mono font-bold text-gray-800 tracking-widest bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
+                        <span className="text-xs text-gray-400">Access code:</span>
+                        <code className="text-xs2 font-mono font-bold text-gray-800 tracking-widest bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
                           {inviteCode}
                         </code>
                       </div>
                       <button
                         onClick={() => void copyCode()}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-gray-200 text-[12px] text-gray-500 hover:bg-gray-50 transition-colors"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 transition-colors"
                       >
                         {copiedCode ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
                         {copiedCode ? 'Copied!' : 'Copy code'}
@@ -166,12 +166,12 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
                     </div>
                   )}
 
-                  <p className="text-[11px] text-gray-400">
+                  <p className="text-2xs text-gray-400">
                     Send this link to {createdName}. The access code is pre-filled when they open the link.
                   </p>
                 </div>
               ) : (
-                <p className="text-[13px] text-gray-400 py-1">
+                <p className="text-xs2 text-gray-400 py-1">
                   Could not generate invite link. You can find it later in the client&apos;s portal settings.
                 </p>
               )}

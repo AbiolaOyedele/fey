@@ -107,7 +107,7 @@ export default function DashboardPage() {
 
       {/* ── Header ── */}
       <div className="mb-6 lg:mb-8">
-        <h1 className="font-display text-[20px] leading-snug font-normal text-gray-700" style={{ whiteSpace: 'pre-wrap' }}>
+        <h1 className="font-display text-xl leading-snug font-normal text-gray-700" style={{ whiteSpace: 'pre-wrap' }}>
           {heading}
         </h1>
       </div>
@@ -127,7 +127,7 @@ export default function DashboardPage() {
               ))}
             </div>
             {portalUrl && (
-              <span className="text-[11px] text-gray-400 font-mono flex-shrink-0 truncate max-w-[160px]">
+              <span className="text-2xs text-gray-400 font-mono flex-shrink-0 truncate max-w-[160px]">
                 {portalUrl}
               </span>
             )}
@@ -215,7 +215,7 @@ export default function DashboardPage() {
           )}
 
           {contacts.length > 0 && (
-            <p className="text-[11px] text-gray-400 my-3">
+            <p className="text-2xs text-gray-400 my-3">
               ✦ Most clients are{' '}
               <span className="font-medium" style={{ color: dominantStatus === 'active' ? accent : dominantStatus === 'completed' ? '#48BB78' : '#9CA3AF' }}>
                 {dominantStatus}
@@ -356,9 +356,9 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <span className="text-[10px] text-gray-400">{relativeTime(c.created_at)}</span>
+                    <span className="text-3xs text-gray-400">{relativeTime(c.created_at)}</span>
                     <span
-                      className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                      className="text-3xs font-medium px-1.5 py-0.5 rounded-full"
                       style={
                         c.status === 'active'
                           ? { backgroundColor: `${accent}18`, color: accent }
@@ -398,7 +398,7 @@ export default function DashboardPage() {
               <p className="text-sm font-semibold text-gray-800">Unread Messages</p>
               {feed.loaded && feed.unread.length > 0 && (
                 <span
-                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                  className="text-3xs font-bold px-1.5 py-0.5 rounded-full text-white"
                   style={{ backgroundColor: accent }}
                 >
                   {feed.unread.length}
@@ -447,7 +447,7 @@ export default function DashboardPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-gray-800 truncate">{m.contactName}</p>
-                      <span className="text-[10px] text-gray-400 flex-shrink-0">{relativeTime(m.createdAt)}</span>
+                      <span className="text-3xs text-gray-400 flex-shrink-0">{relativeTime(m.createdAt)}</span>
                     </div>
                     <p className="text-xs text-gray-500 truncate flex items-center gap-1">
                       {m.hasAttachment && <Paperclip size={11} className="text-gray-400 flex-shrink-0" />}
@@ -509,7 +509,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
 
-                  <span className="text-[10px] text-gray-400 flex-shrink-0">{relativeTime(f.createdAt)}</span>
+                  <span className="text-3xs text-gray-400 flex-shrink-0">{relativeTime(f.createdAt)}</span>
                 </Link>
               ))
             )}

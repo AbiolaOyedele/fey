@@ -370,8 +370,8 @@ export default function InvoicesPage() {
             <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mb-1">
               <FileText size={22} className="text-gray-300" />
             </div>
-            <p className="text-[15px] font-medium text-gray-600">No invoices yet</p>
-            <p className="text-[13px] text-gray-400">Create your first invoice to get started</p>
+            <p className="text-sm2 font-medium text-gray-600">No invoices yet</p>
+            <p className="text-xs2 text-gray-400">Create your first invoice to get started</p>
             <button
               onClick={() => setShowNewModal(true)}
               className="mt-3 flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium text-white hover:opacity-90 transition-opacity"

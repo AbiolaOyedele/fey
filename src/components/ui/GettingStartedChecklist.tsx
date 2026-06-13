@@ -129,7 +129,7 @@ export default function GettingStartedChecklist({ clients = [] }: GettingStarted
                   {step.label}
                 </span>
                 {!done && isManual && (
-                  <span className="ml-auto text-[10px] text-gray-400 italic flex-shrink-0">
+                  <span className="ml-auto text-3xs text-gray-400 italic flex-shrink-0">
                     click to mark
                   </span>
                 )}

@@ -36,12 +36,12 @@ function FormRow({ form, onClick }: { form: CrmForm; onClick: () => void }) {
   return (
     <div onClick={onClick} className="flex items-center gap-3 h-14 px-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 transition-colors cursor-pointer">
       <ClipboardList size={16} className="text-gray-400 flex-shrink-0" />
-      <span className="flex-1 text-[14px] font-medium text-gray-900 truncate">{form.title}</span>
+      <span className="flex-1 text-sm font-medium text-gray-900 truncate">{form.title}</span>
       {form.status === 'submitted' && (
-        <span className="text-[11px] text-gray-400 flex-shrink-0 hidden sm:inline">{form.responses.length} response{form.responses.length !== 1 ? 's' : ''}</span>
+        <span className="text-2xs text-gray-400 flex-shrink-0 hidden sm:inline">{form.responses.length} response{form.responses.length !== 1 ? 's' : ''}</span>
       )}
-      <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full capitalize ${STATUS_BADGE[form.status]}`}>{form.status}</span>
-      <span className="text-[12px] text-gray-400 flex-shrink-0">
+      <span className={`text-2xs font-semibold px-2.5 py-0.5 rounded-full capitalize ${STATUS_BADGE[form.status]}`}>{form.status}</span>
+      <span className="text-xs text-gray-400 flex-shrink-0">
         {new Date(form.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
       </span>
     </div>
@@ -57,17 +57,17 @@ function FormCard({ form, onClick }: { form: CrmForm; onClick: () => void }) {
         <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0">
           <ClipboardList size={16} className="text-gray-400" />
         </div>
-        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${STATUS_BADGE[form.status]}`}>{form.status}</span>
+        <span className={`text-3xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${STATUS_BADGE[form.status]}`}>{form.status}</span>
       </div>
       <div>
-        <p className="text-[14px] font-semibold text-gray-900 leading-snug line-clamp-2">{form.title}</p>
-        <p className="text-[11px] text-gray-400 mt-1">
+        <p className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">{form.title}</p>
+        <p className="text-2xs text-gray-400 mt-1">
           {form.fields.length} field{form.fields.length !== 1 ? 's' : ''}
           {form.status === 'submitted' && ` · ${form.responses.length} response${form.responses.length !== 1 ? 's' : ''}`}
         </p>
       </div>
       <div className="mt-auto pt-2 border-t border-gray-50">
-        <p className="text-[11px] text-gray-400">
+        <p className="text-2xs text-gray-400">
           {new Date(form.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
         </p>
       </div>
@@ -210,10 +210,10 @@ export default function FormsTab({ params }: { params: Promise<{ id: string }> }
       ) : forms.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <ClipboardList size={32} className="text-gray-200 mb-3" />
-          <p className="text-[15px] font-medium text-gray-500 mb-1">No forms yet</p>
+          <p className="text-sm2 font-medium text-gray-500 mb-1">No forms yet</p>
           {canManage && (
             <>
-              <p className="text-[13px] text-gray-400">Build intake forms or questionnaires for this client.</p>
+              <p className="text-xs2 text-gray-400">Build intake forms or questionnaires for this client.</p>
               <div className="flex gap-2 mt-5">
                 <button onClick={() => void handleBlank()} className="px-5 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
                   + Blank Form

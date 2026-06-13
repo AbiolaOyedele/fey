@@ -55,15 +55,15 @@ export default function PlaygroundPage() {
       {/* Header */}
       <div className="flex items-center gap-2 mb-1">
         <MessagesSquare size={18} style={{ color: accent }} />
-        <h1 className="font-display text-[20px] font-normal text-gray-800">Internal Chats</h1>
-        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Playground</span>
+        <h1 className="font-display text-xl font-normal text-gray-800">Internal Chats</h1>
+        <span className="text-2xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Playground</span>
       </div>
       <p className="text-xs text-gray-400 mb-4">A private space for your team — clients never see this.</p>
 
       <div className="flex-1 min-h-0 bg-white rounded-2xl border border-gray-100 shadow-sm flex overflow-hidden">
         {/* Channels rail */}
         <div className="w-44 border-r border-gray-100 p-3 hidden sm:flex flex-col gap-1 flex-shrink-0">
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-2 mb-1">Channels</p>
+          <p className="text-2xs font-semibold text-gray-400 uppercase tracking-wide px-2 mb-1">Channels</p>
           {channels.map((c) => {
             const isActive = c.id === activeChannelId
             return (
@@ -121,7 +121,7 @@ export default function PlaygroundPage() {
                     <div className={`max-w-[75%] ${isMine ? 'items-end text-right' : ''} flex flex-col`}>
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-xs font-semibold text-gray-700">{senderName}</span>
-                        <span className="text-[10px] text-gray-400">{timeLabel(m.created_at)}</span>
+                        <span className="text-3xs text-gray-400">{timeLabel(m.created_at)}</span>
                       </div>
                       <div
                         className="px-3 py-2 rounded-2xl text-sm break-words"

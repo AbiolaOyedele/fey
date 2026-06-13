@@ -303,7 +303,7 @@ export default function TaskItem({
               <Paperclip size={14} />
               {fileCount > 0 && (
                 <span
-                  className="absolute -top-1 -right-1.5 w-3.5 h-3.5 rounded-full text-white text-[8px] font-bold flex items-center justify-center leading-none"
+                  className="absolute -top-1 -right-1.5 w-3.5 h-3.5 rounded-full text-white text-5xs font-bold flex items-center justify-center leading-none"
                   style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
                 >
                   {fileCount > 9 ? '9+' : fileCount}

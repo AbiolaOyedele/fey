@@ -111,7 +111,7 @@ export default function SimpleTaskItem({ task, onUpdate, onDelete, onInfo, dragL
 
       {task.deadline && (
         <span
-          className={`flex-shrink-0 text-[11px] font-medium px-1.5 py-0.5 rounded-md leading-none ${
+          className={`flex-shrink-0 text-2xs font-medium px-1.5 py-0.5 rounded-md leading-none ${
             isOverdue ? 'bg-red-50 text-red-500' : isToday ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-400'
           }`}
         >

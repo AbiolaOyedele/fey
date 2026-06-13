@@ -310,7 +310,7 @@ export default function TaskGroupWorkspacePage({ params }: { params: Promise<{ i
 
               {completedTasks.length > 0 && (
                 <div className={pendingTasks.length > 0 ? 'border-t border-gray-100' : ''}>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-4 pt-3 pb-1">
+                  <p className="text-2xs font-semibold text-gray-400 uppercase tracking-wider px-4 pt-3 pb-1">
                     Completed
                   </p>
                   <div className="divide-y divide-gray-50">

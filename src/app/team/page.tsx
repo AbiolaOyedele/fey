@@ -41,7 +41,7 @@ export default function TeamPage() {
     <div className="min-h-screen p-4 md:p-6 lg:p-8 page-enter max-w-3xl">
       <div className="flex items-center gap-2 mb-1">
         <Users size={18} style={{ color: accent }} />
-        <h1 className="font-display text-[20px] font-normal text-gray-800">Team</h1>
+        <h1 className="font-display text-xl font-normal text-gray-800">Team</h1>
       </div>
       <p className="text-xs text-gray-400 mb-6">
         {workspace ? `Members of ${workspace.name}` : 'Your workspace team'}

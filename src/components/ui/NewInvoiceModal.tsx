@@ -303,7 +303,7 @@ export default function NewInvoiceModal({ clients = [], onClose }: NewInvoiceMod
                                   </span>
                                 )}
                                 {task.paid && (
-                                  <span className="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full flex-shrink-0">
+                                  <span className="text-3xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full flex-shrink-0">
                                     Paid
                                   </span>
                                 )}

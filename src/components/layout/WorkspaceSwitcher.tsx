@@ -52,7 +52,7 @@ export default function WorkspaceSwitcher({ accent }: { accent: string }) {
 
       {open && (
         <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl border border-gray-100 shadow-lg z-50 py-1 animate-fadeIn">
-          <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Workspaces</p>
+          <p className="px-3 pt-2 pb-1 text-3xs font-semibold uppercase tracking-wide text-gray-400">Workspaces</p>
           <div className="max-h-64 overflow-y-auto">
             {memberships.map((m) => {
               const isActive = m.workspace.slug === workspace?.slug
@@ -63,14 +63,14 @@ export default function WorkspaceSwitcher({ accent }: { accent: string }) {
                   className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors text-left"
                 >
                   <div
-                    className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0"
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-2xs font-bold text-white flex-shrink-0"
                     style={{ backgroundColor: isActive ? accent : '#9CA3AF' }}
                   >
                     {m.workspace.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-800 truncate">{m.workspace.name}</p>
-                    <p className="text-[11px] text-gray-400 capitalize">{m.role}</p>
+                    <p className="text-2xs text-gray-400 capitalize">{m.role}</p>
                   </div>
                   {isActive && <Check size={14} style={{ color: accent }} className="flex-shrink-0" />}
                 </button>

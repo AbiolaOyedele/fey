@@ -632,13 +632,13 @@ export default function CampaignWorkspacePage({
                         )}
                         {/* Status badge */}
                         <span
-                          className={`absolute top-1.5 right-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${cfg.cls}`}
+                          className={`absolute top-1.5 right-1.5 text-4xs font-semibold px-1.5 py-0.5 rounded-full ${cfg.cls}`}
                         >
                           {cfg.label}
                         </span>
                         {/* Version badge */}
                         {file.version > 1 && (
-                          <span className="absolute top-1.5 left-1.5 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                          <span className="absolute top-1.5 left-1.5 bg-blue-500 text-white text-4xs font-bold px-1.5 py-0.5 rounded-full">
                             v{file.version}
                           </span>
                         )}
@@ -653,12 +653,12 @@ export default function CampaignWorkspacePage({
                       </div>
                       {/* Info */}
                       <div className="p-2">
-                        <p className="text-[11px] font-medium text-gray-700 truncate">
+                        <p className="text-2xs font-medium text-gray-700 truncate">
                           {file.file_name}
                         </p>
                         <div className="flex items-center justify-between gap-1">
                           {file.file_size ? (
-                            <p className="text-[10px] text-gray-400">
+                            <p className="text-3xs text-gray-400">
                               {formatFileSize(file.file_size)}
                             </p>
                           ) : (

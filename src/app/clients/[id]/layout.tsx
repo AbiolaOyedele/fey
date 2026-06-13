@@ -147,7 +147,7 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
             >
               <Search size={14} />
               <span className="hidden sm:inline text-xs">Search</span>
-              <kbd className="hidden md:inline text-[10px] text-gray-300 border border-gray-200 px-1 rounded font-mono">⌘K</kbd>
+              <kbd className="hidden md:inline text-3xs text-gray-300 border border-gray-200 px-1 rounded font-mono">⌘K</kbd>
             </button>
 
             {/* Three-dot menu — management actions, owner/admin only */}

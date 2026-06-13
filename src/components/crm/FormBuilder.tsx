@@ -149,7 +149,7 @@ function FieldEditor({ field, onUpdate, onDelete }: {
       {/* Label */}
       <div className={hasPlaceholder ? 'grid grid-cols-2 gap-3' : ''}>
         <div>
-          <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
+          <label className="block text-2xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
             {isTitle ? 'Heading text' : 'Label'}
           </label>
           <input
@@ -162,7 +162,7 @@ function FieldEditor({ field, onUpdate, onDelete }: {
         </div>
         {hasPlaceholder && (
           <div>
-            <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Placeholder</label>
+            <label className="block text-2xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Placeholder</label>
             <input
               type="text"
               value={field.placeholder ?? ''}
@@ -190,7 +190,7 @@ function FieldEditor({ field, onUpdate, onDelete }: {
       {/* Options (select / multiselect) */}
       {hasOptions && (
         <div>
-          <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Options</label>
+          <label className="block text-2xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Options</label>
           <div className="space-y-1.5 mb-2">
             {field.options.map((opt) => (
               <div key={opt} className="flex items-center gap-2">
@@ -577,7 +577,7 @@ export default function FormBuilder({ form, contactEmail, onSave, onSend, onBack
 
         {/* Right: live preview */}
         <div className="w-[340px] flex-shrink-0 border-l border-gray-100 bg-gray-50/50 overflow-y-auto p-6">
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-4">Live Preview</p>
+          <p className="text-2xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Live Preview</p>
           <LivePreview title={title} fields={fields} />
         </div>
       </div>

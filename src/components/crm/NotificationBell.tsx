@@ -60,7 +60,7 @@ export default function NotificationBell({ accent }: { accent: string }) {
                   className={`px-4 py-3 border-b border-gray-50 last:border-b-0 ${!n.read_at ? 'bg-gray-50/50' : ''}`}
                 >
                   <p className="text-sm text-gray-700">{n.message}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
+                  <p className="text-2xs text-gray-400 mt-0.5">
                     {new Date(n.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>

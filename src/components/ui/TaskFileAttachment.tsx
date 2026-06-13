@@ -135,7 +135,7 @@ export default function TaskFileAttachment({ taskId, clientId, open }: TaskFileA
               style={{ width: `${u.progress}%`, backgroundColor: 'var(--accent, #ED64A6)' }}
             />
           </div>
-          <span className="text-[10px] text-gray-400 flex-shrink-0">{u.progress}%</span>
+          <span className="text-3xs text-gray-400 flex-shrink-0">{u.progress}%</span>
           <button
             onClick={() => cancelUpload(u.id)}
             className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
@@ -175,11 +175,11 @@ export default function TaskFileAttachment({ taskId, clientId, open }: TaskFileA
               </a>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {f.status !== 'pending' && (
-                  <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${STATUS_STYLES[f.status] ?? ''}`}>
+                  <span className={`text-4xs font-semibold px-1.5 py-0.5 rounded-full ${STATUS_STYLES[f.status] ?? ''}`}>
                     {STATUS_LABELS[f.status] ?? f.status}
                   </span>
                 )}
-                <span className="text-[10px] text-gray-400">{formatFileSize(f.file_size)}</span>
+                <span className="text-3xs text-gray-400">{formatFileSize(f.file_size)}</span>
                 <button
                   onClick={() => void deleteFile(f.id, f.public_id)}
                   className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-all"

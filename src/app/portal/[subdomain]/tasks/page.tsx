@@ -48,14 +48,14 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <CheckSquare2 size={32} className="text-gray-200 mb-3" />
-          <p className="text-[15px] font-medium text-gray-500">Couldn&apos;t load your tasks</p>
-          <button onClick={() => void load()} className="text-[13px] mt-2 underline text-gray-500 hover:text-gray-700">Try again</button>
+          <p className="text-sm2 font-medium text-gray-500">Couldn&apos;t load your tasks</p>
+          <button onClick={() => void load()} className="text-xs2 mt-2 underline text-gray-500 hover:text-gray-700">Try again</button>
         </div>
       ) : tasks.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <CheckSquare2 size={32} className="text-gray-200 mb-3" />
-          <p className="text-[15px] font-medium text-gray-500">No tasks yet</p>
-          <p className="text-[13px] text-gray-400 mt-1">Tasks for your project will appear here.</p>
+          <p className="text-sm2 font-medium text-gray-500">No tasks yet</p>
+          <p className="text-xs2 text-gray-400 mt-1">Tasks for your project will appear here.</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
@@ -68,7 +68,7 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
               >
                 {t.done && <Check size={12} className="text-white" />}
               </div>
-              <span className={`flex-1 text-[14px] ${t.done ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+              <span className={`flex-1 text-sm ${t.done ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                 {t.title}
               </span>
             </div>

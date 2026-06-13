@@ -220,7 +220,7 @@ export default function PayPage({ params }: { params: Promise<{ token: string }>
             )}
           </button>
 
-          <p className="text-[11px] text-gray-400 text-center mt-3">
+          <p className="text-2xs text-gray-400 text-center mt-3">
             Secured by Paystack · Your payment info is never shared
           </p>
         </div>

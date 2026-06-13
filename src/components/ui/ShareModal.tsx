@@ -403,7 +403,7 @@ export default function ShareModal({ client, userId, onClose }: ShareModalProps)
                               {invite.code}
                             </span>
                             <span
-                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+                              className="text-3xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
                               style={{ backgroundColor: badge.bg, color: badge.color }}
                             >
                               {badge.label}
@@ -418,7 +418,7 @@ export default function ShareModal({ client, userId, onClose }: ShareModalProps)
                           )}
 
                           {isActive && (
-                            <p className="text-[10px] text-gray-400 font-mono truncate mb-2">
+                            <p className="text-3xs text-gray-400 font-mono truncate mb-2">
                               …/share/{shareRecord.token}?code={invite.code}
                             </p>
                           )}
@@ -427,7 +427,7 @@ export default function ShareModal({ client, userId, onClose }: ShareModalProps)
                             <div className="flex items-center gap-1.5">
                               <button
                                 onClick={() => void handleCopyInvite(invite)}
-                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all"
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-3xs font-semibold transition-all"
                                 style={
                                   isCopied
                                     ? { backgroundColor: '#D1FAE5', color: '#065F46' }
@@ -442,7 +442,7 @@ export default function ShareModal({ client, userId, onClose }: ShareModalProps)
                               </button>
                               <button
                                 onClick={() => void handleRevokeCode(invite)}
-                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium bg-red-50 text-red-400 hover:bg-red-100 transition-colors ml-auto"
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-3xs font-medium bg-red-50 text-red-400 hover:bg-red-100 transition-colors ml-auto"
                               >
                                 <Trash2 size={9} />
                                 Revoke

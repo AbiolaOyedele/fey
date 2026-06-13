@@ -88,7 +88,7 @@ export default function PortalContractDetailPage({
             <FileSignature size={20} className="text-gray-400" />
             <h1 className="text-xl font-bold text-gray-900">{contract.title}</h1>
           </div>
-          <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full capitalize ${
+          <span className={`text-2xs font-semibold px-2.5 py-0.5 rounded-full capitalize ${
             contract.status === 'signed'   ? 'bg-emerald-100 text-emerald-700' :
             contract.status === 'sent'     ? 'bg-blue-100 text-blue-700' :
             contract.status === 'declined' ? 'bg-red-100 text-red-600' :

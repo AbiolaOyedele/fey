@@ -651,7 +651,7 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
               { label: 'Password protection',  checked: false,            onChange: () => undefined,     placeholder: true  },
             ].map(({ label, checked, onChange, placeholder }) => (
               <div key={label} className={`flex items-center justify-between ${placeholder ? 'opacity-40' : ''}`}>
-                <span className="text-sm text-gray-700">{label}{placeholder && <span className="ml-1 text-[10px] text-gray-400">(soon)</span>}</span>
+                <span className="text-sm text-gray-700">{label}{placeholder && <span className="ml-1 text-3xs text-gray-400">(soon)</span>}</span>
                 <button disabled={placeholder} onClick={() => onChange(!checked)}
                   className="relative w-9 h-5 rounded-full transition-colors"
                   style={checked && !placeholder ? { backgroundColor: accent } : { backgroundColor: '#e5e7eb' }}
@@ -732,7 +732,7 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
             {/* FROM / BILL TO */}
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">From</p>
+                <p className="text-3xs font-bold uppercase tracking-widest opacity-40 mb-2">From</p>
                 {(['name', 'email', 'phone', 'website', 'address', 'tax_id'] as const).map((field) => (
                   <input key={field} value={from[field] || ''} onChange={(e) => setFrom((f) => ({ ...f, [field]: e.target.value }))}
                     placeholder={field.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
@@ -740,7 +740,7 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
                 ))}
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">Bill To</p>
+                <p className="text-3xs font-bold uppercase tracking-widest opacity-40 mb-2">Bill To</p>
                 <div className="relative mb-0.5">
                   <input
                     value={showClientDD ? clientSearch : billTo.name}
@@ -774,16 +774,16 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
             {/* Dates */}
             <div className="flex flex-wrap gap-4 mb-6 text-sm">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-widest opacity-40 mr-2">Issue Date</span>
+                <span className="text-3xs font-bold uppercase tracking-widest opacity-40 mr-2">Issue Date</span>
                 <input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className={iFieldSm} />
               </div>
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-widest opacity-40 mr-2">Due Date</span>
+                <span className="text-3xs font-bold uppercase tracking-widest opacity-40 mr-2">Due Date</span>
                 <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={iFieldSm} />
               </div>
               {showSupply ? (
                 <div className="flex items-center gap-1">
-                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-40 mr-2">Supply Date</span>
+                  <span className="text-3xs font-bold uppercase tracking-widest opacity-40 mr-2">Supply Date</span>
                   <input type="date" value={supplyDate} onChange={(e) => setSupplyDate(e.target.value)} className={iFieldSm} />
                   <button onClick={() => { setShowSupply(false); setSupplyDate('') }} className="p-0.5 rounded hover:bg-black/10 opacity-40 hover:opacity-70 transition-opacity"><X size={10} /></button>
                 </div>
@@ -794,7 +794,7 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
 
             {/* Line items */}
             <div className="mb-6">
-              <div className="grid grid-cols-12 gap-2 pb-2 border-b border-current opacity-30 text-[10px] font-bold uppercase tracking-widest">
+              <div className="grid grid-cols-12 gap-2 pb-2 border-b border-current opacity-30 text-3xs font-bold uppercase tracking-widest">
                 <div className="col-span-6">Description</div>
                 <div className="col-span-2 text-center">Qty</div>
                 <div className="col-span-2 text-right">Price</div>
@@ -834,7 +834,7 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
             {/* Payment details */}
             {showPayDet && (
               <div className="mb-6 border-t border-current border-opacity-10 pt-5">
-                <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-3">Payment Details</p>
+                <p className="text-3xs font-bold uppercase tracking-widest opacity-40 mb-3">Payment Details</p>
                 <div className="relative max-w-xs mb-3">
                   <select value={payMethod} onChange={(e) => {
                     const name = e.target.value
@@ -921,7 +921,7 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
 
             {/* Notes */}
             <div className="mb-6 border-t border-current border-opacity-10 pt-5">
-              <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">Notes</p>
+              <p className="text-3xs font-bold uppercase tracking-widest opacity-40 mb-2">Notes</p>
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}
                 placeholder="Thank you for your business!"
                 className={`${iField} text-sm resize-none`} />
@@ -1023,8 +1023,8 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
 
             {/* Invoice footer */}
             <div className="mt-8 pt-4 border-t border-current border-opacity-10 flex items-center justify-between">
-              <p className="text-[10px] opacity-25">Created with Fey</p>
-              <p className="text-[10px] opacity-40 font-medium">{invoiceNum}</p>
+              <p className="text-3xs opacity-25">Created with Fey</p>
+              <p className="text-3xs opacity-40 font-medium">{invoiceNum}</p>
             </div>
           </div>
         </div>
@@ -1047,7 +1047,7 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
                     >
                       <LayoutThumb id={lid} accent={accent} />
                     </div>
-                    <span className="text-[10px] font-medium text-gray-500">{label}</span>
+                    <span className="text-3xs font-medium text-gray-500">{label}</span>
                   </button>
                 ))}
               </div>
@@ -1099,7 +1099,7 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-700">Header Cover</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">{settings.cover_image ? 'From Branding' : 'Upload in Branding tab'}</p>
+                <p className="text-3xs text-gray-400 mt-0.5">{settings.cover_image ? 'From Branding' : 'Upload in Branding tab'}</p>
               </div>
               <button onClick={() => setShowCover((o) => !o)}
                 className="relative w-9 h-5 rounded-full transition-colors"

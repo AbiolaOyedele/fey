@@ -151,7 +151,7 @@ function NavItem({ label, active, onClick }: NavItemProps) {
 }
 
 const SoonBadge = () => (
-  <span className="px-1.5 py-0.5 text-[9px] font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-full uppercase tracking-wide">
+  <span className="px-1.5 py-0.5 text-4xs font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-full uppercase tracking-wide">
     Soon
   </span>
 )
@@ -1538,7 +1538,7 @@ function SettingsPageInner() {
                   )}
 
                   <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                    <p className="text-[11px] text-amber-700 leading-snug">
+                    <p className="text-2xs text-amber-700 leading-snug">
                       Existing invite links will stop working — you&apos;ll need to copy &amp; re-share them.
                       Clients who already joined stay registered and can still log in.
                     </p>

@@ -168,10 +168,10 @@ export default function InvoicesTab({ params }: { params: Promise<{ id: string }
       ) : invoices.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <FileText size={32} className="text-gray-200 mb-3" />
-          <p className="text-[15px] font-medium text-gray-500 mb-1">No invoices yet</p>
+          <p className="text-sm2 font-medium text-gray-500 mb-1">No invoices yet</p>
           {canManage && (
             <>
-              <p className="text-[13px] text-gray-400 mb-5">Create an invoice for this contact.</p>
+              <p className="text-xs2 text-gray-400 mb-5">Create an invoice for this contact.</p>
               <button
                 onClick={() => void handleNew()}
                 disabled={creating}
@@ -192,13 +192,13 @@ export default function InvoicesTab({ params }: { params: Promise<{ id: string }
               className="flex items-center gap-3 h-14 px-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70 transition-colors cursor-pointer"
             >
               <FileText size={16} className="text-gray-400 flex-shrink-0" />
-              <span className="flex-1 text-[14px] font-medium text-gray-900 truncate">
+              <span className="flex-1 text-sm font-medium text-gray-900 truncate">
                 {inv.invoice_number || 'Untitled Invoice'}
               </span>
-              <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full capitalize ${STATUS_BADGE[inv.status] ?? 'bg-gray-100 text-gray-600'}`}>
+              <span className={`text-2xs font-semibold px-2.5 py-0.5 rounded-full capitalize ${STATUS_BADGE[inv.status] ?? 'bg-gray-100 text-gray-600'}`}>
                 {inv.status}
               </span>
-              <span className="text-[12px] text-gray-400 flex-shrink-0">
+              <span className="text-xs text-gray-400 flex-shrink-0">
                 {new Date(inv.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
               </span>
               {inv.share_token && inv.share_enabled && (

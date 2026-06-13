@@ -166,6 +166,15 @@ export default function SetupPage() {
 
       if (dbErr) throw dbErr
 
+      // Create the owner's workspace (+ 'owner' membership) so they can invite
+      // teammates. Idempotent and best-effort — never block setup on it.
+      try {
+        await fetch('/api/v1/workspace/ensure', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+      } catch { /* workspace can be created later */ }
+
       // Mirror to localStorage so reload survives DB hiccups
       try { localStorage.setItem(`fey:onboarding_complete:${session.user.id}`, 'true') } catch { /* unavailable */ }
 

@@ -10,6 +10,7 @@ import Sidebar from './Sidebar'
 import ToastContainer from '@/components/ui/Toast'
 import UpdateBanner from '@/components/ui/UpdateBanner'
 import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
+import { useWorkspace } from '@/hooks/useWorkspace'
 
 // /onboarding is Workboard's route — Fey uses /setup to avoid clashing.
 // Both apps share the same Next.js codebase and Supabase DB.
@@ -20,6 +21,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router   = useRouter()
   const { user, loading: authLoading }               = useAuth()
   const { settings, settingsLoading } = useSettings()
+  const { workspace, loading: workspaceLoading } = useWorkspace()
   const updateAvailable = useUpdatePrompt()
 
   const isPublic = PUBLIC_ROUTES.includes(pathname)
@@ -30,15 +32,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     || pathname.startsWith('/portal/')
     || pathname.startsWith('/pay/')
 
-  const loading = authLoading || settingsLoading
+  const loading = authLoading || settingsLoading || workspaceLoading
 
   // Setup is considered done when either:
   //   (a) the user has a workspace_slug in the DB — set during /setup, the
   //       most reliable signal since fey_onboarding_complete may be null for
   //       users who completed setup before that column was added, or
   //   (b) the in-memory flag is 'true' (covers the instant after finishSetup
-  //       calls saveSetting before the next full DB reload).
-  const setupComplete = !!settings.workspace_slug || settings.fey_onboarding_complete === 'true'
+  //       calls saveSetting before the next full DB reload), or
+  //   (c) the user is a member of a workspace — covers invited teammates, who
+  //       join an existing workspace and never run /setup themselves.
+  const setupComplete =
+    !!settings.workspace_slug
+    || settings.fey_onboarding_complete === 'true'
+    || !!workspace
 
   useEffect(() => {
     if (IS_DEMO || isPublic || loading) return
@@ -52,14 +59,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (IS_DEMO || isPublic || loading || !user || !setupComplete) return
     if (typeof window === 'undefined') return
-    const slug = settings.workspace_slug
+    // Owners use their own slug; invited members ride the workspace's slug.
+    const slug = settings.workspace_slug ?? workspace?.slug
     if (!slug) return
     const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
     const host = window.location.hostname
     if (!host.endsWith(rootDomain)) return       // localhost / *.vercel.app
     if (host === `${slug}.${rootDomain}`) return  // already on the right subdomain
     window.location.href = `https://${slug}.${rootDomain}${window.location.pathname}${window.location.search}`
-  }, [user, loading, isPublic, setupComplete, settings.workspace_slug])
+  }, [user, loading, isPublic, setupComplete, settings.workspace_slug, workspace?.slug])
 
   if (isPublic) return <>{children}</>
 

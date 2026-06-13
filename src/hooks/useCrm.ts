@@ -32,6 +32,35 @@ async function getSession() {
   return session
 }
 
+// ── Effective workspace owner ─────────────────────────────────────────────────
+// CRM data is keyed on `owner_id` = the workspace owner. For the owner this is
+// their own uid (so nothing changes); for an invited teammate it resolves to the
+// workspace owner's uid, giving them shared access. Falls back to the caller's
+// own id if no membership is found, preserving solo behavior.
+let _ownerCacheUser: string | null = null
+let _ownerCacheId:   string | null = null
+
+async function getEffectiveOwnerId(): Promise<string | null> {
+  const session = await getSession()
+  const uid = session?.user?.id ?? null
+  if (!uid) return null
+  if (_ownerCacheUser === uid && _ownerCacheId) return _ownerCacheId
+
+  const { data } = await supabase
+    .from('workspace_members')
+    .select('workspaces(owner_id)')
+    .eq('user_id', uid)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  const ws = (data as { workspaces: { owner_id: string } | { owner_id: string }[] | null } | null)?.workspaces
+  const ownerId = (Array.isArray(ws) ? ws[0]?.owner_id : ws?.owner_id) ?? uid
+  _ownerCacheUser = uid
+  _ownerCacheId   = ownerId
+  return ownerId
+}
+
 /** Used only for the two send operations that need a server secret. */
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const session = await getSession()
@@ -114,7 +143,7 @@ export function useContacts() {
       const { data, error: err } = await supabase
         .from('crm_contacts')
         .select('*')
-        .eq('owner_id', session.user.id)
+        .eq('owner_id', await getEffectiveOwnerId())
         .order('created_at', { ascending: false })
       if (err) throw err
       let rows = (data ?? []) as CrmContact[]
@@ -146,7 +175,7 @@ export function useContacts() {
     if (!session) throw new Error('Not authenticated')
     const { data, error: err } = await supabase
       .from('crm_contacts')
-      .insert({ ...payload, owner_id: session.user.id })
+      .insert({ ...payload, owner_id: await getEffectiveOwnerId() })
       .select()
       .single()
     if (err) throw err
@@ -162,7 +191,7 @@ export function useContacts() {
       .from('crm_contacts')
       .update({ ...payload, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .eq('owner_id', session.user.id)
+      .eq('owner_id', await getEffectiveOwnerId())
       .select()
       .single()
     if (err) throw err
@@ -178,7 +207,7 @@ export function useContacts() {
       .from('crm_contacts')
       .delete()
       .eq('id', id)
-      .eq('owner_id', session.user.id)
+      .eq('owner_id', await getEffectiveOwnerId())
     if (err) throw err
     setContacts((prev) => prev.filter((c) => c.id !== id))
   }, [])
@@ -203,7 +232,7 @@ export function useMessages(contactId: string | null) {
         .from('crm_messages')
         .select('*')
         .eq('contact_id', contactId)
-        .eq('owner_id', session.user.id)
+        .eq('owner_id', await getEffectiveOwnerId())
         .order('created_at', { ascending: true })
       if (err) throw err
       setMessages((data ?? []).map((r) => rowToMessage(r as Record<string, unknown>)))
@@ -213,7 +242,7 @@ export function useMessages(contactId: string | null) {
         .from('crm_messages')
         .update({ read_at: new Date().toISOString() })
         .eq('contact_id', contactId)
-        .eq('owner_id', session.user.id)
+        .eq('owner_id', await getEffectiveOwnerId())
         .is('read_at', null)
         .neq('sender_type', 'owner')
     } finally {
@@ -256,7 +285,7 @@ export function useMessages(contactId: string | null) {
       .from('crm_messages')
       .insert({
         contact_id:  contactId,
-        owner_id:    session.user.id,
+        owner_id:    await getEffectiveOwnerId(),
         sender_type: 'owner',
         sender_id:   session.user.id,
         body,
@@ -288,7 +317,7 @@ export function useCrmFiles(contactId: string | null) {
         .from('crm_files')
         .select('*')
         .eq('contact_id', contactId)
-        .eq('owner_id', session.user.id)
+        .eq('owner_id', await getEffectiveOwnerId())
         .order('created_at', { ascending: false })
       if (err) throw err
       setFiles((data ?? []) as CrmFile[])
@@ -304,7 +333,7 @@ export function useCrmFiles(contactId: string | null) {
     if (!session) throw new Error('Not authenticated')
     const { data, error: err } = await supabase
       .from('crm_files')
-      .insert({ ...payload, owner_id: session.user.id, uploaded_by: session.user.id })
+      .insert({ ...payload, owner_id: await getEffectiveOwnerId(), uploaded_by: session.user.id })
       .select()
       .single()
     if (err) throw err
@@ -320,7 +349,7 @@ export function useCrmFiles(contactId: string | null) {
       .from('crm_files')
       .delete()
       .eq('id', id)
-      .eq('owner_id', session.user.id)
+      .eq('owner_id', await getEffectiveOwnerId())
     if (err) throw err
     setFiles((prev) => prev.filter((f) => f.id !== id))
   }, [])
@@ -344,7 +373,7 @@ export function useContracts(contactId: string | null) {
         .from('crm_contracts')
         .select('*')
         .eq('contact_id', contactId)
-        .eq('owner_id', session.user.id)
+        .eq('owner_id', await getEffectiveOwnerId())
         .order('created_at', { ascending: false })
       if (err) throw err
       setContracts((data ?? []).map((r) => rowToContract(r as Record<string, unknown>)))
@@ -364,7 +393,7 @@ export function useContracts(contactId: string | null) {
     }
     const { data, error: err } = await supabase
       .from('crm_contracts')
-      .insert({ contact_id: contactId, owner_id: session.user.id, title, content })
+      .insert({ contact_id: contactId, owner_id: await getEffectiveOwnerId(), title, content })
       .select()
       .single()
     if (err) throw err
@@ -380,7 +409,7 @@ export function useContracts(contactId: string | null) {
       .from('crm_contracts')
       .update({ ...payload, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .eq('owner_id', session.user.id)
+      .eq('owner_id', await getEffectiveOwnerId())
       .select()
       .single()
     if (err) throw err
@@ -396,7 +425,7 @@ export function useContracts(contactId: string | null) {
       .from('crm_contracts')
       .delete()
       .eq('id', id)
-      .eq('owner_id', session.user.id)
+      .eq('owner_id', await getEffectiveOwnerId())
     if (err) throw err
     setContracts((prev) => prev.filter((c) => c.id !== id))
   }, [])
@@ -431,7 +460,7 @@ export function useForms(contactId: string | null) {
         .from('crm_forms')
         .select('*')
         .eq('contact_id', contactId)
-        .eq('owner_id', session.user.id)
+        .eq('owner_id', await getEffectiveOwnerId())
         .order('created_at', { ascending: false })
       if (err) throw err
       setForms((data ?? []).map((r) => rowToForm(r as Record<string, unknown>)))
@@ -448,7 +477,7 @@ export function useForms(contactId: string | null) {
     if (!session) throw new Error('Not authenticated')
     const { data, error: err } = await supabase
       .from('crm_forms')
-      .insert({ contact_id: contactId, owner_id: session.user.id, title, fields: [] })
+      .insert({ contact_id: contactId, owner_id: await getEffectiveOwnerId(), title, fields: [] })
       .select()
       .single()
     if (err) throw err
@@ -464,7 +493,7 @@ export function useForms(contactId: string | null) {
       .from('crm_forms')
       .update({ ...payload, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .eq('owner_id', session.user.id)
+      .eq('owner_id', await getEffectiveOwnerId())
       .select()
       .single()
     if (err) throw err
@@ -480,7 +509,7 @@ export function useForms(contactId: string | null) {
       .from('crm_forms')
       .delete()
       .eq('id', id)
-      .eq('owner_id', session.user.id)
+      .eq('owner_id', await getEffectiveOwnerId())
     if (err) throw err
     setForms((prev) => prev.filter((f) => f.id !== id))
   }, [])

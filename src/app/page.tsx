@@ -14,6 +14,7 @@ import { useDashboardFeed } from '@/hooks/useDashboardFeed'
 import { useContacts } from '@/hooks/useCrm'
 import { resolveWorkspaceName } from '@/utils/workspace'
 import { useGreeting } from '@/hooks/useGreeting'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import { Skeleton } from '@/components/ui/skeleton'
 
 // ─── Progress bar row ─────────────────────────────────────────────────────────
@@ -70,8 +71,11 @@ function fileIcon(type: string | null, name: string) {
 export default function DashboardPage() {
   const { user } = useAuth()
   const { settings } = useSettings()
-  const pending = useCrmPending(user?.id)
-  const feed = useDashboardFeed(user?.id)
+  const { workspace } = useWorkspace()
+  // Members see their workspace's data; for owners this is just their own id.
+  const ownerId = workspace?.owner_id ?? user?.id
+  const pending = useCrmPending(ownerId)
+  const feed = useDashboardFeed(ownerId)
   const { contacts, loading: contactsLoading } = useContacts()
 
   const accent = settings.accent_color ?? '#ED64A6'

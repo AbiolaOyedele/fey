@@ -197,7 +197,7 @@ function JoinPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
                     required
                     placeholder="e.g. A3B7X9M2"
                     className={inputCls}
-                    style={{ fontFamily: 'monospace', letterSpacing: '0.1em' }}
+                    style={{ letterSpacing: '0.1em' }}
                   />
                 </div>
               )}

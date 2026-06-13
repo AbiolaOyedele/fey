@@ -136,6 +136,16 @@ h1, h2, h3, .font-display {
   letter-spacing: -0.02em;
 }
 
+/* NoirPro ships only two faces: Light (300) and Regular (400). Map every
+   Tailwind weight utility onto those two real files so the browser never
+   synthesizes a fake bold — Light for body text, Regular for headings &
+   emphasis. (Unlayered rules, so they win over Tailwind's layered utilities.) */
+.font-thin, .font-extralight, .font-light, .font-normal { font-weight: 300; }
+.font-medium, .font-semibold, .font-bold, .font-extrabold, .font-black { font-weight: 400; }
+
+/* Never fake a weight or slant we don't ship a file for. */
+html { font-synthesis: none; }
+
 input[type="checkbox"] {
   width: 18px;
   height: 18px;

@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, CreditCard, Settings,
   ListTodo, FileText, Sparkles, ChevronsLeft, ChevronsRight,
+  MessagesSquare, UsersRound,
 } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
@@ -142,6 +143,8 @@ export default function Sidebar() {
 
           <NavItem href="/payments" label="Payments" accent={accent} expanded={showExpanded} icon={<CreditCard size={20} />} />
           <NavItem href="/invoices" label="Invoices" accent={accent} expanded={showExpanded} icon={<FileText size={20} />} />
+          <NavItem href="/playground" label="Internal Chats" accent={accent} expanded={showExpanded} icon={<MessagesSquare size={20} />} />
+          <NavItem href="/team" label="Team" accent={accent} expanded={showExpanded} icon={<UsersRound size={20} />} />
           <NavItem href="/fey" label="Fey" accent={accent} expanded={showExpanded} subtle icon={<Sparkles size={20} />} />
         </nav>
 
@@ -179,7 +182,8 @@ export default function Sidebar() {
         )}
 
         <MobileLink href="/payments" accent={accent}><CreditCard size={22} /></MobileLink>
-        <MobileLink href="/invoices" accent={accent}><FileText size={22} /></MobileLink>
+        <MobileLink href="/playground" accent={accent}><MessagesSquare size={22} /></MobileLink>
+        <MobileLink href="/team"     accent={accent}><UsersRound size={22} /></MobileLink>
         <MobileLink href="/fey"      accent={accent}><Sparkles size={22} /></MobileLink>
         <MobileLink href="/settings" accent={accent}><Settings size={22} /></MobileLink>
       </nav>

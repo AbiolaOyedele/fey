@@ -24,6 +24,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const isPublic = PUBLIC_ROUTES.includes(pathname)
     || pathname.startsWith('/auth/')
+    || pathname.startsWith('/team/accept')
     || pathname.startsWith('/share/')
     || pathname.startsWith('/invoice/')
     || pathname.startsWith('/portal/')

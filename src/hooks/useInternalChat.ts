@@ -1,0 +1,124 @@
+'use client'
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
+import type { InternalChannel, InternalMessage } from '@/types/team'
+
+interface InternalChatState {
+  channels:        InternalChannel[]
+  activeChannelId: string | null
+  setActiveChannel: (id: string) => void
+  messages:        InternalMessage[]
+  loadingChannels: boolean
+  loadingMessages: boolean
+  sending:         boolean
+  error:           string | null
+  send:            (body: string) => Promise<void>
+}
+
+/**
+ * Drives the Internal Chats (Playground). Loads the workspace's channels,
+ * streams messages for the active channel via Supabase Realtime, and sends new
+ * messages. RLS restricts every query to channels in workspaces the user belongs
+ * to, so no workspace filter is needed client-side.
+ */
+export function useInternalChat(workspaceId: string | null): InternalChatState {
+  const { user } = useAuth()
+  const [channels,        setChannels]        = useState<InternalChannel[]>([])
+  const [activeChannelId, setActiveChannelId] = useState<string | null>(null)
+  const [messages,        setMessages]        = useState<InternalMessage[]>([])
+  const [loadingChannels, setLoadingChannels] = useState(true)
+  const [loadingMessages, setLoadingMessages] = useState(false)
+  const [sending,         setSending]         = useState(false)
+  const [error,           setError]           = useState<string | null>(null)
+  const activeRef = useRef<string | null>(null)
+
+  // Load channels for the workspace.
+  useEffect(() => {
+    if (!workspaceId) { setLoadingChannels(false); return }
+    let cancelled = false
+    void (async () => {
+      setLoadingChannels(true)
+      const { data, error: err } = await supabase
+        .from('internal_channels')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: true })
+      if (cancelled) return
+      if (err) { setError(err.message); setLoadingChannels(false); return }
+      const list = (data ?? []) as InternalChannel[]
+      setChannels(list)
+      setActiveChannelId((prev) => prev ?? list[0]?.id ?? null)
+      setLoadingChannels(false)
+    })()
+    return () => { cancelled = true }
+  }, [workspaceId])
+
+  // Load + subscribe to messages for the active channel.
+  useEffect(() => {
+    activeRef.current = activeChannelId
+    if (!activeChannelId) { setMessages([]); return }
+    let cancelled = false
+
+    void (async () => {
+      setLoadingMessages(true)
+      const { data, error: err } = await supabase
+        .from('internal_messages')
+        .select('*')
+        .eq('channel_id', activeChannelId)
+        .order('created_at', { ascending: true })
+        .limit(200)
+      if (cancelled) return
+      if (err) { setError(err.message); setLoadingMessages(false); return }
+      setMessages((data ?? []) as InternalMessage[])
+      setLoadingMessages(false)
+    })()
+
+    const channel = supabase
+      .channel(`internal:${activeChannelId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'internal_messages', filter: `channel_id=eq.${activeChannelId}` },
+        (payload) => {
+          const msg = payload.new as InternalMessage
+          setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
+        },
+      )
+      .subscribe()
+
+    return () => { cancelled = true; void supabase.removeChannel(channel) }
+  }, [activeChannelId])
+
+  const send = useCallback(async (body: string) => {
+    const trimmed = body.trim()
+    if (!trimmed || !user || !workspaceId || !activeChannelId) return
+    setSending(true)
+    try {
+      const { data, error: err } = await supabase
+        .from('internal_messages')
+        .insert({
+          channel_id:   activeChannelId,
+          workspace_id: workspaceId,
+          sender_id:    user.id,
+          body:         trimmed,
+        })
+        .select()
+        .single()
+      if (err) throw err
+      // Optimistically append (realtime echo is de-duped by id).
+      const msg = data as InternalMessage
+      setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
+      setError(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to send message')
+    } finally {
+      setSending(false)
+    }
+  }, [user, workspaceId, activeChannelId])
+
+  return {
+    channels, activeChannelId, setActiveChannel: setActiveChannelId,
+    messages, loadingChannels, loadingMessages, sending, error, send,
+  }
+}

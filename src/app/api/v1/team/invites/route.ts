@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { Resend } from 'resend'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requireAuth, handleError, errorResponse } from '@/lib/api-helpers'
 import { getMemberRole, isManager, generateInviteToken } from '@/lib/team-auth'
+import { sendWorkspaceInvite } from '@/services/email.service'
 import { env } from '@/config/env'
 
 const bodySchema = z.object({
@@ -69,21 +69,9 @@ export async function POST(req: NextRequest) {
     const inviteUrl = `${proto}://${host}/team/accept?token=${token}`
 
     // Best-effort email — never block the invite on a mail failure.
-    if (env.RESEND_API_KEY) {
-      try {
-        const { data: ws } = await db.from('workspaces').select('name').eq('id', workspace_id).maybeSingle()
-        const wsName = (ws as { name: string } | null)?.name ?? 'a workspace'
-        const resend = new Resend(env.RESEND_API_KEY)
-        await resend.emails.send({
-          from: 'Fey <team@feyapp.com>',
-          to: emailLower,
-          subject: `You’ve been invited to join ${wsName} on Fey`,
-          html: `<p>You’ve been invited to join <strong>${wsName}</strong> as a ${role}.</p>
-                 <p><a href="${inviteUrl}">Accept your invite</a></p>
-                 <p>If you didn’t expect this, you can ignore this email.</p>`,
-        })
-      } catch { /* email is best-effort */ }
-    }
+    const { data: ws } = await db.from('workspaces').select('name').eq('id', workspace_id).maybeSingle()
+    const wsName = (ws as { name: string } | null)?.name ?? 'a workspace'
+    await sendWorkspaceInvite(emailLower, { workspaceName: wsName, role, inviteUrl })
 
     return NextResponse.json({ invite_url: inviteUrl })
   } catch (err) {

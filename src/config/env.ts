@@ -9,6 +9,9 @@ const envSchema = z.object({
   NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY:    z.string().min(1).optional(),
   // CRM / portal
   SUPABASE_SERVICE_ROLE_KEY:          z.string().min(1).optional(),
+  // Shared secret guarding the Supabase DB webhook that triggers chat alerts.
+  // While unset, the notify endpoint rejects every request (no alerts sent).
+  EMAIL_WEBHOOK_SECRET:               z.string().min(16).optional(),
   NEXT_PUBLIC_ROOT_DOMAIN:            z.string().min(1).optional(),
   NEXT_PUBLIC_APP_URL:                z.string().url().optional(),
   // Portal client auth (custom JWT — not Supabase Auth)
@@ -33,6 +36,7 @@ const parsed = envSchema.safeParse({
   PAYSTACK_SECRET_KEY:                process.env.PAYSTACK_SECRET_KEY,
   NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY:    process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
   SUPABASE_SERVICE_ROLE_KEY:          process.env.SUPABASE_SERVICE_ROLE_KEY,
+  EMAIL_WEBHOOK_SECRET:               process.env.EMAIL_WEBHOOK_SECRET,
   NEXT_PUBLIC_ROOT_DOMAIN:            process.env.NEXT_PUBLIC_ROOT_DOMAIN,
   NEXT_PUBLIC_APP_URL:                process.env.NEXT_PUBLIC_APP_URL,
   PORTAL_JWT_SECRET:                  process.env.PORTAL_JWT_SECRET,
@@ -63,6 +67,7 @@ export const env = parsed.success
       PAYSTACK_SECRET_KEY:             process.env.PAYSTACK_SECRET_KEY,
       NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
       SUPABASE_SERVICE_ROLE_KEY:       process.env.SUPABASE_SERVICE_ROLE_KEY,
+      EMAIL_WEBHOOK_SECRET:            process.env.EMAIL_WEBHOOK_SECRET,
       NEXT_PUBLIC_ROOT_DOMAIN:         process.env.NEXT_PUBLIC_ROOT_DOMAIN,
       NEXT_PUBLIC_APP_URL:             process.env.NEXT_PUBLIC_APP_URL,
       PORTAL_JWT_SECRET:               process.env.PORTAL_JWT_SECRET,

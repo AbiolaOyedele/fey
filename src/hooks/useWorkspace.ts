@@ -3,11 +3,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import type { Workspace, WorkspaceRole } from '@/types/team'
+import { canManageTeam, type Workspace, type WorkspaceRole } from '@/types/team'
 
 interface WorkspaceState {
   workspace: Workspace | null
   role:      WorkspaceRole | null
+  /** True for owner/admin — gates create/edit/send/delete on client data. */
+  canManage: boolean
   loading:   boolean
   error:     string | null
   refetch:   () => void
@@ -58,5 +60,5 @@ export function useWorkspace(): WorkspaceState {
 
   useEffect(() => { void fetchWorkspace() }, [fetchWorkspace])
 
-  return { workspace, role, loading, error, refetch: fetchWorkspace }
+  return { workspace, role, canManage: canManageTeam(role), loading, error, refetch: fetchWorkspace }
 }

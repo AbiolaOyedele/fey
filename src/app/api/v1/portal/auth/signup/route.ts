@@ -4,6 +4,8 @@ import { createServiceClient } from '@/lib/supabase-server'
 import { handleError, errorResponse } from '@/lib/api-helpers'
 import * as crmRepo from '@/repositories/crm.repository'
 import * as portalRepo from '@/repositories/portal.repository'
+import { sendEmail } from '@/services/email.service'
+import { appUrl } from '@/config/email'
 import { z } from 'zod'
 
 const signupSchema = z.object({
@@ -119,23 +121,16 @@ export async function POST(req: NextRequest) {
       `${name} joined your portal`,
     )
 
-    // 8. Email owner (non-fatal)
-    try {
-      const resendKey = process.env.RESEND_API_KEY
-      if (resendKey && ownerEmail) {
-        const { Resend } = await import('resend')
-        const resend = new Resend(resendKey)
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-        await resend.emails.send({
-          from:    'Fey Workboard <notifications@feyapp.com>',
-          to:      [ownerEmail],
-          subject: `${name} joined your portal`,
-          html: `<p><strong>${name}</strong> (${email}) just signed up to your client portal.</p>
-                 ${appUrl ? `<p><a href="${appUrl}/clients/${contact_id}/messages">View their workspace</a></p>` : ''}`,
-        })
-      }
-    } catch {
-      // Email failure is non-fatal
+    // 8. Email owner (non-fatal — sendEmail never throws)
+    if (ownerEmail) {
+      const base = appUrl()
+      await sendEmail({
+        from:    'Fey Workboard <notifications@feyapp.com>',
+        to:      [ownerEmail],
+        subject: `${name} joined your portal`,
+        html: `<p><strong>${name}</strong> (${email}) just signed up to your client portal.</p>
+               <p><a href="${base}/clients/${contact_id}/messages">View their workspace</a></p>`,
+      })
     }
 
     return NextResponse.json({ success: true, userId: portalUser.id }, { status: 201 })

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import ContactTabs from '@/components/crm/ContactTabs'
 import ClientSearchDialog from '@/components/crm/ClientSearchDialog'
 import { relativeTime, isActiveWithin } from '@/utils/relativeTime'
+import { useWorkspace } from '@/hooks/useWorkspace'
 
 interface ContactDetailLayoutProps {
   children: React.ReactNode
@@ -22,6 +23,7 @@ interface ContactSummary {
 export default function ContactDetailLayout({ children, params }: ContactDetailLayoutProps) {
   const { id } = use(params)
   const router  = useRouter()
+  const { canManage } = useWorkspace()
 
   // ── Fetch only this contact's name — no full-list round-trip ─────────────
   const [contact, setContact] = useState<ContactSummary | null>(null)
@@ -148,7 +150,8 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
               <kbd className="hidden md:inline text-[10px] text-gray-300 border border-gray-200 px-1 rounded font-mono">⌘K</kbd>
             </button>
 
-            {/* Three-dot menu */}
+            {/* Three-dot menu — management actions, owner/admin only */}
+            {canManage && (
             <div className="relative" data-contact-menu>
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
@@ -194,6 +197,7 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
                 </div>
               )}
             </div>
+            )}
           </div>
         </div>
       </div>

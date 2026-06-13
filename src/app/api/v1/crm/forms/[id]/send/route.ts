@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createUserClient } from '@/lib/supabase-server'
 import { requireAuth, handleError } from '@/lib/api-helpers'
 import * as crmService from '@/services/crm.service'
-import { Resend } from 'resend'
+import { sendEmail } from '@/services/email.service'
 import { env } from '@/config/env'
 import { z } from 'zod'
 
@@ -31,8 +31,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const updated = await crmService.updateForm(db, id, user!.id, { status: 'sent' })
 
     const portalUrl = env.NEXT_PUBLIC_APP_URL ?? 'https://yourdomain.com'
-    const resend = new Resend(env.RESEND_API_KEY)
-    await resend.emails.send({
+    await sendEmail({
       from:    'Forms <forms@feyapp.com>',
       to:      [parsed.data.to],
       subject: `Form to complete: ${form.title}`,

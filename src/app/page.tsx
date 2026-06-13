@@ -71,7 +71,7 @@ function fileIcon(type: string | null, name: string) {
 export default function DashboardPage() {
   const { user } = useAuth()
   const { settings } = useSettings()
-  const { workspace } = useWorkspace()
+  const { workspace, canManage } = useWorkspace()
   // Members see their workspace's data; for owners this is just their own id.
   const ownerId = workspace?.owner_id ?? user?.id
   const pending = useCrmPending(ownerId)
@@ -154,13 +154,15 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
-            <Link
-              href="/clients?new=1"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity flex-shrink-0"
-              style={{ backgroundColor: accent }}
-            >
-              <UserPlus size={14} /> Add Client
-            </Link>
+            {canManage && (
+              <Link
+                href="/clients?new=1"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity flex-shrink-0"
+                style={{ backgroundColor: accent }}
+              >
+                <UserPlus size={14} /> Add Client
+              </Link>
+            )}
             <Link
               href="/clients"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors flex-shrink-0"
@@ -324,13 +326,15 @@ export default function DashboardPage() {
               <div className="flex flex-col items-center justify-center py-10">
                 <Users size={28} className="text-gray-200 mb-3" />
                 <p className="text-xs text-gray-400 mb-4">No clients yet</p>
-                <Link
-                  href="/clients?new=1"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold text-white hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: accent }}
-                >
-                  <UserPlus size={12} /> Add first client
-                </Link>
+                {canManage && (
+                  <Link
+                    href="/clients?new=1"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold text-white hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: accent }}
+                  >
+                    <UserPlus size={12} /> Add first client
+                  </Link>
+                )}
               </div>
             ) : (
               recentClients.map((c, i) => (

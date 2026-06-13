@@ -3,16 +3,24 @@ import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requireAuth, handleError, errorResponse } from '@/lib/api-helpers'
 import { getMemberRole, isManager } from '@/lib/team-auth'
+import { sendRoleChanged } from '@/services/email.service'
 
 const patchSchema = z.object({ role: z.enum(['admin', 'member']) })
 
-interface MemberRow { id: string; workspace_id: string; user_id: string; role: 'owner' | 'admin' | 'member' }
+interface MemberRow {
+  id: string
+  workspace_id: string
+  user_id: string
+  role: 'owner' | 'admin' | 'member'
+  email: string | null
+  name: string | null
+}
 
 async function loadMember(memberId: string) {
   const db = createServiceClient()
   const { data } = await db
     .from('workspace_members')
-    .select('id, workspace_id, user_id, role')
+    .select('id, workspace_id, user_id, role, email, name')
     .eq('id', memberId)
     .maybeSingle()
   return { db, member: data as MemberRow | null }
@@ -52,6 +60,22 @@ export async function PATCH(
 
     const { error } = await db.from('workspace_members').update({ role }).eq('id', memberId)
     if (error) throw error
+
+    // Best-effort: notify the member their role changed. sendRoleChanged never throws.
+    if (member.email) {
+      const { data: ws } = await db
+        .from('workspaces')
+        .select('name')
+        .eq('id', member.workspace_id)
+        .maybeSingle()
+      const workspaceName = (ws as { name: string } | null)?.name ?? 'your workspace'
+      await sendRoleChanged(member.email, {
+        memberName: member.name ?? member.email.split('@')[0],
+        workspaceName,
+        newRole: role,
+      })
+    }
+
     return NextResponse.json({ ok: true })
   } catch (err) {
     return handleError(err, 'TEAM_ROLE_UPDATE_FAILED')

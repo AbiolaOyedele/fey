@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
 import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
 import { env } from '@/config/env'
+import { EMAIL_FROM, appUrl } from '@/config/email'
+import { sendEmail } from '@/services/email.service'
 import { AppError, isAppError } from '@/lib/errors'
 
 // ── Request validation ─────────────────────────────────────────────────────
@@ -93,8 +94,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const resend = new Resend(env.RESEND_API_KEY)
-
     // 5. Get sender name from invoice's from_details (fallback to "Fey")
     const fromDetails = invoice.from_details as Record<string, unknown> | null
     const senderName = (fromDetails?.name as string | undefined) || 'Fey'
@@ -102,12 +101,12 @@ export async function POST(req: NextRequest) {
     // Build the share link if enabled
     const shareLink =
       (invoice.share_enabled as boolean) && (invoice.share_token as string | null)
-        ? `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://feyapp.com'}/invoice/${invoice.share_token as string}`
+        ? `${appUrl()}/invoice/${invoice.share_token as string}`
         : null
 
-    // 6. Send via Resend
-    const { error: sendError } = await resend.emails.send({
-      from: `${senderName} via Fey <invoices@feyapp.com>`,
+    // 6. Send via the centralized email service (single Resend instance)
+    const result = await sendEmail({
+      from: `${senderName} via Fey <${EMAIL_FROM.invoices}>`,
       to: [to],
       subject,
       text: emailBody + (shareLink ? `\n\nView invoice online: ${shareLink}` : ''),
@@ -118,8 +117,8 @@ export async function POST(req: NextRequest) {
       }),
     })
 
-    if (sendError) {
-      throw new AppError(502, 'Failed to send email. Please try again.', 'EMAIL_SEND_PROVIDER_ERROR', sendError)
+    if (!result.ok) {
+      throw new AppError(502, 'Failed to send email. Please try again.', 'EMAIL_SEND_PROVIDER_ERROR', result.error)
     }
 
     // 7. Update invoice status to 'sent' (only if currently 'draft')

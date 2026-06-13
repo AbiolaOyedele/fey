@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Plus, Users } from 'lucide-react'
 import { useContacts } from '@/hooks/useCrm'
+import { useWorkspace } from '@/hooks/useWorkspace'
 import ContactListRow from '@/components/crm/ContactListRow'
 import AddContactModal from '@/components/crm/AddContactModal'
 import { isActiveWithin } from '@/utils/relativeTime'
@@ -19,19 +20,21 @@ const STATUS_FILTERS: { label: string; value: ContactStatus | 'all' }[] = [
 export default function CrmContactsPage() {
   const router = useRouter()
   const { contacts, loading, createContact } = useContacts()
+  const { canManage } = useWorkspace()
 
   const [search,      setSearch]      = useState('')
   const [statusFilter, setStatusFilter] = useState<ContactStatus | 'all'>('all')
   const [selected,    setSelected]    = useState<string | null>(null)
   const [showModal,   setShowModal]   = useState(false)
 
-  // Deep link from the dashboard ("Add your first client") opens the modal.
+  // Deep link from the dashboard ("Add your first client") opens the modal —
+  // only for managers (members can't create clients).
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('new') === '1') {
+    if (canManage && new URLSearchParams(window.location.search).get('new') === '1') {
       setShowModal(true)
       window.history.replaceState(null, '', '/clients')
     }
-  }, [])
+  }, [canManage])
 
   const filtered = useMemo(() => {
     return contacts.filter((c) => {
@@ -68,14 +71,16 @@ export default function CrmContactsPage() {
         <div className="px-4 pt-6 pb-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-semibold text-gray-900">Clients</h1>
-            <button
-              onClick={() => setShowModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
-            >
-              <Plus size={14} />
-              Add
-            </button>
+            {canManage && (
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+              >
+                <Plus size={14} />
+                Add
+              </button>
+            )}
           </div>
 
           {/* Search */}
@@ -128,7 +133,7 @@ export default function CrmContactsPage() {
                   ? 'Try a different search or filter'
                   : 'Add your first client to get started'}
               </p>
-              {!search && statusFilter === 'all' && (
+              {canManage && !search && statusFilter === 'all' && (
                 <button
                   onClick={() => setShowModal(true)}
                   className="mt-4 px-4 py-2 rounded-full text-xs font-semibold text-white hover:opacity-90 transition-opacity"

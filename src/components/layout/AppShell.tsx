@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
@@ -21,8 +22,35 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router   = useRouter()
   const { user, loading: authLoading }               = useAuth()
   const { settings, settingsLoading } = useSettings()
-  const { workspace, loading: workspaceLoading } = useWorkspace()
+  const { workspace, loading: workspaceLoading, refetch: refetchWorkspace } = useWorkspace()
   const updateAvailable = useUpdatePrompt()
+
+  // A teammate who signed up via an invite link has a stashed token. Consume it
+  // once they're authenticated so they join the workspace instead of being sent
+  // to /setup. Bounded: the token is cleared after one attempt (success or not).
+  const [inviteResolving, setInviteResolving] = useState(false)
+  useEffect(() => {
+    if (!user || workspace || inviteResolving) return
+    let token: string | null = null
+    try { token = localStorage.getItem('fey:pending_invite') } catch { /* unavailable */ }
+    if (!token) return
+    setInviteResolving(true)
+    void (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        await fetch('/api/v1/team/invites/accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
+          body: JSON.stringify({ token }),
+        })
+      } catch { /* invalid/expired — fall through to normal onboarding */ }
+      finally {
+        try { localStorage.removeItem('fey:pending_invite') } catch { /* unavailable */ }
+        refetchWorkspace()
+        setInviteResolving(false)
+      }
+    })()
+  }, [user, workspace, inviteResolving, refetchWorkspace])
 
   const isPublic = PUBLIC_ROUTES.includes(pathname)
     || pathname.startsWith('/auth/')
@@ -48,10 +76,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     || !!workspace
 
   useEffect(() => {
-    if (IS_DEMO || isPublic || loading) return
+    if (IS_DEMO || isPublic || loading || inviteResolving) return
     if (!user) { router.replace('/login'); return }
     if (!setupComplete) { router.replace('/setup') }
-  }, [user, loading, isPublic, setupComplete, router])
+  }, [user, loading, isPublic, setupComplete, inviteResolving, router])
 
   // Keep the owner on their own workspace subdomain (<slug>.theruff.agency).
   // Cookie SSO carries the session across subdomains, so this is a seamless hard

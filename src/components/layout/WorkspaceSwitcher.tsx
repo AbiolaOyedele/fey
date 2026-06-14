@@ -52,7 +52,7 @@ export default function WorkspaceSwitcher({ accent }: { accent: string }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl border border-gray-100 shadow-lg z-50 py-1 animate-fadeIn">
+        <div className="absolute left-0 right-0 bottom-full mb-1 bg-white rounded-xl border border-gray-100 shadow-lg z-50 py-1 animate-fadeIn">
           <p className="px-3 pt-2 pb-1 text-3xs font-semibold uppercase tracking-wide text-gray-400">Workspaces</p>
           <div className="max-h-64 overflow-y-auto">
             {memberships.map((m) => {

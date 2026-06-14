@@ -32,7 +32,7 @@ const THEME_COLORS = [
 
 const NAV = [
   'Profile', 'Brand', 'Business', 'Invoices',
-  'App', 'CRM & Portal', 'Notifications', 'Integrations', 'Billing',
+  'App', 'CRM & Portal', 'Integrations', 'Billing', 'Redundant',
 ] as const
 
 type NavSection = typeof NAV[number]
@@ -43,7 +43,8 @@ const TAB_ALIASES: Record<string, NavSection> = {
   'Business Info': 'Business',
   'Payments':      'Invoices',
   'General':       'App',
-  'Emails':        'Notifications',
+  'Emails':        'Redundant',
+  'Notifications': 'Redundant',
   'CRM':           'CRM & Portal',
   'Portal':        'CRM & Portal',
   'WhatsApp':      'Integrations',
@@ -355,16 +356,17 @@ function SettingsPageInner() {
   const handleDeleteAccount = async (): Promise<void> => {
     if (deleteText !== 'DELETE') return
     try {
-      const uid = user?.id
-      if (!uid) return
-      await supabase.from('tasks').delete().eq('user_id', uid)
-      await supabase.from('retainer_payments').delete().eq('user_id', uid)
-      await supabase.from('clients').delete().eq('user_id', uid)
-      await supabase.from('standalone_tasks').delete().eq('user_id', uid)
-      await supabase.from('task_groups').delete().eq('user_id', uid)
-      await supabase.from('shared_clients').delete().eq('user_id', uid)
-      await supabase.from('trash').delete().eq('user_id', uid)
-      await supabase.from('fey_settings').delete().eq('user_id', uid)
+      // Server-side wipe: removes ALL data (CRM, workspaces, invoices, legacy)
+      // and the auth user, so logging back in can't resurrect stale data.
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/v1/account/delete', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null) as { error?: { message?: string } } | null
+        throw new Error(body?.error?.message ?? 'Could not delete your account.')
+      }
       await signOut()
     } catch (err) {
       showToast(`Delete failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
@@ -607,24 +609,6 @@ function SettingsPageInner() {
           <SettingRow icon={Mail} title="Email" description={user?.email ?? ''} border={false} />
         </SectionGroup>
 
-        {/* Hourly rate */}
-        <SectionGroup title="Billing defaults">
-          <div className="py-4">
-            <label className="block text-xs font-medium text-gray-500 mb-2">Default hourly rate</label>
-            <div className="flex gap-2 items-start">
-              <div className="flex-1">
-                <input
-                  type="number" min="0" placeholder="e.g. 150"
-                  value={settings.hourly_rate}
-                  onChange={(e) => void saveSetting('hourly_rate', e.target.value)}
-                  className={inputClass}
-                />
-                <p className="text-xs text-gray-400 mt-1.5">Saved for reference — use it when creating invoices</p>
-              </div>
-            </div>
-          </div>
-        </SectionGroup>
-
         {/* Password */}
         {!googleUser && (
           <SectionGroup title="Password">
@@ -820,25 +804,6 @@ function SettingsPageInner() {
               </button>
             )}
             <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
-          </div>
-        </SectionGroup>
-
-        {/* Card size */}
-        <SectionGroup title="Client cards">
-          <div className="py-4">
-            <label className="block text-xs font-medium text-gray-500 mb-2">Card size</label>
-            <div className="flex gap-2">
-              {(['compact', 'medium', 'large'] as const).map((size) => (
-                <button
-                  key={size}
-                  onClick={() => void saveSetting('card_size', size)}
-                  className="flex-1 py-2 rounded-xl text-xs font-medium border capitalize transition-colors"
-                  style={settings.card_size === size ? { borderColor: 'var(--accent)', backgroundColor: 'color-mix(in srgb, var(--accent) 8%, white)', color: 'var(--accent)' } : { borderColor: '#e5e7eb', color: '#6b7280' }}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
           </div>
         </SectionGroup>
 
@@ -1178,14 +1143,6 @@ function SettingsPageInner() {
           />
         </div>
 
-        <div className="py-4 border-b border-gray-100">
-          <label className="block text-xs font-medium text-gray-500 mb-2">Dashboard subtitle</label>
-          <input
-            type="text" value={settings.dashboard_subtitle} placeholder="Optional tagline"
-            onChange={(e) => void saveSetting('dashboard_subtitle', e.target.value)}
-            className={inputClass}
-          />
-        </div>
 
         <div className="py-4">
           <label className="block text-xs font-medium text-gray-500 mb-2">Clients label</label>
@@ -1622,19 +1579,62 @@ function SettingsPageInner() {
     )
   }
 
-  // ── Notifications ──────────────────────────────────────────────────────────
+  // ── Redundant ───────────────────────────────────────────────────────────────
+  // Settings that aren't currently wired to anything — parked here for review.
 
-  const renderNotifications = (): React.ReactNode => (
+  const renderRedundant = (): React.ReactNode => (
     <>
-      <div className="mb-5 px-4 py-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
-        <AlertTriangle size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
+      <div className="mb-5 px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl flex items-start gap-3">
+        <AlertTriangle size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
         <div>
-          <p className="text-sm font-semibold text-amber-800">Email delivery in progress</p>
-          <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
-            Transactional email is being set up. Your preferences are saved and will take effect when the feature goes live.
+          <p className="text-sm font-semibold text-gray-700">Not currently in use</p>
+          <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+            These settings aren&apos;t connected to anything live yet. They&apos;re kept here so nothing is lost — review or remove them later.
           </p>
         </div>
       </div>
+
+      <SectionGroup title="Billing defaults">
+        <div className="py-4">
+          <label className="block text-xs font-medium text-gray-500 mb-2">Default hourly rate</label>
+          <input
+            type="number" min="0" placeholder="e.g. 150"
+            value={settings.hourly_rate}
+            onChange={(e) => void saveSetting('hourly_rate', e.target.value)}
+            className={inputClass}
+          />
+          <p className="text-xs text-gray-400 mt-1.5">Saved for reference — not used when creating invoices yet</p>
+        </div>
+      </SectionGroup>
+
+      <SectionGroup title="Client cards">
+        <div className="py-4">
+          <label className="block text-xs font-medium text-gray-500 mb-2">Card size</label>
+          <div className="flex gap-2">
+            {(['compact', 'medium', 'large'] as const).map((size) => (
+              <button
+                key={size}
+                onClick={() => void saveSetting('card_size', size)}
+                className="flex-1 py-2 rounded-xl text-xs font-medium border capitalize transition-colors"
+                style={settings.card_size === size ? { borderColor: 'var(--accent)', backgroundColor: 'color-mix(in srgb, var(--accent) 8%, white)', color: 'var(--accent)' } : { borderColor: '#e5e7eb', color: '#6b7280' }}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+      </SectionGroup>
+
+      <SectionGroup title="Dashboard">
+        <div className="py-4">
+          <label className="block text-xs font-medium text-gray-500 mb-2">Dashboard subtitle</label>
+          <input
+            type="text" value={settings.dashboard_subtitle} placeholder="Optional tagline"
+            onChange={(e) => void saveSetting('dashboard_subtitle', e.target.value)}
+            className={inputClass}
+          />
+        </div>
+      </SectionGroup>
 
       <SectionGroup title="Account emails">
         <SettingRow icon={Mail} title="Project accepted" description="When a client accepts a proposal" badge={<SoonBadge />}
@@ -1879,7 +1879,7 @@ function SettingsPageInner() {
       case 'Invoices':     return renderInvoices()
       case 'App':          return renderApp()
       case 'CRM & Portal': return renderCrmAndPortal()
-      case 'Notifications': return renderNotifications()
+      case 'Redundant':    return renderRedundant()
       case 'Integrations': return renderIntegrations()
       case 'Billing':      return renderBilling()
       default:             return null

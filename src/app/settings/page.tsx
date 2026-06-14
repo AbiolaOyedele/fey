@@ -10,6 +10,8 @@ import { useSupabaseData } from '@/hooks/useSupabaseData'
 import { supabase } from '@/lib/supabase'
 import { IS_DEMO } from '@/lib/constants'
 import type { TrashItem } from '@/types'
+import { normalizeFontDataUrl } from '@/utils/fontHelpers'
+import { compressImage } from '@/utils/imageHelpers'
 import {
   Upload, RefreshCw, Trash2, RotateCcw, X, User,
   History, LogOut, ChevronDown, ChevronRight,
@@ -284,13 +286,14 @@ function SettingsPageInner() {
     reader.readAsDataURL(file)
   }
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>): void => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 500 * 1024) { showToast('Logo must be under 500 KB'); return }
-    const reader = new FileReader()
-    reader.onloadend = () => void saveSetting('logo', reader.result as string)
-    reader.readAsDataURL(file)
+    if (file.size > 3 * 1024 * 1024) { showToast('Logo must be under 3 MB'); return }
+    // Accept a generous source file, then downscale + re-encode to a compact
+    // WebP so the stored logo loads fast everywhere it renders.
+    const compressed = await compressImage(file, { maxDimension: 512, quality: 0.85 })
+    void saveSetting('logo', compressed)
   }
 
   const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>): void => {
@@ -309,7 +312,7 @@ function SettingsPageInner() {
     const reader = new FileReader()
     reader.onloadend = () => {
       const name = file.name.replace(/\.[^.]+$/, '')
-      void saveSetting('custom_font', reader.result as string)
+      void saveSetting('custom_font', normalizeFontDataUrl(reader.result as string, file.name))
       void saveSetting('custom_font_name', name)
       void saveSetting('font_family', 'custom')
     }
@@ -323,7 +326,7 @@ function SettingsPageInner() {
     const reader = new FileReader()
     reader.onloadend = () => {
       const name = file.name.replace(/\.[^.]+$/, '')
-      void saveSetting('custom_heading_font', reader.result as string)
+      void saveSetting('custom_heading_font', normalizeFontDataUrl(reader.result as string, file.name))
       void saveSetting('custom_heading_font_name', name)
       void saveSetting('heading_font', 'custom')
     }
@@ -772,7 +775,7 @@ function SettingsPageInner() {
               )}
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-800">Logo</p>
-                <p className="text-xs text-gray-400 mt-0.5">Used on invoices and the client portal. Max 500 KB</p>
+                <p className="text-xs text-gray-400 mt-0.5">Used on invoices and the client portal. Max 3 MB — optimised automatically</p>
                 <div className="flex gap-3 mt-1.5">
                   <button onClick={() => logoRef.current?.click()} className="text-xs font-medium underline underline-offset-2 text-gray-500 hover:text-gray-700">Upload</button>
                   {settings.logo && <button onClick={() => void saveSetting('logo', '')} className="text-xs text-red-400 hover:text-red-600 underline underline-offset-2">Remove</button>}
@@ -851,27 +854,6 @@ function SettingsPageInner() {
             )}
           </div>
         </SectionGroup>
-
-        {/* Invoice visual */}
-        <SectionGroup title="Invoice appearance">
-          <div className="py-4 border-b border-gray-100">
-            <label className="block text-xs font-medium text-gray-500 mb-2">Layout</label>
-            <select value={settings.invoice_layout} onChange={(e) => void saveSetting('invoice_layout', e.target.value)} className={inputClass}>
-              <option value="left_aligned">Left aligned</option>
-              <option value="centered">Centered</option>
-              <option value="split">Split</option>
-              <option value="minimal">Minimal</option>
-            </select>
-          </div>
-          <div className="py-4 border-b border-gray-100">
-            <label className="block text-xs font-medium text-gray-500 mb-2">Font color</label>
-            <input type="color" value={settings.invoice_font_color} onChange={(e) => void saveSetting('invoice_font_color', e.target.value)} className="h-10 w-24 rounded-xl border border-gray-200 cursor-pointer" />
-          </div>
-          <div className="py-4">
-            <label className="block text-xs font-medium text-gray-500 mb-2">Background color</label>
-            <input type="color" value={settings.invoice_bg_color} onChange={(e) => void saveSetting('invoice_bg_color', e.target.value)} className="h-10 w-24 rounded-xl border border-gray-200 cursor-pointer" />
-          </div>
-        </SectionGroup>
       </>
     )
   }
@@ -925,6 +907,26 @@ function SettingsPageInner() {
 
   const renderInvoices = (): React.ReactNode => (
     <>
+      <SectionGroup title="Invoice appearance">
+        <div className="py-4 border-b border-gray-100">
+          <label className="block text-xs font-medium text-gray-500 mb-2">Layout</label>
+          <select value={settings.invoice_layout} onChange={(e) => void saveSetting('invoice_layout', e.target.value)} className={inputClass}>
+            <option value="left_aligned">Left aligned</option>
+            <option value="centered">Centered</option>
+            <option value="split">Split</option>
+            <option value="minimal">Minimal</option>
+          </select>
+        </div>
+        <div className="py-4 border-b border-gray-100">
+          <label className="block text-xs font-medium text-gray-500 mb-2">Font color</label>
+          <input type="color" value={settings.invoice_font_color} onChange={(e) => void saveSetting('invoice_font_color', e.target.value)} className="h-10 w-24 rounded-xl border border-gray-200 cursor-pointer" />
+        </div>
+        <div className="py-4">
+          <label className="block text-xs font-medium text-gray-500 mb-2">Background color</label>
+          <input type="color" value={settings.invoice_bg_color} onChange={(e) => void saveSetting('invoice_bg_color', e.target.value)} className="h-10 w-24 rounded-xl border border-gray-200 cursor-pointer" />
+        </div>
+      </SectionGroup>
+
       <SectionGroup title="Invoice numbering">
         <div className="py-4 border-b border-gray-100">
           <label className="block text-xs font-medium text-gray-500 mb-2">Invoice prefix &amp; next number</label>

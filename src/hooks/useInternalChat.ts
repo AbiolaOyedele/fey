@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import type { InternalChannel, InternalMessage } from '@/types/team'
+import type { MessageAttachment } from '@/types/crm'
 
 interface InternalChatState {
   channels:        InternalChannel[]
@@ -14,7 +15,8 @@ interface InternalChatState {
   loadingMessages: boolean
   sending:         boolean
   error:           string | null
-  send:            (body: string) => Promise<void>
+  send:            (body: string, attachments?: MessageAttachment[]) => Promise<void>
+  createChannel:   (name: string) => Promise<void>
 }
 
 /**
@@ -90,19 +92,23 @@ export function useInternalChat(workspaceId: string | null): InternalChatState {
     return () => { cancelled = true; void supabase.removeChannel(channel) }
   }, [activeChannelId])
 
-  const send = useCallback(async (body: string) => {
+  const send = useCallback(async (body: string, attachments: MessageAttachment[] = []) => {
     const trimmed = body.trim()
-    if (!trimmed || !user || !workspaceId || !activeChannelId) return
+    if ((!trimmed && attachments.length === 0) || !user || !workspaceId || !activeChannelId) return
     setSending(true)
     try {
+      // Only include attachments when present so text chat keeps working even
+      // before the attachments column migration is applied.
+      const payload: Record<string, unknown> = {
+        channel_id:   activeChannelId,
+        workspace_id: workspaceId,
+        sender_id:    user.id,
+        body:         trimmed,
+      }
+      if (attachments.length > 0) payload.attachments = attachments
       const { data, error: err } = await supabase
         .from('internal_messages')
-        .insert({
-          channel_id:   activeChannelId,
-          workspace_id: workspaceId,
-          sender_id:    user.id,
-          body:         trimmed,
-        })
+        .insert(payload)
         .select()
         .single()
       if (err) throw err
@@ -117,8 +123,22 @@ export function useInternalChat(workspaceId: string | null): InternalChatState {
     }
   }, [user, workspaceId, activeChannelId])
 
+  const createChannel = useCallback(async (name: string) => {
+    const clean = name.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
+    if (!clean || !user || !workspaceId) return
+    const { data, error: err } = await supabase
+      .from('internal_channels')
+      .insert({ workspace_id: workspaceId, name: clean, created_by: user.id })
+      .select()
+      .single()
+    if (err) { setError(err.message); return }
+    const ch = data as InternalChannel
+    setChannels((prev) => [...prev, ch])
+    setActiveChannelId(ch.id)
+  }, [user, workspaceId])
+
   return {
     channels, activeChannelId, setActiveChannel: setActiveChannelId,
-    messages, loadingChannels, loadingMessages, sending, error, send,
+    messages, loadingChannels, loadingMessages, sending, error, send, createChannel,
   }
 }

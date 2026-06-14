@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { CURRENCY_SYMBOLS } from '@/lib/constants'
+import { fontFaceSrc } from '@/utils/fontHelpers'
 import type { Settings, Toast, TrashItem, Client, RestoreResult } from '@/types'
 
 interface SettingsContextValue {
@@ -226,7 +227,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const fontName = settings.custom_font_name || 'CustomBodyFont'
       let style = document.getElementById('custom-body-font-face') as HTMLStyleElement | null
       if (!style) { style = document.createElement('style'); style.id = 'custom-body-font-face'; document.head.appendChild(style) }
-      style.textContent = `@font-face { font-family: '${fontName}'; src: url('${settings.custom_font}'); }`
+      style.textContent = `@font-face { font-family: '${fontName}'; src: ${fontFaceSrc(settings.custom_font)}; }`
       document.documentElement.style.setProperty('--body-font', `'${fontName}', 'Noto Sans', sans-serif`)
     } else {
       const existing = document.getElementById('google-body-font-link')
@@ -249,7 +250,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const fontName = settings.custom_heading_font_name || 'CustomHeadingFont'
       let style = document.getElementById('custom-heading-font-face') as HTMLStyleElement | null
       if (!style) { style = document.createElement('style'); style.id = 'custom-heading-font-face'; document.head.appendChild(style) }
-      style.textContent = `@font-face { font-family: '${fontName}'; src: url('${settings.custom_heading_font}'); }`
+      style.textContent = `@font-face { font-family: '${fontName}'; src: ${fontFaceSrc(settings.custom_heading_font)}; }`
       document.documentElement.style.setProperty('--heading-font', `'${fontName}', 'Noto Sans', sans-serif`)
     } else {
       const existing = document.getElementById('google-heading-font-link')

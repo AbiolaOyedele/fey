@@ -1,16 +1,22 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { MessageSquare, Paperclip } from 'lucide-react'
+import { MessageSquare } from 'lucide-react'
 import type { CrmMessage, MessageAttachment } from '@/types/crm'
 import RichTextComposer from './RichTextComposer'
+import AttachmentPreview from './AttachmentPreview'
 
 interface MessageThreadProps {
   messages: CrmMessage[]
   ownerId: string
+  contactName?: string
   onSend: (text: string, html: string, attachments: MessageAttachment[]) => Promise<void>
   showWelcomeBanner?: boolean
   loading?: boolean
+}
+
+function initial(name: string): string {
+  return name.trim().charAt(0).toUpperCase() || '?'
 }
 
 function formatTime(iso: string): string {
@@ -41,7 +47,7 @@ function groupByDate(messages: CrmMessage[]): Array<{ date: string; messages: Cr
   return groups
 }
 
-export default function MessageThread({ messages, ownerId, onSend, showWelcomeBanner = false, loading = false }: MessageThreadProps) {
+export default function MessageThread({ messages, ownerId, contactName = 'Client', onSend, showWelcomeBanner = false, loading = false }: MessageThreadProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -93,37 +99,33 @@ export default function MessageThread({ messages, ownerId, onSend, showWelcomeBa
             <div className="space-y-3">
               {group.messages.map((msg) => {
                 const isOwner = msg.sender_id === ownerId
+                const senderName = isOwner ? 'You' : contactName
+                const hasBody = !!(msg.body_html?.trim() || msg.body.trim())
                 return (
-                  <div key={msg.id} className={`flex gap-2 ${isOwner ? 'flex-row-reverse' : 'flex-row'}`}>
-                    <div className={`max-w-[75%] ${isOwner ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-                      <div
-                        className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                          isOwner
-                            ? 'rounded-tr-sm text-white'
-                            : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm'
-                        }`}
-                        style={isOwner ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
-                        dangerouslySetInnerHTML={{ __html: msg.body_html ?? msg.body.replace(/\n/g, '<br>') }}
-                      />
-                      {msg.attachments.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          {msg.attachments.map((att, i) => (
-                            <a
-                              key={i}
-                              href={att.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-2xs px-2 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-                            >
-                              <Paperclip size={10} className="inline-block mr-1" />{att.file_name}
-                            </a>
-                          ))}
-                        </div>
+                  <div key={msg.id} className={`flex gap-3 ${isOwner ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white flex-shrink-0"
+                      style={{ backgroundColor: isOwner ? 'var(--accent, #ED64A6)' : '#9CA3AF' }}
+                    >
+                      {initial(senderName)}
+                    </div>
+                    <div className={`max-w-[75%] flex flex-col ${isOwner ? 'items-end' : 'items-start'}`}>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs font-semibold text-gray-700">{senderName}</span>
+                        <span className="text-3xs text-gray-400">
+                          {formatTime(msg.created_at)}{isOwner && (msg.read_at ? ' · Read' : ' · Sent')}
+                        </span>
+                      </div>
+                      {hasBody && (
+                        <div
+                          className={`px-3 py-2 text-sm leading-relaxed break-words ${isOwner ? 'rounded-2xl rounded-tr-sm text-white' : 'rounded-2xl rounded-tl-sm text-gray-800'}`}
+                          style={isOwner ? { backgroundColor: 'var(--accent, #ED64A6)' } : { backgroundColor: '#F3F4F6' }}
+                          dangerouslySetInnerHTML={{ __html: msg.body_html ?? msg.body.replace(/\n/g, '<br>') }}
+                        />
                       )}
-                      <span className="text-3xs text-gray-300 px-1">
-                        {formatTime(msg.created_at)}
-                        {isOwner && (msg.read_at ? ' · Read' : ' · Sent')}
-                      </span>
+                      {msg.attachments.length > 0 && (
+                        <AttachmentPreview attachments={msg.attachments} />
+                      )}
                     </div>
                   </div>
                 )

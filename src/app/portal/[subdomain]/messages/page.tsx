@@ -3,7 +3,9 @@ import { portalTokenKey } from '@/hooks/usePortalAuth'
 
 import { use, useState, useEffect, useRef, useCallback } from 'react'
 import { Paperclip, X, Loader2, Send } from 'lucide-react'
-import { uploadToCloudinary, formatFileSize } from '@/utils/cloudinary'
+import { uploadToCloudinary } from '@/utils/cloudinary'
+import AttachmentPreview from '@/components/crm/AttachmentPreview'
+import EmojiPicker from '@/components/crm/EmojiPicker'
 import type { CrmMessage, MessageAttachment } from '@/types/crm'
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024 // 25 MB
@@ -124,39 +126,29 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
                 {dayMsgs.map((msg) => {
                   // Portal clients always have sender_type === 'client'
                   const isMe = msg.sender_type === 'client'
+                  // The owner side stores '(file)' as a placeholder body for
+                  // file-only messages — don't render that as text.
+                  const bodyText = msg.body === '(file)' ? '' : msg.body
+                  const hasBody = !!(msg.body_html?.trim() || bodyText.trim())
                   return (
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'} gap-1`}>
-                        <div
-                          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                            isMe ? 'text-white' : 'bg-white border border-gray-100 text-gray-800'
-                          }`}
-                          style={isMe ? { backgroundColor: '#101010' } : {}}
-                        >
-                          {msg.body_html ? (
-                            <div dangerouslySetInnerHTML={{ __html: msg.body_html }} className="prose prose-sm max-w-none" />
-                          ) : (
-                            msg.body
-                          )}
-                        </div>
-
-                        {msg.attachments.length > 0 && (
-                          <div className={`flex flex-wrap gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                            {msg.attachments.map((att, i) => (
-                              <a
-                                key={i}
-                                href={att.file_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
-                              >
-                                <Paperclip size={11} className="text-gray-400" />
-                                <span className="max-w-[180px] truncate">{att.file_name}</span>
-                                {att.file_size > 0 && <span className="text-gray-400">{formatFileSize(att.file_size)}</span>}
-                              </a>
-                            ))}
+                        {hasBody && (
+                          <div
+                            className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                              isMe ? 'text-white rounded-tr-sm' : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm'
+                            }`}
+                            style={isMe ? { backgroundColor: '#101010' } : {}}
+                          >
+                            {msg.body_html ? (
+                              <div dangerouslySetInnerHTML={{ __html: msg.body_html }} className="prose prose-sm max-w-none" />
+                            ) : (
+                              bodyText
+                            )}
                           </div>
                         )}
+
+                        {msg.attachments.length > 0 && <AttachmentPreview attachments={msg.attachments} />}
 
                         <span className="text-3xs text-gray-400 px-1">
                           {new Date(msg.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
@@ -207,6 +199,7 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
             <Paperclip size={18} />
           </button>
           <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => void handleFiles(e.target.files)} />
+          <EmojiPicker className="p-2.5 flex-shrink-0" onPick={(emoji) => setBody((b) => b + emoji)} />
           <textarea
             rows={1}
             value={body}

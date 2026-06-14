@@ -6,6 +6,7 @@ import {
   List, ListOrdered, Link, Send, Paperclip, X, Loader2,
 } from 'lucide-react'
 import { uploadToCloudinary, formatFileSize } from '@/utils/cloudinary'
+import EmojiPicker from './EmojiPicker'
 import type { MessageAttachment } from '@/types/crm'
 
 interface RichTextComposerProps {
@@ -134,6 +135,15 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
           multiple
           className="hidden"
           onChange={(e) => void handleFiles(e.target.files)}
+        />
+        <EmojiPicker
+          className="w-7 h-7"
+          onPick={(emoji) => {
+            const el = editorRef.current
+            if (!el) return
+            el.focus()
+            execCmd('insertText', emoji)
+          }}
         />
       </div>
 

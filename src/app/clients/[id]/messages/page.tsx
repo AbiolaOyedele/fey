@@ -22,6 +22,7 @@ export default function MessagesTab({ params }: { params: Promise<{ id: string }
       <MessageThread
         messages={messages}
         ownerId={user?.id ?? ''}
+        contactName={contact?.name ?? 'Client'}
         onSend={handleSend}
         showWelcomeBanner={!!contact?.portal_welcome_message}
         loading={loading}

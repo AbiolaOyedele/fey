@@ -47,6 +47,7 @@ export interface InternalMessage {
   workspace_id: string
   sender_id: string
   body: string
+  attachments: import('./crm').MessageAttachment[]
   created_at: string
 }
 

@@ -29,7 +29,7 @@ export function useCrmPending(workspaceId: string | undefined | null): CrmPendin
     void (async () => {
       const head = { count: 'exact' as const, head: true }
       const [contacts, msgs, contracts, forms] = await Promise.all([
-        supabase.from('crm_contacts').select('id', head).eq('workspace_id', workspaceId),
+        supabase.from('crm_contacts').select('id', head).eq('workspace_id', workspaceId).is('archived_at', null),
         supabase.from('crm_messages').select('id', head).eq('workspace_id', workspaceId).eq('sender_type', 'client').is('read_at', null),
         supabase.from('crm_contracts').select('id', head).eq('workspace_id', workspaceId).eq('status', 'sent'),
         supabase.from('crm_forms').select('id', head).eq('workspace_id', workspaceId).eq('status', 'sent'),

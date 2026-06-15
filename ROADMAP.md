@@ -29,6 +29,81 @@ input or an external action (kept at the bottom).
 
 ---
 
+## Progress log
+- **A1 — DONE** (2026-06-15): `src/utils/formatDate.ts` added; 35 date sites swept to
+  `formatDate`/`formatDateTime`; `relativeTime` fallback now `dd/mm/yyyy`; local helpers in
+  fey/share/MessageThread reconciled. `tsc` clean. Month-year aggregation labels left as-is.
+- **A2 — DONE** (2026-06-15): `RichTextComposer` link button now opens an in-app popup
+  (URL + optional text, Zod `http(s)` validation, Enter/Esc, selection-aware). No more
+  `window.prompt`. `tsc` clean.
+- **A3 — PARTIAL** (2026-06-15): central upload policy (`MAX_UPLOAD_BYTES`,
+  ALLOWED/BLOCKED extension lists in `constants.ts`) + `validateUploadFile()` enforced for
+  every caller in `utils/cloudinary.ts`; config read via `@/config/env` (added
+  `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`); duplicate inline uploader in `clients/[id]/files`
+  removed in favour of the shared util (now with error toast). **Still TODO:** switch the
+  unsigned preset to *signed* uploads — deferred because it needs per-call auth wiring across
+  BOTH owner (Supabase) and portal (custom JWT) callers + a Cloudinary dashboard change.
+  See refined note below.
+
+- **B2 — DONE** (2026-06-15): feedback button + modal (`components/ui/FeedbackButton.tsx`,
+  mounted in `AppShell`, owner app only). `POST /api/v1/feedback` → `feedback.service`
+  (Zod) → `feedback.repository` insert, then best-effort email to `ADMIN_EMAILS` via new
+  `FeedbackEmail` template. Migration `20260615_feedback.sql` (table + RLS). **Owner action:**
+  run the migration + set `ADMIN_EMAILS` on Vercel for the email copy (rows store regardless).
+  Admin-board inbox view comes with B1.
+
+- **B4 — PARTIAL** (2026-06-15): Archive for **clients** done — `archived_at` column
+  (migration `20260615_archive.sql`), `CrmContact.archived_at` type, `setContactArchived`
+  in `useContacts`, "Archived" filter on the clients list (archived hidden by default),
+  Archive/Unarchive in the client detail ⋯ menu. **Still TODO:** archive for Projects (ships
+  with B3), hide archived clients from the *portal* (needs portal-auth check), and exclude
+  archived from dashboard "Needs attention" counts (`useCrmPending`). **Owner action:** run
+  `20260615_archive.sql`.
+- **B6 — PARTIAL** (2026-06-15): baseline security headers added in `next.config.ts`
+  (nosniff, X-Frame-Options, Referrer-Policy, HSTS, Permissions-Policy). **Still TODO:** CSP
+  (needs origin audit), Vercel WAF/BotID + endpoint rate-limiting (free tier), per the B6 spec.
+
+- **B1 — DONE (custom board, phase 1)** (2026-06-15): admin board at **`/admin`**
+  (`app/admin/page.tsx`), gated server-side by `ADMIN_EMAILS` (`isAdminEmail`).
+  `GET /api/v1/admin/metrics` (service-role) → `admin.service.getMetrics` +
+  `admin.repository` (defensive counts/sums/time-series across workspaces, clients, portal
+  users, messages, files, invoices, contracts, forms, feedback) + signups-by-week.
+  `PATCH /api/v1/admin/feedback/[id]` cycles feedback status (new→triaged→done). UI: stat
+  cards + recharts bar chart + feedback inbox. `proxy.ts` maps `admin.<root>/` → `/admin`.
+  AppShell treats `/admin` as standalone (no owner gating). **Owner action:** set
+  `ADMIN_EMAILS`; (optional) point `admin.theruff.agency` DNS at the app. PostHog phase 2
+  later (seam left in `admin.service`).
+
+- **B3 — PARTIAL (owner side done)** (2026-06-15): Projects feature. Migration
+  `20260615_projects.sql` (`projects` + `project_messages` + `project_files`, workspace-scoped,
+  owner RLS, archived_at from the start). Types `src/types/project.ts`; hooks
+  `src/hooks/useProjects.ts` (`useProjects` list/create/update/archive/delete + `useProject`
+  detail with messages/files/send/upload). "Projects" tab in `ContactTabs`. Owner pages:
+  `clients/[id]/projects` (list + create) and `clients/[id]/projects/[projectId]` (chat + files,
+  reusing `MessageThread`/`FileList`, with archive). **Still TODO:** the **portal mirror** —
+  portal API routes (service-role + ownership) for project list/messages/files, portal pages,
+  and a Projects entry in `PortalWorkspaceTabs` so clients can open their projects. Campaigns
+  left untouched (retirement is a Part D decision). **Owner action:** run
+  `20260615_projects.sql`.
+
+- **B3 — DONE (owner + portal)** (2026-06-15): the portal mirror shipped. New
+  `portal-projects.repository.ts` + `portal-projects.service.ts` (Zod-validated, ownership +
+  archived checks, service-role). Routes: `GET /api/v1/portal/projects`,
+  `GET/.../[projectId]`, `POST /.../[projectId]/messages`, `POST /.../[projectId]/files`.
+  Portal pages: `portal/[subdomain]/projects` (list) + `.../projects/[projectId]` (chat +
+  files). "Projects" added to `PortalWorkspaceTabs`, `PortalShell` WORKSPACE_ROUTES, and the
+  workspace hub. Opening a project marks the owner's messages read.
+- **A5 / A6 — CODE-COMPLETE, pending SQL** (2026-06-15): read receipts + the active/last-seen
+  indicator were already wired (session route touches `last_seen_at`; activity endpoint +
+  `useContacts` merge + `ContactListRow` display; `markOwnerMessagesRead` + `portal_read_receipts`
+  gate). They light up the moment the message-settings columns exist — included in the combined
+  SQL. Fixed an admin-metrics bug (was querying a non-existent `crm_contacts.last_seen_at`).
+- **B4 — DONE** (2026-06-15): archive finished — archived clients excluded from dashboard
+  "Needs attention" (`useCrmPending`) and **blocked from the portal** (session route denies
+  archived contacts). Project-level archive also shipped with B3.
+- **SQL — combined file**: `supabase/migrations/RUN_ME_2026-06-15.sql` bundles all four
+  migrations (message-settings, feedback, archive, projects) — run once.
+
 ## PART A — Fixes / hardening of the current MVP (do first)
 
 ### A1. Centralised date formatting → `dd/mm/yyyy`

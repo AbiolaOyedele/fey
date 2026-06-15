@@ -1,5 +1,6 @@
 'use client'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
+import { formatDate } from '@/utils/formatDate'
 
 import { use, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -117,7 +118,7 @@ export default function PortalContractDetailPage({
         {contract.signed_at && (
           <div className="mt-6 bg-emerald-50 rounded-xl px-4 py-3">
             <p className="text-sm text-emerald-700 font-semibold">
-              Signed on {new Date(contract.signed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+              Signed on {formatDate(contract.signed_at)}
             </p>
           </div>
         )}

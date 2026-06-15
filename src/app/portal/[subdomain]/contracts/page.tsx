@@ -1,5 +1,6 @@
 'use client'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
+import { formatDate } from '@/utils/formatDate'
 import { portalBasePath } from '@/hooks/usePortalBase'
 
 import { use, useState, useEffect } from 'react'
@@ -66,7 +67,7 @@ export default function PortalContractsPage({ params }: { params: Promise<{ subd
                 {c.status}
               </span>
               <span className="text-xs text-gray-400 flex-shrink-0">
-                {new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                {formatDate(c.created_at)}
               </span>
             </div>
           ))}

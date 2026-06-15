@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import { X, Mail, Link2, FileDown, Copy, Check, Eye, EyeOff, Loader2, Send } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
@@ -192,11 +193,7 @@ export default function InvoiceSendModal({
             const span = clonedDoc.createElement('span')
             if (i.value) {
               const d = new Date(i.value + 'T00:00:00')
-              span.textContent = d.toLocaleDateString('en-GB', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              })
+              span.textContent = formatDate(d)
             }
             i.replaceWith(span)
           })

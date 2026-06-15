@@ -1,6 +1,7 @@
 'use client'
 
 import { use, useState, useEffect } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import { fetchPublicInvoice } from '@/hooks/useInvoiceData'
 import { FileDown, AlertCircle, Loader2, CreditCard } from 'lucide-react'
 import html2canvas from 'html2canvas'
@@ -62,7 +63,7 @@ function fmt(n: number | string | undefined, currency = 'USD'): string {
 
 function fmtDate(d: string | undefined): string {
   if (!d) return ''
-  return new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+  return formatDate(d)
 }
 
 export default function PublicInvoicePage({ params }: { params: Promise<{ token: string }> }) {

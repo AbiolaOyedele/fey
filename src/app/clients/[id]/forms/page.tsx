@@ -1,6 +1,7 @@
 'use client'
 
 import { use, useState, useEffect, useRef } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import { useRouter } from 'next/navigation'
 import { Plus, ClipboardList, LayoutTemplate, X, ChevronDown, LayoutGrid, List } from 'lucide-react'
 import { useForms } from '@/hooks/useCrm'
@@ -42,7 +43,7 @@ function FormRow({ form, onClick }: { form: CrmForm; onClick: () => void }) {
       )}
       <span className={`text-2xs font-semibold px-2.5 py-0.5 rounded-full capitalize ${STATUS_BADGE[form.status]}`}>{form.status}</span>
       <span className="text-xs text-gray-400 flex-shrink-0">
-        {new Date(form.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+        {formatDate(form.created_at)}
       </span>
     </div>
   )
@@ -68,7 +69,7 @@ function FormCard({ form, onClick }: { form: CrmForm; onClick: () => void }) {
       </div>
       <div className="mt-auto pt-2 border-t border-gray-50">
         <p className="text-2xs text-gray-400">
-          {new Date(form.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          {formatDate(form.created_at)}
         </p>
       </div>
     </div>
@@ -113,7 +114,7 @@ function TemplatePickerModal({ onSelect, onClose }: {
               return (
                 <button key={t.id} disabled={applying !== null} onClick={async () => { setApplying(t.id); await onSelect(t); setApplying(null) }} className="w-full text-left px-4 py-3 rounded-xl border border-gray-100 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors">
                   <p className="text-sm font-medium text-gray-900">{applying === t.id ? 'Creating…' : t.title}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{fieldCount} field{fieldCount !== 1 ? 's' : ''} · {new Date(t.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{fieldCount} field{fieldCount !== 1 ? 's' : ''} · {formatDate(t.created_at)}</p>
                 </button>
               )
             })}

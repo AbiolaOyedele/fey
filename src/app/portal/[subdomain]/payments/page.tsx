@@ -1,6 +1,7 @@
 'use client'
 
 import { use, useState, useEffect, useCallback } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import { CreditCard } from 'lucide-react'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { CURRENCY_SYMBOLS } from '@/lib/constants'
@@ -77,7 +78,7 @@ export default function PortalPaymentsPage({ params }: { params: Promise<{ subdo
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{p.description || 'Payment request'}</p>
                 <p className="text-xs text-gray-400">
-                  {new Date(p.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {formatDate(p.created_at)}
                 </p>
               </div>
               <span className="text-sm font-semibold text-gray-900 flex-shrink-0">{fmtMoney(p.amount, p.currency)}</span>

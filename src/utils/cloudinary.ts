@@ -1,5 +1,12 @@
-const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+import { env } from '@/config/env'
+import {
+  MAX_UPLOAD_BYTES,
+  ALLOWED_UPLOAD_EXTENSIONS,
+  BLOCKED_UPLOAD_EXTENSIONS,
+} from '@/lib/constants'
+
+const CLOUD_NAME = env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+const UPLOAD_PRESET = env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
 
 interface UploadResult {
   url: string
@@ -13,6 +20,31 @@ interface UploadHandle {
   abort: () => void
 }
 
+const extOf = (name: string): string => name.split('.').pop()?.toLowerCase() ?? ''
+
+const humanSize = (bytes: number): string =>
+  bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`
+
+/**
+ * Validates a file against Fey's upload policy (size + extension allow/block
+ * lists). Returns a plain-English error string, or null when the file is
+ * acceptable. Call before uploading; the uploader enforces it too.
+ */
+export function validateUploadFile(file: File): string | null {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return `"${file.name}" is larger than ${humanSize(MAX_UPLOAD_BYTES)}.`
+  }
+  const ext = extOf(file.name)
+  if (!ext) return `"${file.name}" has no file extension and can’t be uploaded.`
+  if ((BLOCKED_UPLOAD_EXTENSIONS as readonly string[]).includes(ext)) {
+    return `"${file.name}" is a type we don’t allow for safety reasons.`
+  }
+  if (!(ALLOWED_UPLOAD_EXTENSIONS as readonly string[]).includes(ext)) {
+    return `"${file.name}" isn’t a supported file type.`
+  }
+  return null
+}
+
 export const uploadToCloudinary = (
   file: File,
   folder: string,
@@ -21,6 +53,11 @@ export const uploadToCloudinary = (
   let xhr: XMLHttpRequest
 
   const promise = new Promise<UploadResult>((resolve, reject) => {
+    const validationError = validateUploadFile(file)
+    if (validationError) {
+      reject(new Error(validationError))
+      return
+    }
     const formData = new FormData()
     formData.append('file', file)
     formData.append('upload_preset', UPLOAD_PRESET ?? '')

@@ -1,5 +1,6 @@
 'use client'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
+import { formatDate } from '@/utils/formatDate'
 
 import { use, useState, useEffect, useRef, useCallback } from 'react'
 import { Paperclip, X, Loader2, Send } from 'lucide-react'
@@ -32,7 +33,7 @@ function fmtDate(iso: string) {
   const d   = new Date(iso)
   const now = new Date()
   if (iso.slice(0, 10) === now.toISOString().slice(0, 10)) return 'Today'
-  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+  return formatDate(d)
 }
 
 export default function PortalMessagesPage({ params }: { params: Promise<{ subdomain: string }> }) {

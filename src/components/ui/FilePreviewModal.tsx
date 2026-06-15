@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import {
   X,
   Download,
@@ -388,11 +389,7 @@ export default function FilePreviewModal({
               {formatFileSize(currentFile.file_size)}
               {currentFile.uploader_name && ` · Uploaded by ${currentFile.uploader_name}`}
               {currentFile.created_at &&
-                ` · ${new Date(currentFile.created_at).toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric',
-                })}`}
+                ` · ${formatDate(currentFile.created_at)}`}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -599,10 +596,7 @@ export default function FilePreviewModal({
                             </span>
                           </div>
                           <p className="text-gray-400 mt-0.5">
-                            {new Date(v.created_at).toLocaleDateString('en-GB', {
-                              day: '2-digit',
-                              month: 'short',
-                            })}
+                            {formatDate(v.created_at)}
                             {v.uploader_name && ` · ${v.uploader_name}`}
                           </p>
                         </button>

@@ -10,11 +10,14 @@ import AddContactModal from '@/components/crm/AddContactModal'
 import { isActiveWithin } from '@/utils/relativeTime'
 import type { ContactStatus, CreateContactPayload } from '@/types/crm'
 
-const STATUS_FILTERS: { label: string; value: ContactStatus | 'all' }[] = [
+type ClientFilter = ContactStatus | 'all' | 'archived'
+
+const STATUS_FILTERS: { label: string; value: ClientFilter }[] = [
   { label: 'All',       value: 'all' },
   { label: 'Active',    value: 'active' },
   { label: 'Idle',      value: 'idle' },
   { label: 'Completed', value: 'completed' },
+  { label: 'Archived',  value: 'archived' },
 ]
 
 export default function CrmContactsPage() {
@@ -23,7 +26,7 @@ export default function CrmContactsPage() {
   const { canManage } = useWorkspace()
 
   const [search,      setSearch]      = useState('')
-  const [statusFilter, setStatusFilter] = useState<ContactStatus | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<ClientFilter>('all')
   const [selected,    setSelected]    = useState<string | null>(null)
   const [showModal,   setShowModal]   = useState(false)
 
@@ -38,13 +41,18 @@ export default function CrmContactsPage() {
 
   const filtered = useMemo(() => {
     return contacts.filter((c) => {
+      const isArchived = Boolean(c.archived_at)
+      // Archived clients only show under the "Archived" filter; everything else
+      // hides them.
+      if (statusFilter === 'archived' ? !isArchived : isArchived) return false
+
       const matchSearch = !search
         || c.name.toLowerCase().includes(search.toLowerCase())
         || (c.company?.toLowerCase().includes(search.toLowerCase()) ?? false)
         || (c.email?.toLowerCase().includes(search.toLowerCase()) ?? false)
       // "Active" now means recently active on the portal (not the manual status).
       const matchStatus =
-        statusFilter === 'all'    ? true
+        statusFilter === 'all' || statusFilter === 'archived' ? true
         : statusFilter === 'active' ? isActiveWithin(c.last_seen_at)
         : c.status === statusFilter
       return matchSearch && matchStatus

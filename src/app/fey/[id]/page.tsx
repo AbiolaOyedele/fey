@@ -38,12 +38,12 @@ function getTodayStr(): string {
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
 }
 
 function formatDeadlineFull(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  return formatDate(dateStr)
 }
 
 function daysDiff(dateStr: string): number {
@@ -73,7 +73,7 @@ function FeyTaskItem({ task, onUpdate, onDelete, onOpenNotes, dragListeners, dra
   const isToday   = Boolean(task.deadline && !task.done && task.deadline === todayStr)
 
   function fmtDeadline(d: string): string {
-    return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+    return formatDate(d + 'T00:00:00')
   }
 
   const handleDone = () => onUpdate({ ...task, done: !task.done })

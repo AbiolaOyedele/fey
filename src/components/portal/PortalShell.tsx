@@ -19,7 +19,7 @@ interface PortalShellProps {
 }
 
 // Workspace sub-routes — all count as "Workspace" in the sidebar
-const WORKSPACE_ROUTES = ['/messages', '/files', '/contracts', '/forms', '/invoices', '/tasks', '/payments', '/workspace']
+const WORKSPACE_ROUTES = ['/messages', '/projects', '/files', '/contracts', '/forms', '/invoices', '/tasks', '/payments', '/workspace']
 
 export default function PortalShell({ subdomain, branding, clientName, children }: PortalShellProps) {
   const pathname = usePathname() ?? ''

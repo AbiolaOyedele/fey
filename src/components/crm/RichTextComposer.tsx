@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef, useState, useCallback, type KeyboardEvent } from 'react'
+import { useRef, useState, useCallback, useEffect, type KeyboardEvent } from 'react'
+import { z } from 'zod'
 import {
   Bold, Italic, Underline, Strikethrough,
   List, ListOrdered, Link, Send, Paperclip, X, Loader2,
@@ -21,6 +22,15 @@ function execCmd(cmd: string, value?: string) {
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024 // 25 MB
 
+// Only http(s) links are allowed. Bare domains get https:// prepended before validation.
+const linkSchema = z
+  .string()
+  .trim()
+  .min(1, 'Enter a link.')
+  .transform((v) => (/^https?:\/\//i.test(v) ? v : `https://${v}`))
+  .pipe(z.string().url('That doesn’t look like a valid link.'))
+  .refine((v) => /^https?:\/\//i.test(v), 'Links must start with http:// or https://')
+
 export default function RichTextComposer({ onSend, placeholder = 'Write a message…', disabled = false }: RichTextComposerProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const fileRef   = useRef<HTMLInputElement>(null)
@@ -28,6 +38,14 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
   const [attachments, setAttachments] = useState<MessageAttachment[]>([])
   const [uploading,   setUploading]   = useState(0)
   const [error,       setError]       = useState('')
+
+  // In-app link popup (replaces window.prompt)
+  const [linkOpen,  setLinkOpen]  = useState(false)
+  const [linkUrl,   setLinkUrl]   = useState('')
+  const [linkText,  setLinkText]  = useState('')
+  const [linkError, setLinkError] = useState('')
+  const savedRange = useRef<Range | null>(null)
+  const linkInputRef = useRef<HTMLInputElement>(null)
 
   const isEmpty = useCallback(() => {
     const el = editorRef.current
@@ -82,10 +100,59 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
     }
   }, [handleSend])
 
-  const handleLink = useCallback(() => {
-    const url = window.prompt('Enter URL:')
-    if (url) execCmd('createLink', url)
+  const openLinkPopup = useCallback(() => {
+    // Capture the current selection inside the editor before the input steals focus.
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
+      savedRange.current = sel.getRangeAt(0).cloneRange()
+      setLinkText(sel.toString())
+    } else {
+      savedRange.current = null
+      setLinkText('')
+    }
+    setLinkUrl('')
+    setLinkError('')
+    setLinkOpen(true)
   }, [])
+
+  const closeLinkPopup = useCallback(() => {
+    setLinkOpen(false)
+    setLinkError('')
+  }, [])
+
+  const applyLink = useCallback(() => {
+    const parsed = linkSchema.safeParse(linkUrl)
+    if (!parsed.success) {
+      setLinkError(parsed.error.issues[0]?.message ?? 'Enter a valid link.')
+      return
+    }
+    const href = parsed.data
+    const el = editorRef.current
+    if (!el) return
+    el.focus()
+
+    const sel = window.getSelection()
+    if (savedRange.current && sel) {
+      sel.removeAllRanges()
+      sel.addRange(savedRange.current)
+    }
+    const hadSelection = savedRange.current && !savedRange.current.collapsed
+    const safeText = (linkText.trim() || href).replace(/[<>&"]/g, (c) =>
+      ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c] ?? c),
+    )
+
+    if (hadSelection) {
+      execCmd('createLink', href)
+    } else {
+      execCmd('insertHTML', `<a href="${href}" target="_blank" rel="noopener noreferrer">${safeText}</a>&nbsp;`)
+    }
+    savedRange.current = null
+    closeLinkPopup()
+  }, [linkUrl, linkText, closeLinkPopup])
+
+  useEffect(() => {
+    if (linkOpen) linkInputRef.current?.focus()
+  }, [linkOpen])
 
   const toolbarButtons = [
     { icon: Bold,          title: 'Bold',           cmd: 'bold' },
@@ -113,14 +180,70 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
             <Icon size={14} />
           </button>
         ))}
-        <button
-          type="button"
-          title="Insert link"
-          onMouseDown={(e) => { e.preventDefault(); handleLink() }}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-        >
-          <Link size={14} />
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            title="Insert link"
+            aria-haspopup="dialog"
+            aria-expanded={linkOpen}
+            onMouseDown={(e) => { e.preventDefault(); openLinkPopup() }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <Link size={14} />
+          </button>
+          {linkOpen && (
+            <div
+              role="dialog"
+              aria-label="Insert link"
+              className="absolute z-20 top-9 left-0 w-72 rounded-xl border border-gray-200 bg-white shadow-lg p-3"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <label className="block text-2xs font-medium text-gray-500 mb-1">Link</label>
+              <input
+                ref={linkInputRef}
+                type="url"
+                value={linkUrl}
+                onChange={(e) => { setLinkUrl(e.target.value); setLinkError('') }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); applyLink() }
+                  if (e.key === 'Escape') { e.preventDefault(); closeLinkPopup() }
+                }}
+                placeholder="https://example.com"
+                className="w-full text-sm px-2.5 py-1.5 rounded-lg border border-gray-200 focus:outline-none focus:border-gray-400"
+              />
+              <label className="block text-2xs font-medium text-gray-500 mt-2 mb-1">Text to display (optional)</label>
+              <input
+                type="text"
+                value={linkText}
+                onChange={(e) => setLinkText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); applyLink() }
+                  if (e.key === 'Escape') { e.preventDefault(); closeLinkPopup() }
+                }}
+                placeholder="Link text"
+                className="w-full text-sm px-2.5 py-1.5 rounded-lg border border-gray-200 focus:outline-none focus:border-gray-400"
+              />
+              {linkError && <p className="text-xs text-red-500 mt-1.5">{linkError}</p>}
+              <div className="flex items-center justify-end gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={closeLinkPopup}
+                  className="text-xs font-medium text-gray-500 hover:text-gray-700 px-2 py-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={applyLink}
+                  className="text-xs font-semibold text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                >
+                  Add link
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         <button
           type="button"
           title="Attach file"

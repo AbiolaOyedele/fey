@@ -12,6 +12,7 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import type { Invoice } from '@/types'
 import type { CrmPaymentRequest } from '@/types/crm'
+import { formatDate } from '@/utils/formatDate'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,7 @@ function fmt(amount: number, currency: string): string {
 }
 
 function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatDate(iso)
 }
 
 // ── Request option dropdown ───────────────────────────────────────────────────

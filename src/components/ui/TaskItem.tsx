@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import {
   Trash2, Check, Calendar, GripVertical,
   ChevronDown, ChevronUp, Paperclip, ExternalLink,
@@ -73,7 +74,7 @@ function formatWithCommas(val: number | string): string {
 
 function formatDeadline(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  return formatDate(d)
 }
 
 const todayStr = () => {

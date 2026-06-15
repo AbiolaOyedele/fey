@@ -186,7 +186,24 @@ export function useContacts() {
     setContacts((prev) => prev.filter((c) => c.id !== id))
   }, [])
 
-  return { contacts, loading, error, fetchContacts, createContact, updateContact, deleteContact }
+  /** Archives (or unarchives) a client. Hides from default views; reversible. */
+  const setContactArchived = useCallback(async (id: string, archived: boolean) => {
+    const session = await getSession()
+    if (!session) throw new Error('Not authenticated')
+    const archived_at = archived ? new Date().toISOString() : null
+    const { error: err } = await supabase
+      .from('crm_contacts')
+      .update({ archived_at, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('owner_id', await getEffectiveOwnerId())
+    if (err) throw err
+    setContacts((prev) => prev.map((c) => c.id === id ? { ...c, archived_at } : c))
+  }, [])
+
+  return {
+    contacts, loading, error, fetchContacts,
+    createContact, updateContact, deleteContact, setContactArchived,
+  }
 }
 
 // ── useMessages ───────────────────────────────────────────────────────────────

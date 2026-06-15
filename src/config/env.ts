@@ -25,8 +25,13 @@ const envSchema = z.object({
   CRON_SECRET:                        z.string().min(1).optional(),
   // Cloudinary admin — used to delete attachment files during the retention sweep.
   NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME:  z.string().min(1).optional(),
+  NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: z.string().min(1).optional(),
   CLOUDINARY_API_KEY:                 z.string().min(1).optional(),
   CLOUDINARY_API_SECRET:              z.string().min(1).optional(),
+  // Comma-separated allowlist of admin emails (your personal admin board +
+  // feedback notifications). While unset, the admin board denies everyone and
+  // feedback emails are skipped (rows are still stored).
+  ADMIN_EMAILS:                       z.string().optional(),
 })
 
 const parsed = envSchema.safeParse({
@@ -46,6 +51,7 @@ const parsed = envSchema.safeParse({
   NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME:  process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_API_KEY:                 process.env.CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET:              process.env.CLOUDINARY_API_SECRET,
+  ADMIN_EMAILS:                       process.env.ADMIN_EMAILS,
 })
 
 if (!parsed.success) {
@@ -75,6 +81,23 @@ export const env = parsed.success
       VERCEL_GIT_COMMIT_SHA:           process.env.VERCEL_GIT_COMMIT_SHA,
       CRON_SECRET:                     process.env.CRON_SECRET,
       NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+      NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
       CLOUDINARY_API_KEY:              process.env.CLOUDINARY_API_KEY,
       CLOUDINARY_API_SECRET:           process.env.CLOUDINARY_API_SECRET,
+      ADMIN_EMAILS:                    process.env.ADMIN_EMAILS,
     }
+
+/**
+ * Parsed list of admin emails (lowercased). Empty when ADMIN_EMAILS is unset.
+ * Used to gate the personal admin board and pick feedback-notification recipients.
+ */
+export const ADMIN_EMAIL_LIST: string[] = (env.ADMIN_EMAILS ?? '')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean)
+
+/** True when the given email is in the admin allowlist. */
+export function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false
+  return ADMIN_EMAIL_LIST.includes(email.toLowerCase())
+}

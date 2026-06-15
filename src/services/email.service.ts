@@ -6,6 +6,7 @@ import { WorkspaceInviteEmail } from '../../emails/WorkspaceInviteEmail'
 import { InviteAcceptedEmail } from '../../emails/InviteAcceptedEmail'
 import { RoleChangedEmail } from '../../emails/RoleChangedEmail'
 import { NewMessageEmail } from '../../emails/NewMessageEmail'
+import { FeedbackEmail } from '../../emails/FeedbackEmail'
 
 /**
  * Single source of truth for outbound transactional email.
@@ -110,6 +111,20 @@ export function sendRoleChanged(
     to,
     subject: `Your role in ${props.workspaceName} is now ${props.newRole}`,
     react: RoleChangedEmail({ ...props, workspaceUrl }),
+  })
+}
+
+/** Feedback submission — sent to the admin allowlist (best-effort). */
+export function sendFeedbackNotification(
+  to: string | string[],
+  props: { type: string; message: string; fromEmail: string; source: string; pageUrl?: string | null },
+): Promise<SendResult> {
+  return sendEmail({
+    from: EMAIL_FROM.notifications,
+    to,
+    subject: `New ${props.type} feedback from ${props.fromEmail}`,
+    react: FeedbackEmail(props),
+    ...(props.fromEmail ? { replyTo: props.fromEmail } : {}),
   })
 }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { formatDateTime } from '@/utils/formatDate'
 import { Bell, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNotifications } from '@/hooks/useCrm'
@@ -61,7 +62,7 @@ export default function NotificationBell({ accent }: { accent: string }) {
                 >
                   <p className="text-sm text-gray-700">{n.message}</p>
                   <p className="text-2xs text-gray-400 mt-0.5">
-                    {new Date(n.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    {formatDateTime(n.created_at)}
                   </p>
                 </div>
               ))

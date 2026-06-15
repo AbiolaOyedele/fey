@@ -33,6 +33,17 @@ export function proxy(request: NextRequest) {
 
   const slug = hostname.slice(0, hostname.length - rootDomain.length - 1)
 
+  // admin.<root> serves the personal admin board at its root. Other paths pass
+  // through (the board is also reachable path-based at /admin on any host).
+  if (slug === 'admin') {
+    if (request.nextUrl.pathname === '/' || request.nextUrl.pathname === '') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin'
+      return NextResponse.rewrite(url)
+    }
+    return NextResponse.next()
+  }
+
   // Reserved subdomains → main app, no rewrite
   if (RESERVED_SUBDOMAINS.has(slug)) return NextResponse.next()
 

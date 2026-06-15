@@ -9,6 +9,7 @@ import { env } from '@/config/env'
 import Sidebar from './Sidebar'
 import ToastContainer from '@/components/ui/Toast'
 import UpdateBanner from '@/components/ui/UpdateBanner'
+import FeedbackButton from '@/components/ui/FeedbackButton'
 import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { activeWorkspaceSlug } from '@/utils/host'
@@ -40,6 +41,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     || pathname.startsWith('/invoice/')
     || pathname.startsWith('/portal/')
     || pathname.startsWith('/pay/')
+    || pathname.startsWith('/admin')
+    // Client-portal entry points — the proxy rewrites these to /portal/<slug>/*
+    // but the browser path stays /join, /client-login, /client/*. They must be
+    // public so AppShell doesn't drag clients into the owner /login + /setup flow.
+    || pathname === '/join'
+    || pathname.startsWith('/client-login')
+    || pathname === '/client'
+    || pathname.startsWith('/client/')
 
   const loading = authLoading || settingsLoading || workspaceLoading
 
@@ -109,6 +118,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       <ToastContainer />
       <UpdateBanner show={updateAvailable} accent={settings.accent_color} />
+      {!IS_DEMO && <FeedbackButton />}
     </div>
   )
 }

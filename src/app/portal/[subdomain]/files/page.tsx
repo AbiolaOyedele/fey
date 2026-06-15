@@ -1,5 +1,6 @@
 'use client'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
+import { formatDate } from '@/utils/formatDate'
 
 import { use, useState, useEffect } from 'react'
 import { Folder, Download, FileText, Image, Archive } from 'lucide-react'
@@ -66,7 +67,7 @@ export default function PortalFilesPage({ params }: { params: Promise<{ subdomai
                 {file.file_size && <p className="text-2xs text-gray-400">{fmtSize(file.file_size)}</p>}
               </div>
               <span className="text-2xs text-gray-400 flex-shrink-0 hidden sm:inline">
-                {new Date(file.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                {formatDate(file.created_at)}
               </span>
               <a
                 href={file.file_url}

@@ -3,7 +3,7 @@
 import { use } from 'react'
 import Link from 'next/link'
 import {
-  MessageSquare, Folder, FileSignature,
+  MessageSquare, Folder, FileSignature, FolderOpen,
   ClipboardList, CreditCard, FileText, CheckSquare2, ArrowRight,
 } from 'lucide-react'
 import { usePortalBase } from '@/hooks/usePortalBase'
@@ -27,6 +27,13 @@ export default function WorkspacePage({ params }: { params: Promise<{ subdomain:
       icon:        MessageSquare,
       color:       '#6366F1',
       href:        `${base}/messages`,
+    },
+    {
+      label:       'Projects',
+      description: 'Each project’s chat and files',
+      icon:        FolderOpen,
+      color:       '#0EA5E9',
+      href:        `${base}/projects`,
     },
     {
       label:       'Files',

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import {
   Save, Send, ArrowLeft, FileSignature, Settings, X,
   Bold, Italic, Underline, List, ChevronDown, LayoutTemplate,
@@ -404,7 +405,7 @@ export default function ContractBuilder({
               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
                 <p className="text-xs font-semibold text-emerald-700">Signed</p>
                 <p className="text-xs text-emerald-600 mt-0.5">
-                  {new Date(contract.signed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  {formatDate(contract.signed_at)}
                 </p>
               </div>
             )}
@@ -574,7 +575,7 @@ export default function ContractBuilder({
                     </div>
                     <p className="text-xs text-emerald-600 mt-1">
                       Signed {contract.signed_at
-                        ? new Date(contract.signed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+                        ? formatDate(contract.signed_at)
                         : ''}
                     </p>
                   </>
@@ -631,7 +632,7 @@ export default function ContractBuilder({
                   >
                     <p className="text-sm font-medium text-gray-900">{t.title}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(t.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {formatDate(t.created_at)}
                     </p>
                   </button>
                 ))}

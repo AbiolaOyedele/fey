@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import {
   Upload, Download, Trash2, FileText, File, Image, Music, Film,
   X, ExternalLink, LayoutGrid, List,
@@ -320,7 +321,7 @@ export default function FileList({ files, loading, onUpload, onDelete, uploading
                     <span className="text-gray-300">·</span>
                     {file.uploader_type === 'owner' ? 'You' : 'Client'}
                     <span className="text-gray-300">·</span>
-                    {new Date(file.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                    {formatDate(file.created_at)}
                   </p>
                 </button>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">

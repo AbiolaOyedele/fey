@@ -1,6 +1,7 @@
 'use client'
 
 import { use, useState, useEffect, useRef } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import { useRouter } from 'next/navigation'
 import { Plus, FileSignature, LayoutTemplate, X, ChevronDown, LayoutGrid, List, CheckCircle2 } from 'lucide-react'
 import { useContracts } from '@/hooks/useCrm'
@@ -40,7 +41,7 @@ function ContractRow({ contract, onClick }: { contract: CrmContract; onClick: ()
       <span className="flex-1 text-sm font-medium text-gray-900 truncate">{contract.title}</span>
       <span className={`text-2xs font-semibold px-2.5 py-0.5 rounded-full capitalize ${STATUS_BADGE[contract.status]}`}>{contract.status}</span>
       <span className="text-xs text-gray-400 flex-shrink-0">
-        {new Date(contract.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+        {formatDate(contract.created_at)}
       </span>
     </div>
   )
@@ -60,14 +61,14 @@ function ContractCard({ contract, onClick }: { contract: CrmContract; onClick: (
       <div>
         <p className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">{contract.title}</p>
         <p className="text-2xs text-gray-400 mt-1">
-          {new Date(contract.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          {formatDate(contract.created_at)}
         </p>
       </div>
       {contract.signed_at && (
         <div className="mt-auto pt-2 border-t border-gray-50">
           <p className="text-2xs text-emerald-500 font-medium flex items-center gap-1">
             <CheckCircle2 size={11} />
-            Signed {new Date(contract.signed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+            Signed {formatDate(contract.signed_at)}
           </p>
         </div>
       )}
@@ -111,7 +112,7 @@ function TemplatePickerModal({ onSelect, onClose }: {
             {templates.map((t) => (
               <button key={t.id} disabled={applying !== null} onClick={async () => { setApplying(t.id); await onSelect(t); setApplying(null) }} className="w-full text-left px-4 py-3 rounded-xl border border-gray-100 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors">
                 <p className="text-sm font-medium text-gray-900">{applying === t.id ? 'Creating…' : t.title}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{new Date(t.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{formatDate(t.created_at)}</p>
               </button>
             ))}
           </div>

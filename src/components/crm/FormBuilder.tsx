@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useId, useRef, useEffect } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import {
   ArrowLeft, Save, Send, Plus, Trash2, GripVertical,
   ChevronDown, Type, AlignLeft, List, CheckSquare, Calendar,
@@ -344,7 +345,7 @@ function TemplatePicker({ onSelect, onClose }: {
               >
                 <p className="text-sm font-medium text-gray-900">{t.title}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {((t.content.fields as FormField[]) ?? []).length} fields · {new Date(t.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {((t.content.fields as FormField[]) ?? []).length} fields · {formatDate(t.created_at)}
                 </p>
               </button>
             ))}
@@ -568,7 +569,7 @@ export default function FormBuilder({ form, contactEmail, onSave, onSend, onBack
               </div>
               {form.submitted_at && (
                 <p className="text-xs text-gray-400 mt-4 pt-3 border-t border-gray-100">
-                  Submitted {new Date(form.submitted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  Submitted {formatDate(form.submitted_at)}
                 </p>
               )}
             </div>

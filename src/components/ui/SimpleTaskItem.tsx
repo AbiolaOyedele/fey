@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import { Trash2, Check, Calendar, GripVertical, Info } from 'lucide-react'
 import type { DraggableSyntheticListeners } from '@dnd-kit/core'
 import type { StandaloneTask } from '@/types'
 
 function formatDeadline(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+  return formatDate(d)
 }
 
 const todayStr = () => {

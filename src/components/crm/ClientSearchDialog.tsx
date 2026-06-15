@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import { useRouter } from 'next/navigation'
 import {
   Search, X, FileText, FileSignature, ClipboardList,
@@ -40,7 +41,7 @@ function relativeDate(iso: string): string {
   if (days === 0) return 'Today'
   if (days === 1) return 'Yesterday'
   if (days < 7)  return `${days} days ago`
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  return formatDate(iso)
 }
 
 const TYPE_ORDER: ResultType[] = ['file', 'contract', 'form', 'message']

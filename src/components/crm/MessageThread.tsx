@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { formatDate as fmtDate } from '@/utils/formatDate'
 import { MessageSquare } from 'lucide-react'
 import type { CrmMessage, MessageAttachment } from '@/types/crm'
 import RichTextComposer from './RichTextComposer'
@@ -30,7 +31,7 @@ function formatDate(iso: string): string {
   const yesterday = new Date(today)
   yesterday.setDate(today.getDate() - 1)
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return fmtDate(d)
 }
 
 function groupByDate(messages: CrmMessage[]): Array<{ date: string; messages: CrmMessage[] }> {

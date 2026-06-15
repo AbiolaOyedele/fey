@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import { useRouter } from 'next/navigation'
 import {
   Plus, FileText, DollarSign, Clock, CheckCircle2, AlertCircle,
@@ -75,7 +76,7 @@ CREATE POLICY "Public shared invoices viewable"
 // ---------------------------------------------------------------------------
 function fmtDate(d: string | null | undefined): string {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  return formatDate(d)
 }
 
 function fmtMoney(amount: number, currency: string): string {

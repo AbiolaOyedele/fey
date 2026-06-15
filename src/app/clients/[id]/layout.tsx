@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, MoreHorizontal, Edit2, Trash2, Copy, Check, Search } from 'lucide-react'
+import { ArrowLeft, MoreHorizontal, Edit2, Trash2, Copy, Check, Search, Archive, ArchiveRestore } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import ContactTabs from '@/components/crm/ContactTabs'
 import ClientSearchDialog from '@/components/crm/ClientSearchDialog'
@@ -18,6 +18,7 @@ interface ContactSummary {
   id:      string
   name:    string
   company: string | null
+  archived_at: string | null
 }
 
 export default function ContactDetailLayout({ children, params }: ContactDetailLayoutProps) {
@@ -34,7 +35,7 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
     void (async () => {
       const { data } = await supabase
         .from('crm_contacts')
-        .select('id, name, company')
+        .select('id, name, company, archived_at')
         .eq('id', id)
         .single()
       if (data) setContact(data as ContactSummary)
@@ -97,6 +98,22 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
       setTimeout(() => setCopied(false), 2000)
     } finally {
       setMenuOpen(false)
+    }
+  }
+
+  const handleToggleArchive = async () => {
+    const archived = !contact?.archived_at
+    const archived_at = archived ? new Date().toISOString() : null
+    const { error } = await supabase
+      .from('crm_contacts')
+      .update({ archived_at, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    setMenuOpen(false)
+    if (error) return
+    if (archived) {
+      router.push('/clients')
+    } else {
+      setContact((prev) => prev ? { ...prev, archived_at } : prev)
     }
   }
 
@@ -175,6 +192,14 @@ export default function ContactDetailLayout({ children, params }: ContactDetailL
                   >
                     {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} className="text-gray-400" />}
                     {copied ? 'Copied!' : 'Copy invite link'}
+                  </button>
+                  <button
+                    onClick={() => void handleToggleArchive()}
+                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
+                  >
+                    {contact?.archived_at
+                      ? <><ArchiveRestore size={14} className="text-gray-400" /> Unarchive client</>
+                      : <><Archive size={14} className="text-gray-400" /> Archive client</>}
                   </button>
                   <div className="my-1 border-t border-gray-100 mx-3" />
                   {confirmDel ? (

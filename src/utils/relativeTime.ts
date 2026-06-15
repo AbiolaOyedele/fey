@@ -1,3 +1,5 @@
+import { formatDate } from './formatDate'
+
 /**
  * Compact relative time, e.g. "just now", "5m ago", "3h ago", "yesterday",
  * "4d ago", "2w ago", then an absolute date for anything older.
@@ -17,7 +19,7 @@ export function relativeTime(iso: string | null | undefined): string {
   if (day < 7)  return `${day}d ago`
   const wk = Math.floor(day / 7)
   if (wk < 5)   return `${wk}w ago`
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatDate(iso)
 }
 
 /** True when the timestamp is within the last `days` days. */

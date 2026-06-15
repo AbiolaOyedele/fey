@@ -11,6 +11,7 @@ import { usePortalBase } from '@/hooks/usePortalBase'
  */
 export const PORTAL_SECTIONS: { label: string; path: string }[] = [
   { label: 'Messages',  path: '/messages' },
+  { label: 'Projects',  path: '/projects' },
   { label: 'Files',     path: '/files' },
   { label: 'Contracts', path: '/contracts' },
   { label: 'Forms',     path: '/forms' },

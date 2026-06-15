@@ -22,6 +22,8 @@ export interface CrmContact {
   /** Last time this client was active on their portal. Merged in client-side
    *  from /api/v1/crm/activity — not a column on crm_contacts. */
   last_seen_at?: string | null
+  /** When set, the client is archived (hidden from default views, not deleted). */
+  archived_at?: string | null
 }
 
 export interface PortalUser {

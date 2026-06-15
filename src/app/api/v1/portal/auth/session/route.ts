@@ -26,6 +26,10 @@ export async function GET(req: NextRequest) {
     if (!contact) {
       return NextResponse.json({ error: { code: 'PORTAL_ACCESS_DENIED', message: 'Access denied.' } }, { status: 403 })
     }
+    // Archived clients lose portal access (data is preserved, just hidden).
+    if ((contact as { archived_at?: string | null }).archived_at) {
+      return NextResponse.json({ error: { code: 'PORTAL_ACCESS_DENIED', message: 'Access denied.' } }, { status: 403 })
+    }
 
     // Record portal activity (best-effort — dormant until last_seen_at exists)
     void portalRepo.touchPortalUserLastSeen(db, portalUser.id)

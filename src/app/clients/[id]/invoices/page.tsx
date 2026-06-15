@@ -1,6 +1,7 @@
 'use client'
 
 import { use, useState, useEffect, useCallback } from 'react'
+import { formatDate } from '@/utils/formatDate'
 import { useRouter } from 'next/navigation'
 import { FileText, ExternalLink, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -200,7 +201,7 @@ export default function InvoicesTab({ params }: { params: Promise<{ id: string }
                 {inv.status}
               </span>
               <span className="text-xs text-gray-400 flex-shrink-0">
-                {new Date(inv.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                {formatDate(inv.created_at)}
               </span>
               {inv.share_token && inv.share_enabled && (
                 <a

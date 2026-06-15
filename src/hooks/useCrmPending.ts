@@ -16,23 +16,23 @@ const EMPTY: CrmPending = {
 }
 
 /**
- * Lightweight head-count queries for the owner dashboard: how many CRM clients
- * they have, and how many items are waiting on them (unread client messages,
- * contracts sent-but-unsigned, forms sent-but-unsubmitted).
+ * Lightweight head-count queries for the dashboard, scoped to the ACTIVE
+ * workspace: how many clients it has, and how many items are waiting (unread
+ * client messages, contracts sent-but-unsigned, forms sent-but-unsubmitted).
  */
-export function useCrmPending(userId: string | undefined): CrmPending {
+export function useCrmPending(workspaceId: string | undefined | null): CrmPending {
   const [pending, setPending] = useState<CrmPending>(EMPTY)
 
   useEffect(() => {
-    if (!userId) return
+    if (!workspaceId) return
     let cancelled = false
     void (async () => {
       const head = { count: 'exact' as const, head: true }
       const [contacts, msgs, contracts, forms] = await Promise.all([
-        supabase.from('crm_contacts').select('id', head).eq('owner_id', userId),
-        supabase.from('crm_messages').select('id', head).eq('owner_id', userId).eq('sender_type', 'client').is('read_at', null),
-        supabase.from('crm_contracts').select('id', head).eq('owner_id', userId).eq('status', 'sent'),
-        supabase.from('crm_forms').select('id', head).eq('owner_id', userId).eq('status', 'sent'),
+        supabase.from('crm_contacts').select('id', head).eq('workspace_id', workspaceId),
+        supabase.from('crm_messages').select('id', head).eq('workspace_id', workspaceId).eq('sender_type', 'client').is('read_at', null),
+        supabase.from('crm_contracts').select('id', head).eq('workspace_id', workspaceId).eq('status', 'sent'),
+        supabase.from('crm_forms').select('id', head).eq('workspace_id', workspaceId).eq('status', 'sent'),
       ])
       if (cancelled) return
       setPending({
@@ -44,7 +44,7 @@ export function useCrmPending(userId: string | undefined): CrmPending {
       })
     })()
     return () => { cancelled = true }
-  }, [userId])
+  }, [workspaceId])
 
   return pending
 }

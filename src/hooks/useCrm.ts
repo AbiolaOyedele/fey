@@ -18,7 +18,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
-import { activeWorkspaceSlug } from '@/utils/host'
+import { getEffectiveOwnerId, getActiveWorkspaceId } from '@/lib/active-workspace'
 import type {
   CrmContact, CrmMessage, CrmFile, CrmContract, CrmForm, CrmNotification,
   ContractContent, FormField, FormResponse, MessageAttachment,
@@ -33,42 +33,6 @@ async function getSession() {
   return session
 }
 
-// ── Effective workspace owner ─────────────────────────────────────────────────
-// CRM data is keyed on `owner_id` = the workspace owner. The ACTIVE workspace is
-// the one whose slug matches the current subdomain (<slug>.theruff.agency); on
-// localhost/apex we fall back to the user's first membership. For an owner this
-// resolves to their own uid (nothing changes); for an invited teammate it
-// resolves to that workspace's owner, granting shared access. Cache is keyed on
-// (user, slug) so switching subdomains re-resolves.
-let _ownerCacheKey: string | null = null
-let _ownerCacheId:  string | null = null
-
-async function getEffectiveOwnerId(): Promise<string | null> {
-  const session = await getSession()
-  const uid = session?.user?.id ?? null
-  if (!uid) return null
-
-  const slug = activeWorkspaceSlug()
-  const cacheKey = `${uid}:${slug ?? ''}`
-  if (_ownerCacheKey === cacheKey && _ownerCacheId) return _ownerCacheId
-
-  const { data } = await supabase
-    .from('workspace_members')
-    .select('workspaces(slug, owner_id, created_at)')
-    .eq('user_id', uid)
-    .order('created_at', { ascending: true })
-
-  type WsRow = { slug: string | null; owner_id: string; created_at: string }
-  const rows = ((data ?? []) as Array<{ workspaces: WsRow | WsRow[] | null }>)
-    .map((r) => (Array.isArray(r.workspaces) ? r.workspaces[0] : r.workspaces))
-    .filter((w): w is WsRow => !!w)
-
-  const match = slug ? rows.find((w) => w.slug === slug) : undefined
-  const ownerId = match?.owner_id ?? rows[0]?.owner_id ?? uid
-  _ownerCacheKey = cacheKey
-  _ownerCacheId  = ownerId
-  return ownerId
-}
 
 /** Used only for the two send operations that need a server secret. */
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -149,11 +113,12 @@ export function useContacts() {
     try {
       const session = await getSession()
       if (!session) { setLoading(false); return }
-      const { data, error: err } = await supabase
-        .from('crm_contacts')
-        .select('*')
-        .eq('owner_id', await getEffectiveOwnerId())
-        .order('created_at', { ascending: false })
+      // Scope to the active workspace; fall back to owner only if the workspace
+      // can't be resolved yet (e.g. mid-onboarding).
+      const wsId = await getActiveWorkspaceId()
+      let q = supabase.from('crm_contacts').select('*')
+      q = wsId ? q.eq('workspace_id', wsId) : q.eq('owner_id', await getEffectiveOwnerId())
+      const { data, error: err } = await q.order('created_at', { ascending: false })
       if (err) throw err
       let rows = (data ?? []) as CrmContact[]
 
@@ -184,7 +149,7 @@ export function useContacts() {
     if (!session) throw new Error('Not authenticated')
     const { data, error: err } = await supabase
       .from('crm_contacts')
-      .insert({ ...payload, owner_id: await getEffectiveOwnerId() })
+      .insert({ ...payload, owner_id: await getEffectiveOwnerId(), workspace_id: await getActiveWorkspaceId() })
       .select()
       .single()
     if (err) throw err
@@ -293,12 +258,13 @@ export function useMessages(contactId: string | null) {
     const { data, error: err } = await supabase
       .from('crm_messages')
       .insert({
-        contact_id:  contactId,
-        owner_id:    await getEffectiveOwnerId(),
-        sender_type: 'owner',
-        sender_id:   session.user.id,
+        contact_id:   contactId,
+        owner_id:     await getEffectiveOwnerId(),
+        workspace_id: await getActiveWorkspaceId(),
+        sender_type:  'owner',
+        sender_id:    session.user.id,
         body,
-        body_html:   bodyHtml ?? null,
+        body_html:    bodyHtml ?? null,
         attachments,
       })
       .select()
@@ -342,7 +308,7 @@ export function useCrmFiles(contactId: string | null) {
     if (!session) throw new Error('Not authenticated')
     const { data, error: err } = await supabase
       .from('crm_files')
-      .insert({ ...payload, owner_id: await getEffectiveOwnerId(), uploaded_by: session.user.id })
+      .insert({ ...payload, owner_id: await getEffectiveOwnerId(), workspace_id: await getActiveWorkspaceId(), uploaded_by: session.user.id })
       .select()
       .single()
     if (err) throw err
@@ -402,7 +368,7 @@ export function useContracts(contactId: string | null) {
     }
     const { data, error: err } = await supabase
       .from('crm_contracts')
-      .insert({ contact_id: contactId, owner_id: await getEffectiveOwnerId(), title, content })
+      .insert({ contact_id: contactId, owner_id: await getEffectiveOwnerId(), workspace_id: await getActiveWorkspaceId(), title, content })
       .select()
       .single()
     if (err) throw err
@@ -486,7 +452,7 @@ export function useForms(contactId: string | null) {
     if (!session) throw new Error('Not authenticated')
     const { data, error: err } = await supabase
       .from('crm_forms')
-      .insert({ contact_id: contactId, owner_id: await getEffectiveOwnerId(), title, fields: [] })
+      .insert({ contact_id: contactId, owner_id: await getEffectiveOwnerId(), workspace_id: await getActiveWorkspaceId(), title, fields: [] })
       .select()
       .single()
     if (err) throw err

@@ -72,10 +72,10 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const { settings } = useSettings()
   const { workspace, canManage } = useWorkspace()
-  // Members see their workspace's data; for owners this is just their own id.
-  const ownerId = workspace?.owner_id ?? user?.id
-  const pending = useCrmPending(ownerId)
-  const feed = useDashboardFeed(ownerId)
+  // Dashboard data is scoped to the active workspace, so switching workspaces
+  // shows only that workspace's clients, messages and files.
+  const pending = useCrmPending(workspace?.id)
+  const feed = useDashboardFeed(workspace?.id)
   const { contacts, loading: contactsLoading } = useContacts()
 
   const accent = settings.accent_color ?? '#ED64A6'

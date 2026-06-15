@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { IS_DEMO } from '@/lib/constants'
+import { getActiveWorkspaceId } from '@/lib/active-workspace'
 import type { Invoice } from '@/types'
 
 export function useInvoiceData(userId: string | undefined) {
@@ -13,12 +14,11 @@ export function useInvoiceData(userId: string | undefined) {
   const fetchInvoices = useCallback(async () => {
     if (IS_DEMO || !userId) { setLoading(false); return }
     try {
-      const { data, error: err } = await supabase
-        .from('invoices')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('app', 'fey')
-        .order('created_at', { ascending: false })
+      // Scope to the active workspace so invoices don't bleed across workspaces.
+      const wsId = await getActiveWorkspaceId()
+      let q = supabase.from('invoices').select('*').eq('user_id', userId).eq('app', 'fey')
+      if (wsId) q = q.eq('workspace_id', wsId)
+      const { data, error: err } = await q.order('created_at', { ascending: false })
       if (err) throw err
       setInvoices((data as Invoice[]) || [])
       setError(null)
@@ -66,7 +66,7 @@ export function useInvoiceData(userId: string | undefined) {
     try {
       const { data, error: err } = await supabase
         .from('invoices')
-        .insert({ ...invoiceData, user_id: userId, app: 'fey' })
+        .insert({ ...invoiceData, user_id: userId, app: 'fey', workspace_id: await getActiveWorkspaceId() })
         .select()
         .single()
       if (err) throw err

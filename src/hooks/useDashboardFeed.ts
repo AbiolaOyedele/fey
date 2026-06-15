@@ -43,15 +43,15 @@ interface RawFile {
 interface ContactRow { id: string; name: string }
 
 /**
- * Feeds the dashboard's "Unread messages" and "Recent files" cards. Pulls the
- * latest unread client messages and most-recent files for the owner, then
- * resolves contact names in a single follow-up query (no SQL joins needed).
+ * Feeds the dashboard's "Unread messages" and "Recent files" cards, scoped to
+ * the ACTIVE workspace. Pulls the latest unread client messages and most-recent
+ * files, then resolves contact names in a single follow-up query.
  */
-export function useDashboardFeed(userId: string | undefined): DashboardFeed {
+export function useDashboardFeed(workspaceId: string | undefined | null): DashboardFeed {
   const [feed, setFeed] = useState<DashboardFeed>(EMPTY)
 
   useEffect(() => {
-    if (!userId) return
+    if (!workspaceId) return
     let cancelled = false
 
     void (async () => {
@@ -59,7 +59,7 @@ export function useDashboardFeed(userId: string | undefined): DashboardFeed {
         supabase
           .from('crm_messages')
           .select('id, contact_id, body, attachments, created_at')
-          .eq('owner_id', userId)
+          .eq('workspace_id', workspaceId)
           .eq('sender_type', 'client')
           .is('read_at', null)
           .order('created_at', { ascending: false })
@@ -67,7 +67,7 @@ export function useDashboardFeed(userId: string | undefined): DashboardFeed {
         supabase
           .from('crm_files')
           .select('id, contact_id, file_name, file_type, file_size, uploader_type, created_at')
-          .eq('owner_id', userId)
+          .eq('workspace_id', workspaceId)
           .order('created_at', { ascending: false })
           .limit(6),
       ])
@@ -116,7 +116,7 @@ export function useDashboardFeed(userId: string | undefined): DashboardFeed {
     })()
 
     return () => { cancelled = true }
-  }, [userId])
+  }, [workspaceId])
 
   return feed
 }

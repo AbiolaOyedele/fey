@@ -154,8 +154,9 @@ function DeleteWorkspaceModal({
           <button onClick={onClose} className="text-gray-300 hover:text-gray-500"><X size={18} /></button>
         </div>
         <p className="text-sm text-gray-500 mb-4 leading-relaxed">
-          This permanently deletes <strong className="text-gray-800">{workspaceName}</strong> — its team, roles,
-          invites, and internal chats. Your clients and their data are not deleted. This can&apos;t be undone.
+          This permanently deletes <strong className="text-gray-800">{workspaceName}</strong> and everything in it —
+          its clients, messages, files, contracts, invoices, team, and internal chats. Your other workspaces are
+          unaffected. This can&apos;t be undone.
         </p>
         <label className="block text-xs font-medium text-gray-500 mb-1">
           Type <span className="font-semibold text-gray-700">{workspaceName}</span> to confirm

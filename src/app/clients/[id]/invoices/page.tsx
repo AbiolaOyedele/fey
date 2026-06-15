@@ -26,7 +26,7 @@ export default function InvoicesTab({ params }: { params: Promise<{ id: string }
   const { id } = use(params)
   const router = useRouter()
   const { user } = useAuth()
-  const { canManage } = useWorkspace()
+  const { canManage, workspace } = useWorkspace()
 
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [contact,  setContact]  = useState<CrmContact | null>(null)
@@ -92,6 +92,7 @@ export default function InvoicesTab({ params }: { params: Promise<{ id: string }
         .insert({
           user_id:         user.id,
           app:             'fey',
+          workspace_id:    workspace?.id ?? null,
           crm_contact_id:  id,
           invoice_number:  '',
           status:          'draft',

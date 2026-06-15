@@ -1,12 +1,9 @@
-import { env } from '@/config/env'
+import { supabase } from '@/lib/supabase'
 import {
   MAX_UPLOAD_BYTES,
   ALLOWED_UPLOAD_EXTENSIONS,
   BLOCKED_UPLOAD_EXTENSIONS,
 } from '@/lib/constants'
-
-const CLOUD_NAME = env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-const UPLOAD_PRESET = env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
 
 interface UploadResult {
   url: string
@@ -45,53 +42,109 @@ export function validateUploadFile(file: File): string | null {
   return null
 }
 
+interface UploadSignature {
+  cloudName: string
+  apiKey: string
+  timestamp: number
+  signature: string
+  folder: string
+  uploadPreset?: string
+}
+
+/**
+ * Resolves an auth header for the sign endpoint. Owners have a Supabase
+ * session; portal clients have a custom JWT in localStorage. Try owner first,
+ * fall back to whichever portal token is present.
+ */
+async function resolveAuthHeader(): Promise<Record<string, string>> {
+  try {
+    const { data } = await supabase.auth.getSession()
+    if (data.session) return { Authorization: `Bearer ${data.session.access_token}` }
+  } catch { /* no owner session — try portal */ }
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key?.startsWith('portal_token_')) {
+        const val = localStorage.getItem(key)
+        if (val) return { Authorization: `Bearer ${val}` }
+      }
+    }
+  } catch { /* localStorage unavailable */ }
+  return {}
+}
+
+/**
+ * Uploads a file to Cloudinary using a server-signed request (the preset is in
+ * Signed mode, so unsigned uploads are rejected). Flow: validate → fetch a
+ * short-lived signature from /api/v1/uploads/sign → POST to Cloudinary with the
+ * signed params. Returns the same {promise, abort} handle as before.
+ */
 export const uploadToCloudinary = (
   file: File,
   folder: string,
   onProgress?: (pct: number) => void
 ): UploadHandle => {
-  let xhr: XMLHttpRequest
+  let xhr: XMLHttpRequest | null = null
+  let aborted = false
 
-  const promise = new Promise<UploadResult>((resolve, reject) => {
+  const promise = (async (): Promise<UploadResult> => {
     const validationError = validateUploadFile(file)
-    if (validationError) {
-      reject(new Error(validationError))
-      return
+    if (validationError) throw new Error(validationError)
+
+    // 1. Get a signature from our server (never exposes the api_secret).
+    const headers = await resolveAuthHeader()
+    const signRes = await fetch('/api/v1/uploads/sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ folder }),
+    })
+    if (!signRes.ok) {
+      const body = (await signRes.json().catch(() => null)) as { error?: { message?: string } } | null
+      throw new Error(body?.error?.message ?? 'Couldn’t start the upload. Please try again.')
     }
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('upload_preset', UPLOAD_PRESET ?? '')
-    formData.append('folder', `fey/${folder}`)
+    const sig = (await signRes.json()) as UploadSignature
+    if (aborted) throw new Error('cancelled')
 
-    xhr = new XMLHttpRequest()
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`)
+    // 2. Upload directly to Cloudinary with the signed params (XHR for progress).
+    return await new Promise<UploadResult>((resolve, reject) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('api_key', sig.apiKey)
+      formData.append('timestamp', String(sig.timestamp))
+      formData.append('signature', sig.signature)
+      formData.append('folder', sig.folder)
+      if (sig.uploadPreset) formData.append('upload_preset', sig.uploadPreset)
 
-    if (onProgress) {
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
+      xhr = new XMLHttpRequest()
+      xhr.open('POST', `https://api.cloudinary.com/v1_1/${sig.cloudName}/auto/upload`)
+
+      if (onProgress) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
+        }
       }
-    }
 
-    xhr.onload = () => {
-      if (xhr.status === 200) {
-        const data = JSON.parse(xhr.responseText) as { secure_url: string; public_id: string; bytes: number; format: string }
-        resolve({ url: data.secure_url, publicId: data.public_id, size: data.bytes, format: data.format })
-      } else {
-        let msg = `Upload failed (${xhr.status})`
-        try {
-          const err = JSON.parse(xhr.responseText) as { error?: { message?: string } }
-          if (err?.error?.message) msg = err.error.message
-        } catch { /* ignore parse error */ }
-        reject(new Error(msg))
+      xhr.onload = () => {
+        if (xhr && xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText) as { secure_url: string; public_id: string; bytes: number; format: string }
+          resolve({ url: data.secure_url, publicId: data.public_id, size: data.bytes, format: data.format })
+        } else {
+          let msg = `Upload failed (${xhr?.status ?? 0})`
+          try {
+            const err = JSON.parse(xhr?.responseText ?? '') as { error?: { message?: string } }
+            if (err?.error?.message) msg = err.error.message
+          } catch { /* ignore parse error */ }
+          reject(new Error(msg))
+        }
       }
-    }
 
-    xhr.onerror = () => reject(new Error('Network error during upload'))
-    xhr.onabort = () => reject(new Error('cancelled'))
-    xhr.send(formData)
-  })
+      xhr.onerror = () => reject(new Error('Network error during upload'))
+      xhr.onabort = () => reject(new Error('cancelled'))
+      xhr.send(formData)
+    })
+  })()
 
-  return { promise, abort: () => xhr?.abort() }
+  return { promise, abort: () => { aborted = true; xhr?.abort() } }
 }
 
 const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif', 'heic']

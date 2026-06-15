@@ -14,9 +14,17 @@ const TYPE_OPTIONS: ReadonlyArray<{ value: FeedbackType; label: string }> = [
 
 /**
  * Floating "Send feedback" button + modal. Submits to POST /api/v1/feedback,
- * which stores the row and emails the admin allowlist. Owner-app only.
+ * which stores the row and emails the admin allowlist. Lives in the sidebar
+ * (desktop) and the bottom nav (mobile). Owner-app only.
  */
-export default function FeedbackButton() {
+interface FeedbackButtonProps {
+  /** Sidebar (desktop): show the label when the rail is expanded. */
+  expanded?: boolean
+  /** Render as a mobile bottom-nav icon instead of a sidebar row. */
+  mobile?: boolean
+}
+
+export default function FeedbackButton({ expanded = false, mobile = false }: FeedbackButtonProps) {
   const { showToast } = useSettings()
   const [open, setOpen] = useState(false)
   const [type, setType] = useState<FeedbackType>('feature')
@@ -86,16 +94,28 @@ export default function FeedbackButton() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => { reset(); setOpen(true) }}
-        title="Send feedback"
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white shadow-lg hover:opacity-90 transition-opacity"
-        style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
-      >
-        <MessageSquarePlus size={16} />
-        Feedback
-      </button>
+      {mobile ? (
+        <button
+          type="button"
+          onClick={() => { reset(); setOpen(true) }}
+          title="Send feedback"
+          className="relative flex items-center justify-center w-11 h-11 rounded-xl text-gray-400"
+        >
+          <MessageSquarePlus size={22} />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => { reset(); setOpen(true) }}
+          title="Send feedback"
+          className={`flex items-center rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-all duration-200 ${
+            expanded ? 'w-full gap-3 px-3 h-10' : 'w-10 h-10 justify-center'
+          }`}
+        >
+          <span className="flex-shrink-0"><MessageSquarePlus size={20} /></span>
+          {expanded && <span className="text-sm font-medium">Feedback</span>}
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 p-4" onClick={close}>

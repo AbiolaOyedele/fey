@@ -104,6 +104,14 @@ input or an external action (kept at the bottom).
 - **SQL — combined file**: `supabase/migrations/RUN_ME_2026-06-15.sql` bundles all four
   migrations (message-settings, feedback, archive, projects) — run once.
 
+- **A3 — DONE (signed uploads)** (2026-06-15): the Cloudinary preset `fey_uploads` is now in
+  **Signed** mode. `src/services/upload.service.ts` builds a short-lived SHA-1 signature
+  (api_secret server-only); `POST /api/v1/uploads/sign` issues it (auth: owner Supabase OR
+  portal JWT); `utils/cloudinary.ts` now fetches a signature then uploads with signed params.
+  All upload call sites go through this single util, so owner + portal are covered. **Requires
+  a redeploy** — until then the live app's uploads fail (preset is already Signed). Proxy also
+  routes `feyadmin.<root>/` → `/admin`.
+
 ## PART A — Fixes / hardening of the current MVP (do first)
 
 ### A1. Centralised date formatting → `dd/mm/yyyy`

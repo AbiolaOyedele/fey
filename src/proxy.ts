@@ -16,7 +16,7 @@ import type { NextRequest } from 'next/server'
  * Reserved subdomains bypass portal routing entirely and serve the main app.
  */
 
-const RESERVED_SUBDOMAINS = new Set(['dashboard', 'www', 'app', 'api', 'admin'])
+const RESERVED_SUBDOMAINS = new Set(['dashboard', 'www', 'app', 'api', 'admin', 'feyadmin'])
 
 export function proxy(request: NextRequest) {
   const hostname   = request.headers.get('host') ?? ''
@@ -33,9 +33,10 @@ export function proxy(request: NextRequest) {
 
   const slug = hostname.slice(0, hostname.length - rootDomain.length - 1)
 
-  // admin.<root> serves the personal admin board at its root. Other paths pass
-  // through (the board is also reachable path-based at /admin on any host).
-  if (slug === 'admin') {
+  // admin.<root> / feyadmin.<root> serve the personal admin board at their root.
+  // Other paths pass through (the board is also reachable path-based at /admin
+  // on any host).
+  if (slug === 'admin' || slug === 'feyadmin') {
     if (request.nextUrl.pathname === '/' || request.nextUrl.pathname === '') {
       const url = request.nextUrl.clone()
       url.pathname = '/admin'

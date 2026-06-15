@@ -9,7 +9,6 @@ import { env } from '@/config/env'
 import Sidebar from './Sidebar'
 import ToastContainer from '@/components/ui/Toast'
 import UpdateBanner from '@/components/ui/UpdateBanner'
-import FeedbackButton from '@/components/ui/FeedbackButton'
 import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { activeWorkspaceSlug } from '@/utils/host'
@@ -84,6 +83,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'theruff.agency'
     const host = window.location.hostname
     if (!host.endsWith(rootDomain)) return       // localhost / *.vercel.app
+    // The personal admin host serves the app normally — never redirect off it.
+    if (host === `feyadmin.${rootDomain}`) return
 
     const memberSlugs = memberships.map((m) => m.workspace.slug).filter((s): s is string => !!s)
     const currentSlug = activeWorkspaceSlug()
@@ -118,7 +119,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       <ToastContainer />
       <UpdateBanner show={updateAvailable} accent={settings.accent_color} />
-      {!IS_DEMO && <FeedbackButton />}
     </div>
   )
 }

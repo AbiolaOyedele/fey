@@ -7,11 +7,12 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, CreditCard, Settings,
   ListTodo, FileText, Sparkles, ChevronsLeft, ChevronsRight,
-  MessagesSquare, UsersRound,
+  MessagesSquare, UsersRound, ShieldCheck,
 } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
+import FeedbackButton from '@/components/ui/FeedbackButton'
 
 const SIDEBAR_KEY = 'fey:sidebar_expanded'
 
@@ -73,6 +74,13 @@ function MobileLink({ href, children, exact = false, accent }: MobileLinkProps) 
 
 export default function Sidebar() {
   const { settings } = useSettings()
+  // The Admin link only surfaces on the personal admin host (feyadmin.*). The
+  // /admin page + its API still enforce the email allowlist, so this is just
+  // visibility — ADMIN_EMAILS isn't readable client-side anyway.
+  const [onAdminHost, setOnAdminHost] = useState(false)
+  useEffect(() => {
+    setOnAdminHost(typeof window !== 'undefined' && window.location.hostname.startsWith('feyadmin.'))
+  }, [])
   const accent   = settings.accent_color || '#ED64A6'
   const appMode  = settings.app_mode || 'dual'
   const topClass = IS_DEMO ? 'top-8' : 'top-0'
@@ -150,6 +158,10 @@ export default function Sidebar() {
 
         <div className={`pb-3 pt-3 border-t border-gray-100 flex flex-col gap-2 ${showExpanded ? 'items-stretch' : 'items-center'}`}>
           {showExpanded && <WorkspaceSwitcher accent={accent} />}
+          {onAdminHost && (
+            <NavItem href="/admin" label="Admin" accent={accent} expanded={showExpanded} icon={<ShieldCheck size={20} />} />
+          )}
+          {!IS_DEMO && <FeedbackButton expanded={showExpanded} />}
           <NavItem href="/settings" label="Settings" accent={accent} expanded={showExpanded} icon={<Settings size={20} />} />
           <button
             onClick={toggle}

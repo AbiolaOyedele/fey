@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   BarChart, Bar, XAxis, ResponsiveContainer, Tooltip,
 } from 'recharts'
@@ -35,6 +36,7 @@ const STATUS_STYLE: Record<FeedbackStatus, string> = {
 }
 
 export default function AdminPage() {
+  const router = useRouter()
   const [state, setState] = useState<LoadState>('loading')
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null)
   const [feedback, setFeedback] = useState<Feedback[]>([])
@@ -59,6 +61,14 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => { void load() }, [load])
+
+  // The admin board is personal. Non-admins are sent back to the app — but NOT
+  // on the feyadmin host, where "/" rewrites back to /admin (which would loop).
+  useEffect(() => {
+    if (state !== 'forbidden' && state !== 'unauth') return
+    if (typeof window !== 'undefined' && window.location.hostname.startsWith('feyadmin.')) return
+    router.replace(state === 'unauth' ? '/login' : '/')
+  }, [state, router])
 
   const cycleStatus = useCallback(async (item: Feedback) => {
     const next = STATUS_NEXT[item.status]

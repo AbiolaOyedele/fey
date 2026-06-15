@@ -1,6 +1,6 @@
 // Slugs that can't be used — they clash with platform routes or reserved names.
 export const RESERVED_SLUGS = new Set([
-  'dashboard', 'www', 'app', 'api', 'admin', 'support',
+  'dashboard', 'www', 'app', 'api', 'admin', 'feyadmin', 'support',
   'help', 'mail', 'smtp', 'ftp', 'blog', 'status', 'auth',
   'login', 'logout', 'signup', 'register', 'portal', 'client',
 ])

@@ -59,7 +59,7 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
   }, [title, description, dueDate, id, createProject, router])
 
   return (
-    <div className="max-w-4xl mx-auto px-4 lg:px-6 py-6">
+    <div className="p-4 lg:p-8">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Projects</h2>
@@ -117,7 +117,7 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
       )}
 
       {loading ? (
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-28 rounded-2xl bg-gray-100 animate-pulse" />
           ))}
@@ -129,7 +129,7 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
           <p className="text-xs text-gray-400">Create a project to keep its chat and files together.</p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {visible.map((p) => (
             <button
               key={p.id}

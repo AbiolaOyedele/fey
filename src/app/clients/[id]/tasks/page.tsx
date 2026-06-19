@@ -32,7 +32,7 @@ export default function ClientTasksTab({ params }: { params: Promise<{ id: strin
   const pending = tasks.tasks.length - done
 
   return (
-    <div className="p-6">
+    <div className="p-4 lg:p-8">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Tasks</h2>

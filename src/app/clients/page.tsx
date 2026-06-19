@@ -104,7 +104,7 @@ export default function CrmContactsPage() {
           </div>
 
           {/* Status filters */}
-          <div className="flex items-center gap-1 overflow-x-auto">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
             {STATUS_FILTERS.map((f) => (
               <button
                 key={f.value}

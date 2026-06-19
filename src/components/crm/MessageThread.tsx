@@ -112,14 +112,14 @@ export default function MessageThread({ messages, ownerId, contactName = 'Client
                     </div>
                     <div className={`max-w-[75%] flex flex-col ${isOwner ? 'items-end' : 'items-start'}`}>
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-xs font-semibold text-gray-700">{senderName}</span>
+                        {!isOwner && <span className="text-xs font-semibold text-gray-700">{senderName}</span>}
                         <span className="text-3xs text-gray-400">
                           {formatTime(msg.created_at)}{isOwner && (msg.read_at ? ' · Read' : ' · Sent')}
                         </span>
                       </div>
                       {hasBody && (
                         <div
-                          className={`px-3 py-2 text-sm leading-relaxed break-words ${isOwner ? 'rounded-2xl rounded-tr-sm text-white' : 'rounded-2xl rounded-tl-sm text-gray-800'}`}
+                          className={`px-3.5 py-2 text-sm leading-relaxed break-words rounded-2xl ${isOwner ? 'rounded-br-sm text-white' : 'rounded-bl-sm text-gray-800'}`}
                           style={isOwner ? { backgroundColor: 'var(--accent, #ED64A6)' } : { backgroundColor: '#F3F4F6' }}
                           dangerouslySetInnerHTML={{ __html: msg.body_html ?? msg.body.replace(/\n/g, '<br>') }}
                         />

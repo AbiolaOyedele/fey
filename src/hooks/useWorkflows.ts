@@ -55,9 +55,16 @@ export function useWorkflows(workspaceId: string | null | undefined) {
     await refetch()
   }, [refetch])
 
+  const reorderStages = useCallback(async (orderedIds: string[]) => {
+    await Promise.all(orderedIds.map((id, i) =>
+      apiFetch(`/api/v1/workflow-stages/${id}`, { method: 'PATCH', body: JSON.stringify({ sort_order: i }) }),
+    ))
+    await refetch()
+  }, [refetch])
+
   const applyToProject = useCallback(async (workflowId: string, projectId: string) => {
     await apiFetch(`/api/v1/workflows/${workflowId}/apply`, { method: 'POST', body: JSON.stringify({ project_id: projectId }) })
   }, [])
 
-  return { workflows, loading, error, refetch, createWorkflow, renameWorkflow, addStage, updateStage, deleteStage, applyToProject }
+  return { workflows, loading, error, refetch, createWorkflow, renameWorkflow, addStage, updateStage, deleteStage, reorderStages, applyToProject }
 }

@@ -40,7 +40,7 @@ export default function TasksPage() {
   const taskScope = scope === 'personal' ? 'personal' : 'all'
   const active = useTasks({ scope: taskScope, workspaceId: wsId, done: false })
   const completed = useTasks({ scope: taskScope, workspaceId: wsId, done: true })
-  const { workflows, addStage, updateStage, deleteStage } = useWorkflows(wsId)
+  const { workflows, addStage, updateStage, deleteStage, reorderStages } = useWorkflows(wsId)
 
   const [showWorkflow, setShowWorkflow] = useState(false)
   const defaultWorkflow = useMemo(() => workflows.find((w) => w.is_default) ?? workflows[0] ?? null, [workflows])
@@ -61,7 +61,7 @@ export default function TasksPage() {
   const liveSelected = selected ? (active.tasks.find((t) => t.id === selected.id) ?? completed.tasks.find((t) => t.id === selected.id) ?? selected) : null
 
   return (
-    <div className="p-4 lg:p-8 page-enter max-w-[1400px] mx-auto">
+    <div className="p-4 lg:p-8 page-enter">
       {/* Header */}
       <div className="flex items-center justify-between mb-1">
         <h1 className="font-display text-2xl font-semibold text-gray-900">Tasks</h1>
@@ -186,6 +186,7 @@ export default function TasksPage() {
           onAddStage={addStage}
           onUpdateStage={updateStage}
           onDeleteStage={deleteStage}
+          onReorderStages={reorderStages}
           onClose={() => setShowWorkflow(false)}
         />
       )}

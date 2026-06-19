@@ -30,18 +30,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // window — wait for SIGNED_IN or SIGNED_OUT instead.
     const hasPkceCode = typeof window !== 'undefined' && window.location.search.includes('code=')
 
+    // Keep the `user` reference stable when the identity hasn't changed. Supabase
+    // fires TOKEN_REFRESHED / SIGNED_IN on every tab refocus; setting a fresh
+    // user object each time made every hook keyed on `user` refetch, which flips
+    // AppShell into its loading spinner and unmounts the page — wiping any
+    // in-progress input. Only swap the object when the user id actually changes.
+    const applyUser = (nextSession: Session | null) => {
+      setUser((prev) => (prev?.id === nextSession?.user?.id ? prev : (nextSession?.user ?? null)))
+    }
+
     const finishLoading = (nextSession: Session | null) => {
       if (!mounted || resolved) return
       resolved = true
       setSession(nextSession)
-      setUser(nextSession?.user ?? null)
+      applyUser(nextSession)
       setLoading(false)
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!mounted) return
       setSession(nextSession)
-      setUser(nextSession?.user ?? null)
+      applyUser(nextSession)
 
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         finishLoading(nextSession)

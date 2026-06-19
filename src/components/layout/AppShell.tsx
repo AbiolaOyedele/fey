@@ -7,6 +7,7 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
 import { env } from '@/config/env'
 import Sidebar from './Sidebar'
+import BrandLoader from '@/components/ui/BrandLoader'
 import ToastContainer from '@/components/ui/Toast'
 import UpdateBanner from '@/components/ui/UpdateBanner'
 import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
@@ -99,11 +100,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (isPublic) return <>{children}</>
 
   if (!IS_DEMO && loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-appbg">
-        <div className="w-5 h-5 rounded-full border-2 border-gray-300 border-t-transparent animate-spin" />
-      </div>
-    )
+    return <BrandLoader logo={settings.logo} fullscreen />
   }
 
   if (!IS_DEMO && !user) return null

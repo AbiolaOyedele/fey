@@ -290,8 +290,11 @@ export interface PortalPayment {
 }
 
 export interface PortalTask {
-  id:         string
-  title:      string
-  done:       boolean
-  created_at: string
+  id:            string
+  title:         string
+  done:          boolean
+  due_date:      string | null
+  priority:      'low' | 'medium' | 'high'
+  project_title: string | null
+  created_at:    string
 }

@@ -1,0 +1,96 @@
+// Unified task system (work_tasks). See supabase/migrations/20260619_work_tasks.sql.
+// A task is "personal" when both project_id and contact_id are null (private to
+// creator + assignees), otherwise "linked" (workspace + client/portal visible).
+
+export type TaskPriority = 'low' | 'medium' | 'high'
+
+export interface WorkflowStage {
+  id: string
+  workflow_id: string
+  name: string
+  color: string
+  sort_order: number
+}
+
+export interface Workflow {
+  id: string
+  owner_id: string
+  workspace_id: string | null
+  name: string
+  is_default: boolean
+  stages: WorkflowStage[]
+}
+
+export interface TaskAssignee {
+  user_id: string
+  name: string | null
+  email: string | null
+}
+
+export interface Subtask {
+  id: string
+  task_id: string
+  title: string
+  done: boolean
+  sort_order: number
+}
+
+export interface Task {
+  id: string
+  owner_id: string
+  workspace_id: string | null
+  project_id: string | null
+  contact_id: string | null
+  stage_id: string | null
+  created_by: string
+  title: string
+  description: string | null
+  priority: TaskPriority
+  start_date: string | null
+  due_date: string | null
+  estimated_minutes: number | null
+  logged_minutes: number
+  sort_order: number
+  done: boolean
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+  // Joined / derived (populated by the list query, not columns):
+  assignees: TaskAssignee[]
+  subtasks: Subtask[]
+  project_title: string | null
+  contact_name: string | null
+}
+
+// ── API payloads ────────────────────────────────────────────────────────────
+
+export interface CreateTaskPayload {
+  title: string
+  description?: string | null
+  project_id?: string | null
+  contact_id?: string | null
+  stage_id?: string | null
+  priority?: TaskPriority
+  start_date?: string | null
+  due_date?: string | null
+  estimated_minutes?: number | null
+  assignee_ids?: string[]
+}
+
+export interface UpdateTaskPayload {
+  title?: string
+  description?: string | null
+  project_id?: string | null
+  contact_id?: string | null
+  stage_id?: string | null
+  priority?: TaskPriority
+  start_date?: string | null
+  due_date?: string | null
+  estimated_minutes?: number | null
+  logged_minutes?: number
+  done?: boolean
+  sort_order?: number
+}
+
+/** Which slice of tasks a list request wants. */
+export type TaskScope = 'personal' | 'all' | 'project' | 'contact'

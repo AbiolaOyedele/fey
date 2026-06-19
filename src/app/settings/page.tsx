@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import WhatsNewPopup from '@/components/ui/WhatsNewPopup'
 import ChangelogPopup from '@/components/ui/ChangelogPopup'
+import FeedbackButton from '@/components/ui/FeedbackButton'
 
 const BOT_URL = process.env.NEXT_PUBLIC_BOT_URL ?? 'http://localhost:3001'
 
@@ -1908,6 +1909,11 @@ function SettingsPageInner() {
           {/* Mobile header */}
           <div className="md:hidden mb-4">
             <h1 className="font-display text-2xl font-semibold text-gray-900">Settings</h1>
+          </div>
+
+          {/* Mobile feedback entry — desktop has this in the sidebar footer */}
+          <div className="md:hidden mb-4 bg-white rounded-2xl border border-gray-100 px-2 py-1">
+            <FeedbackButton expanded />
           </div>
 
           {/* Desktop breadcrumb */}

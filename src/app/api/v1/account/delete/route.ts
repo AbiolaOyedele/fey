@@ -43,6 +43,10 @@ export async function POST(req: NextRequest) {
     await wipe(db, 'retainer_payments', 'user_id', uid)
     await wipe(db, 'standalone_tasks',  'user_id', uid)
     await wipe(db, 'task_groups',       'user_id', uid)
+    // New unified task system — work_subtasks/assignees cascade from work_tasks,
+    // workflow_stages cascade from workflows.
+    await wipe(db, 'work_tasks',        'owner_id', uid)
+    await wipe(db, 'workflows',         'owner_id', uid)
     await wipe(db, 'shared_clients',    'user_id', uid)
     await wipe(db, 'clients',           'user_id', uid)
     await wipe(db, 'trash',             'user_id', uid)

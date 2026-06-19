@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Briefcase, Menu, X, LogOut } from 'lucide-react'
 import { portalTokenKey } from '@/app/portal/[subdomain]/layout'
 import PortalWorkspaceTabs, { PORTAL_SECTIONS } from './PortalWorkspaceTabs'
+import PortalFeedbackButton from './PortalFeedbackButton'
 import UpdateBanner from '@/components/ui/UpdateBanner'
 import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
 import { usePortalBase } from '@/hooks/usePortalBase'
@@ -103,6 +104,7 @@ export default function PortalShell({ subdomain, branding, clientName, children 
           <p className="text-2xs text-gray-400">Signed in as</p>
           <p className="text-xs2 font-medium text-gray-700 truncate">{clientName}</p>
         </div>
+        <PortalFeedbackButton subdomain={subdomain} accent={accent} />
         <button
           onClick={() => void signOut()}
           disabled={signingOut}

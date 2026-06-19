@@ -1,9 +1,18 @@
 'use client'
 
 import { use, useState, useEffect, useCallback } from 'react'
-import { CheckSquare2, Check } from 'lucide-react'
+import { CheckSquare2, Check, Flag } from 'lucide-react'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import type { PortalTask } from '@/types/crm'
+
+const PRIORITY_COLOR: Record<PortalTask['priority'], string> = {
+  high: '#EF4444', medium: '#F59E0B', low: '#22C55E',
+}
+
+function formatDue(due: string): string {
+  const d = new Date(due + 'T00:00:00')
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
 
 export default function PortalTasksPage({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
@@ -61,16 +70,15 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
           {tasks.map((t) => (
             <div key={t.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0">
-              <div
-                className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 ${
-                  t.done ? 'bg-emerald-500' : 'border-2 border-gray-200'
-                }`}
-              >
+              <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 ${t.done ? 'bg-emerald-500' : 'border-2 border-gray-200'}`}>
                 {t.done && <Check size={12} className="text-white" />}
               </div>
-              <span className={`flex-1 text-sm ${t.done ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                {t.title}
-              </span>
+              <div className="flex-1 min-w-0">
+                <span className={`text-sm ${t.done ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{t.title}</span>
+                {t.project_title && <p className="text-2xs text-gray-400 truncate">{t.project_title}</p>}
+              </div>
+              {t.due_date && <span className="text-2xs text-gray-400 flex-shrink-0">{formatDue(t.due_date)}</span>}
+              <Flag size={13} fill={PRIORITY_COLOR[t.priority]} style={{ color: PRIORITY_COLOR[t.priority] }} className="flex-shrink-0" />
             </div>
           ))}
         </div>

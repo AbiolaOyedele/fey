@@ -15,7 +15,8 @@ const submitSchema = z.object({
 })
 
 interface SubmitContext {
-  userId: string
+  /** Owner/teammate auth.users id, or null for portal clients (not auth users). */
+  userId: string | null
   userEmail: string | null
   userAgent: string | null
 }

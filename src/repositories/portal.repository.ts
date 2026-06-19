@@ -456,18 +456,30 @@ export async function listPortalTasks(
   db: SupabaseClient,
   contactId: string,
 ): Promise<PortalTask[]> {
+  // Reads from the new unified task system (work_tasks), scoped to this client.
+  // Every task linked to the client — directly or via one of their projects —
+  // carries contact_id, so a single filter covers both. Service-role client.
   const { data, error } = await db
-    .from('tasks')
-    .select('id, title, done, created_at')
-    .eq('client_id', contactId)
+    .from('work_tasks')
+    .select('id, title, done, due_date, priority, created_at, projects:project_id ( title )')
+    .eq('contact_id', contactId)
+    .is('deleted_at', null)
+    .order('done', { ascending: true })
     .order('created_at', { ascending: true })
   if (error) throw error
-  return (data ?? []).map((row: Record<string, unknown>) => ({
-    id:         row.id as string,
-    title:      row.title as string,
-    done:       (row.done as boolean | null) ?? false,
-    created_at: row.created_at as string,
-  }))
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const proj = row.projects as { title: string } | { title: string }[] | null
+    const projTitle = Array.isArray(proj) ? (proj[0]?.title ?? null) : (proj?.title ?? null)
+    return {
+      id:            row.id as string,
+      title:         row.title as string,
+      done:          (row.done as boolean | null) ?? false,
+      due_date:      (row.due_date as string | null) ?? null,
+      priority:      (row.priority as PortalTask['priority']) ?? 'medium',
+      project_title: projTitle,
+      created_at:    row.created_at as string,
+    }
+  })
 }
 
 // ── Owner settings lookup ─────────────────────────────────────────────────────

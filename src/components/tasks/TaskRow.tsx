@@ -1,0 +1,49 @@
+'use client'
+
+import { Check } from 'lucide-react'
+import type { Task } from '@/types/work-tasks'
+import { AssigneeAvatars, DueChip, PriorityFlag, formatMinutes } from './TaskBits'
+
+interface TaskRowProps {
+  task: Task
+  onToggleDone: (id: string) => void
+  onOpen: (task: Task) => void
+}
+
+/** A single task row for the list views. */
+export default function TaskRow({ task, onToggleDone, onOpen }: TaskRowProps) {
+  return (
+    <div className="group flex items-center gap-3 px-3 sm:px-4 py-2.5 hover:bg-gray-50 transition-colors">
+      <button
+        onClick={() => onToggleDone(task.id)}
+        aria-label={task.done ? 'Mark not done' : 'Mark done'}
+        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+          task.done ? 'border-transparent text-white' : 'border-gray-300 hover:border-gray-400'
+        }`}
+        style={task.done ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
+      >
+        {task.done && <Check size={12} strokeWidth={3} />}
+      </button>
+
+      <button onClick={() => onOpen(task)} className="flex-1 min-w-0 text-left">
+        <p className={`text-sm truncate ${task.done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+          {task.title}
+        </p>
+        {task.subtasks.length > 0 && (
+          <p className="text-2xs text-gray-400 mt-0.5">
+            {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length} subtasks
+          </p>
+        )}
+      </button>
+
+      <div className="flex items-center gap-3 flex-shrink-0">
+        <AssigneeAvatars assignees={task.assignees} />
+        <div className="hidden sm:block w-20 text-right"><DueChip due={task.due_date} done={task.done} /></div>
+        {task.estimated_minutes != null && (
+          <span className="hidden md:inline text-2xs text-gray-400 w-12 text-right">{formatMinutes(task.estimated_minutes)}</span>
+        )}
+        <PriorityFlag priority={task.priority} />
+      </div>
+    </div>
+  )
+}

@@ -8,6 +8,7 @@ import { portalBasePath } from '@/hooks/usePortalBase'
 import { uploadToCloudinary } from '@/utils/cloudinary'
 import { formatDate, formatTime } from '@/utils/formatDate'
 import AttachmentPreview from '@/components/crm/AttachmentPreview'
+import { composerKeyDown } from '@/utils/composerKeys'
 import type { Project, ProjectMessage, ProjectFile } from '@/types/project'
 import type { MessageAttachment } from '@/types/crm'
 
@@ -208,8 +209,8 @@ export default function PortalProjectDetailPage({ params }: { params: Promise<{ 
                 rows={1}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void send() } }}
-                placeholder="Type a message… (⌘↵ to send)"
+                onKeyDown={(e) => composerKeyDown(e, () => void send(), setBody)}
+                placeholder="Type a message…"
                 className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-gray-400 focus:bg-white resize-none max-h-32"
               />
               <button

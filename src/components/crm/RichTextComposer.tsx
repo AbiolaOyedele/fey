@@ -94,10 +94,17 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
   }, [onSend, isEmpty, attachments, uploading])
 
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    if (e.key !== 'Enter') return
+    // Cmd/Ctrl+Enter → newline (browsers don't insert one for this combo).
+    if (e.metaKey || e.ctrlKey) {
       e.preventDefault()
-      handleSend()
+      document.execCommand('insertLineBreak')
+      return
     }
+    // Shift+Enter → default newline (<br>). Plain Enter → send.
+    if (e.shiftKey) return
+    e.preventDefault()
+    handleSend()
   }, [handleSend])
 
   const openLinkPopup = useCallback(() => {
@@ -310,7 +317,7 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
 
       {/* Send row */}
       <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100">
-        <span className="text-2xs text-gray-300">⌘ Enter to send</span>
+        <span className="text-2xs text-gray-300">Enter to send · ⌘↵ newline</span>
         <button
           type="button"
           onClick={handleSend}

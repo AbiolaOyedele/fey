@@ -11,7 +11,7 @@ import type { AppNotification } from '@/types/notification'
  * Desktop notification bell — anchored popover in the sidebar footer. New items
  * arrive in realtime. Clicking one marks it read and navigates to its link.
  */
-export default function NotificationBell({ accent }: { accent: string }) {
+export default function NotificationBell({ accent, expanded = false }: { accent: string; expanded?: boolean }) {
   const router = useRouter()
   const { items, unreadCount, markRead, markAllRead } = useAppNotifications()
   const [open, setOpen] = useState(false)
@@ -34,17 +34,22 @@ export default function NotificationBell({ accent }: { accent: string }) {
       <button
         onClick={() => setOpen((v) => !v)}
         title="Notifications"
-        className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors relative"
+        className={`flex items-center rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-all duration-200 relative ${
+          expanded ? 'w-full gap-3 px-3 h-10' : 'w-10 h-10 justify-center'
+        }`}
       >
-        <Bell size={20} />
-        {unreadCount > 0 && (
-          <span
-            className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
-            style={{ backgroundColor: accent }}
-          >
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
+        <span className="relative flex-shrink-0">
+          <Bell size={20} />
+          {unreadCount > 0 && (
+            <span
+              className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
+              style={{ backgroundColor: accent }}
+            >
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </span>
+        {expanded && <span className="text-sm font-medium">Notifications</span>}
       </button>
 
       {open && (

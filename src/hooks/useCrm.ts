@@ -287,6 +287,13 @@ export function useMessages(contactId: string | null) {
       .select()
       .single()
     if (err) throw err
+    // Best-effort: email the client that they have a new message (clients aren't
+    // app users, so email is their notification channel). Fire-and-forget.
+    void fetch('/api/v1/crm/messages/notify-client', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ contact_id: contactId }),
+    }).catch(() => {})
     return rowToMessage(data as Record<string, unknown>)
   }, [contactId])
 

@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase-server'
 import { requirePortalAuth, handleError } from '@/lib/api-helpers'
 import * as portalRepo from '@/repositories/portal.repository'
 import * as portalService from '@/services/portal.service'
+import { notifyOwnerAdmins } from '@/services/notifications.service'
 
 /**
  * GET /api/v1/portal/messages
@@ -41,6 +42,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: { code: 'PORTAL_USER_NOT_FOUND', message: 'Portal access not found.' } }, { status: 403 })
     }
     const message = await portalService.sendPortalMessage(db, portalUser, body)
+    await notifyOwnerAdmins(db, payload!.owner_id, {
+      type: 'client_message',
+      title: `New message from ${portalUser.name}`,
+      body: message.body?.slice(0, 140) || 'Sent an attachment',
+      link: `/clients/${payload!.contact_id}/messages`,
+      entityType: 'contact',
+      entityId: payload!.contact_id,
+    })
     return NextResponse.json({ message }, { status: 201 })
   } catch (err) {
     return handleError(err, 'PORTAL_MESSAGE_SEND_FAILED')

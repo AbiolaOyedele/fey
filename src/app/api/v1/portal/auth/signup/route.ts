@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { createServiceClient } from '@/lib/supabase-server'
+import { signPortalToken } from '@/lib/portal-jwt'
 import { handleError, errorResponse } from '@/lib/api-helpers'
 import { notifyOwnerAdmins } from '@/services/notifications.service'
 import * as portalRepo from '@/repositories/portal.repository'
@@ -133,7 +134,19 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    return NextResponse.json({ success: true, userId: portalUser.id }, { status: 201 })
+    // Issue a session token so the client is signed in immediately (no re-login).
+    const token = await signPortalToken({
+      portal_user_id: portalUser.id,
+      contact_id:     portalUser.contact_id,
+      owner_id:       ownerId,
+      workspace_slug,
+    })
+
+    return NextResponse.json({
+      success: true,
+      token,
+      user: { id: portalUser.id, name: portalUser.name, email: portalUser.email, contact_id: portalUser.contact_id },
+    }, { status: 201 })
   } catch (err) {
     return handleError(err, 'PORTAL_SIGNUP_FAILED')
   }

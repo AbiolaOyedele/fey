@@ -19,22 +19,30 @@ export default function TeamPage() {
   const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member')
   const [busy, setBusy] = useState(false)
   const [inviteErr, setInviteErr] = useState<string | null>(null)
-  const [copiedLink, setCopiedLink] = useState<string | null>(null)
+  const [lastInvite, setLastInvite] = useState<{ email: string; url: string } | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [copiedToken, setCopiedToken] = useState<string | null>(null)
 
   const handleInvite = async () => {
     if (!email.trim()) return
     setBusy(true); setInviteErr(null)
     try {
       const { invite_url } = await invite(email.trim(), inviteRole)
+      setLastInvite({ email: email.trim(), url: invite_url })
+      setCopied(false)
       setEmail('')
-      void navigator.clipboard?.writeText(invite_url).catch(() => {})
-      setCopiedLink(invite_url)
-      setTimeout(() => setCopiedLink(null), 4000)
     } catch (e) {
       setInviteErr(e instanceof Error ? e.message : 'Could not send invite')
     } finally {
       setBusy(false)
     }
+  }
+
+  const copyLink = () => {
+    if (!lastInvite) return
+    void navigator.clipboard?.writeText(lastInvite.url).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2500)
   }
 
   return (
@@ -77,10 +85,28 @@ export default function TeamPage() {
             </button>
           </div>
           {inviteErr && <p className="text-xs text-red-500 mt-2">{inviteErr}</p>}
-          {copiedLink && (
-            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
-              <Check size={12} className="text-green-500" /> Invite sent — link copied to clipboard
-            </p>
+          {lastInvite && (
+            <div className="mt-3 rounded-xl bg-gray-50 border border-gray-100 p-3">
+              <p className="text-xs text-gray-600 mb-2 flex items-center gap-1.5">
+                <Check size={12} className="text-green-500" /> Invite email sent to <span className="font-medium">{lastInvite.email}</span>. Or share the link directly:
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={lastInvite.url}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-2xs text-gray-600 font-mono"
+                />
+                <button
+                  onClick={copyLink}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-2xs font-semibold text-white flex-shrink-0"
+                  style={{ backgroundColor: accent }}
+                >
+                  {copied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
+                </button>
+              </div>
+              <p className="text-2xs text-gray-400 mt-2">They open the link, set their name &amp; password, and they&apos;re in.</p>
+            </div>
           )}
         </div>
       )}
@@ -168,12 +194,12 @@ export default function TeamPage() {
                   onClick={() => {
                     const url = `${window.location.origin}/team/accept?token=${inv.token}`
                     void navigator.clipboard?.writeText(url).catch(() => {})
-                    setCopiedLink(url); setTimeout(() => setCopiedLink(null), 3000)
+                    setCopiedToken(inv.token); setTimeout(() => setCopiedToken(null), 3000)
                   }}
                   className="text-gray-300 hover:text-gray-600 transition-colors flex-shrink-0"
                   title="Copy invite link"
                 >
-                  {copiedLink?.includes(inv.token) ? <Check size={15} className="text-green-500" /> : <Copy size={15} />}
+                  {copiedToken === inv.token ? <Check size={15} className="text-green-500" /> : <Copy size={15} />}
                 </button>
                 <button
                   onClick={() => void revokeInvite(inv.id)}

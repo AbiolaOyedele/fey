@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { usePortalBranding } from '@/hooks/usePortalBranding'
 import { usePortalBase, portalBasePath } from '@/hooks/usePortalBase'
+import { portalTokenKey } from '@/hooks/usePortalAuth'
 
 // ─── Inner page ───────────────────────────────────────────────────────────────
 
@@ -50,14 +51,19 @@ function JoinPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
           invite_code:    code.trim().toUpperCase(),
         }),
       })
-      const data = await res.json() as { error?: { message: string } }
+      const data = await res.json() as { token?: string; error?: { message: string } }
       if (!res.ok) {
         setError(data.error?.message ?? 'Something went wrong. Please try again.')
         setLoading(false)
         return
       }
-      // Account created — redirect to login with a success flag
-      router.replace(`${portalBasePath(subdomain)}/login?joined=1`)
+      // Account created — sign in immediately and go straight into the portal.
+      if (data.token) {
+        localStorage.setItem(portalTokenKey(subdomain), data.token)
+        router.replace(portalBasePath(subdomain))
+      } else {
+        router.replace(`${portalBasePath(subdomain)}/login?joined=1`)
+      }
     } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)

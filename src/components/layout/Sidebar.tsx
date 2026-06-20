@@ -162,7 +162,7 @@ export default function Sidebar() {
           {onAdminHost && (
             <NavItem href="/admin" label="Admin" accent={accent} expanded={showExpanded} icon={<ShieldCheck size={20} />} />
           )}
-          {!IS_DEMO && <NotificationBell accent={accent} />}
+          {!IS_DEMO && <NotificationBell accent={accent} expanded={showExpanded} />}
           {!IS_DEMO && <FeedbackButton expanded={showExpanded} />}
           <NavItem href="/settings" label="Settings" accent={accent} expanded={showExpanded} icon={<Settings size={20} />} />
           <button

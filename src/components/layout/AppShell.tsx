@@ -9,6 +9,7 @@ import { env } from '@/config/env'
 import Sidebar from './Sidebar'
 import BrandLoader from '@/components/ui/BrandLoader'
 import PwaRegister from '@/components/pwa/PwaRegister'
+import AppNudges from '@/components/pwa/AppNudges'
 import ToastContainer from '@/components/ui/Toast'
 import UpdateBanner from '@/components/ui/UpdateBanner'
 import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
@@ -117,6 +118,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       <ToastContainer />
       <PwaRegister />
+      <AppNudges />
       <UpdateBanner show={updateAvailable} accent={settings.accent_color} />
     </div>
   )

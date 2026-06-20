@@ -87,7 +87,7 @@ export default function PlaygroundPage() {
   const activeChannel = channels.find((c) => c.id === activeChannelId)
 
   return (
-    <div className="flex flex-col h-screen p-4 md:p-6 lg:p-8 page-enter">
+    <div className="flex flex-col h-[calc(100dvh-4rem)] lg:h-screen p-4 md:p-6 lg:p-8 page-enter">
       {/* Header */}
       <div className="flex items-center gap-2 mb-1">
         <MessagesSquare size={18} style={{ color: accent }} />

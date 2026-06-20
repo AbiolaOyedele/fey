@@ -72,9 +72,9 @@ export default function CrmContactsPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden page-enter">
+    <div className="flex h-[calc(100dvh-4rem)] lg:h-screen overflow-hidden page-enter">
       {/* Left panel — contact list */}
-      <div className="w-[320px] flex-shrink-0 flex flex-col border-r border-gray-100 bg-white h-full">
+      <div className="w-full lg:w-[320px] lg:flex-shrink-0 flex flex-col border-r border-gray-100 bg-white h-full">
         {/* Header */}
         <div className="px-4 pt-6 pb-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
@@ -167,7 +167,7 @@ export default function CrmContactsPage() {
       </div>
 
       {/* Right panel — detail placeholder (replaced by /clients/[id] routes) */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-appbg">
+      <div className="hidden lg:flex flex-1 flex-col items-center justify-center bg-appbg">
         <div className="text-center">
           <Users size={40} className="text-gray-200 mx-auto mb-4" />
           <p className="text-sm2 font-medium text-gray-500">Select a client</p>

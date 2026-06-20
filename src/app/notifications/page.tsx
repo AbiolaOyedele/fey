@@ -30,7 +30,7 @@ export default function NotificationsPage() {
 
       {/* Push opt-in */}
       {push.supported && (
-        <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 mb-4">
+        <div className="flex items-center justify-between gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 mb-4">
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-800">Push notifications</p>
             <p className="text-2xs text-gray-400">

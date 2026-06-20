@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useSupabaseData } from '@/hooks/useSupabaseData'
 import { supabase } from '@/lib/supabase'
 import { IS_DEMO } from '@/lib/constants'
+import { env } from '@/config/env'
 import type { TrashItem } from '@/types'
 import { normalizeFontDataUrl } from '@/utils/fontHelpers'
 import { compressImage } from '@/utils/imageHelpers'
@@ -372,6 +373,10 @@ function SettingsPageInner() {
         throw new Error(body?.error?.message ?? 'Could not delete your account.')
       }
       await signOut()
+      // Account is gone — send them out to the app's landing page (apex domain),
+      // not the now-defunct workspace subdomain. Hard navigation clears all state.
+      const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN
+      window.location.href = rootDomain ? `https://${rootDomain}` : '/login'
     } catch (err) {
       showToast(`Delete failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }

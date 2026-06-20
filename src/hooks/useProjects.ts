@@ -92,6 +92,53 @@ export function useProjects(contactId: string | null) {
   return { projects, loading, error, fetchProjects, createProject, updateProject, archiveProject, deleteProject }
 }
 
+// ── useAllProjects (central hub: every project in the workspace) ───────────────
+
+/**
+ * Lists every project the caller can see (RLS scopes to the workspace), newest
+ * first, excluding archived. Used by the central /projects hub. createProject
+ * accepts a null contact_id for personal projects.
+ */
+export function useAllProjects() {
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchProjects = useCallback(async () => {
+    setLoading(true)
+    try {
+      const { data, error: err } = await supabase
+        .from('projects')
+        .select('*')
+        .is('archived_at', null)
+        .order('created_at', { ascending: false })
+      if (err) throw err
+      setProjects((data ?? []) as Project[])
+      setError(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load projects')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { void fetchProjects() }, [fetchProjects])
+
+  const createProject = useCallback(async (payload: CreateProjectPayload) => {
+    const { data, error: err } = await supabase
+      .from('projects')
+      .insert({ ...payload, owner_id: await getEffectiveOwnerId(), workspace_id: await getActiveWorkspaceId() })
+      .select()
+      .single()
+    if (err) throw err
+    const project = data as Project
+    setProjects((prev) => [project, ...prev])
+    return project
+  }, [])
+
+  return { projects, loading, error, fetchProjects, createProject }
+}
+
 // ── useProject (single project: details + messages + files) ───────────────────
 
 export function useProject(projectId: string | null) {

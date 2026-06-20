@@ -50,7 +50,7 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
       })
       setShowForm(false)
       setTitle(''); setDescription(''); setDueDate('')
-      router.push(`/clients/${id}/projects/${project.id}`)
+      router.push(`/projects/${project.id}`)
     } catch {
       setError('Couldn’t create the project. Please try again.')
     } finally {
@@ -133,7 +133,7 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
           {visible.map((p) => (
             <button
               key={p.id}
-              onClick={() => router.push(`/clients/${id}/projects/${p.id}`)}
+              onClick={() => router.push(`/projects/${p.id}`)}
               className="text-left bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all p-4"
             >
               <div className="flex items-start justify-between gap-2 mb-1.5">

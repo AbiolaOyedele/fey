@@ -6,7 +6,8 @@ export interface Project {
   id: string
   owner_id: string
   workspace_id: string | null
-  contact_id: string
+  /** null = personal project (not assigned to a client; never shown in a portal). */
+  contact_id: string | null
   title: string
   description: string | null
   status: ProjectStatus
@@ -18,7 +19,7 @@ export interface Project {
 }
 
 export interface CreateProjectPayload {
-  contact_id: string
+  contact_id: string | null
   title: string
   description?: string | null
   status?: ProjectStatus

@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, CreditCard, Settings,
   ListTodo, FileText, Sparkles, ChevronsLeft, ChevronsRight,
-  MessagesSquare, UsersRound, ShieldCheck,
+  MessagesSquare, UsersRound, ShieldCheck, FolderKanban,
 } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
@@ -149,6 +149,7 @@ export default function Sidebar() {
             <NavItem href="/tasks" label="Tasks" accent={accent} expanded={showExpanded} icon={<ListTodo size={20} />} />
           )}
 
+          <NavItem href="/projects" label="Projects" accent={accent} expanded={showExpanded} icon={<FolderKanban size={20} />} />
           <NavItem href="/payments" label="Payments" accent={accent} expanded={showExpanded} icon={<CreditCard size={20} />} />
           <NavItem href="/invoices" label="Invoices" accent={accent} expanded={showExpanded} icon={<FileText size={20} />} />
           <NavItem href="/playground" label="Internal Chats" accent={accent} expanded={showExpanded} icon={<MessagesSquare size={20} />} />
@@ -178,7 +179,7 @@ export default function Sidebar() {
 
       {/* Mobile bottom nav */}
       <nav
-        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around z-20 lg:hidden"
+        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around gap-1 px-1 overflow-x-auto scrollbar-none z-20 lg:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)', minHeight: '4rem' }}
       >
         <MobileLink href="/" exact accent={accent}><LayoutDashboard size={22} /></MobileLink>
@@ -191,6 +192,7 @@ export default function Sidebar() {
           <MobileLink href="/tasks" accent={accent}><ListTodo size={22} /></MobileLink>
         )}
 
+        <MobileLink href="/projects" accent={accent}><FolderKanban size={22} /></MobileLink>
         <MobileLink href="/payments" accent={accent}><CreditCard size={22} /></MobileLink>
         <MobileLink href="/playground" accent={accent}><MessagesSquare size={22} /></MobileLink>
         <MobileLink href="/team"     accent={accent}><UsersRound size={22} /></MobileLink>

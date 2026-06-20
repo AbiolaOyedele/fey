@@ -373,10 +373,11 @@ function SettingsPageInner() {
         throw new Error(body?.error?.message ?? 'Could not delete your account.')
       }
       await signOut()
-      // Account is gone — send them out to the app's landing page (apex domain),
-      // not the now-defunct workspace subdomain. Hard navigation clears all state.
+      // Account is gone — send them to the app landing (dashboard.<root>), a
+      // neutral reserved subdomain, not the now-defunct workspace subdomain.
+      // Hard navigation clears all in-memory state.
       const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN
-      window.location.href = rootDomain ? `https://${rootDomain}` : '/login'
+      window.location.href = rootDomain ? `https://dashboard.${rootDomain}` : '/login'
     } catch (err) {
       showToast(`Delete failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }

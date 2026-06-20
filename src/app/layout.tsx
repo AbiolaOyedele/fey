@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
-    apple: '/icon.svg',
+    apple: '/icon-maskable.svg',
   },
   appleWebApp: {
     capable: true,

@@ -6,6 +6,11 @@ import AppShell from '@/components/layout/AppShell'
 export const metadata: Metadata = {
   title: 'Fey',
   description: 'Track your work & earnings',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

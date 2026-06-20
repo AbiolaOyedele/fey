@@ -21,14 +21,13 @@ export default function BrandLoader({ logo, size = 52, fullscreen = false }: Bra
         className="absolute inset-0 rounded-full border-2 border-gray-200 animate-spin"
         style={{ borderTopColor: 'var(--accent, #ED64A6)' }}
       />
-      {logo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={logo} alt="Loading" className="rounded-2xl object-contain bg-white p-0.5" style={{ width: size, height: size }} />
-      ) : (
-        <div className="rounded-2xl bg-gray-900 flex items-center justify-center" style={{ width: size, height: size }}>
-          <span className="text-white font-bold" style={{ fontSize: size * 0.4 }}>F</span>
-        </div>
-      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={logo || '/favicon.svg'}
+        alt="Loading"
+        className="rounded-2xl object-contain"
+        style={{ width: size, height: size }}
+      />
     </div>
   )
   if (!fullscreen) return inner

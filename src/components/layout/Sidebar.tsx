@@ -129,9 +129,8 @@ export default function Sidebar() {
               className="w-10 h-10 rounded-xl object-contain bg-white p-0.5 flex-shrink-0"
             />
           ) : (
-            <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-sm">F</span>
-            </div>
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/favicon.svg" alt="Logo" className="w-10 h-10 rounded-xl object-contain flex-shrink-0" />
           )}
           {showExpanded && (
             <span className="font-semibold text-gray-900 truncate">{settings.company_name || 'Fey'}</span>

@@ -32,6 +32,12 @@ const envSchema = z.object({
   // feedback notifications). While unset, the admin board denies everyone and
   // feedback emails are skipped (rows are still stored).
   ADMIN_EMAILS:                       z.string().optional(),
+  // Web Push (VAPID). Public key is inlined for the browser to subscribe; the
+  // private key + subject stay server-side for sending. While unset, push is
+  // simply skipped (in-app notifications still work).
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY:       z.string().min(1).optional(),
+  VAPID_PRIVATE_KEY:                  z.string().min(1).optional(),
+  VAPID_SUBJECT:                      z.string().min(1).optional(),
 })
 
 const parsed = envSchema.safeParse({
@@ -52,6 +58,9 @@ const parsed = envSchema.safeParse({
   CLOUDINARY_API_KEY:                 process.env.CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET:              process.env.CLOUDINARY_API_SECRET,
   ADMIN_EMAILS:                       process.env.ADMIN_EMAILS,
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY:       process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY:                  process.env.VAPID_PRIVATE_KEY,
+  VAPID_SUBJECT:                      process.env.VAPID_SUBJECT,
 })
 
 if (!parsed.success) {
@@ -85,6 +94,9 @@ export const env = parsed.success
       CLOUDINARY_API_KEY:              process.env.CLOUDINARY_API_KEY,
       CLOUDINARY_API_SECRET:           process.env.CLOUDINARY_API_SECRET,
       ADMIN_EMAILS:                    process.env.ADMIN_EMAILS,
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY:    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+      VAPID_PRIVATE_KEY:               process.env.VAPID_PRIVATE_KEY,
+      VAPID_SUBJECT:                   process.env.VAPID_SUBJECT,
     }
 
 /**

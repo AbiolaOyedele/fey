@@ -1,10 +1,37 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { AppError } from '@/lib/errors'
+import { createServiceClient } from '@/lib/supabase-server'
 import type { Task, TaskScope } from '@/types/work-tasks'
 import * as repo from '@/repositories/work-tasks.repository'
 import * as wfRepo from '@/repositories/workflows.repository'
 import { ensureDefaultWorkflow } from '@/services/workflows.service'
+import { notify } from '@/services/notifications.service'
+
+/** Notify newly-added assignees (best-effort; never blocks the task write). */
+async function notifyAssigned(
+  core: { id: string; owner_id: string; workspace_id: string | null; contact_id: string | null },
+  addedIds: string[],
+  title: string,
+  actorId: string,
+): Promise<void> {
+  const recipients = addedIds.filter((id) => id !== actorId)
+  if (recipients.length === 0) return
+  try {
+    await notify({
+      db: createServiceClient(),
+      recipientIds: recipients,
+      workspaceId: core.workspace_id,
+      actorId,
+      type: 'task_assigned',
+      title: 'New task assigned to you',
+      body: title,
+      link: core.contact_id ? `/clients/${core.contact_id}/tasks` : '/tasks',
+      entityType: 'task',
+      entityId: core.id,
+    })
+  } catch { /* best-effort */ }
+}
 
 interface Ctx {
   userId: string
@@ -116,7 +143,10 @@ export async function createTask(db: SupabaseClient, ctx: Ctx, input: unknown): 
     estimated_minutes: d.estimated_minutes ?? null,
   })
 
-  if (d.assignee_ids?.length) await repo.setAssignees(db, id, d.assignee_ids)
+  if (d.assignee_ids?.length) {
+    await repo.setAssignees(db, id, d.assignee_ids)
+    await notifyAssigned({ id, owner_id: link.owner_id, workspace_id: link.workspace_id, contact_id: link.contact_id }, d.assignee_ids, d.title, ctx.userId)
+  }
   return getTask(db, id)
 }
 
@@ -162,10 +192,16 @@ export async function deleteTask(db: SupabaseClient, id: string): Promise<void> 
   await repo.softDeleteTask(db, id)
 }
 
-export async function setAssignees(db: SupabaseClient, taskId: string, userIds: string[]): Promise<Task> {
+export async function setAssignees(db: SupabaseClient, taskId: string, userIds: string[], actorId: string): Promise<Task> {
   const existing = await repo.getTaskCore(db, taskId)
   if (!existing) throw new AppError(404, 'That task could not be found.', 'TASK_NOT_FOUND')
+  const prev = await repo.getAssigneeIds(db, taskId)
   await repo.setAssignees(db, taskId, userIds)
+  const added = userIds.filter((id) => !prev.includes(id))
+  if (added.length) {
+    const task = await repo.getTaskById(db, taskId)
+    await notifyAssigned(existing, added, task?.title ?? 'A task', actorId)
+  }
   return getTask(db, taskId)
 }
 

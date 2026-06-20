@@ -1,16 +1,26 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import Providers from './providers'
 import AppShell from '@/components/layout/AppShell'
 
 export const metadata: Metadata = {
   title: 'Fey',
-  description: 'Track your work & earnings',
+  description: 'Track your work, clients & earnings',
+  manifest: '/manifest.webmanifest',
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
-    apple: '/favicon.svg',
+    apple: '/icon.svg',
   },
+  appleWebApp: {
+    capable: true,
+    title: 'Fey',
+    statusBarStyle: 'default',
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#111827',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

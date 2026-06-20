@@ -7,12 +7,13 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, CreditCard, Settings,
   ListTodo, FileText, Sparkles, ChevronsLeft, ChevronsRight,
-  MessagesSquare, UsersRound, ShieldCheck, FolderKanban,
+  MessagesSquare, UsersRound, ShieldCheck, FolderKanban, Bell,
 } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
 import FeedbackButton from '@/components/ui/FeedbackButton'
+import NotificationBell from '@/components/crm/NotificationBell'
 
 const SIDEBAR_KEY = 'fey:sidebar_expanded'
 
@@ -161,6 +162,7 @@ export default function Sidebar() {
           {onAdminHost && (
             <NavItem href="/admin" label="Admin" accent={accent} expanded={showExpanded} icon={<ShieldCheck size={20} />} />
           )}
+          {!IS_DEMO && <NotificationBell accent={accent} />}
           {!IS_DEMO && <FeedbackButton expanded={showExpanded} />}
           <NavItem href="/settings" label="Settings" accent={accent} expanded={showExpanded} icon={<Settings size={20} />} />
           <button
@@ -195,6 +197,7 @@ export default function Sidebar() {
         <MobileLink href="/payments" accent={accent}><CreditCard size={22} /></MobileLink>
         <MobileLink href="/playground" accent={accent}><MessagesSquare size={22} /></MobileLink>
         <MobileLink href="/team"     accent={accent}><UsersRound size={22} /></MobileLink>
+        <MobileLink href="/notifications" accent={accent}><Bell size={22} /></MobileLink>
         <MobileLink href="/fey"      accent={accent}><Sparkles size={22} /></MobileLink>
         <MobileLink href="/settings" accent={accent}><Settings size={22} /></MobileLink>
       </nav>

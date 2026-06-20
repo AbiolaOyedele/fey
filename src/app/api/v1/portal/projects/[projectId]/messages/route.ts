@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requirePortalAuth, handleError } from '@/lib/api-helpers'
 import * as svc from '@/services/portal-projects.service'
+import { notifyOwnerAdmins } from '@/services/notifications.service'
 
 /**
  * POST /api/v1/portal/projects/[projectId]/messages
@@ -16,7 +17,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ projectId:
     return NextResponse.json({ error: { code: 'PORTAL_PROJECT_MSG_INVALID_BODY', message: 'Invalid request body.' } }, { status: 400 })
   }
   try {
-    const message = await svc.sendMessage(createServiceClient(), payload!, projectId, body)
+    const db = createServiceClient()
+    const message = await svc.sendMessage(db, payload!, projectId, body)
+    await notifyOwnerAdmins(db, payload!.owner_id, {
+      type: 'project_message',
+      title: 'New project message',
+      body: 'A client replied in a project.',
+      link: `/projects/${projectId}`,
+      entityType: 'project',
+      entityId: projectId,
+    })
     return NextResponse.json({ message }, { status: 201 })
   } catch (err) {
     return handleError(err, 'PORTAL_PROJECT_MSG_SEND_FAILED')

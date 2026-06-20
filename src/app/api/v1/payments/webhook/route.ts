@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 import { env } from '@/config/env'
+import { notifyOwnerAdmins } from '@/services/notifications.service'
 
 // ── Paystack event shape ───────────────────────────────────────────────────
 
@@ -149,6 +150,20 @@ export async function POST(req: NextRequest) {
     }
   } catch (err) {
     console.warn('[payments/webhook] Failed to mark tasks as paid:', err)
+  }
+
+  // Notify owner + admins that the invoice was paid (best-effort).
+  try {
+    await notifyOwnerAdmins(supabase, invoice.user_id as string, {
+      type: 'invoice_paid',
+      title: 'Invoice paid',
+      body: 'A client just paid an invoice.',
+      link: `/invoices/${invoiceId}`,
+      entityType: 'invoice',
+      entityId: invoiceId,
+    })
+  } catch (err) {
+    console.warn('[payments/webhook] Failed to create paid notification:', err)
   }
 
   return new NextResponse(null, { status: 200 })

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { createServiceClient } from '@/lib/supabase-server'
 import { handleError, errorResponse } from '@/lib/api-helpers'
-import * as crmRepo from '@/repositories/crm.repository'
+import { notifyOwnerAdmins } from '@/services/notifications.service'
 import * as portalRepo from '@/repositories/portal.repository'
 import { sendEmail } from '@/services/email.service'
 import { appUrl } from '@/config/email'
@@ -112,14 +112,14 @@ export async function POST(req: NextRequest) {
       avatar_url: null,
     })
 
-    // 7. Notify owner in-app
-    await crmRepo.createNotification(
-      db,
-      ownerId,
-      contact.id,
-      'client_signup',
-      `${name} joined your portal`,
-    )
+    // 7. Notify owner + admins in-app (+ push)
+    await notifyOwnerAdmins(db, ownerId, {
+      type: 'client_signup',
+      title: `${name} joined your portal`,
+      link: `/clients/${contact.id}/messages`,
+      entityType: 'contact',
+      entityId: contact.id,
+    })
 
     // 8. Email owner (non-fatal — sendEmail never throws)
     if (ownerEmail) {

@@ -9,7 +9,7 @@ import { setAssignees } from '@/services/work-tasks.service'
  */
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { token, response } = await requireAuth(req.headers.get('authorization'))
+  const { user, token, response } = await requireAuth(req.headers.get('authorization'))
   if (response) return response
 
   let body: { user_ids?: unknown }
@@ -22,7 +22,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const db = createUserClient(token!)
   try {
-    const task = await setAssignees(db, id, ids)
+    const task = await setAssignees(db, id, ids, user!.id)
     return NextResponse.json({ task })
   } catch (err) {
     return handleError(err, 'TASK_ASSIGNEES_FAILED')

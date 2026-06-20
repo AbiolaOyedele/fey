@@ -165,6 +165,12 @@ export async function softDeleteTask(db: SupabaseClient, id: string): Promise<vo
 
 // ── Assignees ─────────────────────────────────────────────────────────────────
 
+export async function getAssigneeIds(db: SupabaseClient, taskId: string): Promise<string[]> {
+  const { data, error } = await db.from('work_task_assignees').select('user_id').eq('task_id', taskId)
+  if (error) throw error
+  return ((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)
+}
+
 export async function setAssignees(db: SupabaseClient, taskId: string, userIds: string[]): Promise<void> {
   const { error: delErr } = await db.from('work_task_assignees').delete().eq('task_id', taskId)
   if (delErr) throw delErr

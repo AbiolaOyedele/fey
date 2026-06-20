@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requirePortalAuth, handleError } from '@/lib/api-helpers'
-import * as crmRepo from '@/repositories/crm.repository'
+import { notifyOwnerAdmins } from '@/services/notifications.service'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -29,15 +29,16 @@ export async function POST(req: NextRequest) {
   }
 
   const db = createServiceClient()
+  const contactId = parsed.data.contact_id ?? payload!.contact_id
   try {
-    const notification = await crmRepo.createNotification(
-      db,
-      payload!.owner_id,
-      parsed.data.contact_id ?? payload!.contact_id,
-      parsed.data.type,
-      parsed.data.message,
-    )
-    return NextResponse.json({ notification }, { status: 201 })
+    await notifyOwnerAdmins(db, payload!.owner_id, {
+      type: parsed.data.type,
+      title: parsed.data.message,
+      link: `/clients/${contactId}/messages`,
+      entityType: 'contact',
+      entityId: contactId,
+    })
+    return NextResponse.json({ ok: true }, { status: 201 })
   } catch (err) {
     return handleError(err, 'PORTAL_NOTIFY_FAILED')
   }

@@ -91,8 +91,15 @@ export async function POST(req: NextRequest) {
       await sendInviteAccepted(inviterEmail, { memberName: name, workspaceName: (ws as { name: string } | null)?.name ?? 'your workspace' })
     }
 
-    // Return the email so the client can sign in immediately.
-    return NextResponse.json({ ok: true, email })
+    // Mint a one-time login token so the client gets a session immediately on
+    // click — no password round-trip (which can flake on timing/confirmation).
+    let tokenHash: string | null = null
+    try {
+      const { data: link } = await db.auth.admin.generateLink({ type: 'magiclink', email })
+      tokenHash = (link?.properties as { hashed_token?: string } | undefined)?.hashed_token ?? null
+    } catch { /* client falls back to password sign-in */ }
+
+    return NextResponse.json({ ok: true, email, token_hash: tokenHash })
   } catch (err) {
     return handleError(err, 'TEAM_ACCEPT_FAILED')
   }

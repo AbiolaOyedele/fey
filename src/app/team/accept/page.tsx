@@ -60,12 +60,20 @@ function AcceptInviteInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, name: name.trim(), password }),
       })
-      const data = await res.json().catch(() => null) as { email?: string; error?: { message?: string } } | null
+      const data = await res.json().catch(() => null) as { email?: string; token_hash?: string | null; error?: { message?: string } } | null
       if (!res.ok) throw new Error(data?.error?.message ?? 'This invite could not be accepted.')
 
-      // 2. Sign in immediately with the credentials we just set.
-      const signIn = await supabase.auth.signInWithPassword({ email: data?.email ?? email, password })
-      if (signIn.error) throw new Error('Account is ready — please sign in.')
+      // 2. Sign in immediately — prefer the one-time token, fall back to password.
+      let signedIn = false
+      if (data?.token_hash) {
+        const { error } = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'magiclink' })
+        signedIn = !error
+      }
+      if (!signedIn) {
+        const { error } = await supabase.auth.signInWithPassword({ email: data?.email ?? email, password })
+        signedIn = !error
+      }
+      if (!signedIn) throw new Error('Your account is ready. Please sign in to continue.')
 
       setState('done')
       setTimeout(() => router.replace('/'), 1200)

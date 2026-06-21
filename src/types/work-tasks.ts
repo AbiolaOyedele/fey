@@ -4,6 +4,9 @@
 
 export type TaskPriority = 'low' | 'medium' | 'high'
 
+/** For unlinked tasks: 'personal' = creator+assignees only; 'team' = whole workspace. */
+export type TaskVisibility = 'personal' | 'team'
+
 export interface WorkflowStage {
   id: string
   workflow_id: string
@@ -43,6 +46,7 @@ export interface Task {
   contact_id: string | null
   stage_id: string | null
   created_by: string
+  visibility: TaskVisibility
   title: string
   description: string | null
   priority: TaskPriority
@@ -69,6 +73,7 @@ export interface CreateTaskPayload {
   description?: string | null
   project_id?: string | null
   contact_id?: string | null
+  visibility?: TaskVisibility
   stage_id?: string | null
   priority?: TaskPriority
   start_date?: string | null
@@ -82,6 +87,7 @@ export interface UpdateTaskPayload {
   description?: string | null
   project_id?: string | null
   contact_id?: string | null
+  visibility?: TaskVisibility
   stage_id?: string | null
   priority?: TaskPriority
   start_date?: string | null
@@ -93,4 +99,4 @@ export interface UpdateTaskPayload {
 }
 
 /** Which slice of tasks a list request wants. */
-export type TaskScope = 'personal' | 'all' | 'project' | 'contact'
+export type TaskScope = 'personal' | 'team' | 'all' | 'project' | 'contact'

@@ -8,7 +8,7 @@ import type { Task, Subtask, TaskAssignee, TaskScope } from '@/types/work-tasks'
  */
 
 const SELECT = `
-  id, owner_id, workspace_id, project_id, contact_id, stage_id, created_by,
+  id, owner_id, workspace_id, project_id, contact_id, stage_id, created_by, visibility,
   title, description, priority, start_date, due_date, estimated_minutes,
   logged_minutes, sort_order, done, completed_at, created_at, updated_at,
   work_task_assignees ( user_id ),
@@ -25,6 +25,7 @@ interface RawTask {
   contact_id: string | null
   stage_id: string | null
   created_by: string
+  visibility: Task['visibility']
   title: string
   description: string | null
   priority: Task['priority']
@@ -64,6 +65,7 @@ function mapTask(row: RawTask, members: Map<string, MemberInfo>): Task {
     contact_id: row.contact_id,
     stage_id: row.stage_id,
     created_by: row.created_by,
+    visibility: row.visibility ?? 'personal',
     title: row.title,
     description: row.description,
     priority: row.priority,
@@ -109,7 +111,8 @@ interface ListArgs {
 export async function listTasks(db: SupabaseClient, args: ListArgs): Promise<Task[]> {
   let q = db.from('work_tasks').select(SELECT).eq('owner_id', args.ownerId).is('deleted_at', null)
 
-  if (args.scope === 'personal') q = q.is('project_id', null).is('contact_id', null)
+  if (args.scope === 'personal') q = q.is('project_id', null).is('contact_id', null).eq('visibility', 'personal')
+  if (args.scope === 'team') q = q.is('project_id', null).is('contact_id', null).eq('visibility', 'team')
   if (args.scope === 'project' && args.projectId) q = q.eq('project_id', args.projectId)
   if (args.scope === 'contact' && args.contactId) q = q.eq('contact_id', args.contactId)
   if (typeof args.done === 'boolean') q = q.eq('done', args.done)

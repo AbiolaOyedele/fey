@@ -6,7 +6,7 @@ import { useContacts } from '@/hooks/useCrm'
 import { useProjects } from '@/hooks/useProjects'
 import AssigneePicker from './AssigneePicker'
 import { PRIORITY_META } from './TaskBits'
-import type { CreateTaskPayload, TaskPriority } from '@/types/work-tasks'
+import type { CreateTaskPayload, TaskPriority, TaskVisibility } from '@/types/work-tasks'
 
 interface NewTaskModalProps {
   workspaceId: string | null | undefined
@@ -27,6 +27,7 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
   const [projectId, setProjectId] = useState<string | null>(fixedProjectId ?? null)
 
   const [title, setTitle] = useState('')
+  const [visibility, setVisibility] = useState<TaskVisibility>('personal')
   const [priority, setPriority] = useState<TaskPriority>('medium')
   const [dueDate, setDueDate] = useState('')
   const [assigneeIds, setAssigneeIds] = useState<string[]>([])
@@ -44,6 +45,7 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
         due_date: dueDate || null,
         contact_id: projectId ? null : contactId,
         project_id: projectId,
+        visibility,
         assignee_ids: assigneeIds,
       })
       onClose()
@@ -95,6 +97,31 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
                 <option value="">None</option>
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
               </select>
+            </div>
+          </div>
+        )}
+
+        {/* No client → choose who can see it */}
+        {!linkLocked && !contactId && !projectId && (
+          <div className="mb-4">
+            <p className="text-2xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Visibility</p>
+            <div className="flex gap-1.5">
+              {([
+                { v: 'personal' as const, label: 'Personal', hint: 'Only you & assignees' },
+                { v: 'team' as const, label: 'Team', hint: 'Everyone in the workspace' },
+              ]).map((o) => (
+                <button
+                  key={o.v}
+                  type="button"
+                  onClick={() => setVisibility(o.v)}
+                  title={o.hint}
+                  className={`flex-1 px-3 py-2 rounded-lg text-xs2 font-medium border transition-colors ${
+                    visibility === o.v ? 'border-gray-900 text-gray-900' : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
             </div>
           </div>
         )}

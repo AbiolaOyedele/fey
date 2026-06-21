@@ -69,7 +69,7 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
           <div className="flex items-center gap-2 text-xs2 text-gray-400 min-w-0">
             {task.project_title ? <span className="truncate">{task.project_title}</span>
               : task.contact_name ? <span className="truncate">{task.contact_name}</span>
-              : <span>Personal</span>}
+              : <span>{task.visibility === 'team' ? 'Team' : 'Personal'}</span>}
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100">
             <X size={18} />
@@ -97,6 +97,25 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
 
           {/* Meta grid */}
           <div className="space-y-3 text-sm">
+            {/* Visibility — only for unlinked (no client/project) tasks */}
+            {!task.contact_id && !task.project_id && (
+              <Field label="Visibility">
+                <div className="flex gap-1.5">
+                  {(['personal', 'team'] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => void onPatch(task.id, { visibility: v })}
+                      className={`px-2.5 py-1 rounded-lg text-xs2 font-medium border capitalize transition-colors ${
+                        task.visibility === v ? 'border-gray-900 text-gray-900' : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                      }`}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            )}
+
             {/* Stage */}
             {stages.length > 0 && (
               <Field label="Stage">

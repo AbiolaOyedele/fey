@@ -20,15 +20,17 @@ export default function TaskListView({ tasks, grouped, onToggleDone, onOpen }: T
     if (!grouped) return [{ key: 'all', label: '', sub: null, tasks }]
     const map = new Map<string, Group>()
     for (const t of tasks) {
-      const key = t.project_id ?? t.contact_id ?? 'personal'
-      const label = t.project_title ?? t.contact_name ?? 'Personal'
+      const unlinkedKey = t.visibility === 'team' ? 'team' : 'personal'
+      const key = t.project_id ?? t.contact_id ?? unlinkedKey
+      const label = t.project_title ?? t.contact_name ?? (t.visibility === 'team' ? 'Team' : 'Personal')
       const sub = t.project_title && t.contact_name ? t.contact_name : null
       if (!map.has(key)) map.set(key, { key, label, sub, tasks: [] })
       map.get(key)!.tasks.push(t)
     }
     const list = [...map.values()]
-    // Personal first, then alphabetical.
-    return list.sort((a, b) => (a.key === 'personal' ? -1 : b.key === 'personal' ? 1 : a.label.localeCompare(b.label)))
+    // Personal, then Team, then clients alphabetically.
+    const rank = (k: string) => (k === 'personal' ? 0 : k === 'team' ? 1 : 2)
+    return list.sort((a, b) => rank(a.key) - rank(b.key) || a.label.localeCompare(b.label))
   }, [tasks, grouped])
 
   if (tasks.length === 0) {

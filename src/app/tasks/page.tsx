@@ -16,7 +16,7 @@ import { SlidersHorizontal } from 'lucide-react'
 import type { Task } from '@/types/work-tasks'
 
 type View = 'list' | 'board' | 'table' | 'completed'
-type Scope = 'personal' | 'all'
+type Scope = 'personal' | 'team' | 'all'
 
 const VIEWS: Array<{ key: View; label: string }> = [
   { key: 'list', label: 'Tasks' },
@@ -37,7 +37,7 @@ export default function TasksPage() {
   const [selected, setSelected] = useState<Task | null>(null)
   const [showNew, setShowNew] = useState(false)
 
-  const taskScope = scope === 'personal' ? 'personal' : 'all'
+  const taskScope = scope
   const active = useTasks({ scope: taskScope, workspaceId: wsId, done: false })
   const completed = useTasks({ scope: taskScope, workspaceId: wsId, done: true })
   const { workflows, addStage, updateStage, deleteStage, reorderStages } = useWorkflows(wsId)
@@ -87,13 +87,13 @@ export default function TasksPage() {
       <div className="flex flex-wrap items-center gap-2 mb-5">
         {/* Scope */}
         <div className="flex bg-gray-100 rounded-lg p-0.5">
-          {(['personal', 'all'] as Scope[]).map((s) => (
+          {(['personal', 'team', 'all'] as Scope[]).map((s) => (
             <button
               key={s}
               onClick={() => setScope(s)}
               className={`px-3 py-1.5 rounded-md text-xs2 font-medium capitalize transition-colors ${scope === s ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
             >
-              {s === 'personal' ? 'Personal' : 'All'}
+              {s === 'personal' ? 'Personal' : s === 'team' ? 'Team' : 'All'}
             </button>
           ))}
         </div>

@@ -47,6 +47,7 @@ const createSchema = z.object({
   description: z.string().max(20000).nullable().optional(),
   project_id: z.string().uuid().nullable().optional(),
   contact_id: z.string().uuid().nullable().optional(),
+  visibility: z.enum(['personal', 'team']).optional(),
   stage_id: z.string().uuid().nullable().optional(),
   priority: prioritySchema.optional(),
   start_date: dateSchema,
@@ -60,6 +61,7 @@ const updateSchema = z.object({
   description: z.string().max(20000).nullable().optional(),
   project_id: z.string().uuid().nullable().optional(),
   contact_id: z.string().uuid().nullable().optional(),
+  visibility: z.enum(['personal', 'team']).optional(),
   stage_id: z.string().uuid().nullable().optional(),
   priority: prioritySchema.optional(),
   start_date: dateSchema,
@@ -128,11 +130,16 @@ export async function createTask(db: SupabaseClient, ctx: Ctx, input: unknown): 
   const link = await resolveLink(db, ctx, d.project_id, d.contact_id)
   const stageId = d.stage_id ?? await defaultStageId(db, link.owner_id, link.workspace_id, link.project_id)
 
+  // Linked tasks (client/project) are workspace-visible regardless; for unlinked
+  // tasks the caller picks personal vs team.
+  const visibility = (link.project_id || link.contact_id) ? 'team' : (d.visibility ?? 'personal')
+
   const { id } = await repo.insertTask(db, {
     owner_id: link.owner_id,
     workspace_id: link.workspace_id,
     project_id: link.project_id,
     contact_id: link.contact_id,
+    visibility,
     stage_id: stageId,
     created_by: ctx.userId,
     title: d.title,
@@ -161,6 +168,7 @@ export async function updateTask(db: SupabaseClient, ctx: Ctx, id: string, input
   const updates: Record<string, unknown> = {}
   if (d.title !== undefined) updates.title = d.title
   if (d.description !== undefined) updates.description = d.description
+  if (d.visibility !== undefined) updates.visibility = d.visibility
   if (d.stage_id !== undefined) updates.stage_id = d.stage_id
   if (d.priority !== undefined) updates.priority = d.priority
   if (d.start_date !== undefined) updates.start_date = d.start_date

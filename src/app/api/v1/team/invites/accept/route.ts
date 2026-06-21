@@ -1,29 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase-server'
-import { requireAuth, handleError, errorResponse } from '@/lib/api-helpers'
+import { handleError, errorResponse } from '@/lib/api-helpers'
 import { sendInviteAccepted } from '@/services/email.service'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-const bodySchema = z.object({ token: z.string().min(8), name: z.string().trim().min(1).max(80).optional() })
+const bodySchema = z.object({
+  token:    z.string().min(8),
+  name:     z.string().trim().min(1).max(80),
+  password: z.string().min(8).max(128),
+})
 
 /**
  * POST /api/v1/team/invites/accept
- * Accepts a pending invite for the authenticated user. The invite email must
- * match the caller's email (a leaked token can't add the wrong account). On
- * success the user becomes a workspace_member with the invited role.
+ *
+ * Token-gated (no prior session needed). Possession of the invite token plus the
+ * email it was issued to authorizes creating the teammate's account. We create
+ * (or repair) the Supabase auth user server-side with the service role —
+ * email auto-confirmed, password set — so the teammate can sign in immediately.
+ * This works regardless of the project's email-confirmation setting.
  */
 export async function POST(req: NextRequest) {
-  const { user, response } = await requireAuth(req.headers.get('authorization'))
-  if (response) return response
-
-  let token: string
-  let providedName: string | undefined
+  let token: string, name: string, password: string
   try {
     const parsed = bodySchema.parse(await req.json())
-    token = parsed.token
-    providedName = parsed.name
+    token = parsed.token; name = parsed.name; password = parsed.password
   } catch {
-    return errorResponse('TEAM_ACCEPT_INVALID_INPUT', 'Invalid invite.', 400)
+    return errorResponse('TEAM_ACCEPT_INVALID_INPUT', 'Enter your name and a password (8+ characters).', 400)
   }
 
   try {
@@ -35,57 +38,74 @@ export async function POST(req: NextRequest) {
       .eq('token', token)
       .maybeSingle()
 
-    if (!invite || (invite as { status: string }).status !== 'pending') {
+    const inv = invite as {
+      id: string; workspace_id: string; email: string
+      role: 'admin' | 'member'; status: string; invited_by: string
+    } | null
+
+    if (!inv || inv.status !== 'pending') {
       return errorResponse('TEAM_ACCEPT_INVALID', 'This invite is no longer valid.', 404)
     }
-    const inv = invite as {
-      id: string
-      workspace_id: string
-      email: string
-      role: 'admin' | 'member'
-      invited_by: string
+    const email = inv.email.toLowerCase()
+
+    // Create the auth user (auto-confirmed). If they already exist (e.g. a prior
+    // failed attempt), reset their password and confirm them so they're usable.
+    let userId: string
+    const created = await db.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { full_name: name },
+    })
+    if (created.data?.user) {
+      userId = created.data.user.id
+    } else {
+      const existingId = await findUserIdByEmail(db, email)
+      if (!existingId) {
+        return errorResponse('TEAM_ACCEPT_ACCOUNT_FAILED', created.error?.message ?? 'Could not set up your account.', 400)
+      }
+      await db.auth.admin.updateUserById(existingId, {
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: name },
+      })
+      userId = existingId
     }
 
-    const callerEmail = (user!.email ?? '').toLowerCase()
-    if (callerEmail !== inv.email.toLowerCase()) {
-      return errorResponse('TEAM_ACCEPT_EMAIL_MISMATCH', 'This invite was sent to a different email address.', 403)
-    }
-
-    // Prefer the name the teammate typed on the accept screen, then their
-    // provider profile, then the email prefix.
-    const displayName =
-      providedName ??
-      (user!.user_metadata?.full_name as string | undefined) ??
-      (user!.user_metadata?.name as string | undefined) ??
-      callerEmail.split('@')[0]
-
+    // Join the workspace.
     const { error: memberErr } = await db.from('workspace_members').upsert(
-      { workspace_id: inv.workspace_id, user_id: user!.id, role: inv.role, email: callerEmail, name: displayName },
+      { workspace_id: inv.workspace_id, user_id: userId, role: inv.role, email, name },
       { onConflict: 'workspace_id,user_id' },
     )
     if (memberErr) throw memberErr
 
     await db.from('workspace_invites').update({ status: 'accepted', accepted_at: new Date().toISOString() }).eq('id', inv.id)
 
-    // Best-effort: tell the inviter their invite was accepted. The inviter's
-    // email lives on their denormalized workspace_members row. sendInviteAccepted
-    // never throws, so a mail failure can't break invite acceptance.
+    // Best-effort: tell the inviter (never throws).
     const [{ data: inviter }, { data: ws }] = await Promise.all([
-      db.from('workspace_members')
-        .select('email')
-        .eq('workspace_id', inv.workspace_id)
-        .eq('user_id', inv.invited_by)
-        .maybeSingle(),
+      db.from('workspace_members').select('email').eq('workspace_id', inv.workspace_id).eq('user_id', inv.invited_by).maybeSingle(),
       db.from('workspaces').select('name').eq('id', inv.workspace_id).maybeSingle(),
     ])
     const inviterEmail = (inviter as { email: string | null } | null)?.email
     if (inviterEmail) {
-      const workspaceName = (ws as { name: string } | null)?.name ?? 'your workspace'
-      await sendInviteAccepted(inviterEmail, { memberName: displayName, workspaceName })
+      await sendInviteAccepted(inviterEmail, { memberName: name, workspaceName: (ws as { name: string } | null)?.name ?? 'your workspace' })
     }
 
-    return NextResponse.json({ ok: true, workspace_id: inv.workspace_id })
+    // Return the email so the client can sign in immediately.
+    return NextResponse.json({ ok: true, email })
   } catch (err) {
     return handleError(err, 'TEAM_ACCEPT_FAILED')
   }
+}
+
+/** Find an existing auth user id by email (paginated admin lookup). */
+async function findUserIdByEmail(db: SupabaseClient, email: string): Promise<string | null> {
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await db.auth.admin.listUsers({ page, perPage: 200 })
+    if (error || !data?.users?.length) return null
+    const match = data.users.find((u) => (u.email ?? '').toLowerCase() === email)
+    if (match) return match.id
+    if (data.users.length < 200) return null
+  }
+  return null
 }

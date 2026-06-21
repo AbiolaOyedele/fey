@@ -53,36 +53,20 @@ function AcceptInviteInner() {
     if (!token || !name.trim() || password.length < 8) return
     setState('joining'); setMessage('')
     try {
-      // 1. Create the account (or sign in if they already have one). Either way
-      //    we end up with a session so we can accept the invite.
-      let session = (await supabase.auth.getSession()).data.session
-      if (!session || (session.user.email ?? '').toLowerCase() !== email.toLowerCase()) {
-        const signUp = await supabase.auth.signUp({ email, password, options: { data: { full_name: name.trim() } } })
-        session = signUp.data.session
-        if (signUp.error && !/registered|already/i.test(signUp.error.message)) {
-          throw new Error(signUp.error.message)
-        }
-        if (!session) {
-          // Already registered, or confirmation required → try a direct sign-in.
-          const signIn = await supabase.auth.signInWithPassword({ email, password })
-          if (signIn.error) {
-            throw new Error('An account already exists for this email. Use the correct password (or reset it), then open the invite again.')
-          }
-          session = signIn.data.session
-        }
-      }
-      if (!session) { throw new Error('Please confirm your email, then open this invite link again.') }
-
-      // 2. Accept the invite → become a workspace member.
+      // 1. Server creates/repairs the account (auto-confirmed) + joins the
+      //    workspace. Token-gated, so no prior session is needed.
       const res = await fetch('/api/v1/team/invites/accept', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ token, name: name.trim() }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, name: name.trim(), password }),
       })
-      if (!res.ok) {
-        const body = await res.json().catch(() => null) as { error?: { message?: string } } | null
-        throw new Error(body?.error?.message ?? 'This invite could not be accepted.')
-      }
+      const data = await res.json().catch(() => null) as { email?: string; error?: { message?: string } } | null
+      if (!res.ok) throw new Error(data?.error?.message ?? 'This invite could not be accepted.')
+
+      // 2. Sign in immediately with the credentials we just set.
+      const signIn = await supabase.auth.signInWithPassword({ email: data?.email ?? email, password })
+      if (signIn.error) throw new Error('Account is ready — please sign in.')
+
       setState('done')
       setTimeout(() => router.replace('/'), 1200)
     } catch (e) {

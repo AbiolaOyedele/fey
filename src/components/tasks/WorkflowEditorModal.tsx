@@ -31,7 +31,10 @@ export default function WorkflowEditorModal({ workflow, onAddStage, onUpdateStag
 
   const [newName, setNewName] = useState('')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+
+  const msg = (e: unknown) => setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
 
   const onDragEnd = (e: DragEndEvent) => {
     const { active, over } = e
@@ -41,20 +44,27 @@ export default function WorkflowEditorModal({ workflow, onAddStage, onUpdateStag
     if (oldIndex === -1 || newIndex === -1) return
     const next = arrayMove(order, oldIndex, newIndex)
     setOrder(next)
-    void onReorderStages(next.map((s) => s.id))
+    setError(null)
+    void onReorderStages(next.map((s) => s.id)).catch((err) => { msg(err); setOrder(workflow.stages) })
   }
 
   const add = async () => {
     const n = newName.trim()
     if (!n || busy) return
     setBusy(true)
+    setError(null)
     try {
       await onAddStage(workflow.id, n, STAGE_COLORS[order.length % STAGE_COLORS.length], order.length)
       setNewName('')
+    } catch (err) {
+      msg(err)
     } finally {
       setBusy(false)
     }
   }
+
+  const update = (id: string, updates: { name?: string; color?: string }) => onUpdateStage(id, updates).catch(msg)
+  const del = (id: string) => onDeleteStage(id).catch(msg)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
@@ -73,13 +83,15 @@ export default function WorkflowEditorModal({ workflow, onAddStage, onUpdateStag
                   key={s.id}
                   stage={s}
                   canDelete={order.length > 1}
-                  onUpdate={onUpdateStage}
-                  onDelete={onDeleteStage}
+                  onUpdate={update}
+                  onDelete={del}
                 />
               ))}
             </div>
           </SortableContext>
         </DndContext>
+
+        {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
 
         <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
           <Plus size={14} className="text-gray-300" />

@@ -19,3 +19,20 @@ export async function resolveOwnerContext(
   }
   return { ownerId: userId, workspaceId: null }
 }
+
+/**
+ * True if `userId` is an owner/admin of any workspace owned by `ownerId`.
+ * Pass a service-role client — this is an explicit permission check used before
+ * service-role writes (so RLS can't silently no-op the write).
+ */
+export async function canManageOwner(db: SupabaseClient, userId: string, ownerId: string): Promise<boolean> {
+  if (userId === ownerId) return true
+  const { data } = await db
+    .from('workspace_members')
+    .select('role, workspaces!inner ( owner_id )')
+    .eq('user_id', userId)
+    .eq('workspaces.owner_id', ownerId)
+    .in('role', ['owner', 'admin'])
+    .limit(1)
+  return !!(data && data.length > 0)
+}

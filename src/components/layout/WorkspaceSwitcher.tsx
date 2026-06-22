@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { ChevronsUpDown, Plus, Check, Loader2, X, Trash2 } from 'lucide-react'
+import { ChevronsUpDown, Plus, Check, Loader2, X, Trash2, LogIn, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { workspaceUrl } from '@/utils/host'
@@ -19,6 +19,7 @@ export default function WorkspaceSwitcher({ accent }: { accent: string }) {
   const { workspace, role, memberships } = useWorkspace()
   const [open, setOpen] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [showSignIn, setShowSignIn] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -88,6 +89,15 @@ export default function WorkspaceSwitcher({ accent }: { accent: string }) {
               </span>
               Create workspace
             </button>
+            <button
+              onClick={() => { setShowSignIn(true); setOpen(false) }}
+              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors text-left text-sm text-gray-600"
+            >
+              <span className="w-6 h-6 rounded-md border border-dashed border-gray-300 flex items-center justify-center flex-shrink-0">
+                <LogIn size={13} className="text-gray-400" />
+              </span>
+              Sign in to a workspace
+            </button>
             {role === 'owner' && workspace && (
               <button
                 onClick={() => { setShowDelete(true); setOpen(false) }}
@@ -104,6 +114,7 @@ export default function WorkspaceSwitcher({ accent }: { accent: string }) {
       )}
 
       {showCreate && <CreateWorkspaceModal accent={accent} onClose={() => setShowCreate(false)} />}
+      {showSignIn && <SignInWorkspaceModal accent={accent} currentSlug={workspace?.slug ?? null} onClose={() => setShowSignIn(false)} />}
       {showDelete && workspace && (
         <DeleteWorkspaceModal
           workspaceId={workspace.id}
@@ -274,6 +285,108 @@ function CreateWorkspaceModal({ accent, onClose }: { accent: string; onClose: ()
           {creating && <Loader2 size={14} className="animate-spin" />}
           Create workspace
         </button>
+      </div>
+    </div>
+  )
+}
+
+function SignInWorkspaceModal({ accent, currentSlug, onClose }: { accent: string; currentSlug: string | null; onClose: () => void }) {
+  const [email, setEmail] = useState('')
+  const [currentEmail, setCurrentEmail] = useState<string | null>(null)
+  const [results, setResults] = useState<Array<{ name: string; slug: string; role: string }> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Default to the signed-in account's email.
+  useEffect(() => {
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      const e = session?.user?.email ?? null
+      setCurrentEmail(e)
+      if (e) setEmail(e)
+    })
+  }, [])
+
+  const find = async () => {
+    if (!email.trim() || loading) return
+    setLoading(true); setError(null); setResults(null)
+    try {
+      const res = await fetch('/api/v1/workspaces/lookup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim() }),
+      })
+      const data = await res.json() as { workspaces?: Array<{ name: string; slug: string; role: string }>; error?: { message?: string } }
+      if (!res.ok) throw new Error(data.error?.message ?? 'Could not look up workspaces.')
+      setResults(data.workspaces ?? [])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const sameAccount = !!currentEmail && email.trim().toLowerCase() === currentEmail.toLowerCase()
+
+  const go = (slug: string) => {
+    if (slug === currentSlug && sameAccount) { onClose(); return }
+    // Same account → switch straight in (SSO). Different account → land on that
+    // workspace's sign-in so they authenticate as that account.
+    window.location.href = sameAccount ? workspaceUrl(slug) : workspaceUrl(slug, '/login')
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-4" onMouseDown={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 animate-scale-in" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-gray-900">Sign in to a workspace</h2>
+          <button onClick={onClose} className="text-gray-300 hover:text-gray-500"><X size={18} /></button>
+        </div>
+
+        <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+        <div className="flex items-center gap-2 mb-1">
+          <input
+            autoFocus
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setResults(null) }}
+            onKeyDown={(e) => { if (e.key === 'Enter') void find() }}
+            placeholder="you@email.com"
+            className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 focus:outline-none focus:border-gray-400 focus:bg-white transition-colors"
+          />
+          <button
+            onClick={() => void find()}
+            disabled={!email.trim() || loading}
+            className="px-3.5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center gap-1.5"
+            style={{ backgroundColor: accent }}
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : 'Find'}
+          </button>
+        </div>
+        <p className="text-2xs text-gray-400 mb-3">Find the workspaces linked to an email, then pick one to open.</p>
+
+        {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+
+        {results && (
+          results.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">No workspaces found for that email.</p>
+          ) : (
+            <div className="rounded-xl border border-gray-100 divide-y divide-gray-50 overflow-hidden max-h-64 overflow-y-auto">
+              {results.map((w) => (
+                <button
+                  key={w.slug}
+                  onClick={() => go(w.slug)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
+                >
+                  <span className="w-7 h-7 rounded-md flex items-center justify-center text-2xs font-bold text-white flex-shrink-0" style={{ backgroundColor: accent }}>
+                    {w.name.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-medium text-gray-800 truncate">{w.name}</span>
+                    <span className="block text-2xs text-gray-400 capitalize">{w.role} · {w.slug}.theruff.agency</span>
+                  </span>
+                  <ChevronRight size={15} className="text-gray-300 flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          )
+        )}
       </div>
     </div>
   )

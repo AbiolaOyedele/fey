@@ -4,7 +4,10 @@ import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { Loader2, ChevronDown } from 'lucide-react'
+import { workspaceUrl, activeWorkspaceSlug } from '@/utils/host'
+import { Loader2, ChevronDown, ChevronRight } from 'lucide-react'
+
+interface WsChoice { name: string; slug: string }
 
 function GoogleIcon() {
   return (
@@ -41,11 +44,66 @@ function LoginPageInner() {
   const [info,      setInfo]      = useState('')
   const [loading,   setLoading]   = useState(false)
 
+  const [wsChoices, setWsChoices] = useState<WsChoice[] | null>(null)
+
+  // After sign-in: if the account belongs to several workspaces, let them pick
+  // which to enter; otherwise go straight in.
   useEffect(() => {
-    if (!authLoading && user) router.replace('/')
+    if (authLoading || !user) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from('workspace_members')
+        .select('workspaces ( name, slug )')
+        .eq('user_id', user.id)
+      if (cancelled) return
+      const rows = ((data ?? []) as Array<{ workspaces: { name: string; slug: string | null } | { name: string; slug: string | null }[] | null }>)
+        .map((r) => (Array.isArray(r.workspaces) ? r.workspaces[0] : r.workspaces))
+        .filter((w): w is WsChoice => !!w?.slug)
+      const unique = Array.from(new Map(rows.map((w) => [w.slug, w])).values())
+      if (unique.length > 1) {
+        setWsChoices(unique)
+      } else {
+        const slug = unique[0]?.slug
+        if (slug && activeWorkspaceSlug() !== slug) window.location.href = workspaceUrl(slug)
+        else router.replace('/')
+      }
+    })()
+    return () => { cancelled = true }
   }, [authLoading, user, router])
 
   if (authLoading) return null
+
+  if (user && wsChoices) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center px-6">
+        <div className="w-full max-w-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/favicon.svg" alt="Fey" className="w-9 h-9 rounded-xl mb-8 mx-auto" />
+          <h1 className="font-display text-2xl font-semibold text-gray-900 text-center mb-1">Choose a workspace</h1>
+          <p className="text-xs text-gray-400 text-center mb-6">You have access to a few — pick one to continue.</p>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
+            {wsChoices.map((w) => (
+              <button
+                key={w.slug}
+                onClick={() => { window.location.href = workspaceUrl(w.slug) }}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+              >
+                <span className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
+                  {w.name.charAt(0).toUpperCase()}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-medium text-gray-800 truncate">{w.name}</span>
+                  <span className="block text-2xs text-gray-400">{w.slug}.theruff.agency</span>
+                </span>
+                <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const handleGoogle = async () => {
     setLoading(true)

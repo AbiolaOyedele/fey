@@ -1,6 +1,7 @@
 'use client'
 
 import { Flag } from 'lucide-react'
+import HoverTip from '@/components/ui/HoverTip'
 import type { TaskPriority, TaskAssignee } from '@/types/work-tasks'
 
 // Shared presentational bits for the task views. Pure, no data fetching.
@@ -12,7 +13,11 @@ export const PRIORITY_META: Record<TaskPriority, { label: string; text: string; 
 }
 
 export function PriorityFlag({ priority }: { priority: TaskPriority }) {
-  return <Flag size={14} style={{ color: PRIORITY_META[priority].flag }} fill={PRIORITY_META[priority].flag} />
+  return (
+    <HoverTip label={`${PRIORITY_META[priority].label} priority`}>
+      <Flag size={14} style={{ color: PRIORITY_META[priority].flag }} fill={PRIORITY_META[priority].flag} />
+    </HoverTip>
+  )
 }
 
 export function PriorityPill({ priority }: { priority: TaskPriority }) {
@@ -55,14 +60,14 @@ export function AssigneeAvatars({ assignees, size = 22 }: { assignees: TaskAssig
   return (
     <div className="flex -space-x-1.5">
       {assignees.slice(0, 3).map((a) => (
-        <span
-          key={a.user_id}
-          title={a.name ?? a.email ?? undefined}
-          className="rounded-full flex items-center justify-center text-white font-semibold ring-2 ring-white"
-          style={{ width: size, height: size, fontSize: size * 0.4, backgroundColor: avatarColor(a.user_id) }}
-        >
-          {initials(a.name, a.email)}
-        </span>
+        <HoverTip key={a.user_id} label={a.name ?? a.email ?? 'Teammate'}>
+          <span
+            className="rounded-full flex items-center justify-center text-white font-semibold ring-2 ring-white"
+            style={{ width: size, height: size, fontSize: size * 0.4, backgroundColor: avatarColor(a.user_id) }}
+          >
+            {initials(a.name, a.email)}
+          </span>
+        </HoverTip>
       ))}
       {assignees.length > 3 && (
         <span

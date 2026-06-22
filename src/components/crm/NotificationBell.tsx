@@ -30,11 +30,11 @@ export default function NotificationBell({ accent, expanded = false }: { accent:
   }
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className={`relative ${expanded ? 'w-full' : ''}`}>
       <button
         onClick={() => setOpen((v) => !v)}
         title="Notifications"
-        className={`flex items-center rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-all duration-200 relative ${
+        className={`flex items-center rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-all duration-200 ${
           expanded ? 'w-full gap-3 px-3 h-10' : 'w-10 h-10 justify-center'
         }`}
       >

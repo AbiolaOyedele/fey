@@ -18,7 +18,7 @@ import { activeWorkspaceSlug } from '@/utils/host'
 
 // /onboarding is Workboard's route — Fey uses /setup to avoid clashing.
 // Both apps share the same Next.js codebase and Supabase DB.
-const PUBLIC_ROUTES = ['/login', '/register', '/onboarding', '/setup']
+const PUBLIC_ROUTES = ['/login', '/register', '/onboarding', '/setup', '/reset-password']
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''

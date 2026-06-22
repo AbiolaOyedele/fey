@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 import { Loader2, ChevronDown } from 'lucide-react'
 
 function GoogleIcon() {
@@ -83,6 +84,17 @@ function LoginPageInner() {
     if (err) setError((err as Error).message)
   }
 
+  const handleForgot = async () => {
+    if (!email.trim()) { setError('Enter your email above, then tap reset.'); return }
+    setLoading(true); setError(''); setInfo('')
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    setLoading(false)
+    if (err) setError(err.message)
+    else setInfo('Check your email for a link to reset your password.')
+  }
+
   return (
     <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-md flex flex-col items-center">
@@ -142,6 +154,18 @@ function LoginPageInner() {
                 onChange={(e) => setConfirm(e.target.value)}
                 className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm outline-none focus:border-gray-400 transition-all"
               />
+            )}
+
+            {mode === 'signin' && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => void handleForgot()}
+                  className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
             )}
 
             {error && <p className="text-xs text-red-500 text-center">{error}</p>}

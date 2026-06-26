@@ -31,6 +31,7 @@ export function useProjects(contactId: string | null) {
         .from('projects')
         .select('*')
         .eq('contact_id', contactId)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
       if (err) throw err
       setProjects((data ?? []) as Project[])
@@ -83,8 +84,12 @@ export function useProjects(contactId: string | null) {
     setProjects((prev) => prev.map((p) => p.id === id ? { ...p, archived_at } : p))
   }, [])
 
+  // Soft delete — moves the project to the Recycle Bin instead of destroying it.
   const deleteProject = useCallback(async (id: string) => {
-    const { error: err } = await supabase.from('projects').delete().eq('id', id)
+    const { error: err } = await supabase
+      .from('projects')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
     if (err) throw err
     setProjects((prev) => prev.filter((p) => p.id !== id))
   }, [])
@@ -113,6 +118,7 @@ export function useAllProjects() {
       const { data, error: err } = await supabase
         .from('projects')
         .select('*')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
       if (err) throw err
       const all = (data ?? []) as Project[]

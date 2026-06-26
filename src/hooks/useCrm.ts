@@ -116,7 +116,7 @@ export function useContacts() {
       // Scope to the active workspace; fall back to owner only if the workspace
       // can't be resolved yet (e.g. mid-onboarding).
       const wsId = await getActiveWorkspaceId()
-      let q = supabase.from('crm_contacts').select('*')
+      let q = supabase.from('crm_contacts').select('*').is('deleted_at', null)
       q = wsId ? q.eq('workspace_id', wsId) : q.eq('owner_id', await getEffectiveOwnerId())
       const { data, error: err } = await q.order('created_at', { ascending: false })
       if (err) throw err
@@ -174,12 +174,14 @@ export function useContacts() {
     return contact
   }, [])
 
+  // Soft delete — moves the client to the Recycle Bin instead of destroying it
+  // and all their messages/files/projects.
   const deleteContact = useCallback(async (id: string) => {
     const session = await getSession()
     if (!session) throw new Error('Not authenticated')
     const { error: err } = await supabase
       .from('crm_contacts')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', id)
       .eq('owner_id', await getEffectiveOwnerId())
     if (err) throw err

@@ -14,6 +14,7 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
 import { useAppNotifications } from '@/hooks/useNotifications'
 import { motion, AnimatePresence } from 'framer-motion'
+import WorkspaceSwitcher from './WorkspaceSwitcher'
 import FeedbackButton from '@/components/ui/FeedbackButton'
 import NotificationBell from '@/components/crm/NotificationBell'
 
@@ -219,6 +220,7 @@ export default function Sidebar() {
         </nav>
 
         <div className={`pb-3 pt-3 border-t border-gray-100 flex flex-col gap-2 ${showExpanded ? 'items-stretch' : 'items-center'}`}>
+          {showExpanded && <WorkspaceSwitcher accent={accent} />}
           {onAdminHost && (
             <NavItem href="/admin" label="Admin" accent={accent} expanded={showExpanded} icon={<ShieldCheck size={20} />} />
           )}

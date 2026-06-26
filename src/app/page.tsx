@@ -9,7 +9,6 @@ import {
 } from 'lucide-react'
 import DashboardWork from '@/components/dashboard/DashboardWork'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
-import WorkspaceSwitcher from '@/components/layout/WorkspaceSwitcher'
 import { Stagger, StaggerItem } from '@/components/ui/motion'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -124,20 +123,15 @@ export default function DashboardPage() {
       <Stagger>
       <StaggerItem>
       {/* ── Header ── */}
-      <div className="mb-6 lg:mb-8 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          {workspaceName && (
-            <p className="text-xs font-medium uppercase tracking-wide mb-1" style={{ color: accent }}>
-              {workspaceName}
-            </p>
-          )}
-          <h1 className="font-display text-xl leading-snug font-normal text-gray-700" style={{ whiteSpace: 'pre-wrap' }}>
-            {heading}
-          </h1>
-        </div>
-        <div className="flex-shrink-0 pt-0.5">
-          <WorkspaceSwitcher accent={accent} variant="compact" placement="bottom" />
-        </div>
+      <div className="mb-6 lg:mb-8">
+        {workspaceName && (
+          <p className="text-xs font-medium uppercase tracking-wide mb-1" style={{ color: accent }}>
+            {workspaceName}
+          </p>
+        )}
+        <h1 className="font-display text-xl leading-snug font-normal text-gray-700" style={{ whiteSpace: 'pre-wrap' }}>
+          {heading}
+        </h1>
       </div>
 
       </StaggerItem>

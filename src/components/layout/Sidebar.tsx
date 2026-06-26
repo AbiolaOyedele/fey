@@ -8,9 +8,12 @@ import {
   LayoutDashboard, Users, CreditCard, Settings,
   ListTodo, FileText, Sparkles, ChevronsLeft, ChevronsRight,
   MessagesSquare, UsersRound, ShieldCheck, FolderKanban, Bell,
+  MoreHorizontal, X,
 } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
+import { useAppNotifications } from '@/hooks/useNotifications'
+import { motion, AnimatePresence } from 'framer-motion'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
 import FeedbackButton from '@/components/ui/FeedbackButton'
 import NotificationBell from '@/components/crm/NotificationBell'
@@ -73,6 +76,49 @@ function MobileLink({ href, children, exact = false, accent }: MobileLinkProps) 
   )
 }
 
+interface MorePillProps {
+  href: string
+  label: string
+  icon: React.ReactNode
+  accent: string
+  badge?: number
+  index: number
+  onNavigate: () => void
+}
+
+/** A single floating action in the mobile "More" speed-dial. Springs up from the
+ *  trigger, staggered by index. */
+function MorePill({ href, label, icon, accent, badge, index, onNavigate }: MorePillProps) {
+  const pathname = usePathname() ?? ''
+  const isActive = pathname.startsWith(href)
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 12, scale: 0.9 }}
+      transition={{ type: 'spring', stiffness: 360, damping: 26, delay: index * 0.035 }}
+    >
+      <Link
+        href={href}
+        onClick={onNavigate}
+        className="flex items-center gap-2.5 whitespace-nowrap rounded-full border border-gray-100 bg-white py-2.5 pl-4 pr-5 text-sm font-medium shadow-md transition-colors hover:bg-gray-50"
+        style={isActive ? { color: accent } : { color: '#374151' }}
+      >
+        <span className="flex-shrink-0" style={{ color: accent }}>{icon}</span>
+        {label}
+        {badge !== undefined && badge > 0 && (
+          <span
+            className="ml-1 min-w-5 h-5 px-1.5 rounded-full text-2xs font-semibold text-white flex items-center justify-center"
+            style={{ backgroundColor: accent }}
+          >
+            {badge > 9 ? '9+' : badge}
+          </span>
+        )}
+      </Link>
+    </motion.div>
+  )
+}
+
 export default function Sidebar() {
   const { settings } = useSettings()
   // The Admin link only surfaces on the personal admin host (feyadmin.*). The
@@ -86,6 +132,22 @@ export default function Sidebar() {
   const appMode  = settings.app_mode || 'dual'
   const topClass = IS_DEMO ? 'top-8' : 'top-0'
   const clientsLabel = settings.clients_label || 'Clients'
+
+  // Powers the unread badge on the mobile "More" menu (Notifications lives inside it).
+  const { unreadCount } = useAppNotifications()
+  const [moreOpen, setMoreOpen] = useState(false)
+
+  // Secondary destinations surfaced by the mobile "More" speed-dial.
+  const moreItems: { href: string; label: string; icon: React.ReactNode; badge?: number }[] = [
+    { href: '/payments', label: 'Payments', icon: <CreditCard size={18} /> },
+    { href: '/invoices', label: 'Invoices', icon: <FileText size={18} /> },
+    { href: '/playground', label: 'Internal Chats', icon: <MessagesSquare size={18} /> },
+    { href: '/team', label: 'Team', icon: <UsersRound size={18} /> },
+    { href: '/notifications', label: 'Notifications', icon: <Bell size={18} />, badge: unreadCount },
+    { href: '/fey', label: 'Fey', icon: <Sparkles size={18} /> },
+    ...(onAdminHost ? [{ href: '/admin', label: 'Admin', icon: <ShieldCheck size={18} /> }] : []),
+    { href: '/settings', label: 'Settings', icon: <Settings size={18} /> },
+  ]
 
   // `expanded` = pinned open (persisted, shifts content). `hovering` = transient
   // hover-peek (overlay, doesn't shift content). `showExpanded` drives the visuals.
@@ -178,9 +240,10 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* Mobile bottom nav */}
+      {/* Mobile bottom nav — primary destinations only; the rest live in the More sheet
+          so tap targets stay comfortable instead of cramming 9 icons across the bar. */}
       <nav
-        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around gap-1 px-1 overflow-x-auto scrollbar-none z-20 lg:hidden"
+        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 z-20 lg:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)', minHeight: '4rem' }}
       >
         <MobileLink href="/" exact accent={accent}><LayoutDashboard size={22} /></MobileLink>
@@ -194,12 +257,57 @@ export default function Sidebar() {
         )}
 
         <MobileLink href="/projects" accent={accent}><FolderKanban size={22} /></MobileLink>
-        <MobileLink href="/payments" accent={accent}><CreditCard size={22} /></MobileLink>
-        <MobileLink href="/playground" accent={accent}><MessagesSquare size={22} /></MobileLink>
-        <MobileLink href="/team"     accent={accent}><UsersRound size={22} /></MobileLink>
-        <MobileLink href="/notifications" accent={accent}><Bell size={22} /></MobileLink>
-        <MobileLink href="/fey"      accent={accent}><Sparkles size={22} /></MobileLink>
-        <MobileLink href="/settings" accent={accent}><Settings size={22} /></MobileLink>
+
+        <div className="relative flex items-center justify-center">
+          <button
+            type="button"
+            onClick={() => setMoreOpen((v) => !v)}
+            aria-label="More"
+            aria-expanded={moreOpen}
+            className="relative flex items-center justify-center w-11 h-11 rounded-xl transition-colors"
+            style={{ color: moreOpen ? accent : '#9ca3af' }}
+          >
+            <motion.span animate={{ rotate: moreOpen ? 90 : 0 }} transition={{ type: 'spring', stiffness: 320, damping: 22 }} className="flex">
+              {moreOpen ? <X size={22} /> : <MoreHorizontal size={22} />}
+            </motion.span>
+            {unreadCount > 0 && !moreOpen && (
+              <span
+                className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full ring-2 ring-white"
+                style={{ backgroundColor: accent }}
+              />
+            )}
+          </button>
+
+          <AnimatePresence>
+            {moreOpen && (
+              <>
+                <motion.button
+                  type="button"
+                  aria-label="Close menu"
+                  onClick={() => setMoreOpen(false)}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bottom-16 -z-10 bg-gray-900/10"
+                />
+                <motion.div className="absolute bottom-full right-0 mb-3 flex flex-col items-end gap-2">
+                  {moreItems.map((item, i) => (
+                    <MorePill
+                      key={item.href}
+                      index={moreItems.length - 1 - i}
+                      href={item.href}
+                      label={item.label}
+                      icon={item.icon}
+                      accent={accent}
+                      badge={item.badge ?? 0}
+                      onNavigate={() => setMoreOpen(false)}
+                    />
+                  ))}
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
       </nav>
     </>
   )

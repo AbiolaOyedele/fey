@@ -7,6 +7,8 @@ import {
   ClipboardList, UserPlus, MoreHorizontal, Eye,
   FileText, FileImage, FileSpreadsheet, File as FileIcon,
 } from 'lucide-react'
+import DashboardWork from '@/components/dashboard/DashboardWork'
+import { Stagger, StaggerItem } from '@/components/ui/motion'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCrmPending } from '@/hooks/useCrmPending'
@@ -117,6 +119,8 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen p-4 md:p-6 lg:p-8 page-enter">
 
+      <Stagger>
+      <StaggerItem>
       {/* ── Header ── */}
       <div className="mb-6 lg:mb-8">
         {workspaceName && (
@@ -129,10 +133,21 @@ export default function DashboardPage() {
         </h1>
       </div>
 
+      </StaggerItem>
+      <StaggerItem>
+      {/* ── Work: tasks, projects, conversations (the headline) ── */}
+      <DashboardWork
+        workspaceId={workspace?.id}
+        accent={accent}
+        unreadMessages={feed.loaded ? feed.unread.length : pending.unreadMessages}
+        pendingCount={totalPending}
+      />
+      </StaggerItem>
+      <StaggerItem>
       {/* ── Workspace overview ── */}
       <div className="mb-4">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col justify-between min-h-[220px]">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               {(['All', 'Active', 'Idle', 'Completed'] as const).map((s) => (
                 <span
@@ -192,6 +207,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      </StaggerItem>
+      <StaggerItem>
       {/* ── Bottom row ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
@@ -533,6 +550,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      </StaggerItem>
+      </Stagger>
     </div>
   )
 }

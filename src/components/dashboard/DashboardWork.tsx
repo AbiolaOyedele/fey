@@ -169,7 +169,7 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
             <Empty icon={<FolderKanban size={26} className="text-gray-200" />} text="No active projects yet" />
           ) : (
             activeProjects.slice(0, 5).map((p, i, arr) => {
-              const s = PROJECT_STATUS[p.status]
+              const s = PROJECT_STATUS[p.status] ?? PROJECT_STATUS.active
               const client = p.contact_id ? contactName.get(p.contact_id) : null
               return (
                 <Link
@@ -256,7 +256,7 @@ function TaskRow({ task, last }: { task: Task; last: boolean }) {
       className="flex items-center gap-3 py-3 -mx-2 px-2 rounded-xl hover:bg-gray-50 transition-colors"
       style={{ borderBottom: last ? 'none' : '1px solid #F9FAFB' }}
     >
-      <Circle size={8} strokeWidth={0} fill={PRIORITY_COLOR[task.priority]} className="flex-shrink-0" />
+      <Circle size={8} strokeWidth={0} fill={PRIORITY_COLOR[task.priority] ?? PRIORITY_COLOR.low} className="flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-800 truncate">{task.title}</p>
         {(task.project_title || task.contact_name) && (

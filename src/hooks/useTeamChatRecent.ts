@@ -40,6 +40,9 @@ export function useTeamChatRecent(workspaceId: string | null | undefined, limit 
       setMessages(
         ((msgs ?? []) as InternalMessage[]).map((m) => ({
           ...m,
+          // attachments can come back null from the DB; normalise so consumers
+          // can safely read .length without a guard.
+          attachments: m.attachments ?? [],
           channel_name: channelName.get(m.channel_id) ?? 'general',
         })),
       )

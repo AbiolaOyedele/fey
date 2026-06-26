@@ -7,6 +7,7 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSupabaseData } from '@/hooks/useSupabaseData'
 import { getContrastColor } from '@/utils/colorContrast'
+import { Stagger, StaggerItem } from '@/components/ui/motion'
 import type { Client, Task } from '@/types'
 
 interface ClientBreakdown {
@@ -430,9 +431,9 @@ export default function PaymentsPage() {
       </div>
 
       {/* Right Summary Panel */}
-      <div className="w-full lg:w-[260px] lg:flex-shrink-0 p-4 lg:p-5 lg:pl-2 overflow-y-auto">
+      <Stagger className="w-full lg:w-[260px] lg:flex-shrink-0 p-4 lg:p-5 lg:pl-2 overflow-y-auto">
         {/* Total earned */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm mb-4">
+        <StaggerItem className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm mb-4">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-9 h-9 rounded-xl bg-success/10 flex items-center justify-center">
               <TrendingUp size={16} className="text-success" />
@@ -442,11 +443,11 @@ export default function PaymentsPage() {
           <p className="font-mono text-2xl font-bold text-gray-900">
             {formatMoney(totalEarned)}
           </p>
-        </div>
+        </StaggerItem>
 
         {/* Pending */}
         {totalPending > 0 && (
-          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm mb-4">
+          <StaggerItem className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm mb-4">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-9 h-9 rounded-xl bg-pending/10 flex items-center justify-center">
                 <Clock size={16} className="text-pending" />
@@ -456,11 +457,11 @@ export default function PaymentsPage() {
             <p className="font-mono text-2xl font-bold text-pending">
               {formatMoney(totalPending)}
             </p>
-          </div>
+          </StaggerItem>
         )}
 
         {/* This month — same card style as Total Earned and Pending */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm mb-4">
+        <StaggerItem className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm mb-4">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--accent, #ED64A6)15' }}>
               <TrendingUp size={16} style={{ color: 'var(--accent, #ED64A6)' }} />
@@ -473,10 +474,10 @@ export default function PaymentsPage() {
           <p className="text-xs text-gray-400 mt-1">
             {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </p>
-        </div>
+        </StaggerItem>
 
         {/* Top clients by earnings (active only) */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm">
+        <StaggerItem className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm">
           <p className="text-sm font-semibold text-gray-700 mb-4">Top Earners</p>
           <div className="space-y-3">
             {[...clients]
@@ -514,8 +515,8 @@ export default function PaymentsPage() {
                 )
               })}
           </div>
-        </div>
-      </div>
+        </StaggerItem>
+      </Stagger>
     </div>
   )
 }

@@ -238,7 +238,7 @@ export default function PlaygroundPage() {
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); void handleSend() } }}
                 placeholder={`Message #${activeChannel?.name ?? 'general'}`}
                 disabled={!workspace}
-                className="flex-1 px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 focus:outline-none focus:border-gray-400 focus:bg-white transition-colors disabled:opacity-50"
+                className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 focus:outline-none focus:border-gray-400 focus:bg-white transition-colors disabled:opacity-50"
               />
               <button
                 onClick={() => void handleSend()}

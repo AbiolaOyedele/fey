@@ -6,6 +6,7 @@ import { ArrowLeft, MessageSquare, FolderOpen, Archive, ArchiveRestore } from 'l
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
+import { useConfirm } from '@/contexts/ConfirmContext'
 import { useProject } from '@/hooks/useProjects'
 import { useContacts } from '@/hooks/useCrm'
 import { uploadToCloudinary } from '@/utils/cloudinary'
@@ -25,6 +26,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const { user } = useAuth()
   const { showToast } = useSettings()
   const { canManage } = useWorkspace()
+  const confirm = useConfirm()
   const { project, messages, files, loading, sendMessage, addFile, removeFile } = useProject(projectId)
   const { contacts } = useContacts()
 
@@ -71,11 +73,21 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   const toggleArchive = useCallback(async () => {
     if (!project) return
+    // Archiving hides the project from the main list; warn first. Unarchiving is safe.
+    if (!project.archived_at) {
+      const ok = await confirm({
+        title: 'Archive this project?',
+        message: 'It will be hidden from your Projects list. You can restore it anytime from Projects → Archived.',
+        confirmLabel: 'Archive',
+        tone: 'default',
+      })
+      if (!ok) return
+    }
     const { supabase } = await import('@/lib/supabase')
     const archived_at = project.archived_at ? null : new Date().toISOString()
     await supabase.from('projects').update({ archived_at, updated_at: new Date().toISOString() }).eq('id', projectId)
     router.push('/projects')
-  }, [project, projectId, router])
+  }, [project, projectId, router, confirm])
 
   return (
     <div className="flex flex-col h-screen">

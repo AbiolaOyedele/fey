@@ -4,6 +4,7 @@ import { MotionConfig } from 'framer-motion'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { DemoProvider } from '@/contexts/DemoContext'
+import { ConfirmProvider } from '@/contexts/ConfirmContext'
 import { IS_DEMO } from '@/lib/constants'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -11,13 +12,15 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   // OS "reduce motion" setting automatically.
   return (
     <MotionConfig reducedMotion="user">
-      {IS_DEMO ? (
-        <DemoProvider>{children}</DemoProvider>
-      ) : (
-        <AuthProvider>
-          <SettingsProvider>{children}</SettingsProvider>
-        </AuthProvider>
-      )}
+      <ConfirmProvider>
+        {IS_DEMO ? (
+          <DemoProvider>{children}</DemoProvider>
+        ) : (
+          <AuthProvider>
+            <SettingsProvider>{children}</SettingsProvider>
+          </AuthProvider>
+        )}
+      </ConfirmProvider>
     </MotionConfig>
   )
 }

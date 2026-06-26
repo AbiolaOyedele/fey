@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import type { DraggableSyntheticListeners } from '@dnd-kit/core'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useConfirm } from '@/contexts/ConfirmContext'
 import TaskFileAttachment from '@/components/ui/TaskFileAttachment'
 import { useTaskFiles } from '@/hooks/useTaskFiles'
 import type { Task } from '@/types'
@@ -114,6 +115,7 @@ export default function TaskItem({
   const paidMenuRef  = useRef<HTMLDivElement>(null)
 
   const { count: fileCount } = useTaskFiles(clientId ? task.id : null, false)
+  const confirm = useConfirm()
 
   useEffect(() => {
     if (!paidMenuOpen) return
@@ -179,7 +181,13 @@ export default function TaskItem({
     onUpdate({ ...task, deadline: e.target.value || null })
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    const ok = await confirm({
+      title: 'Delete this task?',
+      message: 'This permanently removes the task. This can’t be undone.',
+      confirmLabel: 'Delete',
+    })
+    if (!ok) return
     setDeleting(true)
     setTimeout(() => onDelete(task.id), 200)
   }
@@ -338,7 +346,7 @@ export default function TaskItem({
           </div>
 
           <button
-            onClick={handleDelete}
+            onClick={() => void handleDelete()}
             className="flex items-center justify-center w-6 h-6 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-danger transition-all duration-150"
           >
             <Trash2 size={14} />
@@ -380,7 +388,7 @@ export default function TaskItem({
               <Calendar size={14} />
             </button>
             <button
-              onClick={handleDelete}
+              onClick={() => void handleDelete()}
               className="flex items-center justify-center w-6 h-6 text-gray-300 hover:text-danger transition-all duration-150"
             >
               <Trash2 size={14} />
@@ -441,7 +449,7 @@ export default function TaskItem({
             <Calendar size={14} />
           </button>
           <button
-            onClick={handleDelete}
+            onClick={() => void handleDelete()}
             className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-300 hover:text-danger transition-all duration-150"
           >
             <Trash2 size={14} />

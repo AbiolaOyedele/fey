@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Loader2, FolderOpen, X } from 'lucide-react'
+import { Plus, Search, Loader2, FolderOpen, X, Archive, ArchiveRestore } from 'lucide-react'
 import { useAllProjects } from '@/hooks/useProjects'
 import { useContacts } from '@/hooks/useCrm'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -20,11 +20,12 @@ interface Group { key: string; label: string; projects: Project[] }
 export default function ProjectsHubPage() {
   const router = useRouter()
   const { canManage } = useWorkspace()
-  const { projects, loading, error, createProject } = useAllProjects()
+  const { projects, archived, loading, error, createProject, restoreProject } = useAllProjects()
   const { contacts } = useContacts()
 
   const [search, setSearch] = useState('')
   const [showNew, setShowNew] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
 
   const nameFor = useMemo(() => {
     const m = new Map(contacts.map((c) => [c.id, c.name]))
@@ -109,6 +110,50 @@ export default function ProjectsHubPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Archived projects — recoverable, tucked at the bottom */}
+      {!loading && archived.length > 0 && (
+        <div className="mt-10 border-t border-gray-100 pt-5">
+          <button
+            onClick={() => setShowArchived((v) => !v)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <Archive size={14} />
+            Archived
+            <span className="text-xs2 text-gray-300">{archived.length}</span>
+          </button>
+
+          {showArchived && (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+              {archived.map((p) => (
+                <div key={p.id} className="bg-gray-50 rounded-2xl border border-gray-100 p-4 flex flex-col">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <h4 className="text-sm font-medium text-gray-600 truncate">{p.title}</h4>
+                  </div>
+                  <p className="text-2xs text-gray-400 mb-3">{nameFor(p.contact_id) ?? 'Personal'}</p>
+                  <div className="mt-auto flex items-center gap-2">
+                    <button
+                      onClick={() => router.push(`/projects/${p.id}`)}
+                      className="text-2xs font-medium text-gray-500 hover:text-gray-700"
+                    >
+                      Open
+                    </button>
+                    {canManage && (
+                      <button
+                        onClick={() => void restoreProject(p.id)}
+                        className="ml-auto inline-flex items-center gap-1.5 text-2xs font-semibold px-2.5 py-1.5 rounded-full text-white hover:opacity-90"
+                        style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                      >
+                        <ArchiveRestore size={12} /> Restore
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

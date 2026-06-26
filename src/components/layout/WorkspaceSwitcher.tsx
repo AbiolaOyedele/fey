@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { ChevronsUpDown, Plus, Check, Loader2, X, Trash2, LogIn, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useWorkspace } from '@/hooks/useWorkspace'
-import { workspaceUrl } from '@/utils/host'
+import { workspaceUrl, neutralUrl } from '@/utils/host'
 
 function slugify(s: string): string {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30)
@@ -149,8 +149,9 @@ function DeleteWorkspaceModal({
         const body = await res.json().catch(() => null) as { error?: { message?: string } } | null
         throw new Error(body?.error?.message ?? 'Could not delete workspace')
       }
-      // Move to another workspace if one exists, else back to the app root.
-      window.location.href = otherSlug ? workspaceUrl(otherSlug) : '/'
+      // Move to another workspace if one exists, else the neutral landing host —
+      // never "/" on the just-deleted subdomain (a dead workspace URL).
+      window.location.href = otherSlug ? workspaceUrl(otherSlug) : neutralUrl('/login')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong')
       setDeleting(false)

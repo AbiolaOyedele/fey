@@ -100,7 +100,10 @@ export function useProjects(contactId: string | null) {
  * accepts a null contact_id for personal projects.
  */
 export function useAllProjects() {
+  // `projects` stays active-only (so existing consumers are unaffected); archived
+  // ones are split out so the hub can show a recoverable "Archived" section.
   const [projects, setProjects] = useState<Project[]>([])
+  const [archived, setArchived] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -110,10 +113,11 @@ export function useAllProjects() {
       const { data, error: err } = await supabase
         .from('projects')
         .select('*')
-        .is('archived_at', null)
         .order('created_at', { ascending: false })
       if (err) throw err
-      setProjects((data ?? []) as Project[])
+      const all = (data ?? []) as Project[]
+      setProjects(all.filter((p) => !p.archived_at))
+      setArchived(all.filter((p) => p.archived_at))
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load projects')
@@ -136,7 +140,21 @@ export function useAllProjects() {
     return project
   }, [])
 
-  return { projects, loading, error, fetchProjects, createProject }
+  /** Restore an archived project back into the active list. */
+  const restoreProject = useCallback(async (id: string) => {
+    const { error: err } = await supabase
+      .from('projects')
+      .update({ archived_at: null, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (err) throw err
+    setArchived((prev) => {
+      const found = prev.find((p) => p.id === id)
+      if (found) setProjects((cur) => [{ ...found, archived_at: null }, ...cur])
+      return prev.filter((p) => p.id !== id)
+    })
+  }, [])
+
+  return { projects, archived, loading, error, fetchProjects, createProject, restoreProject }
 }
 
 // ── useProject (single project: details + messages + files) ───────────────────

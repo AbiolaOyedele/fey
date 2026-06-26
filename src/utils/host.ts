@@ -22,3 +22,12 @@ export function activeWorkspaceSlug(): string | null {
 export function workspaceUrl(slug: string, path = '/'): string {
   return `https://${slug}.${ROOT_DOMAIN}${path}`
 }
+
+/**
+ * The neutral landing host (dashboard.theruff.agency), used when there's no
+ * workspace to land on — e.g. after deleting the last workspace. Going to "/"
+ * on a just-deleted subdomain strands the user on a dead workspace URL.
+ */
+export function neutralUrl(path = '/'): string {
+  return `https://dashboard.${ROOT_DOMAIN}${path}`
+}

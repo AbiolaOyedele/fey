@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { X, Trash2, Plus, Check, Calendar } from 'lucide-react'
 import type { Task, TaskPriority, UpdateTaskPayload, WorkflowStage } from '@/types/work-tasks'
 import AssigneePicker from './AssigneePicker'
+import { useConfirm } from '@/contexts/ConfirmContext'
 import { PRIORITY_META, formatMinutes, parseEstimate } from './TaskBits'
 
 interface TaskDetailDrawerProps {
@@ -24,6 +25,7 @@ const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 
 export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
   const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onDeleteSubtask, onDelete, onClose } = props
+  const confirm = useConfirm()
 
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description ?? '')
@@ -225,7 +227,14 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
           {/* Delete */}
           <div className="pt-2 border-t border-gray-100">
             <button
-              onClick={() => { void onDelete(task.id); onClose() }}
+              onClick={async () => {
+                const ok = await confirm({
+                  title: 'Delete this task?',
+                  message: 'This permanently removes the task and its subtasks. This can’t be undone.',
+                  confirmLabel: 'Delete',
+                })
+                if (ok) { void onDelete(task.id); onClose() }
+              }}
               className="flex items-center gap-1.5 text-xs2 font-medium text-red-500 hover:text-red-600"
             >
               <Trash2 size={14} /> Delete task

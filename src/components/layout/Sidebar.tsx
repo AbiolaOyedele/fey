@@ -14,7 +14,6 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
 import { useAppNotifications } from '@/hooks/useNotifications'
 import { motion, AnimatePresence } from 'framer-motion'
-import WorkspaceSwitcher from './WorkspaceSwitcher'
 import FeedbackButton from '@/components/ui/FeedbackButton'
 import NotificationBell from '@/components/crm/NotificationBell'
 
@@ -220,7 +219,6 @@ export default function Sidebar() {
         </nav>
 
         <div className={`pb-3 pt-3 border-t border-gray-100 flex flex-col gap-2 ${showExpanded ? 'items-stretch' : 'items-center'}`}>
-          {showExpanded && <WorkspaceSwitcher accent={accent} />}
           {onAdminHost && (
             <NavItem href="/admin" label="Admin" accent={accent} expanded={showExpanded} icon={<ShieldCheck size={20} />} />
           )}
@@ -291,15 +289,6 @@ export default function Sidebar() {
                   className="fixed inset-0 bottom-16 -z-10 bg-gray-900/10"
                 />
                 <motion.div className="absolute bottom-full right-0 mb-3 flex flex-col items-end gap-2">
-                  <motion.div
-                    initial={{ opacity: 0, y: 12, scale: 0.9 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 12, scale: 0.9 }}
-                    transition={{ type: 'spring', stiffness: 360, damping: 26, delay: moreItems.length * 0.035 }}
-                    className="w-60 rounded-2xl border border-gray-100 bg-white px-1.5 py-1 shadow-md"
-                  >
-                    <WorkspaceSwitcher accent={accent} />
-                  </motion.div>
                   {moreItems.map((item, i) => (
                     <MorePill
                       key={item.href}

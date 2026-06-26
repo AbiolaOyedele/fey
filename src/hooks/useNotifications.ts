@@ -16,6 +16,12 @@ export function useAppNotifications() {
   const [items, setItems] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(true)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  // The hook can mount in several places at once (sidebar badge, bell, page).
+  // Supabase reuses a channel by topic, so a shared topic would make the second
+  // instance register `.on()` on an already-subscribed channel and throw. A
+  // per-instance topic keeps every subscription independent.
+  const instanceId = useRef<string>('')
+  if (!instanceId.current) instanceId.current = Math.random().toString(36).slice(2)
 
   useEffect(() => {
     if (!uid) { setItems([]); setLoading(false); return }
@@ -30,7 +36,7 @@ export function useAppNotifications() {
       .then(({ data }) => { if (active) { setItems((data ?? []) as AppNotification[]); setLoading(false) } })
 
     const channel = supabase
-      .channel(`notifications-${uid}`)
+      .channel(`notifications-${uid}-${instanceId.current}`)
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${uid}` },
         (payload) => setItems((prev) => [payload.new as AppNotification, ...prev]),

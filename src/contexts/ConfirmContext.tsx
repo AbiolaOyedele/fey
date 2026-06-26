@@ -65,17 +65,17 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 {options.message && <p className="text-sm text-gray-500 mt-1">{options.message}</p>}
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
               <button
                 onClick={() => settle(false)}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
               >
                 {options.cancelLabel ?? 'Cancel'}
               </button>
               <button
                 autoFocus
                 onClick={() => settle(true)}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ backgroundColor: danger ? '#EF4444' : 'var(--accent, #ED64A6)' }}
               >
                 {options.confirmLabel ?? 'Confirm'}

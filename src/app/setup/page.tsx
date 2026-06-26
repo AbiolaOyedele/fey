@@ -415,6 +415,18 @@ export default function SetupPage() {
       >
         {step === 'name' ? nameCard : step === 'workspace' ? workspaceNameCard : workspaceCard}
       </div>
+
+      {/* Escape hatch — if the wrong account was chosen during sign-up, let the
+          user sign out and pick another instead of being trapped in onboarding. */}
+      <button
+        onClick={async () => {
+          await supabase.auth.signOut()
+          router.replace('/login')
+        }}
+        style={{ background: 'none', border: 'none', fontSize: '13px', color: muted, cursor: 'pointer', marginTop: '24px', minHeight: '44px', padding: '0 16px', textAlign: 'center' }}
+      >
+        {user?.email ? `Signed in as ${user.email} · ` : ''}Use a different account
+      </button>
     </div>
   )
 }

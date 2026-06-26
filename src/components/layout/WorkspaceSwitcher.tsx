@@ -15,7 +15,17 @@ async function authHeader(): Promise<Record<string, string>> {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` }
 }
 
-export default function WorkspaceSwitcher({ accent }: { accent: string }) {
+export default function WorkspaceSwitcher({
+  accent,
+  variant = 'rail',
+  placement = 'top',
+}: {
+  accent: string
+  /** 'rail' = full-width sidebar row; 'compact' = pill sized to content (e.g. dashboard header). */
+  variant?: 'rail' | 'compact'
+  /** Dropdown direction. Use 'bottom' when the trigger sits near the top of the screen. */
+  placement?: 'top' | 'bottom'
+}) {
   const { workspace, role, memberships } = useWorkspace()
   const [open, setOpen] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
@@ -40,7 +50,11 @@ export default function WorkspaceSwitcher({ accent }: { accent: string }) {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-2 py-2 rounded-xl hover:bg-gray-50 transition-colors text-left"
+        className={
+          variant === 'compact'
+            ? 'flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors text-left max-w-[200px]'
+            : 'w-full flex items-center gap-2 px-2 py-2 rounded-xl hover:bg-gray-50 transition-colors text-left'
+        }
       >
         <div
           className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
@@ -48,12 +62,12 @@ export default function WorkspaceSwitcher({ accent }: { accent: string }) {
         >
           {label.charAt(0).toUpperCase()}
         </div>
-        <span className="flex-1 text-sm font-semibold text-gray-800 truncate">{label}</span>
+        <span className={`text-sm font-semibold text-gray-800 truncate ${variant === 'compact' ? '' : 'flex-1'}`}>{label}</span>
         <ChevronsUpDown size={14} className="text-gray-400 flex-shrink-0" />
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 bottom-full mb-1 bg-white rounded-xl border border-gray-100 shadow-lg z-50 py-1 animate-fadeIn">
+        <div className={`absolute ${placement === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'} ${variant === 'compact' ? 'right-0 w-64' : 'left-0 right-0'} bg-white rounded-xl border border-gray-100 shadow-lg z-50 py-1 animate-fadeIn`}>
           <p className="px-3 pt-2 pb-1 text-3xs font-semibold uppercase tracking-wide text-gray-400">Workspaces</p>
           <div className="max-h-64 overflow-y-auto">
             {memberships.map((m) => {

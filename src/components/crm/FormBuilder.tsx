@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { CrmForm, FormField, FormFieldType, UpdateFormPayload, CrmTemplate } from '@/types/crm'
+import { Checkbox } from '@/components/ui/checkbox'
 
 // ── Field catalogue ───────────────────────────────────────────────────────────
 
@@ -86,9 +87,7 @@ function FieldPreview({ field }: { field: FormField }) {
             {field.options.length === 0
               ? <p className="text-xs text-gray-400">Add options below</p>
               : field.options.map((o) => (
-                  <label key={o} className="flex items-center gap-2 text-sm text-gray-700">
-                    <input type="checkbox" readOnly className="rounded" /> {o}
-                  </label>
+                  <Checkbox key={o} checked={false} label={o} />
                 ))
             }
           </div>
@@ -177,15 +176,11 @@ function FieldEditor({ field, onUpdate, onDelete }: {
 
       {/* Required toggle */}
       {!isTitle && (
-        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={field.required}
-            onChange={(e) => onUpdate({ ...field, required: e.target.checked })}
-            className="rounded"
-          />
-          Required
-        </label>
+        <Checkbox
+          checked={field.required}
+          label="Required"
+          onCheckedChange={(next) => onUpdate({ ...field, required: next })}
+        />
       )}
 
       {/* Options (select / multiselect) */}

@@ -5,6 +5,7 @@ import { use, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ClipboardList, CheckCircle2 } from 'lucide-react'
 import type { CrmForm, FormField, FormResponse } from '@/types/crm'
+import { Checkbox } from '@/components/ui/checkbox'
 
 function FormFieldInput({
   field,
@@ -39,20 +40,14 @@ function FormFieldInput({
       return (
         <div className="space-y-2">
           {field.options.map((opt) => (
-            <label key={opt} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selected.includes(opt)}
-                onChange={(e) => {
-                  const next = e.target.checked
-                    ? [...selected, opt]
-                    : selected.filter((o) => o !== opt)
-                  onChange(next)
-                }}
-                className="rounded"
-              />
-              {opt}
-            </label>
+            <Checkbox
+              key={opt}
+              checked={selected.includes(opt)}
+              label={opt}
+              onCheckedChange={(next) => {
+                onChange(next ? [...selected, opt] : selected.filter((o) => o !== opt))
+              }}
+            />
           ))}
         </div>
       )

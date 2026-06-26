@@ -8,6 +8,7 @@ import {
   FileText, FileImage, FileSpreadsheet, File as FileIcon,
 } from 'lucide-react'
 import DashboardWork from '@/components/dashboard/DashboardWork'
+import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import { Stagger, StaggerItem } from '@/components/ui/motion'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -136,12 +137,14 @@ export default function DashboardPage() {
       </StaggerItem>
       <StaggerItem>
       {/* ── Work: tasks, projects, conversations (the headline) ── */}
-      <DashboardWork
-        workspaceId={workspace?.id}
-        accent={accent}
-        unreadMessages={feed.loaded ? feed.unread.length : pending.unreadMessages}
-        pendingCount={totalPending}
-      />
+      <ErrorBoundary label="DashboardWork" fallbackTitle="Couldn’t load your work overview">
+        <DashboardWork
+          workspaceId={workspace?.id}
+          accent={accent}
+          unreadMessages={feed.loaded ? feed.unread.length : pending.unreadMessages}
+          pendingCount={totalPending}
+        />
+      </ErrorBoundary>
       </StaggerItem>
       <StaggerItem>
       {/* ── Workspace overview ── */}

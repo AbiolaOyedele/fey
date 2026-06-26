@@ -86,7 +86,7 @@ export default function FeedbackDialog({ open, onClose, accent, onSubmit, onSucc
       <div
         role="dialog"
         aria-label="Send feedback"
-        className="w-full max-w-md rounded-2xl bg-white shadow-xl p-5"
+        className="w-full max-w-md rounded-2xl bg-white shadow-xl p-5 max-h-[88dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">

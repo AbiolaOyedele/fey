@@ -87,11 +87,11 @@ function RequestDropdown({ onSelect }: RequestDropdownProps) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+        className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity whitespace-nowrap flex-shrink-0"
         style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
       >
-        <Plus size={14} /> Request Payment
-        <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        <Plus size={14} className="flex-shrink-0" /> Request Payment
+        <ChevronDown size={13} className={`transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 w-60 bg-white rounded-2xl border border-gray-200 z-20 overflow-hidden py-1 shadow-lg">
@@ -500,8 +500,8 @@ export default function PaymentsTab({ params }: { params: Promise<{ id: string }
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold text-gray-900">Payments</h2>
           <p className="text-sm text-gray-400">
             {loading ? '…' : `${requests.length} request${requests.length !== 1 ? 's' : ''} · ${tasks.length} billable task${tasks.length !== 1 ? 's' : ''}`}

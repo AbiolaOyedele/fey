@@ -26,6 +26,15 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full">
+      <head>
+        {/* Preload NoirPro so it fetches immediately on every origin — without
+            this, a freshly-created workspace subdomain (cold font cache) shows
+            the system fallback font until the CSS @font-face downloads, which
+            reads as "the app font changed". Fonts are always fetched in CORS
+            mode, so crossOrigin must be set for the preload to be reused. */}
+        <link rel="preload" href="/fonts/NoirPro-Light.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/NoirPro-Regular.otf" as="font" type="font/otf" crossOrigin="anonymous" />
+      </head>
       <body className="h-full bg-appbg overflow-x-hidden">
         <Providers>
           <AppShell>{children}</AppShell>

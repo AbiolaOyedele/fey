@@ -137,14 +137,14 @@ export function useInvoiceData(userId: string | undefined) {
 
 export async function fetchPublicInvoice(token: string): Promise<{ data?: Invoice; error?: string }> {
   try {
-    const { data, error } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('share_token', token)
-      .eq('share_enabled', true)
-      .single()
+    // Token-bound RPC (get_shared_invoice) instead of a direct select on a
+    // flag-gated public policy — returns only the invoice matching this exact
+    // secret token, so shared invoices can't be enumerated with the anon key.
+    const { data, error } = await supabase.rpc('get_shared_invoice', { p_token: token })
     if (error) throw error
-    return { data: data as Invoice }
+    const row = Array.isArray(data) ? data[0] : data
+    if (!row) return { error: 'Invoice not found.' }
+    return { data: row as Invoice }
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }
   }

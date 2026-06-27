@@ -34,14 +34,8 @@ $$;
 revoke all on function public.get_shared_client(text) from public;
 grant execute on function public.get_shared_client(text) to anon, authenticated;
 
-create or replace function public.get_shared_client_files(p_token text)
-returns setof public.client_files language sql security definer set search_path = public stable as $$
-  select cf.* from public.client_files cf
-  join public.shared_clients sc on sc.client_id = cf.client_id
-  where sc.token = p_token;
-$$;
-revoke all on function public.get_shared_client_files(text) from public;
-grant execute on function public.get_shared_client_files(text) to anon, authenticated;
+-- (F5 file RPC omitted — the file table is crm_files, and F5 isn't converted
+--  yet. It'll be added in the dedicated F5 pass.)
 
 -- ── 3. Drop the leaky F3/F4 anon policies ────────────────────────────────────
 -- SAFE NOW: the invoice page + pay page already read via the RPCs above in prod.
@@ -53,6 +47,5 @@ drop policy if exists "crm_payment_requests_anon_read" on public.crm_payment_req
 -- ── 4. F5 — NOT YET (left commented on purpose) ──────────────────────────────
 -- The /share page's file/campaign/task reads are not all RPC-gated yet, so
 -- dropping these would break it. Do NOT uncomment until that conversion ships.
--- drop policy if exists "Public can view files for shared clients"        on public.task_files;
--- drop policy if exists "Public can view client_files for shared clients" on public.client_files;
--- drop policy if exists "shared_client_members_insert_public"             on public.shared_client_members;
+-- (Note: file table here is crm_files; the run-1 audit named client_files.)
+-- drop policy if exists "shared_client_members_insert_public" on public.shared_client_members;

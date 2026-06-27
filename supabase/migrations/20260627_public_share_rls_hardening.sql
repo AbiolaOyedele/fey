@@ -71,13 +71,21 @@ revoke all on function public.get_shared_client_files(text) from public;
 grant execute on function public.get_shared_client_files(text) to anon, authenticated;
 
 -- =============================================================================
--- DROP the permissive anon policies. Run this block ONLY after the app deploy
--- that switches the public pages to the RPCs above.
+-- DROP the permissive anon policies. Run ONLY after the app deploy that switches
+-- the matching pages to the RPCs above.
 -- =============================================================================
--- drop policy if exists "invoices_select_public_share"            on public.invoices;
--- drop policy if exists "crm_payment_requests_anon_read"          on public.crm_payment_requests;
--- drop policy if exists "Public can view files for shared clients"   on public.task_files;
+
+-- F3 + F4 — READY now (the invoice page + pay page already read via RPC):
+-- drop policy if exists "invoices_select_public_share"   on public.invoices;
+-- drop policy if exists "crm_payment_requests_anon_read" on public.crm_payment_requests;
+
+-- F5 — NOT YET. The /share/[token] page's entry read uses get_shared_client, but
+-- its dependent reads (client_files, task_files, client_campaigns, campaign_tasks,
+-- tasks — all by client_id) still read those tables directly and rely on their
+-- public policies. Dropping the policies below before those reads are converted
+-- to token-bound RPCs would break the share page. Convert them first, then drop:
+-- drop policy if exists "Public can view files for shared clients"        on public.task_files;
 -- drop policy if exists "Public can view client_files for shared clients" on public.client_files;
--- drop policy if exists "shared_client_members_insert_public"      on public.shared_client_members;
+-- drop policy if exists "shared_client_members_insert_public"             on public.shared_client_members;
 -- (Re-create any genuinely-needed public read as a SECURITY DEFINER RPC bound to
 --  the token, never as a table policy gated on a flag.)

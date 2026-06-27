@@ -52,15 +52,13 @@ export default function PayPage({ params }: { params: Promise<{ token: string }>
 
   useEffect(() => {
     void (async () => {
-      const { data, error } = await supabase
-        .from('crm_payment_requests')
-        .select('id, amount, currency, description, message, status, owner_id')
-        .eq('share_token', token)
-        .single()
+      // Token-bound RPC instead of a status-gated public policy — returns only
+      // the request matching this exact secret token (no enumeration of all
+      // pending requests + their pay tokens via the anon key).
+      const { data, error } = await supabase.rpc('get_payment_request', { p_token: token })
+      const row = (Array.isArray(data) ? data[0] : data) as PaymentRequest | undefined
 
-      if (error ?? !data) { setNotFound(true); setLoading(false); return }
-
-      const row = data as PaymentRequest
+      if (error ?? !row) { setNotFound(true); setLoading(false); return }
       setRequest(row)
 
       // Fetch owner branding from fey_settings

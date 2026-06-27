@@ -1341,15 +1341,13 @@ function SharedClientPageInner({ params }: { params: Promise<{ token: string }> 
       const stored = localStorage.getItem(`fey_member_${token}`)
       const storedMember = stored ? (JSON.parse(stored) as Member) : null
 
-      // Fetch share record — no auth required (RLS disabled)
-      const { data: share, error: shareErr } = await supabase
-        .from('shared_clients')
-        .select('*')
-        .eq('token', token)
-        .eq('active', true)
-        .maybeSingle()
+      // Token-bound RPC (get_shared_client) — returns only the share matching
+      // this exact secret token, so the shared_clients table can't be enumerated
+      // with the anon key to harvest every tenant's share links + client_ids.
+      const { data: shareData, error: shareErr } = await supabase.rpc('get_shared_client', { p_token: token })
+      const share = (Array.isArray(shareData) ? shareData[0] : shareData) as ShareRecord & { active?: boolean } | undefined
 
-      if (shareErr || !share) { setPhase('error'); return }
+      if (shareErr || !share || share.active === false) { setPhase('error'); return }
       setShareRecord(share as ShareRecord)
 
       // Build client object from cached fields in shared_clients

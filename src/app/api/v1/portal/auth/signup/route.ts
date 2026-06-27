@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import { escapeHtml } from '@/utils/escapeHtml'
 import { createServiceClient } from '@/lib/supabase-server'
 import { signPortalToken } from '@/lib/portal-jwt'
 import { handleError, errorResponse } from '@/lib/api-helpers'
@@ -125,11 +126,14 @@ export async function POST(req: NextRequest) {
     // 8. Email owner (non-fatal — sendEmail never throws)
     if (ownerEmail) {
       const base = appUrl()
+      // name/email are client-chosen — escape before embedding in the email HTML.
+      const safeName = escapeHtml(name)
+      const safeEmail = escapeHtml(email)
       await sendEmail({
         from:    'Fey Workboard <notifications@feyapp.com>',
         to:      [ownerEmail],
         subject: `${name} joined your portal`,
-        html: `<p><strong>${name}</strong> (${email}) just signed up to your client portal.</p>
+        html: `<p><strong>${safeName}</strong> (${safeEmail}) just signed up to your client portal.</p>
                <p><a href="${base}/clients/${contact_id}/messages">View their workspace</a></p>`,
       })
     }

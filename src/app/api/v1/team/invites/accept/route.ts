@@ -48,9 +48,16 @@ export async function POST(req: NextRequest) {
     }
     const email = inv.email.toLowerCase()
 
-    // Create the auth user (auto-confirmed). If they already exist (e.g. a prior
-    // failed attempt), reset their password and confirm them so they're usable.
+    // Create the auth user (auto-confirmed) for brand-new teammates.
+    //
+    // SECURITY: if the email already has an account, we must NOT touch its
+    // password or confirm it from here. The invite token is known to the inviter
+    // (it's returned in the invite URL), so resetting an existing user's password
+    // — or minting a session for them — would be an account-takeover vector
+    // against any existing user whose email an attacker can guess. Existing users
+    // join the workspace by signing in with their own credentials instead.
     let userId: string
+    let isNewAccount = false
     const created = await db.auth.admin.createUser({
       email,
       password,
@@ -59,16 +66,13 @@ export async function POST(req: NextRequest) {
     })
     if (created.data?.user) {
       userId = created.data.user.id
+      isNewAccount = true
     } else {
       const existingId = await findUserIdByEmail(db, email)
       if (!existingId) {
         return errorResponse('TEAM_ACCEPT_ACCOUNT_FAILED', created.error?.message ?? 'Could not set up your account.', 400)
       }
-      await db.auth.admin.updateUserById(existingId, {
-        password,
-        email_confirm: true,
-        user_metadata: { full_name: name },
-      })
+      // Existing account — record the membership only. Do not modify the account.
       userId = existingId
     }
 
@@ -91,15 +95,20 @@ export async function POST(req: NextRequest) {
       await sendInviteAccepted(inviterEmail, { memberName: name, workspaceName: (ws as { name: string } | null)?.name ?? 'your workspace' })
     }
 
-    // Mint a one-time login token so the client gets a session immediately on
-    // click — no password round-trip (which can flake on timing/confirmation).
+    // Mint a one-time login token so a BRAND-NEW teammate gets a session
+    // immediately on click. We only do this for accounts this flow just created
+    // with the supplied password — never for a pre-existing account (that would
+    // hand the inviter a session for someone else's account). Existing users are
+    // told to sign in with their own credentials.
     let tokenHash: string | null = null
-    try {
-      const { data: link } = await db.auth.admin.generateLink({ type: 'magiclink', email })
-      tokenHash = (link?.properties as { hashed_token?: string } | undefined)?.hashed_token ?? null
-    } catch { /* client falls back to password sign-in */ }
+    if (isNewAccount) {
+      try {
+        const { data: link } = await db.auth.admin.generateLink({ type: 'magiclink', email })
+        tokenHash = (link?.properties as { hashed_token?: string } | undefined)?.hashed_token ?? null
+      } catch { /* client falls back to password sign-in */ }
+    }
 
-    return NextResponse.json({ ok: true, email, token_hash: tokenHash })
+    return NextResponse.json({ ok: true, email, token_hash: tokenHash, existing: !isNewAccount })
   } catch (err) {
     return handleError(err, 'TEAM_ACCEPT_FAILED')
   }

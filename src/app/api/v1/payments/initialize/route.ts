@@ -14,10 +14,27 @@ const initSchema = z.object({
    * rather than fetching it server-side so this route stays lean.
    */
   email: z.string().email(),
-  /** Amount in the invoice's currency (e.g. NGN). */
-  amount: z.number().positive(),
-  currency: z.string().length(3).default('NGN'),
+  // NOTE: amount/currency are intentionally NOT trusted from the client. They
+  // are accepted for backwards-compat but ignored — the chargeable amount is
+  // always computed server-side from the invoice's own line items + totals.
+  amount: z.number().positive().optional(),
+  currency: z.string().length(3).optional(),
 })
+
+/** Authoritative invoice total, computed server-side (never from the client). */
+function computeInvoiceTotal(
+  lineItems: Array<{ qty?: number; price?: number }> | null | undefined,
+  totals: { additions?: Array<{ value?: number; isPercent?: boolean; sign?: number }> } | null | undefined,
+): number {
+  const items = lineItems ?? []
+  const sub = items.reduce((s, li) => s + Number(li.qty ?? 0) * Number(li.price ?? 0), 0)
+  let total = sub
+  for (const a of totals?.additions ?? []) {
+    const amt = a.isPercent ? (sub * Number(a.value ?? 0)) / 100 : Number(a.value ?? 0)
+    total += a.sign === -1 ? -amt : amt
+  }
+  return Math.round(total * 100) / 100
+}
 
 // ── Paystack response shape ────────────────────────────────────────────────
 
@@ -72,7 +89,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { invoiceId, email, amount, currency } = parsed.data
+  const { invoiceId, email } = parsed.data
 
   // Verify the invoice is public (share_enabled = true) using the service-role
   // client so we don't need auth. This prevents initializing payments for
@@ -84,7 +101,7 @@ export async function POST(req: NextRequest) {
 
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
-    .select('id, status, share_enabled, currency')
+    .select('id, status, share_enabled, currency, line_items, totals')
     .eq('id', invoiceId)
     .eq('share_enabled', true)
     .single()
@@ -95,6 +112,18 @@ export async function POST(req: NextRequest) {
 
   if (invoice.status === 'paid') {
     return errorResponse('PAYMENT_INIT_ALREADY_PAID', 'This invoice has already been paid.', 409)
+  }
+
+  // Compute the amount from the invoice itself — the client's value is ignored,
+  // so a tampered request body can't change what gets charged.
+  const amount = computeInvoiceTotal(
+    invoice.line_items as Array<{ qty?: number; price?: number }> | null,
+    invoice.totals as { additions?: Array<{ value?: number; isPercent?: boolean; sign?: number }> } | null,
+  )
+  const currency = (invoice.currency ?? 'NGN') as string
+
+  if (!(amount > 0)) {
+    return errorResponse('PAYMENT_INIT_ZERO_AMOUNT', 'This invoice has no amount due.', 400)
   }
 
   try {

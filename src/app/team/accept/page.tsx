@@ -60,8 +60,17 @@ function AcceptInviteInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, name: name.trim(), password }),
       })
-      const data = await res.json().catch(() => null) as { email?: string; token_hash?: string | null; error?: { message?: string } } | null
+      const data = await res.json().catch(() => null) as { email?: string; token_hash?: string | null; existing?: boolean; error?: { message?: string } } | null
       if (!res.ok) throw new Error(data?.error?.message ?? 'This invite could not be accepted.')
+
+      // Existing Fey account: we deliberately don't (and can't) set their password
+      // here. They're now a member — send them to sign in with their own login.
+      if (data?.existing) {
+        setState('done')
+        setMessage('You already have a Fey account — sign in to open this workspace.')
+        setTimeout(() => router.replace('/login'), 1600)
+        return
+      }
 
       // 2. Sign in immediately — prefer the one-time token, fall back to password.
       let signedIn = false

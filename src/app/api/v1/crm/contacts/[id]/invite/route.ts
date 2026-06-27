@@ -4,13 +4,16 @@ import { requireAuth, handleError, errorResponse } from '@/lib/api-helpers'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * Generates a random 8-character uppercase alphanumeric invite code.
- * Avoids ambiguous chars (0/O, 1/I/L).
+ * Generates a random 8-character uppercase alphanumeric invite code using a
+ * cryptographically-secure RNG (not Math.random, which is predictable and would
+ * let codes be guessed/reproduced). Avoids ambiguous chars (0/O, 1/I/L).
  */
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  const bytes = new Uint8Array(8)
+  crypto.getRandomValues(bytes)
   let code = ''
-  for (let i = 0; i < 8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length))
+  for (let i = 0; i < 8; i++) code += chars.charAt(bytes[i] % chars.length)
   return code
 }
 

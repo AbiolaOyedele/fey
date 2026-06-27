@@ -11,6 +11,8 @@ interface PaystackEvent {
   data: {
     status: string
     reference: string
+    /** Amount actually charged, in the smallest currency unit (kobo for NGN). */
+    amount?: number
     metadata?: {
       invoice_id?: string
       custom_fields?: Array<{
@@ -19,6 +21,21 @@ interface PaystackEvent {
       }>
     }
   }
+}
+
+/** Authoritative invoice total in major units, computed from its own data. */
+function computeInvoiceTotal(
+  lineItems: Array<{ qty?: number; price?: number }> | null | undefined,
+  totals: { additions?: Array<{ value?: number; isPercent?: boolean; sign?: number }> } | null | undefined,
+): number {
+  const items = lineItems ?? []
+  const sub = items.reduce((s, li) => s + Number(li.qty ?? 0) * Number(li.price ?? 0), 0)
+  let total = sub
+  for (const a of totals?.additions ?? []) {
+    const amt = a.isPercent ? (sub * Number(a.value ?? 0)) / 100 : Number(a.value ?? 0)
+    total += a.sign === -1 ? -amt : amt
+  }
+  return Math.round(total * 100) / 100
 }
 
 // ── Route handler ──────────────────────────────────────────────────────────
@@ -108,7 +125,7 @@ export async function POST(req: NextRequest) {
   // Fetch invoice to get task_ids and current status
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
-    .select('id, status, task_ids, user_id')
+    .select('id, status, task_ids, user_id, line_items, totals')
     .eq('id', invoiceId)
     .single()
 
@@ -120,6 +137,21 @@ export async function POST(req: NextRequest) {
   if (invoice.status === 'paid') {
     // Already paid — idempotent, return success
     return new NextResponse(null, { status: 200 })
+  }
+
+  // Verify the amount actually charged covers the invoice total. Without this a
+  // tampered/underpaid charge (e.g. ₦1) would flip the invoice to "paid".
+  const expectedKobo = Math.round(
+    computeInvoiceTotal(
+      invoice.line_items as Array<{ qty?: number; price?: number }> | null,
+      invoice.totals as { additions?: Array<{ value?: number; isPercent?: boolean; sign?: number }> } | null,
+    ) * 100,
+  )
+  const paidKobo = Number(event.data.amount ?? 0)
+  // Allow a 1-kobo rounding slack; reject anything that underpays the total.
+  if (expectedKobo > 0 && paidKobo + 1 < expectedKobo) {
+    console.warn(`[payments/webhook] Underpaid invoice ${invoiceId}: paid ${paidKobo} kobo, expected ${expectedKobo}. Not marking paid.`)
+    return new NextResponse(null, { status: 200 }) // 200 so Paystack stops retrying; invoice stays unpaid
   }
 
   // Update invoice status

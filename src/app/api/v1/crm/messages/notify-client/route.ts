@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requireAuth, handleError, errorResponse } from '@/lib/api-helpers'
+import { canManageOwner } from '@/lib/owner-context'
+import { escapeHtml } from '@/utils/escapeHtml'
 import { sendEmail } from '@/services/email.service'
 import { EMAIL_FROM } from '@/config/email'
 import { env } from '@/config/env'
@@ -16,7 +18,7 @@ const DEBOUNCE_MIN = 10
  * of messages doesn't spam them. Best-effort — the caller fires and forgets.
  */
 export async function POST(req: NextRequest) {
-  const { response } = await requireAuth(req.headers.get('authorization'))
+  const { user, response } = await requireAuth(req.headers.get('authorization'))
   if (response) return response
 
   let contactId: string
@@ -26,7 +28,6 @@ export async function POST(req: NextRequest) {
 
   try {
     const db = createServiceClient()
-    // Ownership: the contact must belong to the caller (or their workspace owner).
     const { data: contact } = await db
       .from('crm_contacts')
       .select('email, name, owner_id, portal_enabled')
@@ -34,6 +35,12 @@ export async function POST(req: NextRequest) {
       .maybeSingle()
     const c = contact as { email: string | null; name: string; owner_id: string; portal_enabled: boolean } | null
     if (!c?.email || !c.portal_enabled) return NextResponse.json({ ok: true }) // nothing to do
+
+    // Ownership: the caller must own (or co-manage) the contact's owner. Without
+    // this, any signed-in user could email any contact by guessing a contact_id.
+    if (!(await canManageOwner(db, user!.id, c.owner_id))) {
+      return errorResponse('NOTIFY_CLIENT_FORBIDDEN', 'You don’t have access to this client.', 403)
+    }
 
     // Debounce: skip if we emailed this client about a message recently.
     const cutoff = new Date(Date.now() - DEBOUNCE_MIN * 60_000).toISOString()
@@ -62,7 +69,7 @@ export async function POST(req: NextRequest) {
       from: EMAIL_FROM.notifications,
       to: [c.email],
       subject: `New message from ${company}`,
-      html: `<p>Hi ${c.name.split(' ')[0] || 'there'},</p>
+      html: `<p>Hi ${escapeHtml(c.name.split(' ')[0] || 'there')},</p>
              <p>You have a new message in your client portal.</p>
              <p><a href="${link}">Open your portal</a></p>`,
     })

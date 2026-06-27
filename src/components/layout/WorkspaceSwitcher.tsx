@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { ChevronsUpDown, Plus, Check, Loader2, X, Trash2, LogIn, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useWorkspace } from '@/hooks/useWorkspace'
+import { useSettings } from '@/contexts/SettingsContext'
 import { workspaceUrl, neutralUrl } from '@/utils/host'
 
 function slugify(s: string): string {
@@ -27,6 +28,8 @@ export default function WorkspaceSwitcher({
   placement?: 'top' | 'bottom'
 }) {
   const { workspace, role, memberships } = useWorkspace()
+  const { settings } = useSettings()
+  const logo = settings.logo
   const [open, setOpen] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [showSignIn, setShowSignIn] = useState(false)
@@ -46,85 +49,94 @@ export default function WorkspaceSwitcher({
 
   const label = workspace?.name ?? 'Workspace'
 
+  // The active workspace avatar — its logo if set, otherwise a coloured initial.
+  const avatar = (size: string) =>
+    logo ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={logo} alt="" className={`${size} rounded-full object-cover flex-shrink-0`} />
+    ) : (
+      <div className={`${size} rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0`} style={{ backgroundColor: accent }}>
+        {label.charAt(0).toUpperCase()}
+      </div>
+    )
+
+  // Menu body — shared between the desktop dropdown and the mobile sheet.
+  const menu = (
+    <>
+      <p className="px-3 pt-2 pb-1 text-3xs font-semibold uppercase tracking-wide text-gray-400">Workspaces</p>
+      <div className="max-h-[50dvh] sm:max-h-64 overflow-y-auto">
+        {memberships.map((m) => {
+          const isActive = m.workspace.slug === workspace?.slug
+          return (
+            <button
+              key={m.workspace.id}
+              onClick={() => go(m.workspace.slug)}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
+            >
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-2xs font-bold text-white flex-shrink-0" style={{ backgroundColor: isActive ? accent : '#9CA3AF' }}>
+                {m.workspace.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 truncate">{m.workspace.name}</p>
+                <p className="text-2xs text-gray-400 capitalize">{m.role}</p>
+              </div>
+              {isActive && <Check size={15} style={{ color: accent }} className="flex-shrink-0" />}
+            </button>
+          )
+        })}
+      </div>
+      <div className="border-t border-gray-100 mt-1 pt-1">
+        <button onClick={() => { setShowCreate(true); setOpen(false) }} className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left text-sm text-gray-600">
+          <span className="w-7 h-7 rounded-full border border-dashed border-gray-300 flex items-center justify-center flex-shrink-0"><Plus size={14} className="text-gray-400" /></span>
+          Create workspace
+        </button>
+        <button onClick={() => { setShowSignIn(true); setOpen(false) }} className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left text-sm text-gray-600">
+          <span className="w-7 h-7 rounded-full border border-dashed border-gray-300 flex items-center justify-center flex-shrink-0"><LogIn size={14} className="text-gray-400" /></span>
+          Sign in to a workspace
+        </button>
+        {role === 'owner' && workspace && (
+          <button onClick={() => { setShowDelete(true); setOpen(false) }} className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-red-50 transition-colors text-left text-sm text-red-500">
+            <span className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"><Trash2 size={14} /></span>
+            Delete workspace
+          </button>
+        )}
+      </div>
+    </>
+  )
+
   return (
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
+        aria-label="Switch workspace"
         className={
           variant === 'compact'
-            ? 'flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-full border border-gray-200 bg-white hover:bg-gray-50 transition-colors text-left max-w-[200px]'
+            // Mobile: bare circle. ≥sm: pill with name + chevron.
+            ? 'flex items-center gap-2 rounded-full transition-colors text-left sm:border sm:border-gray-200 sm:bg-white sm:hover:bg-gray-50 sm:pl-1.5 sm:pr-2.5 sm:py-1.5 sm:max-w-[200px]'
             : 'w-full flex items-center gap-2 px-2 py-2 rounded-xl hover:bg-gray-50 transition-colors text-left'
         }
       >
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-          style={{ backgroundColor: accent }}
-        >
-          {label.charAt(0).toUpperCase()}
-        </div>
-        <span className={`text-sm font-semibold text-gray-800 truncate ${variant === 'compact' ? '' : 'flex-1'}`}>{label}</span>
-        <ChevronsUpDown size={14} className="text-gray-400 flex-shrink-0" />
+        {variant === 'compact' ? avatar('w-9 h-9 sm:w-7 sm:h-7') : avatar('w-7 h-7')}
+        <span className={`text-sm font-semibold text-gray-800 truncate ${variant === 'compact' ? 'hidden sm:block' : 'flex-1'}`}>{label}</span>
+        <ChevronsUpDown size={14} className={`text-gray-400 flex-shrink-0 ${variant === 'compact' ? 'hidden sm:block' : ''}`} />
       </button>
 
       {open && (
-        <div className={`absolute ${placement === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'} ${variant === 'compact' ? 'right-0 w-64' : 'left-0 right-0'} bg-white rounded-xl border border-gray-100 shadow-lg z-50 py-1 animate-fadeIn`}>
-          <p className="px-3 pt-2 pb-1 text-3xs font-semibold uppercase tracking-wide text-gray-400">Workspaces</p>
-          <div className="max-h-64 overflow-y-auto">
-            {memberships.map((m) => {
-              const isActive = m.workspace.slug === workspace?.slug
-              return (
-                <button
-                  key={m.workspace.id}
-                  onClick={() => go(m.workspace.slug)}
-                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors text-left"
-                >
-                  <div
-                    className="w-6 h-6 rounded-md flex items-center justify-center text-2xs font-bold text-white flex-shrink-0"
-                    style={{ backgroundColor: isActive ? accent : '#9CA3AF' }}
-                  >
-                    {m.workspace.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{m.workspace.name}</p>
-                    <p className="text-2xs text-gray-400 capitalize">{m.role}</p>
-                  </div>
-                  {isActive && <Check size={14} style={{ color: accent }} className="flex-shrink-0" />}
-                </button>
-              )
-            })}
+        <>
+          {/* Mobile (compact only): bottom-sheet overlay */}
+          {variant === 'compact' && (
+            <div className="sm:hidden fixed inset-0 z-[60] flex items-end bg-black/30" onClick={() => setOpen(false)}>
+              <div className="w-full bg-white rounded-t-2xl pb-[max(1.5rem,env(safe-area-inset-bottom))] animate-slideUp" onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-center pt-2.5 pb-1"><span className="w-9 h-1 rounded-full bg-gray-200" /></div>
+                {menu}
+              </div>
+            </div>
+          )}
+          {/* Desktop dropdown (and the rail variant everywhere) */}
+          <div className={`${variant === 'compact' ? 'hidden sm:block' : ''} absolute ${placement === 'bottom' ? 'top-full mt-1' : 'bottom-full mb-1'} ${variant === 'compact' ? 'right-0 w-64' : 'left-0 right-0'} bg-white rounded-xl border border-gray-100 shadow-lg z-50 py-1 animate-fadeIn`}>
+            {menu}
           </div>
-          <div className="border-t border-gray-100 mt-1 pt-1">
-            <button
-              onClick={() => { setShowCreate(true); setOpen(false) }}
-              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors text-left text-sm text-gray-600"
-            >
-              <span className="w-6 h-6 rounded-md border border-dashed border-gray-300 flex items-center justify-center flex-shrink-0">
-                <Plus size={13} className="text-gray-400" />
-              </span>
-              Create workspace
-            </button>
-            <button
-              onClick={() => { setShowSignIn(true); setOpen(false) }}
-              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors text-left text-sm text-gray-600"
-            >
-              <span className="w-6 h-6 rounded-md border border-dashed border-gray-300 flex items-center justify-center flex-shrink-0">
-                <LogIn size={13} className="text-gray-400" />
-              </span>
-              Sign in to a workspace
-            </button>
-            {role === 'owner' && workspace && (
-              <button
-                onClick={() => { setShowDelete(true); setOpen(false) }}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 transition-colors text-left text-sm text-red-500"
-              >
-                <span className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0">
-                  <Trash2 size={13} />
-                </span>
-                Delete workspace
-              </button>
-            )}
-          </div>
-        </div>
+        </>
       )}
 
       {showCreate && <CreateWorkspaceModal accent={accent} onClose={() => setShowCreate(false)} />}

@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -651,6 +652,20 @@ function SettingsPageInner() {
 
         {/* Account actions */}
         <SectionGroup title="Account">
+          <SettingRow
+            icon={Trash2}
+            title="Recycle bin"
+            description="Restore deleted projects, tasks and clients"
+            border
+            action={
+              <Link
+                href="/trash"
+                className="px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Open
+              </Link>
+            }
+          />
           <SettingRow
             icon={LogOut}
             title="Sign out"

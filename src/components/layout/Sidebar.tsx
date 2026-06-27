@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, CreditCard, Settings,
   ListTodo, FileText, Sparkles, ChevronsLeft, ChevronsRight,
   MessagesSquare, UsersRound, ShieldCheck, FolderKanban, Bell,
-  MoreHorizontal, X, Trash2,
+  MoreHorizontal, X,
 } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
@@ -144,7 +144,6 @@ export default function Sidebar() {
     { href: '/playground', label: 'Internal Chats', icon: <MessagesSquare size={18} /> },
     { href: '/team', label: 'Team', icon: <UsersRound size={18} /> },
     { href: '/notifications', label: 'Notifications', icon: <Bell size={18} />, badge: unreadCount },
-    { href: '/trash', label: 'Recycle bin', icon: <Trash2 size={18} /> },
     { href: '/fey', label: 'Fey', icon: <Sparkles size={18} /> },
     ...(onAdminHost ? [{ href: '/admin', label: 'Admin', icon: <ShieldCheck size={18} /> }] : []),
     { href: '/settings', label: 'Settings', icon: <Settings size={18} /> },
@@ -217,7 +216,6 @@ export default function Sidebar() {
           <NavItem href="/invoices" label="Invoices" accent={accent} expanded={showExpanded} icon={<FileText size={20} />} />
           <NavItem href="/playground" label="Internal Chats" accent={accent} expanded={showExpanded} icon={<MessagesSquare size={20} />} />
           <NavItem href="/team" label="Team" accent={accent} expanded={showExpanded} icon={<UsersRound size={20} />} />
-          <NavItem href="/trash" label="Recycle bin" accent={accent} expanded={showExpanded} subtle icon={<Trash2 size={20} />} />
           <NavItem href="/fey" label="Fey" accent={accent} expanded={showExpanded} subtle icon={<Sparkles size={20} />} />
         </nav>
 

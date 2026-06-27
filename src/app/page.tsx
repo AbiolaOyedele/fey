@@ -95,7 +95,8 @@ export default function DashboardPage() {
                 {heading}
               </h1>
             </div>
-            <div className="flex-shrink-0 pt-0.5">
+            {/* Mobile/tablet only — on desktop (lg+) the switcher lives in the sidebar footer. */}
+            <div className="flex-shrink-0 pt-0.5 lg:hidden">
               <WorkspaceSwitcher accent={accent} variant="compact" placement="bottom" />
             </div>
           </div>

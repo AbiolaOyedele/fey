@@ -1684,9 +1684,12 @@ function SettingsPageInner() {
       if (!waPhone.trim()) { setWaError('Enter your WhatsApp number.'); return }
       setWaSending(true); setWaError('')
       try {
+        const { data: { session } } = await supabase.auth.getSession()
         const res  = await fetch(`${BOT_URL}/verify/start`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone_number: waPhone.trim(), user_id: user?.id }),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
+          // user_id is derived server-side from the token; not sent in the body.
+          body: JSON.stringify({ phone_number: waPhone.trim() }),
         })
         const json = await res.json() as { error?: string }
         if (!res.ok) { setWaError(json.error ?? 'Failed to send code.'); return }
@@ -1700,8 +1703,10 @@ function SettingsPageInner() {
       if (!waCode.trim()) { setWaError('Enter the 6-digit code.'); return }
       setWaVerifying(true); setWaError('')
       try {
+        const { data: { session } } = await supabase.auth.getSession()
         const res  = await fetch(`${BOT_URL}/verify/confirm`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
           body: JSON.stringify({ phone_number: waPhone.trim(), code: waCode.trim() }),
         })
         const json = await res.json() as { error?: string }

@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import twilio from 'twilio';
 import ws from 'ws';
+import crypto from 'crypto';
 
 Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 0.2 });
 import {
@@ -182,13 +183,66 @@ Message: "${message}"`,
 // ── Express app ───────────────────────────────────────────────────────────────
 
 const app = express();
-app.use(cors());
+app.set('trust proxy', true); // Railway terminates TLS upstream; needed for correct proto/host
+
+// ── CORS — only the app's own origins (B4: previously wide open) ───────────────
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? '')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+app.use(cors({
+  origin(origin, cb) {
+    if (!origin) return cb(null, true); // non-browser clients (Twilio, curl) send no Origin
+    let host = '';
+    try { host = new URL(origin).hostname; } catch { return cb(new Error('Bad origin')); }
+    const ok = ALLOWED_ORIGINS.includes(origin)
+      || host === 'theruff.agency'
+      || host.endsWith('.theruff.agency')
+      || host === 'localhost';
+    return ok ? cb(null, true) : cb(new Error('Not allowed by CORS'));
+  },
+}));
+
 app.use(express.urlencoded({ extended: false })); // Twilio sends URL-encoded form data
 app.use(express.json());
+
+// ── Auth: resolve the caller from a Supabase access token (never trust a
+//    client-supplied user_id). Returns the user or null (after sending 401). ──
+async function requireUser(req, res) {
+  const header = req.headers.authorization ?? '';
+  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  if (!token) { res.status(401).json({ error: 'Authentication required.' }); return null; }
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data?.user) { res.status(401).json({ error: 'Invalid or expired session.' }); return null; }
+  return data.user;
+}
+
+// ── Tiny in-memory rate limiter (per key). Caps verification sends and confirm
+//    attempts so the trusted Twilio sender can't be abused / codes brute-forced. ──
+const rateBuckets = new Map();
+function rateLimit(key, max, windowMs) {
+  const now = Date.now();
+  const b = rateBuckets.get(key) ?? { count: 0, reset: now + windowMs };
+  if (now > b.reset) { b.count = 0; b.reset = now + windowMs; }
+  b.count += 1;
+  rateBuckets.set(key, b);
+  return b.count <= max;
+}
 
 // ── POST /webhook — inbound WhatsApp messages from Twilio ─────────────────────
 
 app.post('/webhook', async (req, res) => {
+  // B1: verify the request really came from Twilio. Without this, anyone can POST
+  // forged form data (From=whatsapp:+<victim>&Body=...) to inject tasks into a
+  // connected user's account and trigger paid Anthropic calls.
+  const signature = req.headers['x-twilio-signature'];
+  const webhookUrl = process.env.TWILIO_WEBHOOK_URL || `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+  const signatureValid = signature && twilio.validateRequest(
+    process.env.TWILIO_AUTH_TOKEN, signature, webhookUrl, req.body,
+  );
+  if (!signatureValid) {
+    console.warn('[webhook] rejected: invalid or missing Twilio signature');
+    return res.status(403).send('Invalid signature');
+  }
+
   const twiml = new twilio.twiml.MessagingResponse();
   const reply = (msg) => {
     twiml.message(msg);
@@ -307,15 +361,27 @@ app.post('/webhook', async (req, res) => {
 
 // ── POST /verify/send — send a 6-digit code to the user's WhatsApp ────────────
 
-app.post('/verify/send', async (req, res) => {
+async function handleVerifySend(req, res) {
   try {
-    const { phone_number, user_id } = req.body;
-    if (!phone_number || !user_id) {
-      return res.status(400).json({ error: 'phone_number and user_id are required.' });
+    // B2: identity comes from the authenticated session, NOT the request body.
+    // Otherwise an attacker could pass a victim's user_id to repoint that
+    // account's WhatsApp channel to their own phone (channel hijack).
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const user_id = user.id;
+
+    const { phone_number } = req.body;
+    if (!phone_number) {
+      return res.status(400).json({ error: 'phone_number is required.' });
+    }
+
+    // Rate limit per user so the trusted "Fey" Twilio sender can't be abused.
+    if (!rateLimit(`send:${user_id}`, 5, 10 * 60 * 1000)) {
+      return res.status(429).json({ error: 'Too many attempts. Try again later.' });
     }
 
     const phone = normalizePhone(phone_number);
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const code = String(crypto.randomInt(100000, 1000000)); // B3: CSPRNG, not Math.random
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
     // Clear any existing code for this number
@@ -349,18 +415,28 @@ app.post('/verify/send', async (req, res) => {
     console.error('[verify/send]', err);
     return res.status(500).json({ error: 'Failed to send verification code. Try again.' });
   }
-});
+}
+// /verify/start is the name the web app calls; keep /verify/send as an alias.
+app.post('/verify/start', handleVerifySend);
+app.post('/verify/send', handleVerifySend);
 
 // ── POST /verify/confirm — confirm the code and mark the number as verified ───
 
 app.post('/verify/confirm', async (req, res) => {
   try {
+    const user = await requireUser(req, res);
+    if (!user) return;
+
     const { phone_number, code } = req.body;
     if (!phone_number || !code) {
       return res.status(400).json({ error: 'phone_number and code are required.' });
     }
 
     const phone = normalizePhone(phone_number);
+    // B3: cap attempts so the 6-digit code can't be brute-forced within its TTL.
+    if (!rateLimit(`confirm:${user.id}:${phone}`, 8, 10 * 60 * 1000)) {
+      return res.status(429).json({ error: 'Too many attempts. Request a new code.' });
+    }
     const now = new Date().toISOString();
 
     const { data: record } = await supabase
@@ -379,10 +455,12 @@ app.post('/verify/confirm', async (req, res) => {
       return res.status(400).json({ error: 'Incorrect code.' });
     }
 
-    // Mark the connection as verified
+    // Mark the connection verified — scoped to the authenticated user's own
+    // connection for this phone, so a code can't verify someone else's row.
     const { error: updateError } = await supabase
       .from('whatsapp_connections')
       .update({ verified: true, connected_at: now })
+      .eq('user_id', user.id)
       .eq('phone_number', phone);
     if (updateError) throw updateError;
 

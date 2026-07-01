@@ -29,12 +29,14 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
 
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description ?? '')
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [estimate, setEstimate] = useState(task.estimated_minutes != null ? formatMinutes(task.estimated_minutes) : '')
   const [newSubtask, setNewSubtask] = useState('')
 
   useEffect(() => {
     setTitle(task.title)
     setDescription(task.description ?? '')
+    setIsEditingDescription(false)
     setEstimate(task.estimated_minutes != null ? formatMinutes(task.estimated_minutes) : '')
   }, [task.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -180,14 +182,32 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
           {/* Description */}
           <div>
             <p className="text-xs2 font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Description</p>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={() => { if (description !== (task.description ?? '')) void onPatch(task.id, { description: description || null }) }}
-              rows={4}
-              placeholder="Add more detail…"
-              className="w-full text-sm px-3 py-2.5 rounded-xl border border-gray-200 resize-none outline-none focus:border-gray-400"
-            />
+            {isEditingDescription ? (
+              <textarea
+                autoFocus
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onBlur={() => {
+                  setIsEditingDescription(false)
+                  if (description !== (task.description ?? '')) void onPatch(task.id, { description: description || null })
+                }}
+                rows={4}
+                placeholder="Add more detail…"
+                className="w-full text-sm px-3 py-2.5 rounded-xl border border-gray-200 resize-none outline-none focus:border-gray-400"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsEditingDescription(true)}
+                className="w-full text-left text-sm px-3 py-2.5 rounded-xl -mx-3 hover:bg-gray-50 transition-colors"
+              >
+                {description ? (
+                  <p className="whitespace-pre-wrap text-gray-700">{description}</p>
+                ) : (
+                  <p className="text-gray-400">Add more detail…</p>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Subtasks */}

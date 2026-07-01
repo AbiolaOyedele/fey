@@ -7,7 +7,7 @@ import { handleError, errorResponse } from '@/lib/api-helpers'
 import { notifyOwnerAdmins } from '@/services/notifications.service'
 import * as portalRepo from '@/repositories/portal.repository'
 import { sendEmail } from '@/services/email.service'
-import { appUrl } from '@/config/email'
+import { EMAIL_FROM, appUrl } from '@/config/email'
 import { z } from 'zod'
 
 const signupSchema = z.object({
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
       const safeName = escapeHtml(name)
       const safeEmail = escapeHtml(email)
       await sendEmail({
-        from:    'Fey Workboard <notifications@feyapp.com>',
+        from:    EMAIL_FROM.notifications,
         to:      [ownerEmail],
         subject: `${name} joined your portal`,
         html: `<p><strong>${safeName}</strong> (${safeEmail}) just signed up to your client portal.</p>

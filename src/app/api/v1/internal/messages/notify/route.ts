@@ -57,18 +57,22 @@ export async function POST(req: NextRequest) {
   try {
     const db = createServiceClient()
 
-    // 3. Resolve channel name + sender display name.
-    const [{ data: channel }, { data: sender }] = await Promise.all([
+    // 3. Resolve channel name, sender display name, and workspace name (a
+    //    member can belong to several workspaces, so every alert must say
+    //    which one it's from).
+    const [{ data: channel }, { data: sender }, { data: workspace }] = await Promise.all([
       db.from('internal_channels').select('name').eq('id', channel_id).maybeSingle(),
       db.from('workspace_members')
         .select('name, email')
         .eq('workspace_id', workspace_id)
         .eq('user_id', sender_id)
         .maybeSingle(),
+      db.from('workspaces').select('name').eq('id', workspace_id).maybeSingle(),
     ])
     const channelName = (channel as { name: string } | null)?.name ?? 'general'
     const senderRow = sender as { name: string | null; email: string | null } | null
     const senderName = senderRow?.name ?? senderRow?.email?.split('@')[0] ?? 'A teammate'
+    const workspaceName = (workspace as { name: string } | null)?.name ?? 'your workspace'
 
     // 4. Recipients = workspace members with an email, excluding the sender.
     const { data: membersData } = await db
@@ -127,6 +131,7 @@ export async function POST(req: NextRequest) {
           ? `${base}/api/v1/notifications/unsubscribe?token=${pref.unsubscribe_token}`
           : `${base}/settings`
         const result = await sendNewMessageAlert(m.email, {
+          workspaceName,
           channelName,
           senderName,
           snippet,

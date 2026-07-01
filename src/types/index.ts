@@ -189,6 +189,8 @@ export interface Settings {
   portal_read_receipts: string
   /** Days to keep messages before the retention cron deletes them. Default 60. */
   message_retention_days: string
+  /** When 'true' (default), the daily task-digest cron emails this user. */
+  task_digest_enabled: string
   email_auto_reminders: string
   checklist_dismissed: string
   checklist_steps: string

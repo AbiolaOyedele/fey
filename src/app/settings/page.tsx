@@ -1188,6 +1188,16 @@ function SettingsPageInner() {
         </div>
       </SectionGroup>
 
+      <SectionGroup title="Task digest">
+        <SettingRow
+          icon={Mail}
+          title="Daily task digest"
+          description="A daily email at 8am with tasks due today, overdue, recently assigned to you, and what got done yesterday."
+          border={false}
+          action={<Toggle checked={settings.task_digest_enabled !== 'false'} onChange={(v) => void saveSetting('task_digest_enabled', v ? 'true' : 'false')} />}
+        />
+      </SectionGroup>
+
       <SectionGroup title="Currency &amp; exchange rates">
         <div className="py-4 border-b border-gray-100">
           <label className="block text-xs font-medium text-gray-500 mb-2">Display currency</label>

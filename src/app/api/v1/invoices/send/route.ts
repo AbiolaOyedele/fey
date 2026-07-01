@@ -185,7 +185,7 @@ function buildEmailHtml({ body, shareLink, invoiceNumber }: EmailHtmlOptions): s
         </tr>
         <tr>
           <td style="padding:20px 40px;border-top:1px solid #f0f0f0;font-size:12px;color:#999;text-align:center;">
-            Sent via <a href="https://feyapp.com" style="color:#999;">Fey</a>
+            Sent via <a href="${appUrl()}" style="color:#999;">Fey</a>
           </td>
         </tr>
       </table>

@@ -1,5 +1,6 @@
 {
   "crons": [
-    { "path": "/api/v1/cron/prune-messages", "schedule": "0 3 * * *" }
+    { "path": "/api/v1/cron/prune-messages", "schedule": "0 3 * * *" },
+    { "path": "/api/v1/cron/task-digest", "schedule": "0 7 * * *" }
   ]
 }

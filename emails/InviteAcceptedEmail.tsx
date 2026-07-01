@@ -31,4 +31,10 @@ export function InviteAcceptedEmail({
   )
 }
 
+InviteAcceptedEmail.PreviewProps = {
+  memberName: 'Kim Adeyemi',
+  workspaceName: 'The Ruff Agency',
+  workspaceUrl: 'https://dashboard.theruff.agency/team',
+} satisfies InviteAcceptedEmailProps
+
 export default InviteAcceptedEmail

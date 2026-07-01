@@ -11,12 +11,20 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Fey'
   const options = {
     body: data.body || '',
-    icon: '/icon.svg',
-    badge: '/icon.svg',
+    icon: '/icon-192.png',
+    badge: '/badge-96.png',
     tag: data.tag || undefined,
     data: { url: data.url || '/' },
   }
-  event.waitUntil(self.registration.showNotification(title, options))
+  // Some browsers (notably Safari/WebKit) can reject an unsupported icon/badge
+  // format and never show the notification at all. Retry once without images
+  // so a bad asset can never silently swallow the whole notification.
+  event.waitUntil(
+    self.registration.showNotification(title, options).catch(() => {
+      const { icon, badge, ...fallback } = options
+      return self.registration.showNotification(title, fallback)
+    }),
+  )
 })
 
 self.addEventListener('notificationclick', (event) => {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
 import { env } from '@/config/env'
+import { appUrl } from '@/config/email'
 import { AppError, isAppError } from '@/lib/errors'
 
 // ── Validation ────────────────────────────────────────────────────────────────
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const amountInSmallestUnit = Math.round(row.amount * 100)
-    const callbackUrl = `${env.NEXT_PUBLIC_APP_URL ?? 'https://feyapp.com'}/pay/${token}/success`
+    const callbackUrl = `${appUrl()}/pay/${token}/success`
 
     const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',

@@ -34,4 +34,11 @@ export function RoleChangedEmail({
   )
 }
 
+RoleChangedEmail.PreviewProps = {
+  memberName: 'Kim Adeyemi',
+  workspaceName: 'The Ruff Agency',
+  newRole: 'admin',
+  workspaceUrl: 'https://dashboard.theruff.agency/team',
+} satisfies RoleChangedEmailProps
+
 export default RoleChangedEmail

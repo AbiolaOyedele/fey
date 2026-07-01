@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requireAuth, handleError } from '@/lib/api-helpers'
+import { sendWelcomeEmail } from '@/services/email.service'
+import { appUrl } from '@/config/email'
 
 /**
  * POST /api/v1/workspace/ensure
@@ -61,6 +63,12 @@ export async function POST(req: NextRequest) {
 
     // Seed a #general channel so the Playground isn't empty.
     await db.from('internal_channels').insert({ workspace_id: workspaceId, name: 'general', created_by: userId })
+
+    // Best-effort — never blocks workspace creation.
+    if (user!.email) {
+      void sendWelcomeEmail(user!.email, { name: ownerName, workspaceName: name, dashboardUrl: appUrl() })
+        .catch((err) => console.warn('[workspace/ensure] welcome email failed', err))
+    }
 
     return NextResponse.json({ ok: true, workspace_id: workspaceId, created: true })
   } catch (err) {

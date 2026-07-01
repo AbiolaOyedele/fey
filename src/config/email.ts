@@ -5,11 +5,11 @@ import { env } from '@/config/env'
  *
  * Every FROM address lives here rather than being hardcoded at call sites, so
  * the sending domain and display names are changed in exactly one place. All
- * addresses use the verified `feyapp.com` transactional domain (see EMAIL.md:
- * never send from a generic provider address).
+ * addresses use the verified `theruff.agency` transactional domain (see
+ * EMAIL.md: never send from a generic provider address).
  */
 
-const DOMAIN = 'feyapp.com'
+const DOMAIN = 'theruff.agency'
 
 /** Branded sender identities, keyed by purpose. */
 export const EMAIL_FROM = {

@@ -4,6 +4,7 @@ import { requireAuth, handleError } from '@/lib/api-helpers'
 import * as crmService from '@/services/crm.service'
 import { sendEmail } from '@/services/email.service'
 import { env } from '@/config/env'
+import { EMAIL_FROM, appUrl } from '@/config/email'
 import { z } from 'zod'
 
 type Params = { params: Promise<{ id: string }> }
@@ -32,9 +33,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     const contract = await crmService.getContractById(db, id, user!.id)
     const updated  = await crmService.updateContract(db, id, user!.id, { status: 'sent' })
 
-    const portalUrl = env.NEXT_PUBLIC_APP_URL ?? 'https://yourdomain.com'
+    const portalUrl = appUrl()
     await sendEmail({
-      from:    'Contracts <contracts@feyapp.com>',
+      from:    EMAIL_FROM.documents,
       to:      [parsed.data.to],
       subject: `Contract ready to review: ${contract.title}`,
       html: `<p>You have a contract to review: <strong>${contract.title}</strong>.</p>

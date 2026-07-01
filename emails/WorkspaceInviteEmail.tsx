@@ -34,4 +34,10 @@ export function WorkspaceInviteEmail({
   )
 }
 
+WorkspaceInviteEmail.PreviewProps = {
+  workspaceName: 'The Ruff Agency',
+  role: 'admin',
+  inviteUrl: 'https://dashboard.theruff.agency/team/accept?token=sample',
+} satisfies WorkspaceInviteEmailProps
+
 export default WorkspaceInviteEmail

@@ -39,6 +39,20 @@ export const SettingsContext = createContext<SettingsContextValue | null>(null)
 
 const DEFAULT_CHANGELOG = [
   {
+    version: '1.10.0', date: '1 Jul, 2026',
+    features: [
+      'Daily task digest email — due/overdue, recently assigned, and completed-yesterday tasks, sent every morning. Toggle it off in Settings → App.',
+      'Welcome email — sent the moment your workspace is created, with a quick tour of clients, projects, tasks, and team.',
+    ],
+    improvements: [
+      'Every workspace-related email now names the workspace it\'s from, since you can belong to more than one (chat alerts, task digest)',
+      'Push notification failures now get logged instead of failing silently, and notification icons render correctly across browsers (previously broken on Safari/WebKit)',
+    ],
+    fixes: [
+      'Several account emails (portal signup, contract/form send, invoice footer, payment redirect) were pointing at the wrong domain and have been corrected',
+    ],
+  },
+  {
     version: '1.9.2', date: '1 Jul, 2026',
     features: [],
     improvements: [
@@ -125,6 +139,7 @@ const DEFAULTS: Settings = {
   email_project_activity: 'false', email_chat_from: 'true', email_chat_to: 'true', email_auto_reminders: 'false',
   portal_read_receipts: 'true',
   message_retention_days: '60',
+  task_digest_enabled: 'true',
   checklist_dismissed: 'false', checklist_steps: '{}',
   guide_seen: 'false', fey_thread_order: '', fey_sort_mode: 'newest',
   // Fey-specific onboarding flag — never clashes with Workboard's onboarding_complete

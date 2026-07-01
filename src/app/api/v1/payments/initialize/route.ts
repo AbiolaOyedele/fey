@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
 import { env } from '@/config/env'
+import { appUrl } from '@/config/email'
 import { AppError, isAppError } from '@/lib/errors'
 
 // ── Request validation ─────────────────────────────────────────────────────
@@ -131,7 +132,7 @@ export async function POST(req: NextRequest) {
     // NGN has 2 decimal places, so multiply by 100.
     const amountInKobo = Math.round(amount * 100)
 
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://feyapp.com'}/invoice/payment-success`
+    const callbackUrl = `${appUrl()}/invoice/payment-success`
 
     const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',

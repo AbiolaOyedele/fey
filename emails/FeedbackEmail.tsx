@@ -30,4 +30,12 @@ export function FeedbackEmail({ type, message, fromEmail, source, pageUrl }: Fee
   )
 }
 
+FeedbackEmail.PreviewProps = {
+  type: 'bug',
+  message: 'The invoice PDF export cuts off the last line item when there are more than 8 rows.',
+  fromEmail: 'kim@studio.com',
+  source: 'Settings feedback form',
+  pageUrl: '/invoices/new',
+} satisfies FeedbackEmailProps
+
 export default FeedbackEmail

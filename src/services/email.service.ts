@@ -7,6 +7,8 @@ import { InviteAcceptedEmail } from '../../emails/InviteAcceptedEmail'
 import { RoleChangedEmail } from '../../emails/RoleChangedEmail'
 import { NewMessageEmail } from '../../emails/NewMessageEmail'
 import { FeedbackEmail } from '../../emails/FeedbackEmail'
+import { TaskDigestEmail, type DigestTask } from '../../emails/TaskDigestEmail'
+import { WelcomeEmail } from '../../emails/WelcomeEmail'
 
 /**
  * Single source of truth for outbound transactional email.
@@ -73,6 +75,19 @@ export async function sendEmail(params: SendEmailParams): Promise<SendResult> {
 
 // ── Typed senders ────────────────────────────────────────────────────────────
 
+/** Welcome — sent once, right after a new owner's first workspace is created. */
+export function sendWelcomeEmail(
+  to: string,
+  props: { name: string; workspaceName: string; dashboardUrl: string },
+): Promise<SendResult> {
+  return sendEmail({
+    from: EMAIL_FROM.team,
+    to,
+    subject: `Welcome to Fey — ${props.workspaceName} is ready`,
+    react: WelcomeEmail(props),
+  })
+}
+
 /** Workspace invite — sent to the invitee. */
 export function sendWorkspaceInvite(
   to: string,
@@ -128,10 +143,25 @@ export function sendFeedbackNotification(
   })
 }
 
+/** Daily task digest — due/overdue, recently assigned, completed yesterday (best-effort). */
+export function sendTaskDigest(
+  to: string,
+  props: { dueOrOverdue: DigestTask[]; recentlyAssigned: DigestTask[]; completedYesterday: DigestTask[]; tasksUrl: string },
+): Promise<SendResult> {
+  const unsubscribeUrl = `${appUrl()}/settings?tab=App`
+  return sendEmail({
+    from: EMAIL_FROM.notifications,
+    to,
+    subject: 'Your daily task digest',
+    react: TaskDigestEmail({ ...props, unsubscribeUrl }),
+  })
+}
+
 /** New internal-chat message — sent to other workspace members (best-effort). */
 export function sendNewMessageAlert(
   to: string,
   props: {
+    workspaceName: string
     channelName: string
     senderName: string
     snippet: string
@@ -142,7 +172,7 @@ export function sendNewMessageAlert(
   return sendEmail({
     from: EMAIL_FROM.notifications,
     to,
-    subject: `${props.senderName} posted in #${props.channelName}`,
+    subject: `${props.senderName} posted in #${props.channelName} (${props.workspaceName})`,
     react: NewMessageEmail(props),
   })
 }

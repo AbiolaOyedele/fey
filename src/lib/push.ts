@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import webpush from 'web-push'
 import { env } from '@/config/env'
 import type { PushSubscriptionJSON } from '@/types/notification'
@@ -39,9 +40,16 @@ export async function sendPush(
       try {
         await webpush.sendNotification(sub, body)
       } catch (err) {
-        const status = (err as { statusCode?: number }).statusCode
-        if (status === 404 || status === 410) staleEndpoints.push(sub.endpoint)
-        // other errors (network/transient) are ignored — push is best-effort
+        const status = (err as { statusCode?: number; body?: string }).statusCode
+        if (status === 404 || status === 410) {
+          staleEndpoints.push(sub.endpoint)
+          return
+        }
+        // Best-effort — never throws — but still visible in logs so delivery
+        // failures (VAPID mismatch, bad payload, etc.) aren't invisible.
+        const endpointHash = crypto.createHash('sha256').update(sub.endpoint).digest('hex').slice(0, 12)
+        const responseBody = (err as { body?: string }).body
+        console.warn('[push] send failed', { status, endpointHash, body: responseBody?.slice(0, 200) })
       }
     }),
   )

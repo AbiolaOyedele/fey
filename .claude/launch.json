@@ -13,6 +13,12 @@
       "runtimeArgs": ["run", "dev", "--", "--port", "4003"],
       "port": 4003,
       "env": { "NEXT_PUBLIC_DEMO_MODE": "true" }
+    },
+    {
+      "name": "fey-email",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "email", "--", "--port", "3030"],
+      "port": 3030
     }
   ]
 }

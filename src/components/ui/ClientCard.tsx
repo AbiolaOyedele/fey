@@ -29,7 +29,7 @@ export default function ClientCard({ client, onDelete, viewMode = 'grid' }: Clie
     return (
       <Link
         href={`/clients/${client.id}`}
-        className="group flex items-center gap-4 bg-white rounded-2xl px-5 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-150"
+        className="group flex items-center gap-4 bg-white rounded-2xl px-5 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-[box-shadow,translate] duration-150"
       >
         <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cardColor }} />
         <span className="font-display font-semibold text-gray-900 w-40 truncate">{client.name}</span>
@@ -37,15 +37,16 @@ export default function ClientCard({ client, onDelete, viewMode = 'grid' }: Clie
         <div className="flex-1 max-w-xs">
           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className="h-full rounded-full transition-all duration-300"
+              className="h-full rounded-full transition-[width] duration-300"
               style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#48BB78' : '#ED64A6' }}
             />
           </div>
         </div>
-        <span className="text-sm font-mono text-gray-400 w-12 text-right">{pct}%</span>
+        <span className="text-sm font-mono text-gray-400 w-12 text-right tabular-nums">{pct}%</span>
         <button
           onClick={handleDelete}
-          className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-danger transition-all duration-150 ml-2"
+          aria-label={`Delete ${client.name}`}
+          className="relative opacity-0 group-hover:opacity-100 text-gray-300 hover:text-danger transition-colors duration-150 ml-2 after:absolute after:-inset-3 after:content-['']"
         >
           <Trash2 size={16} />
         </button>
@@ -56,7 +57,7 @@ export default function ClientCard({ client, onDelete, viewMode = 'grid' }: Clie
   return (
     <Link
       href={`/clients/${client.id}`}
-      className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 block relative overflow-hidden"
+      className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-[box-shadow,translate] duration-150 block relative overflow-hidden"
     >
       <div
         className="absolute top-0 left-0 right-0 h-1.5 rounded-t-2xl"
@@ -66,7 +67,8 @@ export default function ClientCard({ client, onDelete, viewMode = 'grid' }: Clie
         <h3 className="font-display font-semibold text-lg text-gray-900">{client.name}</h3>
         <button
           onClick={handleDelete}
-          className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-danger transition-all duration-150"
+          aria-label={`Delete ${client.name}`}
+          className="relative opacity-0 group-hover:opacity-100 text-gray-300 hover:text-danger transition-colors duration-150 after:absolute after:-inset-3 after:content-['']"
         >
           <Trash2 size={16} />
         </button>
@@ -76,11 +78,11 @@ export default function ClientCard({ client, onDelete, viewMode = 'grid' }: Clie
       </p>
       <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-300"
+          className="h-full rounded-full transition-[width] duration-300"
           style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#48BB78' : '#ED64A6' }}
         />
       </div>
-      <span className="text-xs font-mono text-gray-400 mt-1.5 inline-block">{pct}%</span>
+      <span className="text-xs font-mono text-gray-400 mt-1.5 inline-block tabular-nums">{pct}%</span>
     </Link>
   )
 }

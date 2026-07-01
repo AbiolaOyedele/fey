@@ -41,7 +41,7 @@ function renderWithLinks(
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => e.stopPropagation()}
-        className={`inline-flex items-center gap-0.5 underline underline-offset-2 decoration-dotted hover:decoration-solid transition-all ${
+        className={`inline-flex items-center gap-0.5 underline underline-offset-2 decoration-dotted hover:decoration-solid transition-colors ${
           isDone ? 'text-gray-400' : 'text-blue-500 hover:text-blue-700'
         }`}
         title={url}
@@ -194,7 +194,7 @@ export default function TaskItem({
 
   return (
     <div
-      className={`group rounded-xl hover:bg-gray-50 transition-all duration-150 ${
+      className={`group rounded-xl hover:bg-gray-50 transition-colors duration-150 ${
         deleting ? 'animate-fadeOut' : 'animate-fadeIn'
       } ${isOverdue ? 'border-l-2 border-red-400' : ''}`}
     >
@@ -204,7 +204,7 @@ export default function TaskItem({
           onClick={handleDone}
           role="checkbox"
           aria-checked={task.done}
-          className={`rounded-md border-2 flex items-center justify-center transition-all duration-150 flex-shrink-0 cursor-pointer ${
+          className={`relative rounded-md border-2 flex items-center justify-center transition-colors duration-150 flex-shrink-0 cursor-pointer after:absolute after:-inset-x-2 after:-inset-y-2 after:content-[''] ${
             bouncing ? 'animate-scaleBounce' : ''
           } ${task.done ? 'text-white' : 'border-gray-300'}`}
           style={{
@@ -268,7 +268,7 @@ export default function TaskItem({
           <div className="hidden md:block relative flex-shrink-0" ref={paidMenuRef}>
             <button
               onClick={() => setPaidMenuOpen((v) => !v)}
-              className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 ${
+              className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-lg text-xs font-medium transition-colors duration-200 ${
                 task.paid ? 'bg-success text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
               }`}
             >
@@ -301,7 +301,7 @@ export default function TaskItem({
             <button
               onClick={(e) => { e.stopPropagation(); setFileOpen((v) => !v) }}
               title="Attachments"
-              className={`relative flex items-center justify-center w-6 h-6 transition-colors ${
+              className={`relative flex items-center justify-center w-6 h-6 transition-[opacity,color] after:absolute after:-inset-x-[3px] after:-inset-y-2 after:content-[''] ${
                 fileOpen
                   ? 'text-gray-600'
                   : fileCount > 0
@@ -324,7 +324,7 @@ export default function TaskItem({
           <div className="relative">
             <button
               onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
-              className={`flex items-center justify-center w-6 h-6 transition-colors ${
+              className={`relative flex items-center justify-center w-6 h-6 transition-[opacity,color] after:absolute after:-inset-x-[3px] after:-inset-y-2 after:content-[''] ${
                 isOverdue
                   ? 'text-red-400 hover:text-red-600'
                   : task.deadline
@@ -347,7 +347,7 @@ export default function TaskItem({
 
           <button
             onClick={() => void handleDelete()}
-            className="flex items-center justify-center w-6 h-6 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-danger transition-all duration-150"
+            className="relative flex items-center justify-center w-6 h-6 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-danger transition-[opacity,color] duration-150 after:absolute after:-inset-x-[3px] after:-inset-y-2 after:content-['']"
           >
             <Trash2 size={14} />
           </button>
@@ -356,7 +356,7 @@ export default function TaskItem({
             <button
               {...(dragListeners as Record<string, unknown>)}
               {...(dragAttributes as Record<string, unknown>)}
-              className="flex items-center justify-center w-6 h-6 opacity-0 group-hover:opacity-40 hover:!opacity-70 transition-opacity cursor-grab active:cursor-grabbing touch-none text-gray-400"
+              className="relative flex items-center justify-center w-6 h-6 opacity-0 group-hover:opacity-40 hover:!opacity-70 transition-opacity cursor-grab active:cursor-grabbing touch-none text-gray-400 after:absolute after:-inset-x-[3px] after:-inset-y-2 after:content-['']"
               tabIndex={-1}
             >
               <GripVertical size={14} />
@@ -389,7 +389,7 @@ export default function TaskItem({
             </button>
             <button
               onClick={() => void handleDelete()}
-              className="flex items-center justify-center w-6 h-6 text-gray-300 hover:text-danger transition-all duration-150"
+              className="flex items-center justify-center w-6 h-6 text-gray-300 hover:text-danger transition-colors duration-150"
             >
               <Trash2 size={14} />
             </button>
@@ -414,7 +414,7 @@ export default function TaskItem({
           <div className="relative flex-shrink-0" ref={paidMenuRef}>
             <button
               onClick={() => setPaidMenuOpen((v) => !v)}
-              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all duration-200 ${
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors duration-200 ${
                 task.paid ? 'bg-success text-white' : 'bg-gray-100 text-gray-500'
               }`}
             >
@@ -450,7 +450,7 @@ export default function TaskItem({
           </button>
           <button
             onClick={() => void handleDelete()}
-            className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-300 hover:text-danger transition-all duration-150"
+            className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-300 hover:text-danger transition-colors duration-150"
           >
             <Trash2 size={14} />
           </button>

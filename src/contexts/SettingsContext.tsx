@@ -39,6 +39,17 @@ export const SettingsContext = createContext<SettingsContextValue | null>(null)
 
 const DEFAULT_CHANGELOG = [
   {
+    version: '1.9.2', date: '1 Jul, 2026',
+    features: [],
+    improvements: [
+      'Hover and press transitions in the sidebar, task list, and shared buttons/badges are more precise — no more brief flashes on unrelated properties',
+      'Progress percentages and stat values use tabular numbers so digits stay aligned as they update',
+    ],
+    fixes: [
+      'Task and sidebar checkboxes had a smaller tap target than their visible size — now easier to tap accurately, especially on mobile',
+    ],
+  },
+  {
     version: '1.9.1', date: '18 May, 2026',
     features: [
       'Fey — AI-powered task assistant connected to WhatsApp. Send a message and Fey extracts tasks, notes, and deadlines automatically.',

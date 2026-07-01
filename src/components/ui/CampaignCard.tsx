@@ -91,7 +91,7 @@ export default function CampaignCard({ campaign, clientId, onDelete, isDraggingR
           <div className="flex-1">
             <div className="h-1.5 bg-white/40 rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full transition-all duration-300"
+                className="h-full rounded-full transition-[width] duration-300"
                 style={{ width: `${pct}%`, backgroundColor: textColor, opacity: 0.5 }}
               />
             </div>
@@ -101,7 +101,8 @@ export default function CampaignCard({ campaign, clientId, onDelete, isDraggingR
               {...listeners}
               {...attributes}
               onClick={(e) => e.stopPropagation()}
-              className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-all cursor-grab active:cursor-grabbing touch-none"
+              aria-label="Reorder campaign"
+              className="relative w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-colors cursor-grab active:cursor-grabbing touch-none after:absolute after:-inset-[3px] after:content-['']"
               style={{ color: textColor }}
             >
               <GripVertical size={12} />
@@ -109,7 +110,8 @@ export default function CampaignCard({ campaign, clientId, onDelete, isDraggingR
             {onDelete && (
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(campaign.id) }}
-                className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-all"
+                aria-label="Delete campaign"
+                className="relative w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-white/50 hover:bg-white/80 transition-colors after:absolute after:-inset-[3px] after:content-['']"
                 style={{ color: textColor }}
               >
                 <Trash2 size={12} />

@@ -38,7 +38,7 @@ function NavItem({ href, label, icon, expanded, accent, exact = false, subtle }:
     <Link
       href={href}
       title={expanded ? undefined : label}
-      className={`flex items-center rounded-xl transition-all duration-200 ${
+      className={`flex items-center rounded-xl transition-colors duration-200 ${
         expanded ? 'w-full gap-3 px-3 h-10' : 'w-10 h-10 justify-center'
       } ${
         isActive
@@ -66,7 +66,7 @@ function MobileLink({ href, children, exact = false, accent }: MobileLinkProps) 
   return (
     <Link
       href={href}
-      className={`relative flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-150 ${
+      className={`relative flex items-center justify-center w-11 h-11 rounded-xl transition-colors duration-150 ${
         isActive ? '' : 'text-gray-400'
       }`}
       style={isActive ? { color: accent } : {}}
@@ -230,7 +230,7 @@ export default function Sidebar() {
           <button
             onClick={toggle}
             title={expanded ? 'Collapse sidebar' : 'Keep sidebar open'}
-            className={`flex items-center rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-all duration-200 ${
+            className={`flex items-center rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors duration-200 ${
               showExpanded ? 'w-full gap-3 px-3 h-10' : 'w-10 h-10 justify-center'
             }`}
           >

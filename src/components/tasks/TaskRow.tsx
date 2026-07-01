@@ -17,7 +17,7 @@ export default function TaskRow({ task, onToggleDone, onOpen }: TaskRowProps) {
       <button
         onClick={() => onToggleDone(task.id)}
         aria-label={task.done ? 'Mark not done' : 'Mark done'}
-        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+        className={`relative w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors after:absolute after:-inset-[6px] after:content-[''] ${
           task.done ? 'border-transparent text-white' : 'border-gray-300 hover:border-gray-400'
         }`}
         style={task.done ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}

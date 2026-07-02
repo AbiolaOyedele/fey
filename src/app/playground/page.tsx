@@ -1,12 +1,16 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Hash, Send, MessagesSquare, Plus, Paperclip, X, Loader2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useTeam } from '@/hooks/useTeam'
 import { useInternalChat } from '@/hooks/useInternalChat'
+import { useMentionAutocomplete, applyMentionPick } from '@/hooks/useMentionAutocomplete'
+import MentionMenu from '@/components/mentions/MentionMenu'
+import { renderMentions } from '@/utils/mentions'
 import AttachmentPreview from '@/components/crm/AttachmentPreview'
 import EmojiPicker from '@/components/crm/EmojiPicker'
 import { uploadToCloudinary, formatFileSize } from '@/utils/cloudinary'
@@ -33,6 +37,13 @@ export default function PlaygroundPage() {
     channels, activeChannelId, setActiveChannel,
     messages, loadingMessages, sending, send, createChannel,
   } = useInternalChat(workspace?.id ?? null)
+  const mention = useMentionAutocomplete(workspace?.id ?? null)
+
+  const searchParams = useSearchParams()
+  const deepLinkChannel = searchParams.get('channel')
+  const deepLinkMessage = searchParams.get('message')
+  const [highlightId, setHighlightId] = useState<string | null>(null)
+  const consumedDeepLinkChannel = useRef<string | null>(null)
 
   const [draft, setDraft] = useState('')
   const [attachments, setAttachments] = useState<MessageAttachment[]>([])
@@ -42,6 +53,7 @@ export default function PlaygroundPage() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   const nameById = useMemo(() => {
     const m = new Map<string, string>()
@@ -49,9 +61,30 @@ export default function PlaygroundPage() {
     return m
   }, [members])
 
+  // Deep-link support: ?channel=&message= (e.g. from a mention notification)
+  // switches channel once, then scroll-to + briefly highlights the message.
   useEffect(() => {
+    if (!deepLinkChannel || deepLinkChannel === consumedDeepLinkChannel.current) return
+    if (channels.some((c) => c.id === deepLinkChannel)) {
+      setActiveChannel(deepLinkChannel)
+      consumedDeepLinkChannel.current = deepLinkChannel
+    }
+  }, [deepLinkChannel, channels, setActiveChannel])
+
+  useEffect(() => {
+    if (!deepLinkMessage || loadingMessages) return
+    const el = messageRefs.current.get(deepLinkMessage)
+    if (!el) return
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    setHighlightId(deepLinkMessage)
+    const t = setTimeout(() => setHighlightId(null), 2000)
+    return () => clearTimeout(t)
+  }, [deepLinkMessage, loadingMessages, messages])
+
+  useEffect(() => {
+    if (deepLinkMessage) return // deep-link scroll takes priority over autoscroll
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages])
+  }, [messages, deepLinkMessage])
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -171,7 +204,11 @@ export default function PlaygroundPage() {
                 const senderName = isMine ? 'You' : (nameById.get(m.sender_id) ?? 'Teammate')
                 const atts = m.attachments ?? []
                 return (
-                  <div key={m.id} className={`flex gap-3 ${isMine ? 'flex-row-reverse' : ''}`}>
+                  <div
+                    key={m.id}
+                    ref={(el) => { if (el) messageRefs.current.set(m.id, el); else messageRefs.current.delete(m.id) }}
+                    className={`flex gap-3 rounded-xl transition-colors duration-500 ${isMine ? 'flex-row-reverse' : ''} ${highlightId === m.id ? 'bg-amber-50' : ''}`}
+                  >
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white flex-shrink-0"
                       style={{ backgroundColor: isMine ? accent : '#9CA3AF' }}
@@ -188,7 +225,7 @@ export default function PlaygroundPage() {
                           className={`px-3 py-2 text-sm break-words ${isMine ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm'}`}
                           style={isMine ? { backgroundColor: accent, color: '#fff' } : { backgroundColor: '#F3F4F6', color: '#1F2937' }}
                         >
-                          {m.body}
+                          {renderMentions(m.body)}
                         </div>
                       )}
                       {atts.length > 0 && <AttachmentPreview attachments={atts} />}
@@ -231,15 +268,50 @@ export default function PlaygroundPage() {
               </button>
               <EmojiPicker onPick={(e) => { setDraft((d) => d + e); inputRef.current?.focus() }} className="w-9 h-9 flex-shrink-0" />
               <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => void handleFiles(e.target.files)} />
-              <input
-                ref={inputRef}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); void handleSend() } }}
-                placeholder={`Message #${activeChannel?.name ?? 'general'}`}
-                disabled={!workspace}
-                className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 focus:outline-none focus:border-gray-400 focus:bg-white transition-colors disabled:opacity-50"
-              />
+              <div className="relative flex-1 min-w-0">
+                <input
+                  ref={inputRef}
+                  value={draft}
+                  onChange={(e) => {
+                    setDraft(e.target.value)
+                    mention.onTextChange(e.target.value, e.target.selectionStart ?? e.target.value.length)
+                  }}
+                  onKeyDown={(e) => {
+                    if (mention.trigger) {
+                      if (e.key === 'ArrowDown') { e.preventDefault(); mention.moveActive(1); return }
+                      if (e.key === 'ArrowUp') { e.preventDefault(); mention.moveActive(-1); return }
+                      if (e.key === 'Enter' && mention.matches.length > 0) {
+                        e.preventDefault()
+                        const picked = mention.matches[mention.activeIndex]
+                        const { text, cursor } = applyMentionPick(draft, mention.trigger, picked)
+                        setDraft(text)
+                        mention.close()
+                        requestAnimationFrame(() => inputRef.current?.setSelectionRange(cursor, cursor))
+                        return
+                      }
+                      if (e.key === 'Escape') { mention.close(); return }
+                    }
+                    if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); void handleSend() }
+                  }}
+                  placeholder={`Message #${activeChannel?.name ?? 'general'}`}
+                  disabled={!workspace}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 focus:outline-none focus:border-gray-400 focus:bg-white transition-colors disabled:opacity-50"
+                />
+                {mention.trigger && (
+                  <MentionMenu
+                    matches={mention.matches}
+                    activeIndex={mention.activeIndex}
+                    onHover={mention.setActiveIndex}
+                    onPick={(m) => {
+                      const { text, cursor } = applyMentionPick(draft, mention.trigger!, m)
+                      setDraft(text)
+                      mention.close()
+                      requestAnimationFrame(() => inputRef.current?.setSelectionRange(cursor, cursor))
+                    }}
+                    className="absolute left-0 bottom-full mb-1"
+                  />
+                )}
+              </div>
               <button
                 onClick={() => void handleSend()}
                 disabled={(!draft.trim() && attachments.length === 0) || sending || uploading > 0 || !workspace}

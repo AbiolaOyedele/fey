@@ -1,6 +1,7 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Plus, Loader2 } from 'lucide-react'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useTasks } from '@/hooks/useTasks'
@@ -18,6 +19,8 @@ export default function ClientTasksTab({ params }: { params: Promise<{ id: strin
   const { id } = use(params)
   const { workspace } = useWorkspace()
   const wsId = workspace?.id ?? null
+  const searchParams = useSearchParams()
+  const deepLinkTaskId = searchParams.get('taskId')
 
   const [selected, setSelected] = useState<Task | null>(null)
   const [showNew, setShowNew] = useState(false)
@@ -28,6 +31,18 @@ export default function ClientTasksTab({ params }: { params: Promise<{ id: strin
   const stages = (workflows.find((w) => w.is_default) ?? workflows[0])?.stages ?? []
 
   const live = selected ? (tasks.tasks.find((t) => t.id === selected.id) ?? selected) : null
+
+  // Deep-link support: ?taskId=<id> (e.g. from a mention notification). If the
+  // task isn't in the current (active-only) list, it's likely done — widen the
+  // filter and retry once before giving up.
+  const consumedDeepLink = useRef<string | null>(null)
+  useEffect(() => {
+    if (!deepLinkTaskId || deepLinkTaskId === consumedDeepLink.current || tasks.loading) return
+    const found = tasks.tasks.find((t) => t.id === deepLinkTaskId)
+    if (found) { setSelected(found); consumedDeepLink.current = deepLinkTaskId }
+    else if (!showDone) setShowDone(true)
+    else consumedDeepLink.current = deepLinkTaskId // widened and still not found — stop retrying
+  }, [deepLinkTaskId, tasks.loading, tasks.tasks, showDone])
   const done = tasks.tasks.filter((t) => t.done).length
   const pending = tasks.tasks.length - done
 

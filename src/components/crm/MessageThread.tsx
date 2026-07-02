@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatDate as fmtDate } from '@/utils/formatDate'
 import { MessageSquare } from 'lucide-react'
 import type { CrmMessage, MessageAttachment } from '@/types/crm'
@@ -10,10 +10,13 @@ import AttachmentPreview from './AttachmentPreview'
 interface MessageThreadProps {
   messages: CrmMessage[]
   ownerId: string
+  workspaceId?: string | null
   contactName?: string
   onSend: (text: string, html: string, attachments: MessageAttachment[]) => Promise<void>
   showWelcomeBanner?: boolean
   loading?: boolean
+  /** Scrolls to and briefly highlights this message on mount (e.g. from a mention notification link). */
+  highlightMessageId?: string | null
 }
 
 function initial(name: string): string {
@@ -48,12 +51,28 @@ function groupByDate(messages: CrmMessage[]): Array<{ date: string; messages: Cr
   return groups
 }
 
-export default function MessageThread({ messages, ownerId, contactName = 'Client', onSend, showWelcomeBanner = false, loading = false }: MessageThreadProps) {
+export default function MessageThread({
+  messages, ownerId, workspaceId = null, contactName = 'Client', onSend,
+  showWelcomeBanner = false, loading = false, highlightMessageId = null,
+}: MessageThreadProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const [highlightId, setHighlightId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (highlightMessageId) return // deep-link scroll takes priority over autoscroll
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages.length])
+  }, [messages.length, highlightMessageId])
+
+  useEffect(() => {
+    if (!highlightMessageId || loading) return
+    const el = messageRefs.current.get(highlightMessageId)
+    if (!el) return
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    setHighlightId(highlightMessageId)
+    const t = setTimeout(() => setHighlightId(null), 2000)
+    return () => clearTimeout(t)
+  }, [highlightMessageId, loading, messages])
 
   const groups = groupByDate(messages)
 
@@ -103,7 +122,11 @@ export default function MessageThread({ messages, ownerId, contactName = 'Client
                 const senderName = isOwner ? 'You' : contactName
                 const hasBody = !!(msg.body_html?.trim() || msg.body.trim())
                 return (
-                  <div key={msg.id} className={`flex gap-3 ${isOwner ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div
+                    key={msg.id}
+                    ref={(el) => { if (el) messageRefs.current.set(msg.id, el); else messageRefs.current.delete(msg.id) }}
+                    className={`flex gap-3 rounded-xl transition-colors duration-500 ${isOwner ? 'flex-row-reverse' : 'flex-row'} ${highlightId === msg.id ? 'bg-amber-50' : ''}`}
+                  >
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white flex-shrink-0"
                       style={{ backgroundColor: isOwner ? 'var(--accent, #ED64A6)' : '#9CA3AF' }}
@@ -139,7 +162,7 @@ export default function MessageThread({ messages, ownerId, contactName = 'Client
 
       {/* Composer */}
       <div className="flex-shrink-0 px-6 pb-6 pt-2">
-        <RichTextComposer onSend={(text, html, attachments) => void onSend(text, html, attachments)} />
+        <RichTextComposer onSend={(text, html, attachments) => void onSend(text, html, attachments)} workspaceId={workspaceId} />
       </div>
     </div>
   )

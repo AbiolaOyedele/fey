@@ -1,13 +1,43 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { X, Trash2, Plus, Check, Calendar } from 'lucide-react'
 import type { Task, TaskPriority, Subtask, UpdateTaskPayload, WorkflowStage } from '@/types/work-tasks'
+import type { MentionEntityType } from '@/types/mention'
 import AssigneePicker from './AssigneePicker'
 import TaskAttachments from './TaskAttachments'
 import { useConfirm } from '@/contexts/ConfirmContext'
 import { PRIORITY_META, formatMinutes, parseEstimate } from './TaskBits'
-import { linkifyText } from '@/utils/linkify'
+import { renderMentions, extractMentionedUserIds } from '@/utils/mentions'
+import { useMentionAutocomplete, applyMentionPick } from '@/hooks/useMentionAutocomplete'
+import MentionMenu from '@/components/mentions/MentionMenu'
+import { apiFetch } from '@/lib/api-client'
+
+/** Fire-and-forget: records any @mentions in `text` and notifies the newly-mentioned. */
+async function postMentions(args: {
+  workspaceId: string | null | undefined
+  entityType: MentionEntityType
+  entityId: string
+  link: string
+  contextLabel: string
+  text: string
+}) {
+  const userIds = extractMentionedUserIds(args.text)
+  if (userIds.length === 0) return
+  try {
+    await apiFetch('/api/v1/mentions', {
+      method: 'POST',
+      body: JSON.stringify({
+        workspaceId: args.workspaceId ?? null,
+        entityType: args.entityType,
+        entityId: args.entityId,
+        link: args.link,
+        contextLabel: args.contextLabel,
+        userIds,
+      }),
+    })
+  } catch { /* best-effort */ }
+}
 
 interface TaskDetailDrawerProps {
   task: Task
@@ -37,6 +67,9 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [estimate, setEstimate] = useState(task.estimated_minutes != null ? formatMinutes(task.estimated_minutes) : '')
   const [newSubtask, setNewSubtask] = useState('')
+  const descRef = useRef<HTMLTextAreaElement>(null)
+  const descMention = useMentionAutocomplete(workspaceId)
+  const taskLink = task.contact_id ? `/clients/${task.contact_id}/tasks?taskId=${task.id}` : `/tasks?taskId=${task.id}`
 
   useEffect(() => {
     setTitle(task.title)
@@ -188,18 +221,58 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
           <div>
             <p className="text-xs2 font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Description</p>
             {isEditingDescription ? (
-              <textarea
-                autoFocus
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                onBlur={() => {
-                  setIsEditingDescription(false)
-                  if (description !== (task.description ?? '')) void onPatch(task.id, { description: description || null })
-                }}
-                rows={4}
-                placeholder="Add more detail…"
-                className="w-full text-sm px-3 py-2.5 rounded-xl border border-gray-200 resize-none outline-none focus:border-gray-400"
-              />
+              <div className="relative">
+                <textarea
+                  ref={descRef}
+                  autoFocus
+                  value={description}
+                  onChange={(e) => {
+                    setDescription(e.target.value)
+                    descMention.onTextChange(e.target.value, e.target.selectionStart)
+                  }}
+                  onKeyDown={(e) => {
+                    if (!descMention.trigger) return
+                    if (e.key === 'ArrowDown') { e.preventDefault(); descMention.moveActive(1) }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); descMention.moveActive(-1) }
+                    else if (e.key === 'Enter' && descMention.matches.length > 0) {
+                      e.preventDefault()
+                      const picked = descMention.matches[descMention.activeIndex]
+                      const { text, cursor } = applyMentionPick(description, descMention.trigger!, picked)
+                      setDescription(text)
+                      descMention.close()
+                      requestAnimationFrame(() => descRef.current?.setSelectionRange(cursor, cursor))
+                    } else if (e.key === 'Escape') { descMention.close() }
+                  }}
+                  onBlur={() => {
+                    descMention.close()
+                    setIsEditingDescription(false)
+                    if (description !== (task.description ?? '')) {
+                      void onPatch(task.id, { description: description || null })
+                      void postMentions({
+                        workspaceId, entityType: 'task_description', entityId: task.id,
+                        link: taskLink, contextLabel: task.title, text: description,
+                      })
+                    }
+                  }}
+                  rows={4}
+                  placeholder="Add more detail…"
+                  className="w-full text-sm px-3 py-2.5 rounded-xl border border-gray-200 resize-none outline-none focus:border-gray-400"
+                />
+                {descMention.trigger && (
+                  <MentionMenu
+                    matches={descMention.matches}
+                    activeIndex={descMention.activeIndex}
+                    onHover={descMention.setActiveIndex}
+                    onPick={(m) => {
+                      const { text, cursor } = applyMentionPick(description, descMention.trigger!, m)
+                      setDescription(text)
+                      descMention.close()
+                      requestAnimationFrame(() => descRef.current?.setSelectionRange(cursor, cursor))
+                    }}
+                    className="absolute left-0 top-full mt-1"
+                  />
+                )}
+              </div>
             ) : (
               <button
                 type="button"
@@ -207,7 +280,7 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
                 className="w-full text-left text-sm px-3 py-2.5 rounded-xl -mx-3 hover:bg-gray-50 transition-colors"
               >
                 {description ? (
-                  <p className="whitespace-pre-wrap text-gray-700">{linkifyText(description)}</p>
+                  <p className="whitespace-pre-wrap text-gray-700">{renderMentions(description)}</p>
                 ) : (
                   <p className="text-gray-400">Add more detail…</p>
                 )}
@@ -233,8 +306,15 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
                 <SubtaskRow
                   key={s.id}
                   subtask={s}
+                  workspaceId={workspaceId}
                   onToggle={() => void onToggleSubtask(task.id, s.id, !s.done)}
-                  onRename={(t) => void onRenameSubtask(task.id, s.id, t)}
+                  onRename={(t) => {
+                    void onRenameSubtask(task.id, s.id, t)
+                    void postMentions({
+                      workspaceId, entityType: 'subtask', entityId: s.id,
+                      link: taskLink, contextLabel: `${task.title} — ${t}`, text: t,
+                    })
+                  }}
                   onDelete={() => void onDeleteSubtask(task.id, s.id)}
                 />
               ))}
@@ -274,24 +354,28 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
 }
 
 function SubtaskRow({
-  subtask, onToggle, onRename, onDelete,
+  subtask, workspaceId, onToggle, onRename, onDelete,
 }: {
   subtask: Subtask
+  workspaceId: string | null | undefined
   onToggle: () => void
   onRename: (title: string) => void
   onDelete: () => void
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [value, setValue] = useState(subtask.title)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const mention = useMentionAutocomplete(workspaceId)
 
   useEffect(() => { setValue(subtask.title) }, [subtask.title])
 
   const save = useCallback(() => {
+    mention.close()
     setIsEditing(false)
     const trimmed = value.trim()
     if (trimmed && trimmed !== subtask.title) onRename(trimmed)
     else setValue(subtask.title)
-  }, [value, subtask.title, onRename])
+  }, [value, subtask.title, onRename, mention])
 
   return (
     <div className="group flex items-center gap-2.5 py-1">
@@ -303,23 +387,57 @@ function SubtaskRow({
         {subtask.done && <Check size={9} strokeWidth={3} />}
       </button>
       {isEditing ? (
-        <input
-          autoFocus
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={save}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') e.currentTarget.blur()
-            if (e.key === 'Escape') { setValue(subtask.title); setIsEditing(false) }
-          }}
-          className="flex-1 text-sm py-0.5 outline-none border-b border-gray-200 focus:border-gray-400 bg-transparent"
-        />
+        <div className="relative flex-1">
+          <input
+            ref={inputRef}
+            autoFocus
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value)
+              mention.onTextChange(e.target.value, e.target.selectionStart ?? e.target.value.length)
+            }}
+            onBlur={save}
+            onKeyDown={(e) => {
+              if (mention.trigger) {
+                if (e.key === 'ArrowDown') { e.preventDefault(); mention.moveActive(1); return }
+                if (e.key === 'ArrowUp') { e.preventDefault(); mention.moveActive(-1); return }
+                if (e.key === 'Enter' && mention.matches.length > 0) {
+                  e.preventDefault()
+                  const picked = mention.matches[mention.activeIndex]
+                  const { text, cursor } = applyMentionPick(value, mention.trigger, picked)
+                  setValue(text)
+                  mention.close()
+                  requestAnimationFrame(() => inputRef.current?.setSelectionRange(cursor, cursor))
+                  return
+                }
+                if (e.key === 'Escape') { mention.close(); return }
+              }
+              if (e.key === 'Enter') e.currentTarget.blur()
+              if (e.key === 'Escape') { setValue(subtask.title); setIsEditing(false) }
+            }}
+            className="w-full text-sm py-0.5 outline-none border-b border-gray-200 focus:border-gray-400 bg-transparent"
+          />
+          {mention.trigger && (
+            <MentionMenu
+              matches={mention.matches}
+              activeIndex={mention.activeIndex}
+              onHover={mention.setActiveIndex}
+              onPick={(m) => {
+                const { text, cursor } = applyMentionPick(value, mention.trigger!, m)
+                setValue(text)
+                mention.close()
+                requestAnimationFrame(() => inputRef.current?.setSelectionRange(cursor, cursor))
+              }}
+              className="absolute left-0 top-full mt-1"
+            />
+          )}
+        </div>
       ) : (
         <span
           onClick={() => setIsEditing(true)}
           className={`flex-1 text-sm cursor-text ${subtask.done ? 'line-through text-gray-400' : 'text-gray-700'}`}
         >
-          {linkifyText(subtask.title)}
+          {renderMentions(subtask.title)}
         </span>
       )}
       <button onClick={onDelete} className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400">

@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { apiFetch } from '@/lib/api-client'
+import { extractMentionedUserIds } from '@/utils/mentions'
 import type { InternalChannel, InternalMessage } from '@/types/team'
 import type { MessageAttachment } from '@/types/crm'
 
@@ -116,12 +118,28 @@ export function useInternalChat(workspaceId: string | null): InternalChatState {
       const msg = data as InternalMessage
       setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
       setError(null)
+
+      const mentionedIds = extractMentionedUserIds(trimmed)
+      if (mentionedIds.length > 0) {
+        const channelName = channels.find((c) => c.id === activeChannelId)?.name ?? 'general'
+        void apiFetch('/api/v1/mentions', {
+          method: 'POST',
+          body: JSON.stringify({
+            workspaceId,
+            entityType: 'internal_message',
+            entityId: msg.id,
+            link: `/playground?channel=${activeChannelId}&message=${msg.id}`,
+            contextLabel: `#${channelName}`,
+            userIds: mentionedIds,
+          }),
+        }).catch(() => {})
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to send message')
     } finally {
       setSending(false)
     }
-  }, [user, workspaceId, activeChannelId])
+  }, [user, workspaceId, activeChannelId, channels])
 
   const createChannel = useCallback(async (name: string) => {
     const clean = name.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)

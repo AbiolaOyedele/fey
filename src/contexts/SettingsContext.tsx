@@ -39,6 +39,14 @@ export const SettingsContext = createContext<SettingsContextValue | null>(null)
 
 const DEFAULT_CHANGELOG = [
   {
+    version: '1.12.0', date: '2 Jul, 2026',
+    features: [
+      '@Mentions — type @name in a task description, subtask, internal chat message, or client message to tag a teammate. They get a notification with a link straight to where they were mentioned.',
+    ],
+    improvements: [],
+    fixes: [],
+  },
+  {
     version: '1.11.2', date: '2 Jul, 2026',
     features: [],
     improvements: [],

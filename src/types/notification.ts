@@ -9,6 +9,7 @@ export type NotificationType =
   | 'invoice_paid'
   | 'form_submitted'
   | 'contract_signed'
+  | 'mention'
 
 export interface AppNotification {
   id: string

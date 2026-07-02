@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Plus, Search, Loader2, User, Users } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -29,6 +30,8 @@ export default function TasksPage() {
   const { user } = useAuth()
   const { workspace } = useWorkspace()
   const wsId = workspace?.id ?? null
+  const searchParams = useSearchParams()
+  const deepLinkTaskId = searchParams.get('taskId')
 
   const [view, setView] = useState<View>('list')
   const [scope, setScope] = useState<Scope>('all')
@@ -45,6 +48,17 @@ export default function TasksPage() {
   const [showWorkflow, setShowWorkflow] = useState(false)
   const defaultWorkflow = useMemo(() => workflows.find((w) => w.is_default) ?? workflows[0] ?? null, [workflows])
   const defaultStages = defaultWorkflow?.stages ?? []
+
+  // Deep-link support: ?taskId=<id> (e.g. from a mention notification) auto-opens the
+  // drawer once — a ref (not state) tracks it so closing the drawer doesn't reopen it
+  // on the next background refetch.
+  const consumedDeepLink = useRef<string | null>(null)
+  useEffect(() => {
+    if (!deepLinkTaskId || deepLinkTaskId === consumedDeepLink.current) return
+    if (active.loading || completed.loading) return
+    const found = active.tasks.find((t) => t.id === deepLinkTaskId) ?? completed.tasks.find((t) => t.id === deepLinkTaskId)
+    if (found) { setSelected(found); consumedDeepLink.current = deepLinkTaskId }
+  }, [deepLinkTaskId, active.loading, active.tasks, completed.loading, completed.tasks])
 
   const source = view === 'completed' ? completed : active
   const filtered = useMemo(() => {

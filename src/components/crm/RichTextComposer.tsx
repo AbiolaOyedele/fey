@@ -8,12 +8,33 @@ import {
 } from 'lucide-react'
 import { uploadToCloudinary, formatFileSize } from '@/utils/cloudinary'
 import EmojiPicker from './EmojiPicker'
+import { useMentionAutocomplete } from '@/hooks/useMentionAutocomplete'
+import MentionMenu from '@/components/mentions/MentionMenu'
+import type { WorkspaceMember } from '@/types/team'
 import type { MessageAttachment } from '@/types/crm'
 
 interface RichTextComposerProps {
   onSend: (text: string, html: string, attachments: MessageAttachment[]) => void
   placeholder?: string
   disabled?: boolean
+  /** Enables @mention autocomplete against this workspace's members. */
+  workspaceId?: string | null
+}
+
+/** Plain-text offset of the caret within `el`, used to detect an "@query" trigger. */
+function caretOffset(el: HTMLElement): number {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) return el.innerText.length
+  const range = sel.getRangeAt(0)
+  if (!el.contains(range.endContainer)) return el.innerText.length
+  const preRange = range.cloneRange()
+  preRange.selectNodeContents(el)
+  preRange.setEnd(range.endContainer, range.endOffset)
+  return preRange.toString().length
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c] ?? c))
 }
 
 function execCmd(cmd: string, value?: string) {
@@ -31,9 +52,10 @@ const linkSchema = z
   .pipe(z.string().url('That doesn’t look like a valid link.'))
   .refine((v) => /^https?:\/\//i.test(v), 'Links must start with http:// or https://')
 
-export default function RichTextComposer({ onSend, placeholder = 'Write a message…', disabled = false }: RichTextComposerProps) {
+export default function RichTextComposer({ onSend, placeholder = 'Write a message…', disabled = false, workspaceId = null }: RichTextComposerProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const fileRef   = useRef<HTMLInputElement>(null)
+  const mention = useMentionAutocomplete(workspaceId)
 
   const [attachments, setAttachments] = useState<MessageAttachment[]>([])
   const [uploading,   setUploading]   = useState(0)
@@ -90,10 +112,46 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
     el.innerHTML = ''
     setAttachments([])
     setError('')
+    mention.close()
     el.focus()
-  }, [onSend, isEmpty, attachments, uploading])
+  }, [onSend, isEmpty, attachments, uploading, mention])
+
+  const handleInput = useCallback(() => {
+    const el = editorRef.current
+    if (!el) return
+    mention.onTextChange(el.innerText, caretOffset(el))
+  }, [mention])
+
+  const pickMention = useCallback((member: WorkspaceMember) => {
+    const el = editorRef.current
+    if (!el || !mention.trigger) return
+    el.focus()
+    const sel = window.getSelection()
+    // The "@query" text always sits immediately before the caret (that's what
+    // makes it an active trigger) — select backward over it, then replace.
+    if (sel) {
+      const charsToSelect = mention.trigger.query.length + 1 // +1 for the '@'
+      for (let i = 0; i < charsToSelect; i++) sel.modify('extend', 'backward', 'character')
+    }
+    const name = member.name || member.email || 'Member'
+    execCmd(
+      'insertHTML',
+      `<span data-mention="user:${member.user_id}" contenteditable="false" style="background:color-mix(in srgb, var(--accent, #ED64A6) 15%, transparent);color:var(--accent, #ED64A6);border-radius:4px;padding:1px 4px;font-weight:500;">@${escapeHtml(name)}</span>&nbsp;`,
+    )
+    mention.close()
+  }, [mention])
 
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
+    if (mention.trigger) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); mention.moveActive(1); return }
+      if (e.key === 'ArrowUp') { e.preventDefault(); mention.moveActive(-1); return }
+      if (e.key === 'Enter' && mention.matches.length > 0) {
+        e.preventDefault()
+        pickMention(mention.matches[mention.activeIndex])
+        return
+      }
+      if (e.key === 'Escape') { mention.close(); return }
+    }
     if (e.key !== 'Enter') return
     // Cmd/Ctrl+Enter → newline (browsers don't insert one for this combo).
     if (e.metaKey || e.ctrlKey) {
@@ -105,7 +163,7 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
     if (e.shiftKey) return
     e.preventDefault()
     handleSend()
-  }, [handleSend])
+  }, [handleSend, mention, pickMention])
 
   const openLinkPopup = useCallback(() => {
     // Capture the current selection inside the editor before the input steals focus.
@@ -278,14 +336,26 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
       </div>
 
       {/* Editor */}
-      <div
-        ref={editorRef}
-        contentEditable={!disabled}
-        suppressContentEditableWarning
-        onKeyDown={handleKeyDown}
-        data-placeholder={placeholder}
-        className="min-h-[80px] max-h-[200px] overflow-y-auto px-4 py-3 text-sm text-gray-800 focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 prose prose-sm max-w-none"
-      />
+      <div className="relative">
+        <div
+          ref={editorRef}
+          contentEditable={!disabled}
+          suppressContentEditableWarning
+          onKeyDown={handleKeyDown}
+          onInput={handleInput}
+          data-placeholder={placeholder}
+          className="min-h-[80px] max-h-[200px] overflow-y-auto px-4 py-3 text-sm text-gray-800 focus:outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 prose prose-sm max-w-none"
+        />
+        {mention.trigger && (
+          <MentionMenu
+            matches={mention.matches}
+            activeIndex={mention.activeIndex}
+            onHover={mention.setActiveIndex}
+            onPick={pickMention}
+            className="absolute left-4 top-full mt-1"
+          />
+        )}
+      </div>
 
       {/* Pending attachments */}
       {(attachments.length > 0 || uploading > 0) && (

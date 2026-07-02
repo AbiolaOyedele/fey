@@ -19,6 +19,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getEffectiveOwnerId, getActiveWorkspaceId } from '@/lib/active-workspace'
+import { extractMentionedUserIdsFromHtml } from '@/utils/mentions'
 import type {
   CrmContact, CrmMessage, CrmFile, CrmContract, CrmForm, CrmNotification,
   ContractContent, FormField, FormResponse, MessageAttachment,
@@ -270,16 +271,17 @@ export function useMessages(contactId: string | null) {
     return () => { if (channelRef.current) void supabase.removeChannel(channelRef.current) }
   }, [contactId, fetchMessages])
 
-  const sendMessage = useCallback(async (body: string, bodyHtml: string | null, attachments: MessageAttachment[] = []) => {
+  const sendMessage = useCallback(async (body: string, bodyHtml: string | null, attachments: MessageAttachment[] = [], contactName?: string) => {
     if (!contactId) return
     const session = await getSession()
     if (!session) throw new Error('Not authenticated')
+    const workspaceId = await getActiveWorkspaceId()
     const { data, error: err } = await supabase
       .from('crm_messages')
       .insert({
         contact_id:   contactId,
         owner_id:     await getEffectiveOwnerId(),
-        workspace_id: await getActiveWorkspaceId(),
+        workspace_id: workspaceId,
         sender_type:  'owner',
         sender_id:    session.user.id,
         body,
@@ -296,7 +298,23 @@ export function useMessages(contactId: string | null) {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ contact_id: contactId }),
     }).catch(() => {})
-    return rowToMessage(data as Record<string, unknown>)
+
+    const msg = rowToMessage(data as Record<string, unknown>)
+    const mentionedIds = bodyHtml ? extractMentionedUserIdsFromHtml(bodyHtml) : []
+    if (mentionedIds.length > 0) {
+      void apiFetch('/api/v1/mentions', {
+        method: 'POST',
+        body: JSON.stringify({
+          workspaceId,
+          entityType: 'crm_message',
+          entityId: msg.id,
+          link: `/clients/${contactId}/messages?message=${msg.id}`,
+          contextLabel: contactName ? `Conversation with ${contactName}` : 'A client conversation',
+          userIds: mentionedIds,
+        }),
+      }).catch(() => {})
+    }
+    return msg
   }, [contactId])
 
   return { messages, loading, sendMessage, refetch: fetchMessages }

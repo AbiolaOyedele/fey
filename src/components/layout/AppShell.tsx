@@ -13,8 +13,12 @@ import AppNudges from '@/components/pwa/AppNudges'
 import ToastContainer from '@/components/ui/Toast'
 import UpdateBanner from '@/components/ui/UpdateBanner'
 import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
+import { usePullToRefresh } from '@/hooks/usePullToRefresh'
+import PullToRefreshIndicator from '@/components/ui/PullToRefreshIndicator'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { activeWorkspaceSlug } from '@/utils/host'
+
+const reloadPage = () => window.location.reload()
 
 // /onboarding is Workboard's route — Fey uses /setup to avoid clashing.
 // Both apps share the same Next.js codebase and Supabase DB.
@@ -27,6 +31,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { settings, settingsLoading } = useSettings()
   const { workspace, memberships, loading: workspaceLoading } = useWorkspace()
   const updateAvailable = useUpdatePrompt()
+  const { pullDistance, refreshing } = usePullToRefresh(reloadPage)
 
   // A teammate who signed up via an invite link has a stashed token. Route them
   // to /team/accept (which prompts for their name, then joins) instead of the
@@ -110,6 +115,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-screen bg-appbg overflow-x-hidden">
+      <PullToRefreshIndicator pullDistance={pullDistance} refreshing={refreshing} accent={settings.accent_color} />
       <div className="flex flex-1 overflow-x-hidden">
         <Sidebar />
         <main className="flex-1 min-w-0 ml-0 lg:ml-[var(--sidebar-w,72px)] pb-16 lg:pb-0 page-enter transition-[margin] duration-200">

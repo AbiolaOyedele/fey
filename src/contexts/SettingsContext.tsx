@@ -39,6 +39,14 @@ export const SettingsContext = createContext<SettingsContextValue | null>(null)
 
 const DEFAULT_CHANGELOG = [
   {
+    version: '1.14.0', date: '2 Jul, 2026',
+    features: [
+      'Pull down to refresh on mobile — swipe down from the top of any page to reload',
+    ],
+    improvements: [],
+    fixes: [],
+  },
+  {
     version: '1.13.0', date: '2 Jul, 2026',
     features: [
       'Edit or delete your own internal chat messages — right-click on desktop, or press and hold on mobile',

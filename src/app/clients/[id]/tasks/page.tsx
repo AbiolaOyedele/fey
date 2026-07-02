@@ -76,6 +76,7 @@ export default function ClientTasksTab({ params }: { params: Promise<{ id: strin
           onSetAssignees={tasks.setAssignees}
           onAddSubtask={tasks.addSubtask}
           onToggleSubtask={tasks.toggleSubtask}
+          onRenameSubtask={tasks.renameSubtask}
           onDeleteSubtask={tasks.deleteSubtask}
           onAddFile={tasks.addFile}
           onRemoveFile={tasks.removeFile}

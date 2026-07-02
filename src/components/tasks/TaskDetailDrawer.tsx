@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { X, Trash2, Plus, Check, Calendar } from 'lucide-react'
-import type { Task, TaskPriority, UpdateTaskPayload, WorkflowStage } from '@/types/work-tasks'
+import type { Task, TaskPriority, Subtask, UpdateTaskPayload, WorkflowStage } from '@/types/work-tasks'
 import AssigneePicker from './AssigneePicker'
 import TaskAttachments from './TaskAttachments'
 import { useConfirm } from '@/contexts/ConfirmContext'
@@ -17,6 +17,7 @@ interface TaskDetailDrawerProps {
   onSetAssignees: (id: string, ids: string[]) => Promise<void>
   onAddSubtask: (taskId: string, title: string) => Promise<void>
   onToggleSubtask: (taskId: string, subtaskId: string, done: boolean) => Promise<void>
+  onRenameSubtask: (taskId: string, subtaskId: string, title: string) => Promise<void>
   onDeleteSubtask: (taskId: string, subtaskId: string) => Promise<void>
   onAddFile: (taskId: string, payload: { file_name: string; file_url: string; public_id: string; file_size?: number | null; file_type?: string | null }) => Promise<unknown>
   onRemoveFile: (taskId: string, fileId: string) => Promise<void>
@@ -28,7 +29,7 @@ interface TaskDetailDrawerProps {
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 
 export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
-  const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose } = props
+  const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onRenameSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose } = props
   const confirm = useConfirm()
 
   const [title, setTitle] = useState(task.title)
@@ -229,19 +230,13 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
             </p>
             <div className="space-y-1 mb-2">
               {task.subtasks.map((s) => (
-                <div key={s.id} className="group flex items-center gap-2.5 py-1">
-                  <button
-                    onClick={() => void onToggleSubtask(task.id, s.id, !s.done)}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${s.done ? 'border-transparent text-white' : 'border-gray-300'}`}
-                    style={s.done ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
-                  >
-                    {s.done && <Check size={9} strokeWidth={3} />}
-                  </button>
-                  <span className={`flex-1 text-sm ${s.done ? 'line-through text-gray-400' : 'text-gray-700'}`}>{linkifyText(s.title)}</span>
-                  <button onClick={() => void onDeleteSubtask(task.id, s.id)} className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400">
-                    <Trash2 size={13} />
-                  </button>
-                </div>
+                <SubtaskRow
+                  key={s.id}
+                  subtask={s}
+                  onToggle={() => void onToggleSubtask(task.id, s.id, !s.done)}
+                  onRename={(t) => void onRenameSubtask(task.id, s.id, t)}
+                  onDelete={() => void onDeleteSubtask(task.id, s.id)}
+                />
               ))}
             </div>
             <div className="flex items-center gap-2">
@@ -274,6 +269,62 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function SubtaskRow({
+  subtask, onToggle, onRename, onDelete,
+}: {
+  subtask: Subtask
+  onToggle: () => void
+  onRename: (title: string) => void
+  onDelete: () => void
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [value, setValue] = useState(subtask.title)
+
+  useEffect(() => { setValue(subtask.title) }, [subtask.title])
+
+  const save = useCallback(() => {
+    setIsEditing(false)
+    const trimmed = value.trim()
+    if (trimmed && trimmed !== subtask.title) onRename(trimmed)
+    else setValue(subtask.title)
+  }, [value, subtask.title, onRename])
+
+  return (
+    <div className="group flex items-center gap-2.5 py-1">
+      <button
+        onClick={onToggle}
+        className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${subtask.done ? 'border-transparent text-white' : 'border-gray-300'}`}
+        style={subtask.done ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
+      >
+        {subtask.done && <Check size={9} strokeWidth={3} />}
+      </button>
+      {isEditing ? (
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+            if (e.key === 'Escape') { setValue(subtask.title); setIsEditing(false) }
+          }}
+          className="flex-1 text-sm py-0.5 outline-none border-b border-gray-200 focus:border-gray-400 bg-transparent"
+        />
+      ) : (
+        <span
+          onClick={() => setIsEditing(true)}
+          className={`flex-1 text-sm cursor-text ${subtask.done ? 'line-through text-gray-400' : 'text-gray-700'}`}
+        >
+          {linkifyText(subtask.title)}
+        </span>
+      )}
+      <button onClick={onDelete} className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400">
+        <Trash2 size={13} />
+      </button>
     </div>
   )
 }

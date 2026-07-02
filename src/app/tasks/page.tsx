@@ -163,6 +163,7 @@ export default function TasksPage() {
           onSetAssignees={source.setAssignees}
           onAddSubtask={source.addSubtask}
           onToggleSubtask={source.toggleSubtask}
+          onRenameSubtask={source.renameSubtask}
           onDeleteSubtask={source.deleteSubtask}
           onAddFile={source.addFile}
           onRemoveFile={source.removeFile}

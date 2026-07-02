@@ -136,6 +136,17 @@ export function useTasks({ scope, workspaceId, projectId, contactId, done }: Use
     }
   }, [refetch])
 
+  const renameSubtask = useCallback(async (taskId: string, subtaskId: string, title: string) => {
+    setTasks((cur) => cur.map((t) => t.id === taskId
+      ? { ...t, subtasks: t.subtasks.map((s) => (s.id === subtaskId ? { ...s, title } : s)) }
+      : t))
+    try {
+      await apiFetch(`/api/v1/subtasks/${subtaskId}`, { method: 'PATCH', body: JSON.stringify({ title }) })
+    } catch {
+      await refetch()
+    }
+  }, [refetch])
+
   const deleteSubtask = useCallback(async (taskId: string, subtaskId: string) => {
     setTasks((cur) => cur.map((t) => t.id === taskId ? { ...t, subtasks: t.subtasks.filter((s) => s.id !== subtaskId) } : t))
     try {
@@ -170,7 +181,7 @@ export function useTasks({ scope, workspaceId, projectId, contactId, done }: Use
   return {
     tasks, loading, error, refetch,
     createTask, patchTask, toggleDone, deleteTask, moveToStage, setAssignees,
-    addSubtask, toggleSubtask, deleteSubtask,
+    addSubtask, toggleSubtask, renameSubtask, deleteSubtask,
     addFile, removeFile,
   }
 }

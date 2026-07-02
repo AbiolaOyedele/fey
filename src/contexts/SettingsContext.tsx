@@ -39,6 +39,14 @@ export const SettingsContext = createContext<SettingsContextValue | null>(null)
 
 const DEFAULT_CHANGELOG = [
   {
+    version: '1.11.2', date: '2 Jul, 2026',
+    features: [],
+    improvements: [],
+    fixes: [
+      'Subtasks can now be edited after creation — click a subtask title to rename it',
+    ],
+  },
+  {
     version: '1.11.1', date: '2 Jul, 2026',
     features: [],
     improvements: [],

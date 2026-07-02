@@ -288,6 +288,11 @@ export async function addSubtask(db: SupabaseClient, taskId: string, title: stri
 export async function updateSubtask(db: SupabaseClient, id: string, updates: { title?: string; done?: boolean; sort_order?: number }) {
   const parent = await repo.getSubtaskParent(db, id)
   if (!parent) throw new AppError(404, 'That subtask could not be found.', 'SUBTASK_NOT_FOUND')
+  if (updates.title !== undefined) {
+    const trimmed = updates.title.trim()
+    if (!trimmed) throw new AppError(400, 'Subtask title cannot be empty.', 'SUBTASK_INVALID')
+    updates = { ...updates, title: trimmed.slice(0, 500) }
+  }
   await repo.updateSubtaskRow(db, id, updates)
 }
 

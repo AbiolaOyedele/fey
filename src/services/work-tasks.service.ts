@@ -2,7 +2,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { AppError } from '@/lib/errors'
 import { createServiceClient } from '@/lib/supabase-server'
-import type { Task, TaskScope } from '@/types/work-tasks'
+import { destroyCloudinaryAssetById, parseCloudinaryUrl } from '@/lib/cloudinary-server'
+import { MAX_UPLOAD_BYTES, ALLOWED_UPLOAD_EXTENSIONS } from '@/lib/constants'
+import type { Task, TaskFileRow, TaskScope } from '@/types/work-tasks'
 import * as repo from '@/repositories/work-tasks.repository'
 import * as wfRepo from '@/repositories/workflows.repository'
 import { ensureDefaultWorkflow } from '@/services/workflows.service'
@@ -211,6 +213,66 @@ export async function setAssignees(db: SupabaseClient, taskId: string, userIds: 
     await notifyAssigned(existing, added, task?.title ?? 'A task', actorId)
   }
   return getTask(db, taskId)
+}
+
+// ── Files ─────────────────────────────────────────────────────────────────────
+
+const fileSchema = z.object({
+  file_name: z.string().trim().min(1, 'File name is required.').max(300),
+  // Uploads go direct to Cloudinary; the metadata row must point back at it.
+  file_url: z.string().url().startsWith('https://res.cloudinary.com/', 'Invalid file URL.'),
+  public_id: z.string().min(1).max(300),
+  file_size: z.number().int().min(0).max(MAX_UPLOAD_BYTES, 'File is too large.').nullable().optional(),
+  file_type: z.string().max(100).nullable().optional(),
+})
+
+/** Records a Cloudinary upload against a task. The binary is already uploaded
+ *  client-side (signed); this validates + stores the metadata row. */
+export async function addTaskFile(
+  db: SupabaseClient,
+  taskId: string,
+  input: unknown,
+  actor: { userId: string; name: string | null },
+): Promise<TaskFileRow> {
+  const existing = await repo.getTaskCore(db, taskId)
+  if (!existing) throw new AppError(404, 'That task could not be found.', 'TASK_NOT_FOUND')
+
+  const parsed = fileSchema.safeParse(input)
+  if (!parsed.success) throw new AppError(400, parsed.error.issues[0]?.message ?? 'Invalid file.', 'TASK_FILE_INVALID')
+  const d = parsed.data
+
+  // Defense in depth: re-check the extension server-side (SECURITY.md) — the
+  // client validates before uploading, but the metadata write must not trust it.
+  const ext = d.file_name.split('.').pop()?.toLowerCase() ?? ''
+  if (!(ALLOWED_UPLOAD_EXTENSIONS as readonly string[]).includes(ext)) {
+    throw new AppError(422, 'That file type is not allowed.', 'TASK_FILE_INVALID_TYPE')
+  }
+
+  return repo.insertTaskFile(db, {
+    task_id: taskId,
+    owner_id: existing.owner_id,
+    uploaded_by: actor.userId,
+    uploader_name: actor.name,
+    file_name: d.file_name,
+    file_url: d.file_url,
+    public_id: d.public_id,
+    file_size: d.file_size ?? null,
+    file_type: d.file_type ?? null,
+  })
+}
+
+/** Deletes a file's metadata row, then best-effort removes the Cloudinary
+ *  asset server-side. The resource type (image/video/raw) is parsed from the
+ *  delivery URL; the exact stored public_id is used so raw files (which keep
+ *  their extension in the public_id) delete correctly. */
+export async function deleteTaskFile(db: SupabaseClient, taskId: string, fileId: string): Promise<void> {
+  const file = await repo.getTaskFile(db, fileId)
+  if (!file || file.task_id !== taskId) throw new AppError(404, 'That file could not be found.', 'TASK_FILE_NOT_FOUND')
+  await repo.deleteTaskFileRow(db, fileId)
+
+  const resourceType = parseCloudinaryUrl(file.file_url)?.resourceType ?? 'image'
+  const cleaned = await destroyCloudinaryAssetById(file.public_id, resourceType)
+  if (!cleaned) console.warn('[deleteTaskFile] Cloudinary cleanup failed (metadata removed)', { fileId })
 }
 
 // ── Subtasks ──────────────────────────────────────────────────────────────────

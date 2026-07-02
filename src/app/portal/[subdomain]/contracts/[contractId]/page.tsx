@@ -1,6 +1,7 @@
 'use client'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { formatDate } from '@/utils/formatDate'
+import { linkifyText } from '@/utils/linkify'
 
 import { use, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -111,7 +112,7 @@ export default function PortalContractDetailPage({
         {content.signature_block && (
           <div className="border-t border-gray-100 pt-6 mt-6">
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Signature Block</p>
-            <p className="text-sm text-gray-600 whitespace-pre-wrap">{content.signature_block}</p>
+            <p className="text-sm text-gray-600 whitespace-pre-wrap">{linkifyText(content.signature_block)}</p>
           </div>
         )}
 

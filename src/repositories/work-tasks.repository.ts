@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Task, Subtask, TaskAssignee, TaskScope } from '@/types/work-tasks'
+import type { Task, Subtask, TaskAssignee, TaskFileRow, TaskScope } from '@/types/work-tasks'
 
 /**
  * All task queries (work_tasks + assignees + subtasks). Callers pass a
@@ -13,6 +13,7 @@ const SELECT = `
   logged_minutes, sort_order, done, completed_at, created_at, updated_at,
   work_task_assignees ( user_id ),
   work_subtasks ( id, task_id, title, done, sort_order ),
+  work_task_files ( id, file_name, file_url, public_id, file_size, file_type, uploader_name, created_at ),
   projects:project_id ( title ),
   crm_contacts:contact_id ( name )
 `
@@ -40,6 +41,7 @@ interface RawTask {
   updated_at: string
   work_task_assignees: Array<{ user_id: string }> | null
   work_subtasks: Subtask[] | null
+  work_task_files: TaskFileRow[] | null
   projects: { title: string } | { title: string }[] | null
   crm_contacts: { name: string } | { name: string }[] | null
 }
@@ -80,6 +82,7 @@ function mapTask(row: RawTask, members: Map<string, MemberInfo>): Task {
     updated_at: row.updated_at,
     assignees,
     subtasks: (row.work_subtasks ?? []).sort((a, b) => a.sort_order - b.sort_order),
+    files: (row.work_task_files ?? []).sort((a, b) => b.created_at.localeCompare(a.created_at)),
     project_title: one(row.projects)?.title ?? null,
     contact_name: one(row.crm_contacts)?.name ?? null,
   }
@@ -220,6 +223,46 @@ export async function updateSubtaskRow(
 
 export async function deleteSubtaskRow(db: SupabaseClient, id: string): Promise<void> {
   const { error } = await db.from('work_subtasks').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ── Files (Cloudinary attachment metadata) ───────────────────────────────────────
+
+export async function insertTaskFile(
+  db: SupabaseClient,
+  row: {
+    task_id: string
+    owner_id: string
+    uploaded_by: string
+    uploader_name: string | null
+    file_name: string
+    file_url: string
+    public_id: string
+    file_size: number | null
+    file_type: string | null
+  },
+): Promise<TaskFileRow> {
+  const { data, error } = await db
+    .from('work_task_files')
+    .insert(row)
+    .select('id, file_name, file_url, public_id, file_size, file_type, uploader_name, created_at')
+    .single()
+  if (error) throw error
+  return data as TaskFileRow
+}
+
+export async function getTaskFile(db: SupabaseClient, fileId: string): Promise<(TaskFileRow & { task_id: string }) | null> {
+  const { data, error } = await db
+    .from('work_task_files')
+    .select('id, task_id, file_name, file_url, public_id, file_size, file_type, uploader_name, created_at')
+    .eq('id', fileId)
+    .maybeSingle()
+  if (error) throw error
+  return data as (TaskFileRow & { task_id: string }) | null
+}
+
+export async function deleteTaskFileRow(db: SupabaseClient, fileId: string): Promise<void> {
+  const { error } = await db.from('work_task_files').delete().eq('id', fileId)
   if (error) throw error
 }
 

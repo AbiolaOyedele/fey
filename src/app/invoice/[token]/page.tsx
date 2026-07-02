@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect } from 'react'
 import { formatDate } from '@/utils/formatDate'
+import { linkifyText } from '@/utils/linkify'
 import { fetchPublicInvoice } from '@/hooks/useInvoiceData'
 import { FileDown, AlertCircle, Loader2, CreditCard } from 'lucide-react'
 import html2canvas from 'html2canvas'
@@ -359,7 +360,7 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
         {notes && (
           <div className="px-10 pb-10">
             <p className="text-3xs font-bold text-gray-400 uppercase tracking-widest mb-2">Notes</p>
-            <p className="text-sm text-gray-500 whitespace-pre-line">{notes}</p>
+            <p className="text-sm text-gray-500 whitespace-pre-line">{linkifyText(notes)}</p>
           </div>
         )}
 

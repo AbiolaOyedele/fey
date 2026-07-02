@@ -164,6 +164,8 @@ export default function TasksPage() {
           onAddSubtask={source.addSubtask}
           onToggleSubtask={source.toggleSubtask}
           onDeleteSubtask={source.deleteSubtask}
+          onAddFile={source.addFile}
+          onRemoveFile={source.removeFile}
           onToggleDone={(id) => { source.toggleDone(id); setSelected(null) }}
           onDelete={source.deleteTask}
           onClose={() => setSelected(null)}

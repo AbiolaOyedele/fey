@@ -13,6 +13,7 @@ import type { DragEndEvent } from '@dnd-kit/core'
 import {
   SortableContext, useSortable, verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
+import { linkifyText } from '@/utils/linkify'
 import { CSS } from '@dnd-kit/utilities'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
@@ -197,7 +198,7 @@ function FeyTaskItem({ task, onUpdate, onDelete, onOpenNotes, dragListeners, dra
               className="px-3 pb-3 pt-0.5 pl-10 cursor-pointer"
             >
               <p className="text-xs text-gray-400 leading-relaxed line-clamp-2 hover:text-gray-600 transition-colors">
-                {task.notes}
+                {linkifyText(task.notes)}
               </p>
             </div>
           </div>
@@ -264,7 +265,7 @@ function NotesPanel({ task, todayStr, onClose }: NotesPanelProps) {
         {task.notes && (
           <div className="mb-5">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Notes</p>
-            <p className="text-sm text-gray-700 leading-relaxed">{task.notes}</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{linkifyText(task.notes)}</p>
           </div>
         )}
 

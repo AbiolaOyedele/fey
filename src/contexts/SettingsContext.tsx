@@ -39,6 +39,19 @@ export const SettingsContext = createContext<SettingsContextValue | null>(null)
 
 const DEFAULT_CHANGELOG = [
   {
+    version: '1.11.0', date: '2 Jul, 2026',
+    features: [
+      'Attach files to tasks — upload, preview, and download directly from the task row, detail drawer, or client portal',
+      'Links in task descriptions and notes, contract signature blocks and notes, invoice notes, and feedback messages now render as clickable links',
+    ],
+    improvements: [],
+    fixes: [
+      'Raw (non-image/video) file attachments now delete correctly from storage — the public ID was previously stripped of its extension, so cleanup silently failed',
+      'Welcome emails now send reliably — sending is awaited instead of fire-and-forget, since a serverless function can freeze pending work right after it responds',
+      'Daily task digest no longer lists completed tasks under "recently assigned," and no longer double-lists a task under both "due" and "recently assigned"',
+    ],
+  },
+  {
     version: '1.10.0', date: '1 Jul, 2026',
     features: [
       'Daily task digest email — due/overdue, recently assigned, and completed-yesterday tasks, sent every morning. Toggle it off in Settings → App.',

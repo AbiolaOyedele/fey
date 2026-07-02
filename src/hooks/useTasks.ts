@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { apiFetch } from '@/lib/api-client'
-import type { Task, CreateTaskPayload, UpdateTaskPayload, TaskScope, Subtask } from '@/types/work-tasks'
+import type { Task, CreateTaskPayload, UpdateTaskPayload, TaskScope, Subtask, TaskFileRow } from '@/types/work-tasks'
 
 interface UseTasksArgs {
   scope: TaskScope
@@ -145,9 +145,32 @@ export function useTasks({ scope, workspaceId, projectId, contactId, done }: Use
     }
   }, [refetch])
 
+  const addFile = useCallback(async (
+    taskId: string,
+    payload: { file_name: string; file_url: string; public_id: string; file_size?: number | null; file_type?: string | null },
+  ) => {
+    const { file } = await apiFetch<{ file: TaskFileRow }>(`/api/v1/tasks/${taskId}/files`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+    setTasks((cur) => cur.map((t) => (t.id === taskId ? { ...t, files: [file, ...t.files] } : t)))
+    return file
+  }, [])
+
+  const removeFile = useCallback(async (taskId: string, fileId: string) => {
+    setTasks((cur) => cur.map((t) => (t.id === taskId ? { ...t, files: t.files.filter((f) => f.id !== fileId) } : t)))
+    try {
+      // The API also removes the Cloudinary asset server-side (best-effort).
+      await apiFetch(`/api/v1/tasks/${taskId}/files/${fileId}`, { method: 'DELETE' })
+    } catch {
+      await refetch()
+    }
+  }, [refetch])
+
   return {
     tasks, loading, error, refetch,
     createTask, patchTask, toggleDone, deleteTask, moveToStage, setAssignees,
     addSubtask, toggleSubtask, deleteSubtask,
+    addFile, removeFile,
   }
 }

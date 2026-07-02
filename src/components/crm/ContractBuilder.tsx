@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { formatDate } from '@/utils/formatDate'
+import { linkifyText } from '@/utils/linkify'
 import {
   Save, Send, ArrowLeft, FileSignature, Settings, X,
   Bold, Italic, Underline, List, ChevronDown, LayoutTemplate,
@@ -589,7 +590,7 @@ export default function ContractBuilder({
               </div>
             </div>
             {sigNotes && (
-              <p className="text-xs text-gray-400 mt-4 whitespace-pre-wrap">{sigNotes}</p>
+              <p className="text-xs text-gray-400 mt-4 whitespace-pre-wrap">{linkifyText(sigNotes)}</p>
             )}
           </div>
 

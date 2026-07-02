@@ -91,11 +91,12 @@ export async function getDueOrOverdueTasksForUser(db: SupabaseClient, userId: st
   return dedupeById(results.flatMap((r) => (r.data ?? []) as DigestTaskRow[]))
 }
 
-/** Tasks assigned to userId in the last `sinceISO`..now window. */
+/** Open tasks assigned to userId in the last `sinceISO`..now window. Done tasks
+ *  are excluded — they belong in "completed yesterday", not "recently assigned". */
 export async function getRecentlyAssignedTasksForUser(db: SupabaseClient, userId: string, sinceISO: string): Promise<DigestTaskRow[]> {
   const ids = await getAssignedTaskIdsSince(db, userId, sinceISO)
   if (ids.length === 0) return []
-  const { data, error } = await db.from('work_tasks').select(TASK_SELECT).in('id', ids).is('deleted_at', null)
+  const { data, error } = await db.from('work_tasks').select(TASK_SELECT).in('id', ids).is('deleted_at', null).eq('done', false)
   if (error) throw error
   return dedupeById((data ?? []) as DigestTaskRow[])
 }

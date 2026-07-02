@@ -461,7 +461,7 @@ export async function listPortalTasks(
   // carries contact_id, so a single filter covers both. Service-role client.
   const { data, error } = await db
     .from('work_tasks')
-    .select('id, title, done, due_date, priority, created_at, projects:project_id ( title )')
+    .select('id, title, done, due_date, priority, created_at, projects:project_id ( title ), work_task_files ( id, file_name, file_url, file_size, file_type )')
     .eq('contact_id', contactId)
     .is('deleted_at', null)
     .order('done', { ascending: true })
@@ -478,6 +478,7 @@ export async function listPortalTasks(
       priority:      (row.priority as PortalTask['priority']) ?? 'medium',
       project_title: projTitle,
       created_at:    row.created_at as string,
+      files:         (row.work_task_files as PortalTask['files'] | null) ?? [],
     }
   })
 }

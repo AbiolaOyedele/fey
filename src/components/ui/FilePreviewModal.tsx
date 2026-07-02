@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { formatDate } from '@/utils/formatDate'
+import { linkifyText } from '@/utils/linkify'
 import {
   X,
   Download,
@@ -427,7 +428,7 @@ export default function FilePreviewModal({
                   <AlertCircle size={11} /> Amendment notes
                 </p>
                 <p className="text-xs text-gray-600 bg-amber-50 rounded-xl px-3 py-2.5 whitespace-pre-wrap">
-                  {currentFile.amendment_notes}
+                  {linkifyText(currentFile.amendment_notes)}
                 </p>
               </div>
             )}

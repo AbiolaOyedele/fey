@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { formatDateTime } from '@/utils/formatDate'
+import { linkifyText } from '@/utils/linkify'
 import type { AdminMetrics } from '@/services/admin.service'
 import type { Feedback, FeedbackStatus } from '@/types/feedback'
 
@@ -190,7 +191,7 @@ export default function AdminPage() {
                       <span className="text-2xs text-gray-400">{f.source}</span>
                       <span className="text-2xs text-gray-300">· {formatDateTime(f.created_at)}</span>
                     </div>
-                    <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{f.message}</p>
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{linkifyText(f.message)}</p>
                     {f.page_url && <p className="text-2xs text-gray-400 mt-1">{f.page_url}</p>}
                   </div>
                   <button

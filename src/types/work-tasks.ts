@@ -38,6 +38,18 @@ export interface Subtask {
   sort_order: number
 }
 
+/** A Cloudinary-backed file attached to a task (metadata row; binary lives in Cloudinary). */
+export interface TaskFileRow {
+  id: string
+  file_name: string
+  file_url: string
+  public_id: string
+  file_size: number | null
+  file_type: string | null
+  uploader_name: string | null
+  created_at: string
+}
+
 export interface Task {
   id: string
   owner_id: string
@@ -62,6 +74,7 @@ export interface Task {
   // Joined / derived (populated by the list query, not columns):
   assignees: TaskAssignee[]
   subtasks: Subtask[]
+  files: TaskFileRow[]
   project_title: string | null
   contact_name: string | null
 }

@@ -48,11 +48,14 @@ export async function runDailyDigest(db: SupabaseClient): Promise<DigestRunResul
         continue
       }
 
-      const [dueOrOverdue, recentlyAssigned, completedYesterday] = await Promise.all([
+      const [dueOrOverdue, recentlyAssignedRaw, completedYesterday] = await Promise.all([
         repo.getDueOrOverdueTasksForUser(db, userId, digestDate),
         repo.getRecentlyAssignedTasksForUser(db, userId, since24h),
         repo.getCompletedInRangeForUser(db, userId, startISO, endISO),
       ])
+      // A just-assigned task that's already due belongs in "due today" only.
+      const dueIds = new Set(dueOrOverdue.map((t) => t.id))
+      const recentlyAssigned = recentlyAssignedRaw.filter((t) => !dueIds.has(t.id))
 
       if (dueOrOverdue.length === 0 && recentlyAssigned.length === 0 && completedYesterday.length === 0) {
         result.skipped++

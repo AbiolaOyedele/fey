@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { X, Trash2, Plus, Check, Calendar } from 'lucide-react'
 import type { Task, TaskPriority, UpdateTaskPayload, WorkflowStage } from '@/types/work-tasks'
 import AssigneePicker from './AssigneePicker'
+import TaskAttachments from './TaskAttachments'
 import { useConfirm } from '@/contexts/ConfirmContext'
 import { PRIORITY_META, formatMinutes, parseEstimate } from './TaskBits'
+import { linkifyText } from '@/utils/linkify'
 
 interface TaskDetailDrawerProps {
   task: Task
@@ -16,6 +18,8 @@ interface TaskDetailDrawerProps {
   onAddSubtask: (taskId: string, title: string) => Promise<void>
   onToggleSubtask: (taskId: string, subtaskId: string, done: boolean) => Promise<void>
   onDeleteSubtask: (taskId: string, subtaskId: string) => Promise<void>
+  onAddFile: (taskId: string, payload: { file_name: string; file_url: string; public_id: string; file_size?: number | null; file_type?: string | null }) => Promise<unknown>
+  onRemoveFile: (taskId: string, fileId: string) => Promise<void>
   onToggleDone: (id: string) => void
   onDelete: (id: string) => Promise<void>
   onClose: () => void
@@ -24,7 +28,7 @@ interface TaskDetailDrawerProps {
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 
 export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
-  const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onDeleteSubtask, onDelete, onClose } = props
+  const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose } = props
   const confirm = useConfirm()
 
   const [title, setTitle] = useState(task.title)
@@ -202,12 +206,20 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
                 className="w-full text-left text-sm px-3 py-2.5 rounded-xl -mx-3 hover:bg-gray-50 transition-colors"
               >
                 {description ? (
-                  <p className="whitespace-pre-wrap text-gray-700">{description}</p>
+                  <p className="whitespace-pre-wrap text-gray-700">{linkifyText(description)}</p>
                 ) : (
                   <p className="text-gray-400">Add more detail…</p>
                 )}
               </button>
             )}
+          </div>
+
+          {/* Attachments */}
+          <div>
+            <p className="text-xs2 font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+              Attachments {task.files.length > 0 && <span className="text-gray-300">· {task.files.length}</span>}
+            </p>
+            <TaskAttachments taskId={task.id} files={task.files} onAdd={onAddFile} onRemove={onRemoveFile} />
           </div>
 
           {/* Subtasks */}

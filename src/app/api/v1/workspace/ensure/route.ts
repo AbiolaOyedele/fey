@@ -64,10 +64,12 @@ export async function POST(req: NextRequest) {
     // Seed a #general channel so the Playground isn't empty.
     await db.from('internal_channels').insert({ workspace_id: workspaceId, name: 'general', created_by: userId })
 
-    // Best-effort — never blocks workspace creation.
+    // Best-effort — a failed send never blocks workspace creation. Awaited
+    // (not fire-and-forget) because serverless freezes pending work once the
+    // response is returned; sendEmail already never throws.
     if (user!.email) {
-      void sendWelcomeEmail(user!.email, { name: ownerName, workspaceName: name, dashboardUrl: appUrl() })
-        .catch((err) => console.warn('[workspace/ensure] welcome email failed', err))
+      const sent = await sendWelcomeEmail(user!.email, { name: ownerName, workspaceName: name, dashboardUrl: appUrl() })
+      if (!sent.ok) console.warn('[workspace/ensure] welcome email failed', sent.error)
     }
 
     return NextResponse.json({ ok: true, workspace_id: workspaceId, created: true })

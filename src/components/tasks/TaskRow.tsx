@@ -1,8 +1,31 @@
 'use client'
 
-import { Check } from 'lucide-react'
+import { Check, Paperclip } from 'lucide-react'
 import type { Task } from '@/types/work-tasks'
 import { AssigneeAvatars, DueChip, PriorityFlag, formatMinutes } from './TaskBits'
+import { getFileType, isImageType, thumbUrl, type FileType } from '@/utils/cloudinary'
+
+/** Up to 3 tiny image thumbnails + a count for the rest — quiet row-level hint
+ *  that a task carries attachments. Clicking the row opens the drawer where the
+ *  full grid lives. */
+function FileThumbs({ task }: { task: Task }) {
+  if (task.files.length === 0) return null
+  const images = task.files.filter((f) => isImageType((f.file_type as FileType) ?? getFileType(f.file_name))).slice(0, 3)
+  const rest = task.files.length - images.length
+  return (
+    <span className="hidden sm:flex items-center gap-1">
+      {images.map((f) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img key={f.id} src={thumbUrl(f.file_url, 64)} alt="" className="w-[18px] h-[18px] rounded object-cover border border-black/5" loading="lazy" />
+      ))}
+      {rest > 0 && (
+        <span className="flex items-center gap-0.5 text-2xs text-gray-400">
+          <Paperclip size={11} />{rest}
+        </span>
+      )}
+    </span>
+  )
+}
 
 interface TaskRowProps {
   task: Task
@@ -37,6 +60,7 @@ export default function TaskRow({ task, onToggleDone, onOpen }: TaskRowProps) {
       </button>
 
       <div className="flex items-center gap-3 flex-shrink-0">
+        <FileThumbs task={task} />
         <AssigneeAvatars assignees={task.assignees} />
         <div className="hidden sm:block w-20 text-right"><DueChip due={task.due_date} done={task.done} /></div>
         {task.estimated_minutes != null && (

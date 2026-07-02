@@ -1,9 +1,10 @@
 'use client'
 
 import { use, useState, useEffect, useCallback } from 'react'
-import { CheckSquare2, Check, Flag } from 'lucide-react'
+import { CheckSquare2, Check, Flag, Download, FileText } from 'lucide-react'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
-import type { PortalTask } from '@/types/crm'
+import { getFileType, isImageType, formatFileSize, downloadUrl, thumbUrl, type FileType } from '@/utils/cloudinary'
+import type { PortalTask, PortalTaskFile } from '@/types/crm'
 
 const PRIORITY_COLOR: Record<PortalTask['priority'], string> = {
   high: '#EF4444', medium: '#F59E0B', low: '#22C55E',
@@ -12,6 +13,42 @@ const PRIORITY_COLOR: Record<PortalTask['priority'], string> = {
 function formatDue(due: string): string {
   const d = new Date(due + 'T00:00:00')
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+/** Read-only attachment strip: image thumbs open full-size, other files open in
+ *  a new tab; every file gets a download link. No upload/delete in the portal. */
+function TaskFiles({ files }: { files: PortalTaskFile[] }) {
+  if (files.length === 0) return null
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+      {files.map((f) => {
+        const type = (f.file_type as FileType) ?? getFileType(f.file_name)
+        return (
+          <span key={f.id} className="group/file inline-flex items-center gap-1 rounded-lg border border-gray-100 bg-gray-50 overflow-hidden">
+            <a href={f.file_url} target="_blank" rel="noopener noreferrer" title={f.file_name} className="flex items-center gap-1">
+              {isImageType(type) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={thumbUrl(f.file_url, 64)} alt={f.file_name} className="w-8 h-8 object-cover" loading="lazy" />
+              ) : (
+                <span className="flex items-center gap-1 pl-1.5 py-1 max-w-[140px]">
+                  <FileText size={12} className="text-gray-400 flex-shrink-0" />
+                  <span className="text-2xs text-gray-500 truncate">{f.file_name}</span>
+                  {f.file_size ? <span className="text-3xs text-gray-300 flex-shrink-0">{formatFileSize(f.file_size)}</span> : null}
+                </span>
+              )}
+            </a>
+            <a
+              href={downloadUrl(f.file_url)}
+              title={`Download ${f.file_name}`}
+              className="px-1.5 py-1 text-gray-300 hover:text-gray-500 transition-colors"
+            >
+              <Download size={12} />
+            </a>
+          </span>
+        )
+      })}
+    </div>
+  )
 }
 
 export default function PortalTasksPage({ params }: { params: Promise<{ subdomain: string }> }) {
@@ -76,6 +113,7 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
               <div className="flex-1 min-w-0">
                 <span className={`text-sm ${t.done ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{t.title}</span>
                 {t.project_title && <p className="text-2xs text-gray-400 truncate">{t.project_title}</p>}
+                <TaskFiles files={t.files} />
               </div>
               {t.due_date && <span className="text-2xs text-gray-400 flex-shrink-0">{formatDue(t.due_date)}</span>}
               <Flag size={13} fill={PRIORITY_COLOR[t.priority]} style={{ color: PRIORITY_COLOR[t.priority] }} className="flex-shrink-0" />

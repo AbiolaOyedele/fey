@@ -289,6 +289,14 @@ export interface PortalPayment {
   created_at:  string
 }
 
+export interface PortalTaskFile {
+  id:        string
+  file_name: string
+  file_url:  string
+  file_size: number | null
+  file_type: string | null
+}
+
 export interface PortalTask {
   id:            string
   title:         string
@@ -297,4 +305,5 @@ export interface PortalTask {
   priority:      'low' | 'medium' | 'high'
   project_title: string | null
   created_at:    string
+  files:         PortalTaskFile[]
 }

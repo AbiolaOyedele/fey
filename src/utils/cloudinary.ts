@@ -174,3 +174,15 @@ export const formatFileSize = (bytes?: number): string => {
 
 export const isImageType = (fileType: FileType): boolean => fileType === 'image'
 export const isPdfType   = (fileType: FileType): boolean => fileType === 'pdf'
+
+/**
+ * Rewrites a Cloudinary delivery URL so the browser downloads instead of
+ * rendering inline (`fl_attachment` transformation). Non-Cloudinary URLs are
+ * returned untouched.
+ */
+export const downloadUrl = (fileUrl: string): string =>
+  fileUrl.replace(/\/upload\//, '/upload/fl_attachment/')
+
+/** Small square thumbnail variant of a Cloudinary image URL (fast to load). */
+export const thumbUrl = (fileUrl: string, size = 160): string =>
+  fileUrl.replace(/\/upload\//, `/upload/w_${size},h_${size},c_fill,q_auto,f_auto/`)

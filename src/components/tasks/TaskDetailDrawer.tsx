@@ -237,7 +237,7 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
                   >
                     {s.done && <Check size={9} strokeWidth={3} />}
                   </button>
-                  <span className={`flex-1 text-sm ${s.done ? 'line-through text-gray-400' : 'text-gray-700'}`}>{s.title}</span>
+                  <span className={`flex-1 text-sm ${s.done ? 'line-through text-gray-400' : 'text-gray-700'}`}>{linkifyText(s.title)}</span>
                   <button onClick={() => void onDeleteSubtask(task.id, s.id)} className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400">
                     <Trash2 size={13} />
                   </button>

@@ -39,6 +39,14 @@ export const SettingsContext = createContext<SettingsContextValue | null>(null)
 
 const DEFAULT_CHANGELOG = [
   {
+    version: '1.11.1', date: '2 Jul, 2026',
+    features: [],
+    improvements: [],
+    fixes: [
+      'Subtask titles now render clickable links too, matching task descriptions and notes',
+    ],
+  },
+  {
     version: '1.11.0', date: '2 Jul, 2026',
     features: [
       'Attach files to tasks — upload, preview, and download directly from the task row, detail drawer, or client portal',

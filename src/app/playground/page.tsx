@@ -1,15 +1,15 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Hash, Send, MessagesSquare, Plus, Paperclip, X, Loader2 } from 'lucide-react'
+import { Hash, Send, MessagesSquare, Plus, Paperclip, X, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useTeam } from '@/hooks/useTeam'
 import { useInternalChat } from '@/hooks/useInternalChat'
-import { useMentionAutocomplete, applyMentionPick } from '@/hooks/useMentionAutocomplete'
-import MentionMenu from '@/components/mentions/MentionMenu'
+import { useConfirm } from '@/contexts/ConfirmContext'
+import MentionAwareEditor, { type MentionAwareEditorHandle } from '@/components/mentions/MentionAwareEditor'
 import { renderMentions } from '@/utils/mentions'
 import AttachmentPreview from '@/components/crm/AttachmentPreview'
 import EmojiPicker from '@/components/crm/EmojiPicker'
@@ -17,6 +17,7 @@ import { uploadToCloudinary, formatFileSize } from '@/utils/cloudinary'
 import type { MessageAttachment } from '@/types/crm'
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024
+const LONG_PRESS_MS = 450
 
 function initials(name: string): string {
   return name.trim().charAt(0).toUpperCase() || '?'
@@ -24,6 +25,49 @@ function initials(name: string): string {
 
 function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
+interface MenuState { messageId: string; x: number; y: number }
+
+/** Right-click (desktop) / long-press (mobile) menu for editing or deleting your own message. */
+function MessageMenu({ state, onEdit, onDelete, onClose }: {
+  state: MenuState
+  onEdit: () => void
+  onDelete: () => void
+  onClose: () => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose() }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [onClose])
+
+  // Clamp so the menu never renders off-screen.
+  const left = Math.min(state.x, window.innerWidth - 160)
+  const top = Math.min(state.y, window.innerHeight - 100)
+
+  return (
+    <div
+      ref={ref}
+      style={{ left, top }}
+      className="fixed z-50 w-40 bg-white rounded-xl shadow-xl border border-gray-100 py-1"
+    >
+      <button
+        onClick={onEdit}
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
+      >
+        <Pencil size={13} /> Edit
+      </button>
+      <button
+        onClick={onDelete}
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 text-left"
+      >
+        <Trash2 size={13} /> Delete
+      </button>
+    </div>
+  )
 }
 
 export default function PlaygroundPage() {
@@ -35,9 +79,9 @@ export default function PlaygroundPage() {
   const { members } = useTeam(workspace?.id ?? null)
   const {
     channels, activeChannelId, setActiveChannel,
-    messages, loadingMessages, sending, send, createChannel,
+    messages, loadingMessages, sending, send, editMessage, deleteMessage, createChannel,
   } = useInternalChat(workspace?.id ?? null)
-  const mention = useMentionAutocomplete(workspace?.id ?? null)
+  const confirm = useConfirm()
 
   const searchParams = useSearchParams()
   const deepLinkChannel = searchParams.get('channel')
@@ -45,15 +89,41 @@ export default function PlaygroundPage() {
   const [highlightId, setHighlightId] = useState<string | null>(null)
   const consumedDeepLinkChannel = useRef<string | null>(null)
 
-  const [draft, setDraft] = useState('')
   const [attachments, setAttachments] = useState<MessageAttachment[]>([])
   const [uploading, setUploading] = useState(0)
   const [newChannelOpen, setNewChannelOpen] = useState(false)
   const [newChannelName, setNewChannelName] = useState('')
+  const [menuState, setMenuState] = useState<MenuState | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [composerEmpty, setComposerEmpty] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const composerRef = useRef<MentionAwareEditorHandle>(null)
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const longPressMoved = useRef(false)
+
+  const openMenu = useCallback((messageId: string, x: number, y: number) => {
+    setMenuState({ messageId, x, y })
+  }, [])
+
+  const handleTouchStart = useCallback((messageId: string, isMine: boolean) => (e: React.TouchEvent) => {
+    if (!isMine) return
+    longPressMoved.current = false
+    const touch = e.touches[0]
+    longPressTimer.current = setTimeout(() => {
+      if (!longPressMoved.current) openMenu(messageId, touch.clientX, touch.clientY)
+    }, LONG_PRESS_MS)
+  }, [openMenu])
+
+  const handleTouchMove = useCallback(() => {
+    longPressMoved.current = true
+    if (longPressTimer.current) clearTimeout(longPressTimer.current)
+  }, [])
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current)
+  }, [])
 
   const nameById = useMemo(() => {
     const m = new Map<string, string>()
@@ -100,13 +170,14 @@ export default function PlaygroundPage() {
     if (fileRef.current) fileRef.current.value = ''
   }
 
-  const handleSend = async () => {
-    if ((!draft.trim() && attachments.length === 0) || uploading > 0) return
-    const body = draft
+  const handleSend = async (body: string) => {
+    if ((!body.trim() && attachments.length === 0) || uploading > 0) return
     const atts = attachments
-    setDraft('')
+    composerRef.current?.clear()
+    setComposerEmpty(true)
     setAttachments([])
     await send(body, atts)
+    composerRef.current?.focus()
   }
 
   const handleCreateChannel = async () => {
@@ -203,10 +274,15 @@ export default function PlaygroundPage() {
                 const isMine = m.sender_id === user?.id
                 const senderName = isMine ? 'You' : (nameById.get(m.sender_id) ?? 'Teammate')
                 const atts = m.attachments ?? []
+                const isEditing = editingId === m.id
                 return (
                   <div
                     key={m.id}
                     ref={(el) => { if (el) messageRefs.current.set(m.id, el); else messageRefs.current.delete(m.id) }}
+                    onContextMenu={(e) => { if (isMine) { e.preventDefault(); openMenu(m.id, e.clientX, e.clientY) } }}
+                    onTouchStart={handleTouchStart(m.id, isMine)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
                     className={`flex gap-3 rounded-xl transition-colors duration-500 ${isMine ? 'flex-row-reverse' : ''} ${highlightId === m.id ? 'bg-amber-50' : ''}`}
                   >
                     <div
@@ -218,16 +294,33 @@ export default function PlaygroundPage() {
                     <div className={`max-w-[75%] flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-xs font-semibold text-gray-700">{senderName}</span>
-                        <span className="text-3xs text-gray-400">{timeLabel(m.created_at)}</span>
+                        <span className="text-3xs text-gray-400">
+                          {timeLabel(m.created_at)}{m.edited_at && ' · edited'}
+                        </span>
                       </div>
-                      {m.body.trim() && (
+                      {isEditing ? (
+                        <div className="w-64 bg-white rounded-2xl border border-gray-200 shadow-sm px-3 py-2">
+                          <MentionAwareEditor
+                            initialValue={m.body}
+                            workspaceId={workspace?.id ?? null}
+                            autoFocus
+                            className="text-sm text-gray-800"
+                            onCommit={(value) => {
+                              setEditingId(null)
+                              if (value.trim() && value !== m.body) void editMessage(m.id, value)
+                            }}
+                            onEscape={() => setEditingId(null)}
+                          />
+                          <p className="text-3xs text-gray-400 mt-1">Enter to save · Esc to cancel</p>
+                        </div>
+                      ) : m.body.trim() ? (
                         <div
                           className={`px-3 py-2 text-sm break-words ${isMine ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm'}`}
                           style={isMine ? { backgroundColor: accent, color: '#fff' } : { backgroundColor: '#F3F4F6', color: '#1F2937' }}
                         >
                           {renderMentions(m.body)}
                         </div>
-                      )}
+                      ) : null}
                       {atts.length > 0 && <AttachmentPreview attachments={atts} />}
                     </div>
                   </div>
@@ -235,6 +328,23 @@ export default function PlaygroundPage() {
               })
             )}
           </div>
+
+          {menuState && (
+            <MessageMenu
+              state={menuState}
+              onEdit={() => { setEditingId(menuState.messageId); setMenuState(null) }}
+              onDelete={() => {
+                const id = menuState.messageId
+                setMenuState(null)
+                void confirm({
+                  title: 'Delete this message?',
+                  message: 'This can’t be undone.',
+                  confirmLabel: 'Delete',
+                }).then((ok) => { if (ok) void deleteMessage(id) })
+              }}
+              onClose={() => setMenuState(null)}
+            />
+          )}
 
           {/* Composer */}
           <div className="border-t border-gray-100 p-3 flex-shrink-0">
@@ -266,55 +376,22 @@ export default function PlaygroundPage() {
               >
                 <Paperclip size={16} />
               </button>
-              <EmojiPicker onPick={(e) => { setDraft((d) => d + e); inputRef.current?.focus() }} className="w-9 h-9 flex-shrink-0" />
+              <EmojiPicker onPick={(e) => composerRef.current?.insertText(e)} className="w-9 h-9 flex-shrink-0" />
               <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => void handleFiles(e.target.files)} />
-              <div className="relative flex-1 min-w-0">
-                <input
-                  ref={inputRef}
-                  value={draft}
-                  onChange={(e) => {
-                    setDraft(e.target.value)
-                    mention.onTextChange(e.target.value, e.target.selectionStart ?? e.target.value.length)
-                  }}
-                  onKeyDown={(e) => {
-                    if (mention.trigger) {
-                      if (e.key === 'ArrowDown') { e.preventDefault(); mention.moveActive(1); return }
-                      if (e.key === 'ArrowUp') { e.preventDefault(); mention.moveActive(-1); return }
-                      if (e.key === 'Enter' && mention.matches.length > 0) {
-                        e.preventDefault()
-                        const picked = mention.matches[mention.activeIndex]
-                        const { text, cursor } = applyMentionPick(draft, mention.trigger, picked)
-                        setDraft(text)
-                        mention.close()
-                        requestAnimationFrame(() => inputRef.current?.setSelectionRange(cursor, cursor))
-                        return
-                      }
-                      if (e.key === 'Escape') { mention.close(); return }
-                    }
-                    if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); void handleSend() }
-                  }}
+              <div className="flex-1 min-w-0">
+                <MentionAwareEditor
+                  ref={composerRef}
+                  initialValue=""
+                  workspaceId={workspace?.id ?? null}
                   placeholder={`Message #${activeChannel?.name ?? 'general'}`}
-                  disabled={!workspace}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 focus:outline-none focus:border-gray-400 focus:bg-white transition-colors disabled:opacity-50"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 focus:border-gray-400 focus:bg-white transition-colors"
+                  onEmptyChange={setComposerEmpty}
+                  onCommit={(value) => void handleSend(value)}
                 />
-                {mention.trigger && (
-                  <MentionMenu
-                    matches={mention.matches}
-                    activeIndex={mention.activeIndex}
-                    onHover={mention.setActiveIndex}
-                    onPick={(m) => {
-                      const { text, cursor } = applyMentionPick(draft, mention.trigger!, m)
-                      setDraft(text)
-                      mention.close()
-                      requestAnimationFrame(() => inputRef.current?.setSelectionRange(cursor, cursor))
-                    }}
-                    className="absolute left-0 bottom-full mb-1"
-                  />
-                )}
               </div>
               <button
-                onClick={() => void handleSend()}
-                disabled={(!draft.trim() && attachments.length === 0) || sending || uploading > 0 || !workspace}
+                onClick={() => void handleSend(composerRef.current?.getValue() ?? '')}
+                disabled={(composerEmpty && attachments.length === 0) || sending || uploading > 0 || !workspace}
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-white transition-opacity disabled:opacity-40 hover:opacity-90 flex-shrink-0"
                 style={{ backgroundColor: accent }}
               >

@@ -10,6 +10,8 @@ import { uploadToCloudinary, formatFileSize } from '@/utils/cloudinary'
 import EmojiPicker from './EmojiPicker'
 import { useMentionAutocomplete } from '@/hooks/useMentionAutocomplete'
 import MentionMenu from '@/components/mentions/MentionMenu'
+import { mentionChipHtml } from '@/utils/mentions'
+import { caretOffset } from '@/utils/contentEditableCaret'
 import type { WorkspaceMember } from '@/types/team'
 import type { MessageAttachment } from '@/types/crm'
 
@@ -19,22 +21,6 @@ interface RichTextComposerProps {
   disabled?: boolean
   /** Enables @mention autocomplete against this workspace's members. */
   workspaceId?: string | null
-}
-
-/** Plain-text offset of the caret within `el`, used to detect an "@query" trigger. */
-function caretOffset(el: HTMLElement): number {
-  const sel = window.getSelection()
-  if (!sel || sel.rangeCount === 0) return el.innerText.length
-  const range = sel.getRangeAt(0)
-  if (!el.contains(range.endContainer)) return el.innerText.length
-  const preRange = range.cloneRange()
-  preRange.selectNodeContents(el)
-  preRange.setEnd(range.endContainer, range.endOffset)
-  return preRange.toString().length
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c] ?? c))
 }
 
 function execCmd(cmd: string, value?: string) {
@@ -134,10 +120,7 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
       for (let i = 0; i < charsToSelect; i++) sel.modify('extend', 'backward', 'character')
     }
     const name = member.name || member.email || 'Member'
-    execCmd(
-      'insertHTML',
-      `<span data-mention="user:${member.user_id}" contenteditable="false" style="background:color-mix(in srgb, var(--accent, #ED64A6) 15%, transparent);color:var(--accent, #ED64A6);border-radius:4px;padding:1px 4px;font-weight:500;">@${escapeHtml(name)}</span>&nbsp;`,
-    )
+    execCmd('insertHTML', mentionChipHtml(name, member.user_id) + '&nbsp;')
     mention.close()
   }, [mention])
 

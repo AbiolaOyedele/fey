@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { X, Trash2, Plus, Check, Calendar } from 'lucide-react'
 import type { Task, TaskPriority, Subtask, UpdateTaskPayload, WorkflowStage } from '@/types/work-tasks'
 import type { MentionEntityType } from '@/types/mention'
@@ -9,8 +9,7 @@ import TaskAttachments from './TaskAttachments'
 import { useConfirm } from '@/contexts/ConfirmContext'
 import { PRIORITY_META, formatMinutes, parseEstimate } from './TaskBits'
 import { renderMentions, extractMentionedUserIds } from '@/utils/mentions'
-import { useMentionAutocomplete, applyMentionPick } from '@/hooks/useMentionAutocomplete'
-import MentionMenu from '@/components/mentions/MentionMenu'
+import MentionAwareEditor from '@/components/mentions/MentionAwareEditor'
 import { apiFetch } from '@/lib/api-client'
 
 /** Fire-and-forget: records any @mentions in `text` and notifies the newly-mentioned. */
@@ -67,8 +66,6 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [estimate, setEstimate] = useState(task.estimated_minutes != null ? formatMinutes(task.estimated_minutes) : '')
   const [newSubtask, setNewSubtask] = useState('')
-  const descRef = useRef<HTMLTextAreaElement>(null)
-  const descMention = useMentionAutocomplete(workspaceId)
   const taskLink = task.contact_id ? `/clients/${task.contact_id}/tasks?taskId=${task.id}` : `/tasks?taskId=${task.id}`
 
   useEffect(() => {
@@ -221,58 +218,26 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
           <div>
             <p className="text-xs2 font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Description</p>
             {isEditingDescription ? (
-              <div className="relative">
-                <textarea
-                  ref={descRef}
-                  autoFocus
-                  value={description}
-                  onChange={(e) => {
-                    setDescription(e.target.value)
-                    descMention.onTextChange(e.target.value, e.target.selectionStart)
-                  }}
-                  onKeyDown={(e) => {
-                    if (!descMention.trigger) return
-                    if (e.key === 'ArrowDown') { e.preventDefault(); descMention.moveActive(1) }
-                    else if (e.key === 'ArrowUp') { e.preventDefault(); descMention.moveActive(-1) }
-                    else if (e.key === 'Enter' && descMention.matches.length > 0) {
-                      e.preventDefault()
-                      const picked = descMention.matches[descMention.activeIndex]
-                      const { text, cursor } = applyMentionPick(description, descMention.trigger!, picked)
-                      setDescription(text)
-                      descMention.close()
-                      requestAnimationFrame(() => descRef.current?.setSelectionRange(cursor, cursor))
-                    } else if (e.key === 'Escape') { descMention.close() }
-                  }}
-                  onBlur={() => {
-                    descMention.close()
-                    setIsEditingDescription(false)
-                    if (description !== (task.description ?? '')) {
-                      void onPatch(task.id, { description: description || null })
-                      void postMentions({
-                        workspaceId, entityType: 'task_description', entityId: task.id,
-                        link: taskLink, contextLabel: task.title, text: description,
-                      })
-                    }
-                  }}
-                  rows={4}
-                  placeholder="Add more detail…"
-                  className="w-full text-sm px-3 py-2.5 rounded-xl border border-gray-200 resize-none outline-none focus:border-gray-400"
-                />
-                {descMention.trigger && (
-                  <MentionMenu
-                    matches={descMention.matches}
-                    activeIndex={descMention.activeIndex}
-                    onHover={descMention.setActiveIndex}
-                    onPick={(m) => {
-                      const { text, cursor } = applyMentionPick(description, descMention.trigger!, m)
-                      setDescription(text)
-                      descMention.close()
-                      requestAnimationFrame(() => descRef.current?.setSelectionRange(cursor, cursor))
-                    }}
-                    className="absolute left-0 top-full mt-1"
-                  />
-                )}
-              </div>
+              <MentionAwareEditor
+                initialValue={description}
+                workspaceId={workspaceId}
+                multiline
+                autoFocus
+                placeholder="Add more detail…"
+                className="w-full min-h-[6rem] text-sm px-3 py-2.5 rounded-xl border border-gray-200 focus:border-gray-400"
+                onCommit={(value) => {
+                  setDescription(value)
+                  setIsEditingDescription(false)
+                  if (value !== (task.description ?? '')) {
+                    void onPatch(task.id, { description: value || null })
+                    void postMentions({
+                      workspaceId, entityType: 'task_description', entityId: task.id,
+                      link: taskLink, contextLabel: task.title, text: value,
+                    })
+                  }
+                }}
+                onEscape={() => setIsEditingDescription(false)}
+              />
             ) : (
               <button
                 type="button"
@@ -363,19 +328,6 @@ function SubtaskRow({
   onDelete: () => void
 }) {
   const [isEditing, setIsEditing] = useState(false)
-  const [value, setValue] = useState(subtask.title)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const mention = useMentionAutocomplete(workspaceId)
-
-  useEffect(() => { setValue(subtask.title) }, [subtask.title])
-
-  const save = useCallback(() => {
-    mention.close()
-    setIsEditing(false)
-    const trimmed = value.trim()
-    if (trimmed && trimmed !== subtask.title) onRename(trimmed)
-    else setValue(subtask.title)
-  }, [value, subtask.title, onRename, mention])
 
   return (
     <div className="group flex items-center gap-2.5 py-1">
@@ -387,50 +339,19 @@ function SubtaskRow({
         {subtask.done && <Check size={9} strokeWidth={3} />}
       </button>
       {isEditing ? (
-        <div className="relative flex-1">
-          <input
-            ref={inputRef}
+        <div className="flex-1">
+          <MentionAwareEditor
+            initialValue={subtask.title}
+            workspaceId={workspaceId}
             autoFocus
-            value={value}
-            onChange={(e) => {
-              setValue(e.target.value)
-              mention.onTextChange(e.target.value, e.target.selectionStart ?? e.target.value.length)
+            className="w-full text-sm py-0.5 border-b border-gray-200 focus:border-gray-400"
+            onCommit={(value) => {
+              setIsEditing(false)
+              const trimmed = value.trim()
+              if (trimmed && trimmed !== subtask.title) onRename(trimmed)
             }}
-            onBlur={save}
-            onKeyDown={(e) => {
-              if (mention.trigger) {
-                if (e.key === 'ArrowDown') { e.preventDefault(); mention.moveActive(1); return }
-                if (e.key === 'ArrowUp') { e.preventDefault(); mention.moveActive(-1); return }
-                if (e.key === 'Enter' && mention.matches.length > 0) {
-                  e.preventDefault()
-                  const picked = mention.matches[mention.activeIndex]
-                  const { text, cursor } = applyMentionPick(value, mention.trigger, picked)
-                  setValue(text)
-                  mention.close()
-                  requestAnimationFrame(() => inputRef.current?.setSelectionRange(cursor, cursor))
-                  return
-                }
-                if (e.key === 'Escape') { mention.close(); return }
-              }
-              if (e.key === 'Enter') e.currentTarget.blur()
-              if (e.key === 'Escape') { setValue(subtask.title); setIsEditing(false) }
-            }}
-            className="w-full text-sm py-0.5 outline-none border-b border-gray-200 focus:border-gray-400 bg-transparent"
+            onEscape={() => setIsEditing(false)}
           />
-          {mention.trigger && (
-            <MentionMenu
-              matches={mention.matches}
-              activeIndex={mention.activeIndex}
-              onHover={mention.setActiveIndex}
-              onPick={(m) => {
-                const { text, cursor } = applyMentionPick(value, mention.trigger!, m)
-                setValue(text)
-                mention.close()
-                requestAnimationFrame(() => inputRef.current?.setSelectionRange(cursor, cursor))
-              }}
-              className="absolute left-0 top-full mt-1"
-            />
-          )}
         </div>
       ) : (
         <span

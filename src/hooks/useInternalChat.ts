@@ -18,6 +18,8 @@ interface InternalChatState {
   sending:         boolean
   error:           string | null
   send:            (body: string, attachments?: MessageAttachment[]) => Promise<void>
+  editMessage:     (messageId: string, body: string) => Promise<void>
+  deleteMessage:   (messageId: string) => Promise<void>
   createChannel:   (name: string) => Promise<void>
 }
 
@@ -89,6 +91,22 @@ export function useInternalChat(workspaceId: string | null): InternalChatState {
           setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
         },
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'internal_messages', filter: `channel_id=eq.${activeChannelId}` },
+        (payload) => {
+          const msg = payload.new as InternalMessage
+          setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)))
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'internal_messages', filter: `channel_id=eq.${activeChannelId}` },
+        (payload) => {
+          const deletedId = (payload.old as { id?: string }).id
+          if (deletedId) setMessages((prev) => prev.filter((m) => m.id !== deletedId))
+        },
+      )
       .subscribe()
 
     return () => { cancelled = true; void supabase.removeChannel(channel) }
@@ -141,6 +159,48 @@ export function useInternalChat(workspaceId: string | null): InternalChatState {
     }
   }, [user, workspaceId, activeChannelId, channels])
 
+  const editMessage = useCallback(async (messageId: string, body: string) => {
+    const trimmed = body.trim()
+    if (!trimmed) return
+    const editedAt = new Date().toISOString()
+    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, body: trimmed, edited_at: editedAt } : m)))
+    try {
+      const { error: err } = await supabase
+        .from('internal_messages')
+        .update({ body: trimmed, edited_at: editedAt })
+        .eq('id', messageId)
+      if (err) throw err
+
+      const mentionedIds = extractMentionedUserIds(trimmed)
+      if (mentionedIds.length > 0 && workspaceId && activeChannelId) {
+        const channelName = channels.find((c) => c.id === activeChannelId)?.name ?? 'general'
+        void apiFetch('/api/v1/mentions', {
+          method: 'POST',
+          body: JSON.stringify({
+            workspaceId,
+            entityType: 'internal_message',
+            entityId: messageId,
+            link: `/playground?channel=${activeChannelId}&message=${messageId}`,
+            contextLabel: `#${channelName}`,
+            userIds: mentionedIds,
+          }),
+        }).catch(() => {})
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to edit message')
+    }
+  }, [workspaceId, activeChannelId, channels])
+
+  const deleteMessage = useCallback(async (messageId: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== messageId))
+    try {
+      const { error: err } = await supabase.from('internal_messages').delete().eq('id', messageId)
+      if (err) throw err
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete message')
+    }
+  }, [])
+
   const createChannel = useCallback(async (name: string) => {
     const clean = name.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
     if (!clean || !user || !workspaceId) return
@@ -157,6 +217,6 @@ export function useInternalChat(workspaceId: string | null): InternalChatState {
 
   return {
     channels, activeChannelId, setActiveChannel: setActiveChannelId,
-    messages, loadingChannels, loadingMessages, sending, error, send, createChannel,
+    messages, loadingChannels, loadingMessages, sending, error, send, editMessage, deleteMessage, createChannel,
   }
 }

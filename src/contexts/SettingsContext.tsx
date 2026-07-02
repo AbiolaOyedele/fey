@@ -39,6 +39,18 @@ export const SettingsContext = createContext<SettingsContextValue | null>(null)
 
 const DEFAULT_CHANGELOG = [
   {
+    version: '1.13.0', date: '2 Jul, 2026',
+    features: [
+      'Edit or delete your own internal chat messages — right-click on desktop, or press and hold on mobile',
+    ],
+    improvements: [
+      '@Mention picks now show a proper name chip while typing instead of raw "@[Name](user:id)" text — in task descriptions, subtasks, and internal chat',
+    ],
+    fixes: [
+      'Mention chips are no longer invisible when they land in a message bubble colored the same as the chip itself',
+    ],
+  },
+  {
     version: '1.12.0', date: '2 Jul, 2026',
     features: [
       '@Mentions — type @name in a task description, subtask, internal chat message, or client message to tag a teammate. They get a notification with a link straight to where they were mentioned.',

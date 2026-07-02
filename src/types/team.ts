@@ -49,6 +49,7 @@ export interface InternalMessage {
   body: string
   attachments: import('./crm').MessageAttachment[]
   created_at: string
+  edited_at: string | null
 }
 
 /** Role → human label + the permissions it grants on the team surface. */

@@ -1,6 +1,7 @@
 import {
   Body,
   Container,
+  Font,
   Head,
   Hr,
   Html,
@@ -19,33 +20,63 @@ interface BaseLayoutProps {
   unsubscribeUrl?: string
 }
 
+// NoirPro ships only Light (300) and Regular (400) — same two faces the app
+// itself uses (globals.css). Most mail clients (Outlook desktop, many
+// webmail clients) strip @font-face and fall back to the system stack below,
+// so that fallback must stay first-class, not an afterthought.
+const systemFallback =
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+
+export const fontFamily = `'NoirPro', ${systemFallback}`
+
+// Reads NEXT_PUBLIC_APP_URL directly rather than importing src/config/env —
+// that module validates the *entire* app env (Supabase keys, etc.) at import
+// time and throws if any are missing, which crashes the standalone `email
+// dev` preview process. Font hosting only needs this one variable.
+function fontBaseUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_APP_URL
+  // Matches src/config/email.ts's own appUrl() fallback exactly (DOMAIN = 'theruff.agency').
+  return (explicit ?? 'https://app.theruff.agency').replace(/\/$/, '')
+}
+
 const main: React.CSSProperties = {
-  backgroundColor: '#f5f5f4',
-  fontFamily:
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  backgroundColor: '#ffffff',
+  fontFamily,
   padding: '32px 0',
 }
 
 const container: React.CSSProperties = {
   backgroundColor: '#ffffff',
-  border: '1px solid #e7e5e4',
+  border: '1px solid #f7d6e7',
   borderRadius: '12px',
   margin: '0 auto',
   maxWidth: '480px',
-  padding: '32px',
+  overflow: 'hidden',
+}
+
+const brandBand: React.CSSProperties = {
+  backgroundColor: '#fdf1f8',
+  padding: '24px 32px',
 }
 
 const brand: React.CSSProperties = {
   color: '#1c1917',
-  fontSize: '20px',
-  fontWeight: 700,
+  fontFamily,
+  fontSize: '22px',
+  fontWeight: 300,
   letterSpacing: '-0.02em',
-  margin: '0 0 24px',
+  margin: '0',
+}
+
+const body: React.CSSProperties = {
+  padding: '32px',
 }
 
 const footerText: React.CSSProperties = {
   color: '#a8a29e',
+  fontFamily,
   fontSize: '12px',
+  fontWeight: 300,
   lineHeight: '18px',
   margin: '0',
 }
@@ -66,16 +97,27 @@ const hr: React.CSSProperties = {
  * unsubscribe link (required for non-transactional mail — see EMAIL.md).
  */
 export function BaseLayout({ preview, children, unsubscribeUrl }: BaseLayoutProps) {
+  const base = fontBaseUrl()
   return (
     <Html>
-      <Head />
+      <Head>
+        <Font
+          fontFamily="NoirPro"
+          fallbackFontFamily={['Helvetica', 'sans-serif']}
+          webFont={{ url: `${base}/fonts/NoirPro-Light.otf`, format: 'opentype' }}
+          fontWeight={300}
+          fontStyle="normal"
+        />
+      </Head>
       <Preview>{preview}</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Text style={brand}>Fey</Text>
-          {children}
-          <Hr style={hr} />
-          <Section>
+          <Section style={brandBand}>
+            <Text style={brand}>Fey</Text>
+          </Section>
+          <Section style={body}>
+            {children}
+            <Hr style={hr} />
             <Text style={footerText}>
               Fey — your client workspace.
               {unsubscribeUrl ? (
@@ -100,7 +142,9 @@ export function BaseLayout({ preview, children, unsubscribeUrl }: BaseLayoutProp
 
 export const text: React.CSSProperties = {
   color: '#292524',
+  fontFamily,
   fontSize: '15px',
+  fontWeight: 300,
   lineHeight: '24px',
   margin: '0 0 16px',
 }
@@ -110,8 +154,9 @@ export const button: React.CSSProperties = {
   borderRadius: '8px',
   color: '#ffffff',
   display: 'inline-block',
+  fontFamily,
   fontSize: '14px',
-  fontWeight: 600,
+  fontWeight: 300,
   padding: '11px 20px',
   textDecoration: 'none',
 }
@@ -121,7 +166,9 @@ export const quote: React.CSSProperties = {
   borderLeft: '3px solid #d6d3d1',
   borderRadius: '4px',
   color: '#44403c',
+  fontFamily,
   fontSize: '14px',
+  fontWeight: 300,
   lineHeight: '22px',
   margin: '0 0 20px',
   padding: '12px 16px',

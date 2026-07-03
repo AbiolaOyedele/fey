@@ -10,6 +10,7 @@ import { useConfirm } from '@/contexts/ConfirmContext'
 import { PRIORITY_META, formatMinutes, parseEstimate } from './TaskBits'
 import { renderMentions, extractMentionedUserIds } from '@/utils/mentions'
 import MentionAwareEditor from '@/components/mentions/MentionAwareEditor'
+import ScribbleStrike from '@/components/ui/ScribbleStrike'
 import { apiFetch } from '@/lib/api-client'
 
 /** Fire-and-forget: records any @mentions in `text` and notifies the newly-mentioned. */
@@ -356,9 +357,9 @@ function SubtaskRow({
       ) : (
         <span
           onClick={() => setIsEditing(true)}
-          className={`flex-1 text-sm cursor-text ${subtask.done ? 'line-through text-gray-400' : 'text-gray-700'}`}
+          className={`flex-1 text-sm cursor-text ${subtask.done ? 'text-gray-400' : 'text-gray-700'}`}
         >
-          {renderMentions(subtask.title)}
+          <ScribbleStrike done={subtask.done}>{renderMentions(subtask.title)}</ScribbleStrike>
         </span>
       )}
       <button onClick={onDelete} className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400">

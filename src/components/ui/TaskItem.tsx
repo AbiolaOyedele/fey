@@ -10,6 +10,7 @@ import type { DraggableSyntheticListeners } from '@dnd-kit/core'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useConfirm } from '@/contexts/ConfirmContext'
 import TaskFileAttachment from '@/components/ui/TaskFileAttachment'
+import ScribbleStrike from '@/components/ui/ScribbleStrike'
 import { useTaskFiles } from '@/hooks/useTaskFiles'
 import type { Task } from '@/types'
 
@@ -231,10 +232,12 @@ export default function TaskItem({
             <span
               onClick={() => setEditing(true)}
               className={`block text-sm font-medium break-words whitespace-normal min-w-0 ${
-                task.done ? 'line-through text-gray-400' : 'text-gray-800'
+                task.done ? 'text-gray-400' : 'text-gray-800'
               }`}
             >
-              {renderWithLinks(task.title, task.done, () => setEditing(true)) ?? task.title}
+              <ScribbleStrike done={task.done}>
+                {renderWithLinks(task.title, task.done, () => setEditing(true)) ?? task.title}
+              </ScribbleStrike>
             </span>
           )}
           {task.deadline && (

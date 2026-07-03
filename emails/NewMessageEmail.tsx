@@ -1,5 +1,6 @@
 import { Button, Section, Text } from '@react-email/components'
-import { BaseLayout, button, quote, text } from './components/BaseLayout'
+import { BaseLayout, button, text } from './components/BaseLayout'
+import { NoticeCard } from './components/NoticeCard'
 
 export interface NewMessageEmailProps {
   workspaceName: string
@@ -29,11 +30,12 @@ export function NewMessageEmail({
       preview={`${senderName} posted in #${channelName} (${workspaceName})`}
       unsubscribeUrl={unsubscribeUrl}
     >
-      <Text style={text}>
-        <strong>{senderName}</strong> posted a new message in{' '}
-        <strong>#{channelName}</strong> · {workspaceName}:
-      </Text>
-      <Text style={quote}>{snippet}</Text>
+      <Text style={text}>New message in {workspaceName}:</Text>
+      <NoticeCard
+        variant="info"
+        title={`${senderName} in #${channelName}`}
+        description={snippet}
+      />
       <Section style={{ margin: '0 0 20px' }}>
         <Button style={button} href={channelUrl}>
           Open chat

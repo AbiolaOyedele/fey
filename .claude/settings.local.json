@@ -16,7 +16,8 @@
       "Bash(gh auth:*)",
       "Bash(npm run:*)",
       "Bash(git checkout:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Read(//Users/abiola/Claude/**)"
     ]
   }
 }

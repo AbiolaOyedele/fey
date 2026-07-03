@@ -1,5 +1,6 @@
 import { Button, Section, Text } from '@react-email/components'
-import { BaseLayout, text, quote } from './components/BaseLayout'
+import { BaseLayout, fontFamily, text } from './components/BaseLayout'
+import { NoticeCard } from './components/NoticeCard'
 
 export interface DigestTask {
   id: string
@@ -21,24 +22,12 @@ const ACCENT = '#ED64A6'
 
 const sectionHeader = {
   color: ACCENT,
+  fontFamily,
   fontSize: '12px',
-  fontWeight: 700,
+  fontWeight: 300,
   letterSpacing: '0.06em',
   textTransform: 'uppercase' as const,
   margin: '0 0 10px',
-}
-
-const taskRow = {
-  ...quote,
-  borderLeft: `3px solid ${ACCENT}`,
-  margin: '0 0 8px',
-}
-
-const doneTaskRow = {
-  ...quote,
-  borderLeft: '3px solid #d6d3d1',
-  color: '#78716c',
-  margin: '0 0 8px',
 }
 
 const button = {
@@ -46,15 +35,16 @@ const button = {
   borderRadius: '999px',
   color: '#ffffff',
   display: 'inline-block',
+  fontFamily,
   fontSize: '14px',
-  fontWeight: 600,
+  fontWeight: 300,
   padding: '11px 22px',
   textDecoration: 'none',
 }
 
-const workspaceLabel = {
-  color: '#a8a29e',
-  fontSize: '13px',
+function taskDescription(t: DigestTask): string {
+  const parts = [t.workspaceName ?? undefined, dueLabel(t.due_date).replace(/^ — /, '')].filter(Boolean)
+  return parts.join(' · ') || 'No due date'
 }
 
 function dueLabel(dueDate: string | null): string {
@@ -79,11 +69,12 @@ export function TaskDigestEmail({
         <Section style={{ margin: '0 0 20px' }}>
           <Text style={sectionHeader}>Due today &amp; overdue</Text>
           {dueOrOverdue.map((t) => (
-            <Text key={t.id} style={taskRow}>
-              {t.title}
-              {dueLabel(t.due_date)}
-              {t.workspaceName && <span style={workspaceLabel}> · {t.workspaceName}</span>}
-            </Text>
+            <NoticeCard
+              key={t.id}
+              variant="error"
+              title={t.title}
+              description={taskDescription(t)}
+            />
           ))}
         </Section>
       )}
@@ -92,11 +83,12 @@ export function TaskDigestEmail({
         <Section style={{ margin: '0 0 20px' }}>
           <Text style={sectionHeader}>Recently assigned to you</Text>
           {recentlyAssigned.map((t) => (
-            <Text key={t.id} style={taskRow}>
-              {t.title}
-              {dueLabel(t.due_date)}
-              {t.workspaceName && <span style={workspaceLabel}> · {t.workspaceName}</span>}
-            </Text>
+            <NoticeCard
+              key={t.id}
+              variant="info"
+              title={t.title}
+              description={taskDescription(t)}
+            />
           ))}
         </Section>
       )}
@@ -105,10 +97,12 @@ export function TaskDigestEmail({
         <Section style={{ margin: '0 0 20px' }}>
           <Text style={sectionHeader}>Completed yesterday</Text>
           {completedYesterday.map((t) => (
-            <Text key={t.id} style={doneTaskRow}>
-              ✓ {t.title}
-              {t.workspaceName && <span style={workspaceLabel}> · {t.workspaceName}</span>}
-            </Text>
+            <NoticeCard
+              key={t.id}
+              variant="success"
+              title={t.title}
+              description={taskDescription(t)}
+            />
           ))}
         </Section>
       )}

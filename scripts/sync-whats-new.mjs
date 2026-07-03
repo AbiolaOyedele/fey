@@ -54,7 +54,6 @@ await req('POST', '/whats_new', {
   version: latest.version,
   title: latest.title,
   features: latest.features,
-  images: [],
 });
 console.log(`✓ whats_new upserted`);
 console.log(`Done. v${latest.version} is live.`);

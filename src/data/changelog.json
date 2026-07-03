@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.15.0",
+    "date": "3 July 2026",
+    "title": "Scribble strike-through & refreshed emails",
+    "features": [
+      "Completed tasks, subtasks and checklist items now get a playful hand-drawn scribble strike-through animation"
+    ],
+    "improvements": [
+      "Notification emails redesigned with notice cards and the Fey brand font",
+      "Scribble animation respects your reduced-motion system preference"
+    ],
+    "fixes": []
+  },
+  {
     "version": "1.9.0",
     "date": "27 April 2026",
     "title": "Campaigns & File Workflow",
@@ -72,7 +85,9 @@
       "All modals and popups now always center on screen (fixed stacking context bug)",
       "Sidebar logo navigates to dashboard instead of full page reload"
     ],
-    "fixes": ["Share link RLS bypass — cached client info in shared_clients table"]
+    "fixes": [
+      "Share link RLS bypass — cached client info in shared_clients table"
+    ]
   },
   {
     "version": "1.6.1",
@@ -80,7 +95,9 @@
     "title": "Bug Fix",
     "features": [],
     "improvements": [],
-    "fixes": ["Syntax error fix in SettingsContext restoreFromTrash function"]
+    "fixes": [
+      "Syntax error fix in SettingsContext restoreFromTrash function"
+    ]
   },
   {
     "version": "1.6.0",
@@ -127,7 +144,9 @@
     "date": "April 2026",
     "title": "Currency Improvements",
     "features": [],
-    "improvements": ["Currency input decimal support and comma formatting"],
+    "improvements": [
+      "Currency input decimal support and comma formatting"
+    ],
     "fixes": []
   },
   {

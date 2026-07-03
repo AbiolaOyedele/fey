@@ -26,6 +26,13 @@ export const EMAIL_FROM = {
 } as const
 
 /**
+ * Default Reply-To for alert/notification mail that nobody monitors.
+ * Applied automatically in `sendEmail` unless a call site passes its own
+ * `replyTo` (e.g. feedback notifications reply to the submitter).
+ */
+export const NO_REPLY = `no-reply@${DOMAIN}`
+
+/**
  * Returns the public base URL (no trailing slash) used to build links inside
  * emails. Prefers an explicit NEXT_PUBLIC_APP_URL; otherwise derives from the
  * configured root domain; falls back to the production app host.

@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Resend } from 'resend'
 import { env } from '@/config/env'
-import { EMAIL_FROM, appUrl } from '@/config/email'
+import { EMAIL_FROM, NO_REPLY, appUrl } from '@/config/email'
 import { WorkspaceInviteEmail } from '../../emails/WorkspaceInviteEmail'
 import { InviteAcceptedEmail } from '../../emails/InviteAcceptedEmail'
 import { RoleChangedEmail } from '../../emails/RoleChangedEmail'
@@ -56,10 +56,10 @@ export async function sendEmail(params: SendEmailParams): Promise<SendResult> {
       from,
       to,
       subject,
+      replyTo: replyTo ?? NO_REPLY,
       ...(react ? { react } : {}),
       ...(html ? { html } : {}),
       ...(text ? { text } : {}),
-      ...(replyTo ? { replyTo } : {}),
     } as Parameters<typeof resend.emails.send>[0])
 
     if (error) {

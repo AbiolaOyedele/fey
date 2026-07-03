@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.15.2",
+    "date": "3 July 2026",
+    "title": "No-reply notification emails",
+    "features": [],
+    "improvements": [
+      "Alert and notification emails (welcome, invites, role changes, task digest, chat alerts) now reply to no-reply@theruff.agency instead of an inbox nobody monitors"
+    ],
+    "fixes": []
+  },
+  {
     "version": "1.15.1",
     "date": "3 July 2026",
     "title": "Revert scribble strike-through",

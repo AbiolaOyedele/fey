@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useSettings } from '@/contexts/SettingsContext'
 import { CheckCircle2, Circle, ChevronDown, ChevronUp, X } from 'lucide-react'
 import type { Client } from '@/types'
-import ScribbleStrike from '@/components/ui/ScribbleStrike'
 
 interface ChecklistStep {
   id: string
@@ -124,10 +123,10 @@ export default function GettingStartedChecklist({ clients = [] }: GettingStarted
                 )}
                 <span
                   className={`text-sm leading-snug ${
-                    done ? 'text-gray-400' : 'text-gray-700'
+                    done ? 'line-through text-gray-400' : 'text-gray-700'
                   }`}
                 >
-                  <ScribbleStrike done={done}>{step.label}</ScribbleStrike>
+                  {step.label}
                 </span>
                 {!done && isManual && (
                   <span className="ml-auto text-3xs text-gray-400 italic flex-shrink-0">

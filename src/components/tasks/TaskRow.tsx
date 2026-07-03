@@ -4,7 +4,6 @@ import { Check, Paperclip } from 'lucide-react'
 import type { Task } from '@/types/work-tasks'
 import { AssigneeAvatars, DueChip, PriorityFlag, formatMinutes } from './TaskBits'
 import { getFileType, isImageType, thumbUrl, type FileType } from '@/utils/cloudinary'
-import ScribbleStrike from '@/components/ui/ScribbleStrike'
 
 /** Up to 3 tiny image thumbnails + a count for the rest — quiet row-level hint
  *  that a task carries attachments. Clicking the row opens the drawer where the
@@ -50,8 +49,8 @@ export default function TaskRow({ task, onToggleDone, onOpen }: TaskRowProps) {
       </button>
 
       <button onClick={() => onOpen(task)} className="flex-1 min-w-0 text-left">
-        <p className={`text-sm truncate ${task.done ? 'text-gray-400' : 'text-gray-900'}`}>
-          <ScribbleStrike done={task.done} className="truncate">{task.title}</ScribbleStrike>
+        <p className={`text-sm truncate ${task.done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+          {task.title}
         </p>
         {task.subtasks.length > 0 && (
           <p className="text-2xs text-gray-400 mt-0.5">

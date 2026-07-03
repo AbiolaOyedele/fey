@@ -1,14 +1,11 @@
 [
   {
-    "version": "1.15.0",
+    "version": "1.15.1",
     "date": "3 July 2026",
-    "title": "Scribble strike-through & refreshed emails",
-    "features": [
-      "Completed tasks, subtasks and checklist items now get a playful hand-drawn scribble strike-through animation"
-    ],
+    "title": "Revert scribble strike-through",
+    "features": [],
     "improvements": [
-      "Notification emails redesigned with notice cards and the Fey brand font",
-      "Scribble animation respects your reduced-motion system preference"
+      "Reverted the hand-drawn scribble strike-through effect on completed tasks — back to the classic line-through"
     ],
     "fixes": []
   },

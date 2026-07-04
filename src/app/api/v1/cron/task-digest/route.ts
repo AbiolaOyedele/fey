@@ -10,8 +10,8 @@ export const maxDuration = 300
 /**
  * GET /api/v1/cron/task-digest
  *
- * Daily task-digest email sweep (wired via vercel.json crons, 7am UTC / 8am
- * WAT). For each user with the digest enabled (fey_settings.task_digest_enabled),
+ * Weekday task-digest email sweep (wired via vercel.json crons, 7am UTC / 8am
+ * WAT, Mon-Fri only). For each user with the digest enabled (fey_settings.task_digest_enabled),
  * sends a summary of due/overdue, recently assigned, and completed-yesterday
  * tasks — skipping anyone with nothing to report and anyone already sent today.
  *

@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.16.0",
+    "date": "5 July 2026",
+    "title": "Smarter notifications",
+    "features": [
+      "Toast notifications now stack smartly — extra alerts tuck neatly behind the newest one and fan out into a full list when you hover",
+      "Toasts can now show a secondary description line and appear in any screen corner",
+      "The sidebar notification bell can filter by category — Messages, Clients, or Tasks — with an icon on every alert"
+    ],
+    "improvements": [],
+    "fixes": []
+  },
+  {
     "version": "1.15.2",
     "date": "3 July 2026",
     "title": "No-reply notification emails",

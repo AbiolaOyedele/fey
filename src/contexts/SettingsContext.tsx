@@ -1,11 +1,11 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { CURRENCY_SYMBOLS } from '@/lib/constants'
 import { fontFaceSrc } from '@/utils/fontHelpers'
-import type { Settings, Toast, TrashItem, Client, RestoreResult } from '@/types'
+import type { Settings, Toast, ToastOptions, TrashItem, Client, RestoreResult } from '@/types'
 
 interface SettingsContextValue {
   settings: Settings
@@ -31,7 +31,7 @@ interface SettingsContextValue {
   restoreFromTrash: (trashItem: TrashItem, clients: Client[]) => Promise<RestoreResult>
   deleteForever: (trashId: string) => Promise<void>
   toasts: Toast[]
-  showToast: (message: string, action?: { label: string; onClick: () => void }) => number
+  showToast: (message: string, options?: ToastOptions) => number
   dismissToast: (id: number) => void
 }
 
@@ -225,6 +225,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [hasFeySettings, setHasFeySettings] = useState(false)
   const [trash, setTrash] = useState<TrashItem[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
+  const toastSeq = useRef(0)
 
   // Single source of truth for auth. SettingsProvider sits inside AuthProvider,
   // so we consume the already-resolved session instead of calling getSession()
@@ -395,9 +396,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     return `${symbol}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }, [settings.currency])
 
-  const showToast = useCallback((message: string, action?: { label: string; onClick: () => void }): number => {
-    const id = Date.now()
-    setToasts((prev) => [...prev, { id, message, action }])
+  const showToast = useCallback((message: string, options?: ToastOptions): number => {
+    // Unique, monotonic id even when several toasts fire within the same ms.
+    toastSeq.current += 1
+    const id = Date.now() * 1000 + (toastSeq.current % 1000)
+    const position = options?.position ?? 'bottom-right'
+    setToasts((prev) => [
+      ...prev,
+      { id, message, description: options?.description, position, action: options?.action },
+    ])
     setTimeout(() => { setToasts((prev) => prev.filter((t) => t.id !== id)) }, 5000)
     return id
   }, [])

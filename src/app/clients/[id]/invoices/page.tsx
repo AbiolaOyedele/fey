@@ -119,7 +119,7 @@ export default function InvoicesTab({ params }: { params: Promise<{ id: string }
         .single()
 
       if (error !== null || data === null) {
-        showToast(error?.message ?? 'Failed to create invoice', false)
+        showToast(error?.message ?? 'Failed to create invoice')
         return
       }
 

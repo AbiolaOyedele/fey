@@ -199,9 +199,25 @@ export interface Settings {
   fey_sort_mode: string
 }
 
+export type ToastPosition =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right'
+
+export interface ToastOptions {
+  description?: string
+  position?: ToastPosition
+  action?: { label: string; onClick: () => void }
+}
+
 export interface Toast {
   id: number
   message: string
+  description?: string | undefined
+  position: ToastPosition
   action?: { label: string; onClick: () => void } | undefined
 }
 

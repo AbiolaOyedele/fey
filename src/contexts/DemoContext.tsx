@@ -7,11 +7,11 @@
  * Also exposes DemoDataContext so pages can read client / task-group data
  * from the same useDemoData instance that powers the SettingsContext trash helpers.
  */
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { useDemoData, type UseDemoDataReturn } from '@/hooks/useDemoData'
 import { SettingsContext } from '@/contexts/SettingsContext'
 import { DEMO_SETTINGS } from '@/data/demoData'
-import type { Settings, Toast } from '@/types'
+import type { Settings, Toast, ToastOptions } from '@/types'
 
 // ── DemoDataContext ────────────────────────────────────────────────────────────
 
@@ -26,6 +26,7 @@ export function useDemoDataCtx(): UseDemoDataReturn | null {
 export function DemoProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>({ ...DEMO_SETTINGS })
   const [toasts,   setToasts]   = useState<Toast[]>([])
+  const toastSeq = useRef(0)
 
   const demoData = useDemoData()
 
@@ -122,9 +123,19 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
 
   // ── Toast system ──────────────────────────────────────────────────────────
 
-  const showToast = useCallback((message: string, action?: { label: string; onClick: () => void }): number => {
-    const id = Date.now()
-    setToasts((prev) => [...prev, { id, message, action }])
+  const showToast = useCallback((message: string, options?: ToastOptions): number => {
+    toastSeq.current += 1
+    const id = Date.now() * 1000 + (toastSeq.current % 1000)
+    setToasts((prev) => [
+      ...prev,
+      {
+        id,
+        message,
+        description: options?.description,
+        position: options?.position ?? 'bottom-right',
+        action: options?.action,
+      },
+    ])
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000)
     return id
   }, [])

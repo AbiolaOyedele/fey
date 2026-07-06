@@ -6,7 +6,6 @@ import type { Task, TaskPriority, Subtask, UpdateTaskPayload, WorkflowStage } fr
 import type { MentionEntityType } from '@/types/mention'
 import AssigneePicker from './AssigneePicker'
 import TaskAttachments from './TaskAttachments'
-import TaskComments from './TaskComments'
 import { useConfirm } from '@/contexts/ConfirmContext'
 import { PRIORITY_META, formatMinutes, parseEstimate } from './TaskBits'
 import { renderMentions, extractMentionedUserIds } from '@/utils/mentions'
@@ -296,9 +295,6 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
               />
             </div>
           </div>
-
-          {/* Comments */}
-          <TaskComments taskId={task.id} workspaceId={workspaceId} taskLink={taskLink} taskTitle={task.title} />
 
           {/* Delete */}
           <div className="pt-2 border-t border-gray-100">

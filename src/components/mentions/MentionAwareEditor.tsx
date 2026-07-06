@@ -79,7 +79,9 @@ const MentionAwareEditor = forwardRef<MentionAwareEditorHandle, MentionAwareEdit
       el.focus()
       document.execCommand('insertText', false, text)
     },
-  }))
+  }), []) // stable handle (closes over the elRef object, not its value) — without this,
+  // a new object every render makes a callback ref (e.g. `ref={setState}`) fire on
+  // every render, which re-renders forever (React error #185, "Maximum update depth").
 
   const handleInput = useCallback(() => {
     const el = elRef.current

@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
 
     // 7. Send to eligible recipients.
     const base = appUrl()
-    const channelUrl = `${base}/playground`
+    const channelUrl = `${base}/chats`
     const snippet =
       body.length > SNIPPET_MAX ? `${body.slice(0, SNIPPET_MAX).trimEnd()}…` : body
 

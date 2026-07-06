@@ -38,6 +38,15 @@ export interface Subtask {
   sort_order: number
 }
 
+export interface TaskComment {
+  id: string
+  task_id: string
+  author_id: string
+  body: string
+  created_at: string
+  edited_at: string | null
+}
+
 /** A Cloudinary-backed file attached to a task (metadata row; binary lives in Cloudinary). */
 export interface TaskFileRow {
   id: string

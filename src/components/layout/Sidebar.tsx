@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, CreditCard, Settings,
   ListTodo, FileText, Sparkles, ChevronsLeft, ChevronsRight,
   MessagesSquare, UsersRound, ShieldCheck, FolderKanban, Bell,
-  MoreHorizontal, X,
+  MoreHorizontal, X, Shapes,
 } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
@@ -141,7 +141,8 @@ export default function Sidebar() {
   const moreItems: { href: string; label: string; icon: React.ReactNode; badge?: number }[] = [
     { href: '/payments', label: 'Payments', icon: <CreditCard size={18} /> },
     { href: '/invoices', label: 'Invoices', icon: <FileText size={18} /> },
-    { href: '/playground', label: 'Internal Chats', icon: <MessagesSquare size={18} /> },
+    { href: '/chats', label: 'Internal Chats', icon: <MessagesSquare size={18} /> },
+    { href: '/playground', label: 'Playground', icon: <Shapes size={18} /> },
     { href: '/team', label: 'Team', icon: <UsersRound size={18} /> },
     { href: '/notifications', label: 'Notifications', icon: <Bell size={18} />, badge: unreadCount },
     { href: '/fey', label: 'Fey', icon: <Sparkles size={18} /> },
@@ -214,7 +215,8 @@ export default function Sidebar() {
           <NavItem href="/projects" label="Projects" accent={accent} expanded={showExpanded} icon={<FolderKanban size={20} />} />
           <NavItem href="/payments" label="Payments" accent={accent} expanded={showExpanded} icon={<CreditCard size={20} />} />
           <NavItem href="/invoices" label="Invoices" accent={accent} expanded={showExpanded} icon={<FileText size={20} />} />
-          <NavItem href="/playground" label="Internal Chats" accent={accent} expanded={showExpanded} icon={<MessagesSquare size={20} />} />
+          <NavItem href="/chats" label="Internal Chats" accent={accent} expanded={showExpanded} icon={<MessagesSquare size={20} />} />
+          <NavItem href="/playground" label="Playground" accent={accent} expanded={showExpanded} icon={<Shapes size={20} />} />
           <NavItem href="/team" label="Team" accent={accent} expanded={showExpanded} icon={<UsersRound size={20} />} />
           <NavItem href="/fey" label="Fey" accent={accent} expanded={showExpanded} subtle icon={<Sparkles size={20} />} />
         </nav>

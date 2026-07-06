@@ -193,7 +193,7 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
       </div>
 
       {/* Team activity */}
-      <WorkCard title="Team activity" icon={<Hash size={14} className="text-gray-400" />} href="/playground" accent={accent}>
+      <WorkCard title="Team activity" icon={<Hash size={14} className="text-gray-400" />} href="/chats" accent={accent}>
         {teamLoading ? (
           <SkeletonRows />
         ) : teamMessages.length === 0 ? (
@@ -202,7 +202,7 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
           teamMessages.map((m, i, arr) => (
             <Link
               key={m.id}
-              href="/playground"
+              href="/chats"
               className="flex items-start gap-3 py-3 -mx-2 px-2 rounded-xl hover:bg-gray-50 transition-colors"
               style={{ borderBottom: i < arr.length - 1 ? '1px solid #F9FAFB' : 'none' }}
             >

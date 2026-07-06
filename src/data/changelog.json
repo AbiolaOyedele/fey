@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.17.0",
+    "date": "6 July 2026",
+    "title": "Task comments & Playground",
+    "features": [
+      "Comment on any task and @mention teammates to tag and notify them",
+      "Board view now has a Completed column — drag a card into it to mark the task done",
+      "New Playground hub with Social Corner — plan content calendars per brand, schedule posts, and turn them into tasks"
+    ],
+    "improvements": [
+      "Internal Chats moved from /playground to its own /chats page (old links and notifications still work)"
+    ],
+    "fixes": []
+  },
+  {
     "version": "1.16.0",
     "date": "5 July 2026",
     "title": "Smarter notifications",

@@ -6,7 +6,7 @@ import { recordMentions } from '@/services/mentions.service'
 
 const bodySchema = z.object({
   workspaceId: z.string().uuid().nullable(),
-  entityType: z.enum(['task_description', 'subtask', 'internal_message', 'crm_message']),
+  entityType: z.enum(['task_description', 'subtask', 'internal_message', 'crm_message', 'task_comment']),
   entityId: z.string().uuid(),
   link: z.string().min(1).max(500).nullable(),
   contextLabel: z.string().transform((v) => v.slice(0, 300)),

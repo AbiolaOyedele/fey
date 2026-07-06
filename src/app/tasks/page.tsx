@@ -160,7 +160,7 @@ export default function TasksPage() {
           <button onClick={() => void source.refetch()} className="text-sm font-semibold" style={{ color: 'var(--accent, #ED64A6)' }}>Try again</button>
         </div>
       ) : view === 'board' ? (
-        <TaskBoardView tasks={filtered} stages={defaultStages} onMoveStage={active.moveToStage} onOpen={setSelected} />
+        <TaskBoardView tasks={filtered} stages={defaultStages} onMoveStage={active.moveToStage} onComplete={active.toggleDone} onOpen={setSelected} />
       ) : view === 'table' ? (
         <TaskTableView tasks={filtered} onToggleDone={source.toggleDone} onOpen={setSelected} />
       ) : (

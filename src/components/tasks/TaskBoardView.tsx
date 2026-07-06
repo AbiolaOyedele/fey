@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { Check } from 'lucide-react'
 import { DndContext, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
 import type { Task, WorkflowStage } from '@/types/work-tasks'
@@ -10,12 +11,15 @@ interface TaskBoardViewProps {
   tasks: Task[]
   stages: WorkflowStage[]
   onMoveStage: (taskId: string, stageId: string) => void
+  /** Dropping a card into the trailing "Completed" column marks the task done. */
+  onComplete: (taskId: string) => void
   onOpen: (task: Task) => void
 }
 
 const UNASSIGNED = '__none__'
+const COMPLETED = '__done__'
 
-export default function TaskBoardView({ tasks, stages, onMoveStage, onOpen }: TaskBoardViewProps) {
+export default function TaskBoardView({ tasks, stages, onMoveStage, onComplete, onOpen }: TaskBoardViewProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
   const columns = useMemo(() => {
@@ -29,6 +33,10 @@ export default function TaskBoardView({ tasks, stages, onMoveStage, onOpen }: Ta
     const cols = stages.map((s) => ({ id: s.id, name: s.name, color: s.color, tasks: byStage.get(s.id) ?? [] }))
     const orphans = byStage.get(UNASSIGNED) ?? []
     if (orphans.length) cols.unshift({ id: UNASSIGNED, name: 'Unscheduled', color: '#CBD5E1', tasks: orphans })
+    // Always-present trailing drop target — completed tasks leave the active
+    // list (see useTasks.toggleDone), so this column is intentionally never
+    // populated; it exists purely to catch drags.
+    cols.push({ id: COMPLETED, name: 'Completed', color: '#22C55E', tasks: [] })
     return cols
   }, [tasks, stages])
 
@@ -37,7 +45,9 @@ export default function TaskBoardView({ tasks, stages, onMoveStage, onOpen }: Ta
     const target = e.over ? String(e.over.id) : null
     if (!target || target === UNASSIGNED) return
     const task = tasks.find((t) => t.id === taskId)
-    if (task && task.stage_id !== target) onMoveStage(taskId, target)
+    if (!task) return
+    if (target === COMPLETED) { onComplete(taskId); return }
+    if (task.stage_id !== target) onMoveStage(taskId, target)
   }
 
   if (stages.length === 0) {
@@ -47,9 +57,33 @@ export default function TaskBoardView({ tasks, stages, onMoveStage, onOpen }: Ta
   return (
     <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={onDragEnd}>
       <div className="flex gap-3 overflow-x-auto pb-4">
-        {columns.map((col) => <Column key={col.id} col={col} onOpen={onOpen} />)}
+        {columns.map((col) => (
+          col.id === COMPLETED
+            ? <CompletedColumn key={col.id} col={col} />
+            : <Column key={col.id} col={col} onOpen={onOpen} />
+        ))}
       </div>
     </DndContext>
+  )
+}
+
+function CompletedColumn({ col }: { col: { id: string; name: string; color: string; tasks: Task[] } }) {
+  const { setNodeRef, isOver } = useDroppable({ id: col.id })
+  return (
+    <div className="w-72 flex-shrink-0">
+      <div className="flex items-center gap-2 px-1 mb-2">
+        <Check size={13} style={{ color: col.color }} />
+        <span className="text-sm font-semibold text-gray-700">{col.name}</span>
+      </div>
+      <div
+        ref={setNodeRef}
+        className={`min-h-[120px] rounded-2xl p-2 border-2 border-dashed transition-colors flex items-center justify-center ${
+          isOver ? 'bg-green-50 border-green-300' : 'border-gray-200'
+        }`}
+      >
+        <p className="text-xs2 text-gray-400 text-center px-2">Drop a task here to mark it complete</p>
+      </div>
+    </div>
   )
 }
 

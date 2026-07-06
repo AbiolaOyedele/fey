@@ -1,404 +1,74 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { Hash, Send, MessagesSquare, Plus, Paperclip, X, Loader2, Pencil, Trash2 } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useEffect } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Shapes, Megaphone, CalendarDays, ArrowRight, Lock } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
-import { useWorkspace } from '@/hooks/useWorkspace'
-import { useTeam } from '@/hooks/useTeam'
-import { useInternalChat } from '@/hooks/useInternalChat'
-import { useConfirm } from '@/contexts/ConfirmContext'
-import MentionAwareEditor, { type MentionAwareEditorHandle } from '@/components/mentions/MentionAwareEditor'
-import { renderMentions } from '@/utils/mentions'
-import AttachmentPreview from '@/components/crm/AttachmentPreview'
-import EmojiPicker from '@/components/crm/EmojiPicker'
-import { uploadToCloudinary, formatFileSize } from '@/utils/cloudinary'
-import type { MessageAttachment } from '@/types/crm'
 
-const MAX_FILE_BYTES = 25 * 1024 * 1024
-const LONG_PRESS_MS = 450
-
-function initials(name: string): string {
-  return name.trim().charAt(0).toUpperCase() || '?'
-}
-
-function timeLabel(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-}
-
-interface MenuState { messageId: string; x: number; y: number }
-
-/** Right-click (desktop) / long-press (mobile) menu for editing or deleting your own message. */
-function MessageMenu({ state, onEdit, onDelete, onClose }: {
-  state: MenuState
-  onEdit: () => void
-  onDelete: () => void
-  onClose: () => void
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose() }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [onClose])
-
-  // Clamp so the menu never renders off-screen.
-  const left = Math.min(state.x, window.innerWidth - 160)
-  const top = Math.min(state.y, window.innerHeight - 100)
-
-  return (
-    <div
-      ref={ref}
-      style={{ left, top }}
-      className="fixed z-50 w-40 bg-white rounded-xl shadow-xl border border-gray-100 py-1"
-    >
-      <button
-        onClick={onEdit}
-        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
-      >
-        <Pencil size={13} /> Edit
-      </button>
-      <button
-        onClick={onDelete}
-        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 text-left"
-      >
-        <Trash2 size={13} /> Delete
-      </button>
-    </div>
-  )
-}
-
+/**
+ * Playground — a hub of experimental mini-apps. Each corner opens a focused
+ * interface of its own. Social Corner is the first; more will join it.
+ */
 export default function PlaygroundPage() {
-  const { user } = useAuth()
   const { settings } = useSettings()
-  const accent = settings.accent_color ?? '#ED64A6'
-
-  const { workspace, loading: wsLoading } = useWorkspace()
-  const { members } = useTeam(workspace?.id ?? null)
-  const {
-    channels, activeChannelId, setActiveChannel,
-    messages, loadingMessages, sending, send, editMessage, deleteMessage, createChannel,
-  } = useInternalChat(workspace?.id ?? null)
-  const confirm = useConfirm()
-
+  const accent = settings.accent_color || '#ED64A6'
+  const router = useRouter()
   const searchParams = useSearchParams()
-  const deepLinkChannel = searchParams.get('channel')
-  const deepLinkMessage = searchParams.get('message')
-  const [highlightId, setHighlightId] = useState<string | null>(null)
-  const consumedDeepLinkChannel = useRef<string | null>(null)
 
-  const [attachments, setAttachments] = useState<MessageAttachment[]>([])
-  const [uploading, setUploading] = useState(0)
-  const [newChannelOpen, setNewChannelOpen] = useState(false)
-  const [newChannelName, setNewChannelName] = useState('')
-  const [menuState, setMenuState] = useState<MenuState | null>(null)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [composerEmpty, setComposerEmpty] = useState(true)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const composerRef = useRef<MentionAwareEditorHandle>(null)
-  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const longPressMoved = useRef(false)
-
-  const openMenu = useCallback((messageId: string, x: number, y: number) => {
-    setMenuState({ messageId, x, y })
-  }, [])
-
-  const handleTouchStart = useCallback((messageId: string, isMine: boolean) => (e: React.TouchEvent) => {
-    if (!isMine) return
-    longPressMoved.current = false
-    const touch = e.touches[0]
-    longPressTimer.current = setTimeout(() => {
-      if (!longPressMoved.current) openMenu(messageId, touch.clientX, touch.clientY)
-    }, LONG_PRESS_MS)
-  }, [openMenu])
-
-  const handleTouchMove = useCallback(() => {
-    longPressMoved.current = true
-    if (longPressTimer.current) clearTimeout(longPressTimer.current)
-  }, [])
-
-  const handleTouchEnd = useCallback(() => {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current)
-  }, [])
-
-  const nameById = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const mem of members) m.set(mem.user_id, mem.name ?? mem.email ?? 'Teammate')
-    return m
-  }, [members])
-
-  // Deep-link support: ?channel=&message= (e.g. from a mention notification)
-  // switches channel once, then scroll-to + briefly highlights the message.
+  // Legacy deep links: Internal Chats used to live at /playground. Mention
+  // notifications stored links like /playground?channel=...&message=... —
+  // forward them to the chat page so old notifications keep working.
   useEffect(() => {
-    if (!deepLinkChannel || deepLinkChannel === consumedDeepLinkChannel.current) return
-    if (channels.some((c) => c.id === deepLinkChannel)) {
-      setActiveChannel(deepLinkChannel)
-      consumedDeepLinkChannel.current = deepLinkChannel
-    }
-  }, [deepLinkChannel, channels, setActiveChannel])
-
-  useEffect(() => {
-    if (!deepLinkMessage || loadingMessages) return
-    const el = messageRefs.current.get(deepLinkMessage)
-    if (!el) return
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    setHighlightId(deepLinkMessage)
-    const t = setTimeout(() => setHighlightId(null), 2000)
-    return () => clearTimeout(t)
-  }, [deepLinkMessage, loadingMessages, messages])
-
-  useEffect(() => {
-    if (deepLinkMessage) return // deep-link scroll takes priority over autoscroll
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages, deepLinkMessage])
-
-  const handleFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return
-    for (const file of Array.from(files)) {
-      if (file.size > MAX_FILE_BYTES) continue
-      setUploading((n) => n + 1)
-      try {
-        const { url, size } = await uploadToCloudinary(file, 'internal').promise
-        setAttachments((prev) => [...prev, { file_name: file.name, file_url: url, file_type: file.type || 'application/octet-stream', file_size: size }])
-      } catch { /* skip failed upload */ }
-      finally { setUploading((n) => n - 1) }
-    }
-    if (fileRef.current) fileRef.current.value = ''
-  }
-
-  const handleSend = async (body: string) => {
-    if ((!body.trim() && attachments.length === 0) || uploading > 0) return
-    const atts = attachments
-    composerRef.current?.clear()
-    setComposerEmpty(true)
-    setAttachments([])
-    await send(body, atts)
-    composerRef.current?.focus()
-  }
-
-  const handleCreateChannel = async () => {
-    const name = newChannelName.trim()
-    if (!name) return
-    await createChannel(name)
-    setNewChannelName('')
-    setNewChannelOpen(false)
-  }
-
-  const activeChannel = channels.find((c) => c.id === activeChannelId)
+    const channel = searchParams.get('channel')
+    if (!channel) return
+    const message = searchParams.get('message')
+    router.replace(`/chats?channel=${channel}${message ? `&message=${message}` : ''}`)
+  }, [searchParams, router])
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-4rem)] lg:h-screen p-4 md:p-6 lg:p-8 page-enter">
-      {/* Header */}
+    <div className="p-4 md:p-6 lg:p-8 page-enter">
       <div className="flex items-center gap-2 mb-1">
-        <MessagesSquare size={18} style={{ color: accent }} />
-        <h1 className="font-display text-xl font-normal text-gray-800">Internal Chats</h1>
-        <span className="text-2xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Playground</span>
+        <Shapes size={18} style={{ color: accent }} />
+        <h1 className="font-display text-xl font-normal text-gray-800">Playground</h1>
       </div>
-      <p className="text-xs text-gray-400 mb-4">A private space for your team — clients never see this.</p>
+      <p className="text-xs text-gray-400 mb-6">Mini-apps for the work around the work. Pick a corner.</p>
 
-      <div className="flex-1 min-h-0 bg-white rounded-2xl border border-gray-100 shadow-sm flex overflow-hidden">
-        {/* Channels rail */}
-        <div className="w-44 border-r border-gray-100 p-3 hidden sm:flex flex-col gap-1 flex-shrink-0">
-          <div className="flex items-center justify-between px-2 mb-1">
-            <p className="text-2xs font-semibold text-gray-400 uppercase tracking-wide">Channels</p>
-            <button
-              onClick={() => { setNewChannelOpen((v) => !v); setTimeout(() => {}, 0) }}
-              title="New channel"
-              className="text-gray-400 hover:text-gray-700 transition-colors"
-            >
-              <Plus size={14} />
-            </button>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-w-4xl">
+        {/* Social Corner */}
+        <Link
+          href="/playground/social"
+          className="group relative bg-white rounded-2xl border border-gray-100 shadow-sm p-5 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+        >
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
+            style={{ backgroundColor: `${accent}15`, color: accent }}
+          >
+            <Megaphone size={20} />
           </div>
-          {channels.map((c) => {
-            const isActive = c.id === activeChannelId
-            return (
-              <button
-                key={c.id}
-                onClick={() => setActiveChannel(c.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm transition-colors text-left ${
-                  isActive ? '' : 'text-gray-500 hover:bg-gray-50'
-                }`}
-                style={isActive ? { backgroundColor: `${accent}15`, color: accent } : {}}
-              >
-                <Hash size={13} className="flex-shrink-0" />
-                <span className="truncate">{c.name}</span>
-              </button>
-            )
-          })}
+          <h2 className="text-sm font-semibold text-gray-800 mb-1">Social Corner</h2>
+          <p className="text-xs text-gray-400 leading-relaxed mb-4">
+            Plan content calendars per brand — schedule posts, review, approve, and turn them into tasks.
+          </p>
+          <span
+            className="inline-flex items-center gap-1 text-xs font-medium transition-transform duration-200 group-hover:translate-x-0.5"
+            style={{ color: accent }}
+          >
+            Open <ArrowRight size={13} />
+          </span>
+          <CalendarDays
+            size={96}
+            className="absolute -bottom-5 -right-5 text-gray-50 group-hover:text-gray-100 transition-colors pointer-events-none"
+          />
+        </Link>
 
-          {newChannelOpen && (
-            <div className="mt-1 flex items-center gap-1 px-1.5 py-1 rounded-lg border border-gray-200">
-              <Hash size={12} className="text-gray-300 flex-shrink-0" />
-              <input
-                autoFocus
-                value={newChannelName}
-                onChange={(e) => setNewChannelName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') void handleCreateChannel(); if (e.key === 'Escape') setNewChannelOpen(false) }}
-                placeholder="new-channel"
-                className="flex-1 min-w-0 text-xs bg-transparent outline-none text-gray-700 placeholder-gray-300"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Conversation */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-1.5 flex-shrink-0">
-            <Hash size={15} className="text-gray-400" />
-            <span className="font-semibold text-gray-800 text-sm">{activeChannel?.name ?? 'general'}</span>
+        {/* Coming soon */}
+        <div className="rounded-2xl border border-dashed border-gray-200 p-5 flex flex-col items-start justify-center min-h-[176px]">
+          <div className="w-11 h-11 rounded-xl bg-gray-50 text-gray-300 flex items-center justify-center mb-4">
+            <Lock size={18} />
           </div>
-
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-            {wsLoading || loadingMessages ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 animate-pulse flex-shrink-0" />
-                  <div className="flex-1 space-y-1.5">
-                    <div className="h-3 w-24 bg-gray-100 rounded animate-pulse" />
-                    <div className="h-3 w-48 bg-gray-100 rounded animate-pulse" />
-                  </div>
-                </div>
-              ))
-            ) : messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center">
-                <MessagesSquare size={32} className="text-gray-200 mb-3" />
-                <p className="text-sm font-medium text-gray-500">No messages yet</p>
-                <p className="text-xs text-gray-400 mt-1">Say hello to your team 👋</p>
-              </div>
-            ) : (
-              messages.map((m) => {
-                const isMine = m.sender_id === user?.id
-                const senderName = isMine ? 'You' : (nameById.get(m.sender_id) ?? 'Teammate')
-                const atts = m.attachments ?? []
-                const isEditing = editingId === m.id
-                return (
-                  <div
-                    key={m.id}
-                    ref={(el) => { if (el) messageRefs.current.set(m.id, el); else messageRefs.current.delete(m.id) }}
-                    onContextMenu={(e) => { if (isMine) { e.preventDefault(); openMenu(m.id, e.clientX, e.clientY) } }}
-                    onTouchStart={handleTouchStart(m.id, isMine)}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                    className={`flex gap-3 rounded-xl transition-colors duration-500 ${isMine ? 'flex-row-reverse' : ''} ${highlightId === m.id ? 'bg-amber-50' : ''}`}
-                  >
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white flex-shrink-0"
-                      style={{ backgroundColor: isMine ? accent : '#9CA3AF' }}
-                    >
-                      {initials(senderName === 'You' ? (members.find((mem) => mem.user_id === user?.id)?.name ?? 'Y') : senderName)}
-                    </div>
-                    <div className={`max-w-[75%] flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-xs font-semibold text-gray-700">{senderName}</span>
-                        <span className="text-3xs text-gray-400">
-                          {timeLabel(m.created_at)}{m.edited_at && ' · edited'}
-                        </span>
-                      </div>
-                      {isEditing ? (
-                        <div className="w-64 bg-white rounded-2xl border border-gray-200 shadow-sm px-3 py-2">
-                          <MentionAwareEditor
-                            initialValue={m.body}
-                            workspaceId={workspace?.id ?? null}
-                            autoFocus
-                            className="text-sm text-gray-800"
-                            onCommit={(value) => {
-                              setEditingId(null)
-                              if (value.trim() && value !== m.body) void editMessage(m.id, value)
-                            }}
-                            onEscape={() => setEditingId(null)}
-                          />
-                          <p className="text-3xs text-gray-400 mt-1">Enter to save · Esc to cancel</p>
-                        </div>
-                      ) : m.body.trim() ? (
-                        <div
-                          className={`px-3 py-2 text-sm break-words ${isMine ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm'}`}
-                          style={isMine ? { backgroundColor: accent, color: '#fff' } : { backgroundColor: '#F3F4F6', color: '#1F2937' }}
-                        >
-                          {renderMentions(m.body)}
-                        </div>
-                      ) : null}
-                      {atts.length > 0 && <AttachmentPreview attachments={atts} />}
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
-
-          {menuState && (
-            <MessageMenu
-              state={menuState}
-              onEdit={() => { setEditingId(menuState.messageId); setMenuState(null) }}
-              onDelete={() => {
-                const id = menuState.messageId
-                setMenuState(null)
-                void confirm({
-                  title: 'Delete this message?',
-                  message: 'This can’t be undone.',
-                  confirmLabel: 'Delete',
-                }).then((ok) => { if (ok) void deleteMessage(id) })
-              }}
-              onClose={() => setMenuState(null)}
-            />
-          )}
-
-          {/* Composer */}
-          <div className="border-t border-gray-100 p-3 flex-shrink-0">
-            {(attachments.length > 0 || uploading > 0) && (
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {attachments.map((att, i) => (
-                  <span key={i} className="inline-flex items-center gap-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg pl-2 pr-1 py-1">
-                    <Paperclip size={11} className="text-gray-400" />
-                    <span className="max-w-[140px] truncate">{att.file_name}</span>
-                    <span className="text-gray-400">{formatFileSize(att.file_size)}</span>
-                    <button onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))} className="w-4 h-4 rounded flex items-center justify-center hover:bg-gray-200 text-gray-400">
-                      <X size={11} />
-                    </button>
-                  </span>
-                ))}
-                {uploading > 0 && (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-gray-400 px-2 py-1">
-                    <Loader2 size={11} className="animate-spin" /> Uploading…
-                  </span>
-                )}
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={!workspace}
-                title="Attach file"
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors flex-shrink-0 disabled:opacity-40"
-              >
-                <Paperclip size={16} />
-              </button>
-              <EmojiPicker onPick={(e) => composerRef.current?.insertText(e)} className="w-9 h-9 flex-shrink-0" />
-              <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => void handleFiles(e.target.files)} />
-              <div className="flex-1 min-w-0">
-                <MentionAwareEditor
-                  ref={composerRef}
-                  initialValue=""
-                  workspaceId={workspace?.id ?? null}
-                  placeholder={`Message #${activeChannel?.name ?? 'general'}`}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 focus:border-gray-400 focus:bg-white transition-colors"
-                  onEmptyChange={setComposerEmpty}
-                  onCommit={(value) => void handleSend(value)}
-                />
-              </div>
-              <button
-                onClick={() => void handleSend(composerRef.current?.getValue() ?? '')}
-                disabled={(composerEmpty && attachments.length === 0) || sending || uploading > 0 || !workspace}
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-white transition-opacity disabled:opacity-40 hover:opacity-90 flex-shrink-0"
-                style={{ backgroundColor: accent }}
-              >
-                <Send size={16} />
-              </button>
-            </div>
-          </div>
+          <h2 className="text-sm font-semibold text-gray-400 mb-1">More corners coming</h2>
+          <p className="text-xs text-gray-300 leading-relaxed">New mini-apps will land here as they’re built.</p>
         </div>
       </div>
     </div>

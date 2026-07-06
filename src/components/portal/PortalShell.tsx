@@ -9,6 +9,7 @@ import PortalWorkspaceTabs, { PORTAL_SECTIONS } from './PortalWorkspaceTabs'
 import PortalFeedbackButton from './PortalFeedbackButton'
 import UpdateBanner from '@/components/ui/UpdateBanner'
 import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
+import { useChunkErrorReload } from '@/hooks/useChunkErrorReload'
 import { usePortalBase } from '@/hooks/usePortalBase'
 import type { PortalOwnerBranding } from '@/types/crm'
 
@@ -31,6 +32,7 @@ export default function PortalShell({ subdomain, branding, clientName, children 
   const base   = usePortalBase(subdomain)   // for link hrefs (/client or /portal/<slug>)
   const accent = branding.accent_color || '#ED64A6'
   const updateAvailable = useUpdatePrompt()
+  useChunkErrorReload()
 
   // Active-state is derived from the section, stripping whichever base form the
   // pathname has (/portal/<slug>/X or /client/X) — robust to the proxy rewrite.

@@ -13,6 +13,7 @@ import AppNudges from '@/components/pwa/AppNudges'
 import ToastContainer from '@/components/ui/Toast'
 import UpdateBanner from '@/components/ui/UpdateBanner'
 import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
+import { useChunkErrorReload } from '@/hooks/useChunkErrorReload'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import PullToRefreshIndicator from '@/components/ui/PullToRefreshIndicator'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -31,6 +32,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { settings, settingsLoading } = useSettings()
   const { workspace, memberships, loading: workspaceLoading } = useWorkspace()
   const updateAvailable = useUpdatePrompt()
+  useChunkErrorReload()
   const { pullDistance, refreshing } = usePullToRefresh(reloadPage)
 
   // A teammate who signed up via an invite link has a stashed token. Route them

@@ -5,7 +5,7 @@ import { useTrash, type TrashKind } from '@/hooks/useTrash'
 import { useConfirm } from '@/contexts/ConfirmContext'
 
 const KIND_META: Record<TrashKind, { label: string; icon: typeof FolderKanban }> = {
-  project: { label: 'Project', icon: FolderKanban },
+  project: { label: 'Brand', icon: FolderKanban },
   task:    { label: 'Task',    icon: CheckSquare },
   client:  { label: 'Client',  icon: Users },
 }

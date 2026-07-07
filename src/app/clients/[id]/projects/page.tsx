@@ -38,7 +38,7 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
   const visible = projects.filter((p) => !p.archived_at)
 
   const submit = useCallback(async () => {
-    if (title.trim().length < 2) { setError('Give the project a name.'); return }
+    if (title.trim().length < 2) { setError('Give the brand a name.'); return }
     setSaving(true)
     setError('')
     try {
@@ -52,7 +52,7 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
       setTitle(''); setDescription(''); setDueDate('')
       router.push(`/projects/${project.id}`)
     } catch {
-      setError('Couldn’t create the project. Please try again.')
+      setError('Couldn’t create the brand. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -62,8 +62,8 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
     <div className="p-4 lg:p-8">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Projects</h2>
-          <p className="text-sm text-gray-400">Each project keeps its own chat and files in one place.</p>
+          <h2 className="text-lg font-semibold text-gray-900">Brands</h2>
+          <p className="text-sm text-gray-400">Each brand keeps its own chat and files in one place.</p>
         </div>
         {canManage && (
           <button
@@ -72,7 +72,7 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
             style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             {showForm ? <X size={14} /> : <Plus size={14} />}
-            {showForm ? 'Cancel' : 'New project'}
+            {showForm ? 'Cancel' : 'New brand'}
           </button>
         )}
       </div>
@@ -82,7 +82,7 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
           <input
             value={title}
             onChange={(e) => { setTitle(e.target.value); setError('') }}
-            placeholder="Project name"
+            placeholder="Brand name"
             className="w-full text-sm px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-gray-400 mb-2"
           />
           <textarea
@@ -110,7 +110,7 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
               style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
-              Create project
+              Create brand
             </button>
           </div>
         </div>
@@ -125,8 +125,8 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
       ) : visible.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <FolderOpen size={28} className="text-gray-200 mb-3" />
-          <p className="text-sm font-medium text-gray-500 mb-1">No projects yet</p>
-          <p className="text-xs text-gray-400">Create a project to keep its chat and files together.</p>
+          <p className="text-sm font-medium text-gray-500 mb-1">No brands yet</p>
+          <p className="text-xs text-gray-400">Create a brand to keep its chat and files together.</p>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">

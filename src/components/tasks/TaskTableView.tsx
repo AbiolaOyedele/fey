@@ -26,7 +26,7 @@ export default function TaskTableView({ tasks, onToggleDone, onOpen }: TaskTable
             <th className="py-2.5 px-3 font-semibold">Priority</th>
             <th className="py-2.5 px-3 font-semibold">Estimated</th>
             <th className="py-2.5 px-3 font-semibold">Logged</th>
-            <th className="py-2.5 px-3 font-semibold">Project</th>
+            <th className="py-2.5 px-3 font-semibold">Brand</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">

@@ -112,7 +112,7 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
       label: 'Open tasks', value: tasks.length, href: '/tasks', icon: CheckCircle2,
       ...(overdueCount > 0 ? { badge: { text: `${overdueCount} overdue`, color: '#E24B4A' } } : {}),
     },
-    { label: 'Active projects', value: activeProjects.length, href: '/projects', icon: FolderKanban },
+    { label: 'Active brands', value: activeProjects.length, href: '/projects', icon: FolderKanban },
     { label: 'Unread messages', value: unreadMessages, href: '/clients', icon: MessageSquare },
     { label: 'Pending review', value: pendingCount, href: '/clients', icon: ClipboardList },
   ]
@@ -162,11 +162,11 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
           )}
         </WorkCard>
 
-        <WorkCard title="Active projects" icon={<FolderKanban size={14} className="text-gray-400" />} href="/projects" accent={accent}>
+        <WorkCard title="Active brands" icon={<FolderKanban size={14} className="text-gray-400" />} href="/projects" accent={accent}>
           {projectsLoading ? (
             <SkeletonRows />
           ) : activeProjects.length === 0 ? (
-            <Empty icon={<FolderKanban size={26} className="text-gray-200" />} text="No active projects yet" />
+            <Empty icon={<FolderKanban size={26} className="text-gray-200" />} text="No active brands yet" />
           ) : (
             activeProjects.slice(0, 5).map((p, i, arr) => {
               const s = PROJECT_STATUS[p.status] ?? PROJECT_STATUS.active

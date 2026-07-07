@@ -1,5 +1,21 @@
 [
   {
+    "version": "1.20.0",
+    "date": "7 July 2026",
+    "title": "Brands & Social Corner polish",
+    "features": [
+      "Projects is now Brands — everywhere in the app, from the CRM hub to tasks and the dashboard",
+      "Turning a post into a task now asks who to assign it to, right from the calendar",
+      "Tasks created from posts show a calendar icon — click it to jump straight to the post on the content calendar"
+    ],
+    "improvements": [
+      "Cleaner post cards in the day panel — the side color tab is gone",
+      "Post status (Draft, Pending review, Reviewed, Approved) is now a colored dropdown",
+      "Time fields match the date fields — a clock icon with readable times, consistent on iPhone too"
+    ],
+    "fixes": []
+  },
+  {
     "version": "1.19.0",
     "date": "7 July 2026",
     "title": "CRM hub & task fixes",

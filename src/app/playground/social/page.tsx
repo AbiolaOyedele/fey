@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Megaphone, Plus, ArrowLeft, Pencil, CalendarDays } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
@@ -14,6 +15,7 @@ import SocialCalendar from '@/components/playground/SocialCalendar'
 import DayPanel from '@/components/playground/DayPanel'
 import PostEditor, { STATUS_STYLES } from '@/components/playground/PostEditor'
 import BrandModal from '@/components/playground/BrandModal'
+import AssignTaskModal from '@/components/playground/AssignTaskModal'
 import { SOCIAL_POST_STATUSES } from '@/types/social'
 import type { SocialBrand, SocialPost, CreatePostPayload } from '@/types/social'
 
@@ -30,19 +32,47 @@ export default function SocialCornerPage() {
   const { workspace, loading: wsLoading } = useWorkspace()
   const { contacts } = useContacts()
 
-  const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
+  // Deep link from the Tasks page: /playground/social?date=YYYY-MM-DD&post=<id>
+  const searchParams = useSearchParams()
+  const deepLinkDate = (() => {
+    const d = searchParams.get('date')
+    return d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null
+  })()
+  const deepLinkPostId = searchParams.get('post')
+  const consumedDeepLink = useRef<string | null>(null)
+
+  const [month, setMonth] = useState(() => {
+    if (deepLinkDate) {
+      const [y, m] = deepLinkDate.split('-').map(Number)
+      return new Date(y, m - 1, 1)
+    }
+    const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1)
+  })
   // -1 | 1 — which way the visible month last moved, so the grid slides that way.
   const [monthDir, setMonthDir] = useState(0)
   const [brandFilter, setBrandFilter] = useState<string | null>(null)
-  const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  const [selectedDay, setSelectedDay] = useState<string | null>(deepLinkDate)
   const [editor, setEditor] = useState<EditorState>(null)
   const [brandModal, setBrandModal] = useState<{ brand: SocialBrand | null } | null>(null)
+  // Post about to become a task — opens the assignee popup.
+  const [assignPost, setAssignPost] = useState<SocialPost | null>(null)
 
   const {
     brands, posts, brandById, loading, error, refetch,
     createBrand, updateBrand, deleteBrand,
     createPost, updatePost, deletePost, markAsTask,
   } = useSocialPlanner({ workspaceId: workspace?.id ?? null, month })
+
+  // Once the linked post arrives, open it in the editor (consume-once).
+  useEffect(() => {
+    if (!deepLinkPostId || deepLinkPostId === consumedDeepLink.current || loading) return
+    const found = posts.find((p) => p.id === deepLinkPostId)
+    if (found) {
+      setSelectedDay(found.scheduled_date)
+      setEditor({ mode: 'edit', post: found })
+      consumedDeepLink.current = deepLinkPostId
+    }
+  }, [deepLinkPostId, loading, posts])
 
   // Brand filter is a pure view concern — applied client-side.
   const visiblePosts = useMemo(
@@ -91,7 +121,18 @@ export default function SocialCornerPage() {
     setEditor(null)
     await withToast(() => deletePost(id), 'Post deleted')
   }
-  const handleMarkTask = (id: string) => withToast(() => markAsTask(id), 'Added to the Tasks page')
+  const handleAssignConfirm = async (assigneeIds: string[]) => {
+    if (!assignPost) return
+    try {
+      const updated = await markAsTask(assignPost.id, assigneeIds)
+      // Keep an open editor in sync so it shows "On the Tasks page".
+      setEditor((e) => (e?.mode === 'edit' && e.post.id === updated.id ? { mode: 'edit', post: updated } : e))
+      showToast('Added to the Tasks page')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Something needs another try — please retry.')
+    }
+    setAssignPost(null)
+  }
 
   const handleSaveBrand = async (values: { name: string; color: string; contact_id: string | null }) => {
     const editing = brandModal?.brand ?? null
@@ -277,7 +318,7 @@ export default function SocialCornerPage() {
                   accent={accent}
                   onEdit={(post) => setEditor({ mode: 'edit', post })}
                   onAdd={() => setEditor({ mode: 'create', date: selectedDay, brandId: brandFilter })}
-                  onMarkTask={(post) => void handleMarkTask(post.id)}
+                  onMarkTask={(post) => setAssignPost(post)}
                   onClose={() => setSelectedDay(null)}
                 />
               </motion.div>
@@ -297,8 +338,17 @@ export default function SocialCornerPage() {
           onCreate={handleCreatePost}
           onUpdate={handleUpdatePost}
           onDelete={editor.mode === 'edit' ? handleDeletePost : null}
-          onMarkTask={editor.mode === 'edit' ? handleMarkTask : null}
+          onMarkTask={editor.mode === 'edit' ? () => setAssignPost(editor.post) : null}
           onClose={() => setEditor(null)}
+        />
+      )}
+      {assignPost && (
+        <AssignTaskModal
+          postTitle={assignPost.title}
+          workspaceId={workspace?.id ?? null}
+          accent={accent}
+          onConfirm={handleAssignConfirm}
+          onClose={() => setAssignPost(null)}
         />
       )}
       {brandModal && (

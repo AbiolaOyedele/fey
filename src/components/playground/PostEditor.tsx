@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Trash2, ListTodo, Check, Layers } from 'lucide-react'
+import { X, Trash2, ListTodo, Layers, ChevronDown } from 'lucide-react'
 import { SOCIAL_POST_STATUSES, SOCIAL_POST_FORMATS } from '@/types/social'
 import type { SocialBrand, SocialPost, SocialPostFormat, SocialPostStatus, CreatePostPayload } from '@/types/social'
+import DateField from '@/components/ui/DateField'
+import TimeField from '@/components/ui/TimeField'
 
 export const STATUS_STYLES: Record<SocialPostStatus, { bg: string; text: string }> = {
   draft: { bg: '#F3F4F6', text: '#6B7280' },
@@ -23,7 +25,8 @@ interface PostEditorProps {
   onCreate: (payload: CreatePostPayload) => Promise<void>
   onUpdate: (id: string, payload: Partial<CreatePostPayload>) => Promise<void>
   onDelete: ((id: string) => Promise<void>) | null
-  onMarkTask: ((id: string) => Promise<void>) | null
+  /** Opens the assign-task popup (page-level) for this post. */
+  onMarkTask: (() => void) | null
   onClose: () => void
 }
 
@@ -142,23 +145,40 @@ export default function PostEditor({
         </div>
 
         <div className="px-6 py-4 overflow-y-auto space-y-4">
-          {/* Status selector */}
-          <div className="flex flex-wrap gap-1.5">
-            {SOCIAL_POST_STATUSES.map((s) => {
-              const active = form.status === s.value
-              const style = STATUS_STYLES[s.value]
-              return (
+          {/* Status + task row */}
+          <div className="flex items-center gap-2">
+            <div className="relative inline-flex items-center">
+              <span
+                className="absolute left-3 w-2 h-2 rounded-full pointer-events-none"
+                style={{ backgroundColor: STATUS_STYLES[form.status].text }}
+              />
+              <select
+                value={form.status}
+                onChange={(e) => set('status', e.target.value as SocialPostStatus)}
+                className="appearance-none pl-7 pr-8 py-2 rounded-xl text-xs font-medium outline-none cursor-pointer border border-transparent focus:border-gray-300 transition-colors"
+                style={{ backgroundColor: STATUS_STYLES[form.status].bg, color: STATUS_STYLES[form.status].text }}
+              >
+                {SOCIAL_POST_STATUSES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2.5 pointer-events-none" style={{ color: STATUS_STYLES[form.status].text }} />
+            </div>
+
+            {post && onMarkTask && (
+              post.work_task_id ? (
+                <span className="inline-flex items-center gap-1.5 text-xs text-gray-400 px-2">
+                  <ListTodo size={13} /> On the Tasks page
+                </span>
+              ) : (
                 <button
-                  key={s.value}
-                  onClick={() => set('status', s.value)}
-                  className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-all ${active ? '' : 'bg-gray-50 text-gray-400 hover:text-gray-600'}`}
-                  style={active ? { backgroundColor: style.bg, color: style.text } : undefined}
+                  onClick={onMarkTask}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-xl border border-gray-200 text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-colors"
                 >
-                  {active && <Check size={11} className="inline mr-1 -mt-0.5" />}
-                  {s.label}
+                  <ListTodo size={13} /> Make task
                 </button>
               )
-            })}
+            )}
           </div>
 
           <div>
@@ -193,11 +213,11 @@ export default function PostEditor({
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className={labelCls}>Date</label>
-              <input type="date" value={form.scheduled_date} onChange={(e) => set('scheduled_date', e.target.value)} className={inputCls} />
+              <DateField value={form.scheduled_date} onChange={(v) => set('scheduled_date', v ?? '')} />
             </div>
             <div>
               <label className={labelCls}>Time</label>
-              <input type="time" value={form.scheduled_time} onChange={(e) => set('scheduled_time', e.target.value)} className={inputCls} />
+              <TimeField value={form.scheduled_time || null} onChange={(v) => set('scheduled_time', v ?? '')} />
             </div>
             <div>
               <label className={labelCls}>Format</label>
@@ -250,20 +270,6 @@ export default function PostEditor({
             >
               <Trash2 size={16} />
             </button>
-          )}
-          {post && onMarkTask && (
-            post.work_task_id ? (
-              <span className="inline-flex items-center gap-1.5 text-xs text-gray-400 px-2">
-                <ListTodo size={13} /> On the Tasks page
-              </span>
-            ) : (
-              <button
-                onClick={() => void onMarkTask(post.id)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 h-10 rounded-xl text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors"
-              >
-                <ListTodo size={13} /> Make it a task
-              </button>
-            )
           )}
           <div className="flex-1" />
           {!post && (

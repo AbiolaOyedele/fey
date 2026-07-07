@@ -86,6 +86,8 @@ export interface Task {
   files: TaskFileRow[]
   project_title: string | null
   contact_name: string | null
+  /** Set when this task was created from a Social Corner post — links back to the calendar. */
+  social_post: { id: string; scheduled_date: string } | null
 }
 
 // ── API payloads ────────────────────────────────────────────────────────────

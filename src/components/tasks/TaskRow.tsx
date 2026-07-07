@@ -1,6 +1,7 @@
 'use client'
 
-import { Check, Paperclip } from 'lucide-react'
+import Link from 'next/link'
+import { Check, Paperclip, CalendarDays } from 'lucide-react'
 import type { Task } from '@/types/work-tasks'
 import { AssigneeAvatars, DueChip, PriorityFlag, formatMinutes } from './TaskBits'
 import { getFileType, isImageType, thumbUrl, type FileType } from '@/utils/cloudinary'
@@ -60,6 +61,16 @@ export default function TaskRow({ task, onToggleDone, onOpen }: TaskRowProps) {
       </button>
 
       <div className="flex items-center gap-3 flex-shrink-0">
+        {task.social_post && (
+          <Link
+            href={`/playground/social?date=${task.social_post.scheduled_date}&post=${task.social_post.id}`}
+            onClick={(e) => e.stopPropagation()}
+            title="Open this post on the content calendar"
+            className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <CalendarDays size={14} />
+          </Link>
+        )}
         <FileThumbs task={task} />
         <AssigneeAvatars assignees={task.assignees} />
         <div className="hidden sm:block w-20 text-right"><DueChip due={task.due_date} done={task.done} /></div>

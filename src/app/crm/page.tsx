@@ -24,7 +24,7 @@ export default function CrmHubPage() {
     }] : []),
     {
       href: '/projects',
-      label: 'Projects',
+      label: 'Brands',
       description: 'Boards, briefs and deliverables',
       icon: <FolderKanban size={20} />,
     },

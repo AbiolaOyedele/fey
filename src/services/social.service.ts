@@ -182,7 +182,12 @@ export async function deletePost(db: SupabaseClient, id: string): Promise<void> 
  * the scheduled date, linked to the brand's CRM contact when there is one) and
  * stores the link on the post. Idempotent: returns the existing link if set.
  */
-export async function markPostAsTask(db: SupabaseClient, ctx: Ctx, postId: string): Promise<SocialPost> {
+export async function markPostAsTask(
+  db: SupabaseClient,
+  ctx: Ctx,
+  postId: string,
+  assigneeIds: string[] = [],
+): Promise<SocialPost> {
   const post = await repo.getPost(db, postId)
   if (!post) throw new AppError(404, 'That post could not be found.', 'SOCIAL_POST_NOT_FOUND')
   if (post.work_task_id) return post
@@ -196,6 +201,7 @@ export async function markPostAsTask(db: SupabaseClient, ctx: Ctx, postId: strin
     contact_id: brand.contact_id,
     visibility: 'team',
     due_date: post.scheduled_date,
+    assignee_ids: assigneeIds,
   })
 
   return repo.updatePostRow(db, postId, { work_task_id: task.id })

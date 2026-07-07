@@ -15,7 +15,8 @@ const SELECT = `
   work_subtasks ( id, task_id, title, done, sort_order ),
   work_task_files ( id, file_name, file_url, public_id, file_size, file_type, uploader_name, created_at ),
   projects:project_id ( title ),
-  crm_contacts:contact_id ( name )
+  crm_contacts:contact_id ( name ),
+  social_posts ( id, scheduled_date, deleted_at )
 `
 
 interface RawTask {
@@ -44,6 +45,7 @@ interface RawTask {
   work_task_files: TaskFileRow[] | null
   projects: { title: string } | { title: string }[] | null
   crm_contacts: { name: string } | { name: string }[] | null
+  social_posts: Array<{ id: string; scheduled_date: string; deleted_at: string | null }> | null
 }
 
 type MemberInfo = { name: string | null; email: string | null }
@@ -85,6 +87,10 @@ function mapTask(row: RawTask, members: Map<string, MemberInfo>): Task {
     files: (row.work_task_files ?? []).sort((a, b) => b.created_at.localeCompare(a.created_at)),
     project_title: one(row.projects)?.title ?? null,
     contact_name: one(row.crm_contacts)?.name ?? null,
+    social_post: (() => {
+      const p = (row.social_posts ?? []).find((sp) => !sp.deleted_at)
+      return p ? { id: p.id, scheduled_date: p.scheduled_date } : null
+    })(),
   }
 }
 

@@ -48,14 +48,14 @@ export default function ProjectsHubPage() {
   return (
     <div className="p-4 lg:p-8 page-enter">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="font-display text-2xl font-semibold text-gray-900">Projects</h1>
+        <h1 className="font-display text-2xl font-semibold text-gray-900">Brands</h1>
         {canManage && (
           <button
             onClick={() => setShowNew(true)}
             className="flex items-center gap-1.5 px-4 py-2 text-white rounded-full text-sm font-semibold hover:opacity-90"
             style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
-            <Plus size={15} /> New project
+            <Plus size={15} /> New brand
           </button>
         )}
       </div>
@@ -65,7 +65,7 @@ export default function ProjectsHubPage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search projects…"
+          placeholder="Search brands…"
           className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
         />
       </div>
@@ -79,7 +79,7 @@ export default function ProjectsHubPage() {
       ) : projects.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <FolderOpen size={30} strokeWidth={1.5} className="text-gray-200 mb-3" />
-          <p className="text-sm2 font-medium text-gray-500">No projects yet</p>
+          <p className="text-sm2 font-medium text-gray-500">No brands yet</p>
           <p className="text-xs2 text-gray-400 mt-0.5">Create one — assign it to a client or keep it personal</p>
         </div>
       ) : (
@@ -182,14 +182,14 @@ function NewProjectModal({ contacts, onCreate, onClose }: NewProjectModalProps) 
   const [error, setError] = useState('')
 
   const submit = async () => {
-    if (title.trim().length < 2) { setError('Give the project a name.'); return }
+    if (title.trim().length < 2) { setError('Give the brand a name.'); return }
     setSubmitting(true)
     setError('')
     try {
       await onCreate({ title: title.trim(), description: description.trim() || null, contact_id: contactId })
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create the project.')
+      setError(e instanceof Error ? e.message : 'Could not create the brand.')
     } finally {
       setSubmitting(false)
     }
@@ -199,7 +199,7 @@ function NewProjectModal({ contacts, onCreate, onClose }: NewProjectModalProps) 
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div className="w-full max-w-md rounded-2xl bg-white shadow-xl p-5 max-h-[88dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-gray-900">New project</h2>
+          <h2 className="text-base font-semibold text-gray-900">New brand</h2>
           <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100"><X size={16} /></button>
         </div>
 
@@ -207,7 +207,7 @@ function NewProjectModal({ contacts, onCreate, onClose }: NewProjectModalProps) 
           autoFocus
           value={title}
           onChange={(e) => { setTitle(e.target.value); setError('') }}
-          placeholder="Project name…"
+          placeholder="Brand name…"
           className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 mb-3"
         />
         <textarea

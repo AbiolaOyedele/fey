@@ -76,8 +76,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     // Archiving hides the project from the main list; warn first. Unarchiving is safe.
     if (!project.archived_at) {
       const ok = await confirm({
-        title: 'Archive this project?',
-        message: 'It will be hidden from your Projects list. You can restore it anytime from Projects → Archived.',
+        title: 'Archive this brand?',
+        message: 'It will be hidden from your Brands list. You can restore it anytime from Brands → Archived.',
         confirmLabel: 'Archive',
         tone: 'default',
       })
@@ -98,7 +98,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             onClick={() => router.push('/projects')}
             className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <ArrowLeft size={15} /> Projects
+            <ArrowLeft size={15} /> Brands
           </button>
           {project && (
             <>

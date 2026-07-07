@@ -133,11 +133,11 @@ export function useSocialPlanner({ workspaceId, month }: UseSocialPlannerArgs) {
     }
   }, [posts])
 
-  /** Promotes a post to a work_task on the main Tasks page. Idempotent. */
-  const markAsTask = useCallback(async (id: string) => {
+  /** Promotes a post to a work_task on the main Tasks page, optionally assigned. Idempotent. */
+  const markAsTask = useCallback(async (id: string, assigneeIds: string[] = []) => {
     const { post } = await apiFetch<{ post: SocialPost }>(`/api/v1/social/posts/${id}/task`, {
       method: 'POST',
-      body: JSON.stringify({ workspace_id: workspaceId }),
+      body: JSON.stringify({ workspace_id: workspaceId, assignee_ids: assigneeIds }),
     })
     setPosts((cur) => cur.map((p) => (p.id === id ? post : p)))
     return post

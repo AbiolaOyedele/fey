@@ -5,8 +5,9 @@ import { resolveOwnerContext } from '@/lib/owner-context'
 import { markPostAsTask } from '@/services/social.service'
 
 /**
- * POST /api/v1/social/posts/:id/task — body: { workspace_id? }
- * Promotes a post to a work_task on the main Tasks page. Idempotent.
+ * POST /api/v1/social/posts/:id/task — body: { workspace_id?, assignee_ids? }
+ * Promotes a post to a work_task on the main Tasks page, optionally assigned
+ * to teammates. Idempotent.
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -21,7 +22,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const db = createUserClient(token!)
   try {
     const { ownerId, workspaceId } = await resolveOwnerContext(db, user!.id, body.workspace_id as string | undefined)
-    const post = await markPostAsTask(db, { userId: user!.id, ownerId, workspaceId }, id)
+    const assigneeIds = Array.isArray(body.assignee_ids) ? (body.assignee_ids as string[]) : []
+    const post = await markPostAsTask(db, { userId: user!.id, ownerId, workspaceId }, id, assigneeIds)
     return NextResponse.json({ post })
   } catch (err) {
     return handleError(err, 'SOCIAL_POST_TASK_FAILED')

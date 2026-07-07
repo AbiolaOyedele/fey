@@ -94,8 +94,7 @@ export default function DayPanel({ dateKey, posts, brandById, accent, onEdit, on
                         tabIndex={0}
                         onClick={() => onEdit(p)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) onEdit(p) }}
-                        className="w-full text-left rounded-xl border border-gray-100 p-3 hover:border-gray-200 hover:shadow-sm transition-all cursor-pointer"
-                        style={{ borderLeft: `3px solid ${brand?.color ?? '#E5E7EB'}` }}
+                        className="w-full text-left rounded-xl bg-gray-50/80 p-3 hover:bg-gray-100/80 transition-colors cursor-pointer"
                       >
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <p className="text-sm font-medium text-gray-800 leading-snug">{p.title}</p>

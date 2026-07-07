@@ -88,7 +88,7 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
               </select>
             </div>
             <div>
-              <p className="text-2xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Project</p>
+              <p className="text-2xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Brand</p>
               <select
                 value={projectId ?? ''}
                 onChange={(e) => setProjectId(e.target.value || null)}

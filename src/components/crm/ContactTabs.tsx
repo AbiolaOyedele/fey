@@ -18,7 +18,7 @@ export default function ContactTabs({ contactId }: ContactTabsProps) {
 
   const tabs: Tab[] = [
     { label: 'Messages',        href: `${base}/messages` },
-    { label: 'Projects',        href: `${base}/projects` },
+    { label: 'Brands',          href: `${base}/projects` },
     { label: 'Files',           href: `${base}/files` },
     { label: 'Contracts',       href: `${base}/contracts` },
     { label: 'Forms',           href: `${base}/forms` },

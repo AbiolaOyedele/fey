@@ -2,18 +2,36 @@
 
 import { useRef } from 'react'
 import { motion, useScroll, useTransform, type MotionValue } from 'framer-motion'
-import { ImageOff, Paperclip, MapPin } from 'lucide-react'
+import { ImageOff, Paperclip, MapPin, Clock } from 'lucide-react'
 import type { SocialBrand, SocialPost } from '@/types/social'
 import { STATUS_STYLES } from './PostEditor'
 import { SOCIAL_POST_FORMATS, SOCIAL_POST_STATUSES } from '@/types/social'
 import { useSocialPostFiles } from '@/hooks/useSocialPostFiles'
 import { thumbUrl, isImageType, getFileType, type FileType } from '@/utils/cloudinary'
 
+// Fixed so the scroll container and every slide agree on exactly how tall
+// "one card's worth" of scroll is — percentage heights can't resolve this
+// because the list wrapper between them has no explicit height of its own.
+// The card must stay meaningfully shorter than the container — the fan/peek
+// effect comes from the gap between a card's edge and the container's, so a
+// card that nearly fills its slide leaves no room for the next one to show
+// through underneath it.
+const STACK_VH = 96
+const CARD_HEIGHT = 'min(580px, 62vh)'
+
 const statusLabel = (s: SocialPost['status']) => SOCIAL_POST_STATUSES.find((x) => x.value === s)?.label ?? s
 const formatLabel = (f: SocialPost['format']) => SOCIAL_POST_FORMATS.find((x) => x.value === f)?.label ?? null
 
+/** "14:00:00" → "2pm", "14:30:00" → "2:30pm" */
+function timeChip(t: string | null): string | null {
+  if (!t) return null
+  const [h, m] = t.split(':').map(Number)
+  const hr12 = ((h + 11) % 12) + 1
+  return m ? `${hr12}:${String(m).padStart(2, '0')}${h < 12 ? 'am' : 'pm'}` : `${hr12}${h < 12 ? 'am' : 'pm'}`
+}
+
 function StackCard({
-  post, brand, i, total, accent, progress, targetScale, onOpen,
+  post, brand, i, total, accent, progress, scrollContainer, targetScale, onOpen,
 }: {
   post: SocialPost
   brand: SocialBrand | undefined
@@ -21,12 +39,13 @@ function StackCard({
   total: number
   accent: string
   progress: MotionValue<number>
+  scrollContainer: React.RefObject<HTMLDivElement | null>
   targetScale: number
   onOpen: (post: SocialPost) => void
 }) {
-  const container = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({ target: container, offset: ['start end', 'start start'] })
-  const imageScale = useTransform(scrollYProgress, [0, 1], [1.3, 1])
+  const cardRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({ container: scrollContainer, target: cardRef, offset: ['start end', 'start start'] })
+  const imageScale = useTransform(scrollYProgress, [0, 1], [1.25, 1])
   const scale = useTransform(progress, [i * (1 / total), 1], [1, targetScale])
 
   const { files } = useSocialPostFiles(post.id, true)
@@ -36,12 +55,17 @@ function StackCard({
   const day = d.getDate()
   const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
   const format = formatLabel(post.format)
+  const time = timeChip(post.scheduled_time)
 
   return (
-    <div ref={container} className="h-screen flex items-center justify-center sticky top-0">
+    <div
+      ref={cardRef}
+      style={{ height: `${STACK_VH}vh` }}
+      className="flex items-center justify-center sticky top-0"
+    >
       <motion.div
-        style={{ scale, top: `calc(-5vh + ${i * 25}px)` }}
-        className="relative -top-[25%] w-[85%] max-w-5xl h-[560px] rounded-3xl border border-gray-200 bg-white shadow-xl shadow-gray-300/30 origin-top overflow-hidden"
+        style={{ scale, top: `calc(-8vh + ${i * 34}px)`, height: CARD_HEIGHT }}
+        className="relative -top-[25%] w-[88%] max-w-6xl rounded-3xl border border-gray-200 bg-white shadow-xl shadow-gray-300/30 origin-top overflow-hidden"
       >
         {/* Bold date, top-left */}
         <div className="absolute top-6 left-7 leading-none z-10">
@@ -77,19 +101,24 @@ function StackCard({
                   {post.content_pillar}
                 </span>
               )}
+              {time && (
+                <span className="inline-flex items-center gap-1 text-2xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                  <Clock size={10} /> {time}
+                </span>
+              )}
             </div>
 
             {post.visual_notes && (
               <div className="mt-4">
                 <p className="text-3xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Visual</p>
-                <p className="text-sm text-gray-600 leading-relaxed line-clamp-4">{post.visual_notes}</p>
+                <p className="text-sm text-gray-600 leading-relaxed line-clamp-5">{post.visual_notes}</p>
               </div>
             )}
 
             {post.caption && (
               <div className="mt-4">
                 <p className="text-3xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Caption</p>
-                <p className="text-sm text-gray-500 leading-relaxed line-clamp-3">{post.caption}</p>
+                <p className="text-sm text-gray-500 leading-relaxed line-clamp-4">{post.caption}</p>
               </div>
             )}
 
@@ -153,12 +182,19 @@ interface PostStackViewProps {
   onOpen: (post: SocialPost) => void
 }
 
-/** Experimental: posts as a scroll-linked stack of cards, one on top of the
- *  next as you scroll — date bold top-left, details on the left, inspiration
- *  image(s) on the right. Monochrome; no per-brand color fills. */
+/** Experimental: posts as a scroll-linked stack of cards, one landing on top
+ *  of the next as you scroll — date bold top-left, details on the left,
+ *  inspiration image(s) on the right. Monochrome; no per-brand color fills.
+ *
+ *  Scrolls inside its own panel rather than the page: the app shell sets
+ *  `overflow-x-hidden` on a few ancestors, which per spec forces their
+ *  `overflow-y` to `auto` too — making one of them (not the real page
+ *  scroller) the nearest ancestor scroll container, so `position: sticky`
+ *  silently no-ops against the window. Owning our own scroll container
+ *  sidesteps that entirely. */
 export default function PostStackView({ posts, brandById, accent, onOpen }: PostStackViewProps) {
-  const container = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({ target: container, offset: ['start start', 'end end'] })
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({ container: scrollRef, offset: ['start start', 'end end'] })
 
   if (posts.length === 0) {
     return (
@@ -171,7 +207,11 @@ export default function PostStackView({ posts, brandById, accent, onOpen }: Post
   }
 
   return (
-    <div ref={container}>
+    <div
+      ref={scrollRef}
+      style={{ height: `${STACK_VH}vh` }}
+      className="overflow-y-auto overflow-x-hidden rounded-3xl bg-gray-50/60"
+    >
       {posts.map((post, i) => {
         const targetScale = 1 - (posts.length - i) * 0.05
         return (
@@ -183,6 +223,7 @@ export default function PostStackView({ posts, brandById, accent, onOpen }: Post
             total={posts.length}
             accent={accent}
             progress={scrollYProgress}
+            scrollContainer={scrollRef}
             targetScale={targetScale}
             onOpen={onOpen}
           />

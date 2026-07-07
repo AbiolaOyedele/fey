@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ListTodo, ChevronDown } from 'lucide-react'
 import type { Task } from '@/types/work-tasks'
@@ -43,6 +43,19 @@ export default function TaskListView({ tasks, grouped, onToggleDone, onOpen }: T
     return list.sort((a, b) => rank(a.key) - rank(b.key) || a.label.localeCompare(b.label))
   }, [tasks, grouped])
 
+  // Auto-collapse every group 2 minutes after the grouped view mounts, so a
+  // list left open in a background tab settles down on its own. One-shot —
+  // reads the latest group keys via a ref so it doesn't fire again as tasks load.
+  const groupsRef = useRef(groups)
+  useEffect(() => { groupsRef.current = groups }, [groups])
+  useEffect(() => {
+    if (!grouped) return
+    const timer = setTimeout(() => {
+      setCollapsed(new Set(groupsRef.current.map((g) => g.key)))
+    }, 2 * 60 * 1000)
+    return () => clearTimeout(timer)
+  }, [grouped])
+
   if (tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -67,9 +80,10 @@ export default function TaskListView({ tasks, grouped, onToggleDone, onOpen }: T
                 <motion.span
                   animate={{ rotate: isCollapsed ? -90 : 0 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                  className="flex text-gray-300 group-hover/header:text-gray-500 transition-colors"
+                  className="flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0 text-white shadow-sm group-hover/header:opacity-80 transition-opacity"
+                  style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
                 >
-                  <ChevronDown size={13} />
+                  <ChevronDown size={13} strokeWidth={2.5} />
                 </motion.span>
                 <h3 className="text-sm font-semibold text-gray-900">{g.label}</h3>
                 {g.sub && <span className="text-xs2 text-gray-400">{g.sub}</span>}

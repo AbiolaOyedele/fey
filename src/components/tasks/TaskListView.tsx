@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
-import { ListTodo } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ListTodo, ChevronDown } from 'lucide-react'
 import type { Task } from '@/types/work-tasks'
 import TaskRow from './TaskRow'
 
@@ -14,8 +15,17 @@ interface TaskListViewProps {
 
 interface Group { key: string; label: string; sub: string | null; tasks: Task[] }
 
-/** Grouped list. When `grouped`, splits by project/client with a Personal group on top. */
+/** Grouped list. When `grouped`, splits by project/client with a Personal group on top.
+ *  Each group header collapses to hide its tasks. */
 export default function TaskListView({ tasks, grouped, onToggleDone, onOpen }: TaskListViewProps) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const toggleGroup = (key: string) => setCollapsed((prev) => {
+    const next = new Set(prev)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    return next
+  })
+
   const groups = useMemo<Group[]>(() => {
     if (!grouped) return [{ key: 'all', label: '', sub: null, tasks }]
     const map = new Map<string, Group>()
@@ -45,20 +55,45 @@ export default function TaskListView({ tasks, grouped, onToggleDone, onOpen }: T
 
   return (
     <div className="space-y-5">
-      {groups.map((g) => (
-        <div key={g.key}>
-          {grouped && (
-            <div className="flex items-baseline gap-2 px-1 mb-1">
-              <h3 className="text-sm font-semibold text-gray-900">{g.label}</h3>
-              {g.sub && <span className="text-xs2 text-gray-400">{g.sub}</span>}
-              <span className="text-xs2 text-gray-300">{g.tasks.length}</span>
-            </div>
-          )}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
-            {g.tasks.map((t) => <TaskRow key={t.id} task={t} onToggleDone={onToggleDone} onOpen={onOpen} />)}
+      {groups.map((g) => {
+        const isCollapsed = grouped && collapsed.has(g.key)
+        return (
+          <div key={g.key}>
+            {grouped && (
+              <button
+                onClick={() => toggleGroup(g.key)}
+                className="w-full flex items-center gap-2 px-1 mb-1 text-left group/header"
+              >
+                <motion.span
+                  animate={{ rotate: isCollapsed ? -90 : 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                  className="flex text-gray-300 group-hover/header:text-gray-500 transition-colors"
+                >
+                  <ChevronDown size={13} />
+                </motion.span>
+                <h3 className="text-sm font-semibold text-gray-900">{g.label}</h3>
+                {g.sub && <span className="text-xs2 text-gray-400">{g.sub}</span>}
+                <span className="text-xs2 text-gray-300">{g.tasks.length}</span>
+              </button>
+            )}
+            <AnimatePresence initial={false}>
+              {!isCollapsed && (
+                <motion.div
+                  initial={grouped ? { opacity: 0, height: 0 } : false}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25, ease: [0.04, 0.62, 0.23, 0.98] }}
+                  className="overflow-hidden"
+                >
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
+                    {g.tasks.map((t) => <TaskRow key={t.id} task={t} onToggleDone={onToggleDone} onOpen={onOpen} />)}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

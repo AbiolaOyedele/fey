@@ -128,7 +128,10 @@ body {
 .animate-shake       { animation: shake 200ms ease; }
 .animate-fadeOut     { animation: fadeOut 200ms ease forwards; }
 .animate-slow-rotate { animation: slowRotate 8s ease-in-out infinite; }
-.page-enter          { animation: pageEnter 200ms ease forwards; }
+/* No `forwards`: a filling opacity animation makes the element a permanent
+   stacking context, which traps page modals (z-50) beneath the mobile bottom
+   nav (z-20). The animation ends at the element's natural opacity: 1 anyway. */
+.page-enter          { animation: pageEnter 200ms ease; }
 
 h1, h2, h3, .font-display {
   font-family: var(--heading-font);

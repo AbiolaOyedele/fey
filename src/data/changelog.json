@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.19.0",
+    "date": "7 July 2026",
+    "title": "CRM hub & task fixes",
+    "features": [
+      "New CRM section — Clients, Projects, Payments and Invoices now live under one roof, and the sidebar is much cleaner",
+      "Mobile bottom bar reworked: Dashboard, CRM, Tasks and Playground one tap away"
+    ],
+    "improvements": [
+      "The task panel is now a centered popup instead of a full-height side drawer",
+      "Creating a task opens the task panel immediately so you can fill in the details in one flow",
+      "Date fields now show a calendar icon and readable placeholder on iPhone",
+      "The CRM and Playground hubs animate in with subtle motion"
+    ],
+    "fixes": [
+      "The Add task button no longer hides behind the bottom bar on mobile — popups now always appear above it"
+    ]
+  },
+  {
     "version": "1.18.0",
     "date": "7 July 2026",
     "title": "Social Corner",

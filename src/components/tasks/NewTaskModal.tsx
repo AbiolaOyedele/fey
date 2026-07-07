@@ -5,6 +5,7 @@ import { X, Loader2 } from 'lucide-react'
 import { useContacts } from '@/hooks/useCrm'
 import { useProjects } from '@/hooks/useProjects'
 import AssigneePicker from './AssigneePicker'
+import DateField from '@/components/ui/DateField'
 import { PRIORITY_META } from './TaskBits'
 import type { CreateTaskPayload, TaskPriority, TaskVisibility } from '@/types/work-tasks'
 
@@ -140,12 +141,7 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
               </button>
             ))}
           </div>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
-          />
+          <DateField value={dueDate || null} onChange={(v) => setDueDate(v ?? '')} placeholder="Due date" clearable />
           <AssigneePicker workspaceId={workspaceId} selectedIds={assigneeIds} onChange={setAssigneeIds} />
         </div>
 

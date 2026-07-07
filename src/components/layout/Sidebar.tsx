@@ -5,10 +5,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Users, CreditCard, Settings,
-  ListTodo, FileText, Sparkles, ChevronsLeft, ChevronsRight,
-  MessagesSquare, UsersRound, ShieldCheck, FolderKanban, Bell,
-  MoreHorizontal, X, Shapes,
+  LayoutDashboard, Settings,
+  ListTodo, Sparkles, ChevronsLeft, ChevronsRight,
+  MessagesSquare, UsersRound, ShieldCheck, Bell,
+  MoreHorizontal, X, Shapes, Briefcase,
 } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { IS_DEMO } from '@/lib/constants'
@@ -131,7 +131,6 @@ export default function Sidebar() {
   const accent   = settings.accent_color || '#ED64A6'
   const appMode  = settings.app_mode || 'dual'
   const topClass = IS_DEMO ? 'top-8' : 'top-0'
-  const clientsLabel = settings.clients_label || 'Clients'
 
   // Powers the unread badge on the mobile "More" menu (Notifications lives inside it).
   const { unreadCount } = useAppNotifications()
@@ -139,10 +138,7 @@ export default function Sidebar() {
 
   // Secondary destinations surfaced by the mobile "More" speed-dial.
   const moreItems: { href: string; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { href: '/payments', label: 'Payments', icon: <CreditCard size={18} /> },
-    { href: '/invoices', label: 'Invoices', icon: <FileText size={18} /> },
     { href: '/chats', label: 'Internal Chats', icon: <MessagesSquare size={18} /> },
-    { href: '/playground', label: 'Playground', icon: <Shapes size={18} /> },
     { href: '/team', label: 'Team', icon: <UsersRound size={18} /> },
     { href: '/notifications', label: 'Notifications', icon: <Bell size={18} />, badge: unreadCount },
     { href: '/fey', label: 'Fey', icon: <Sparkles size={18} /> },
@@ -204,17 +200,11 @@ export default function Sidebar() {
         <nav className={`flex-1 flex flex-col gap-1 pt-2 ${showExpanded ? 'items-stretch' : 'items-center'}`}>
           <NavItem href="/" label="Dashboard" exact accent={accent} expanded={showExpanded} icon={<LayoutDashboard size={20} />} />
 
-          {appMode !== 'tasks' && (
-            <NavItem href="/clients" label={clientsLabel} accent={accent} expanded={showExpanded} icon={<Users size={20} />} />
-          )}
+          <NavItem href="/crm" label="CRM" accent={accent} expanded={showExpanded} icon={<Briefcase size={20} />} />
 
           {appMode !== 'clients' && (
             <NavItem href="/tasks" label="Tasks" accent={accent} expanded={showExpanded} icon={<ListTodo size={20} />} />
           )}
-
-          <NavItem href="/projects" label="Projects" accent={accent} expanded={showExpanded} icon={<FolderKanban size={20} />} />
-          <NavItem href="/payments" label="Payments" accent={accent} expanded={showExpanded} icon={<CreditCard size={20} />} />
-          <NavItem href="/invoices" label="Invoices" accent={accent} expanded={showExpanded} icon={<FileText size={20} />} />
           <NavItem href="/chats" label="Internal Chats" accent={accent} expanded={showExpanded} icon={<MessagesSquare size={20} />} />
           <NavItem href="/playground" label="Playground" accent={accent} expanded={showExpanded} icon={<Shapes size={20} />} />
           <NavItem href="/team" label="Team" accent={accent} expanded={showExpanded} icon={<UsersRound size={20} />} />
@@ -250,15 +240,13 @@ export default function Sidebar() {
       >
         <MobileLink href="/" exact accent={accent}><LayoutDashboard size={22} /></MobileLink>
 
-        {appMode !== 'tasks' && (
-          <MobileLink href="/clients" accent={accent}><Users size={22} /></MobileLink>
-        )}
+        <MobileLink href="/crm" accent={accent}><Briefcase size={22} /></MobileLink>
 
         {appMode !== 'clients' && (
           <MobileLink href="/tasks" accent={accent}><ListTodo size={22} /></MobileLink>
         )}
 
-        <MobileLink href="/projects" accent={accent}><FolderKanban size={22} /></MobileLink>
+        <MobileLink href="/playground" accent={accent}><Shapes size={22} /></MobileLink>
 
         <div className="relative flex items-center justify-center">
           <button

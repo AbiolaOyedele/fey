@@ -191,7 +191,13 @@ export default function TasksPage() {
       {showNew && (
         <NewTaskModal
           workspaceId={wsId}
-          onCreate={active.createTask}
+          onCreate={async (payload) => {
+            // Open the detail panel right away so the rest of the task
+            // (description, subtasks, files) can be filled in one flow.
+            const task = await active.createTask(payload)
+            setSelected(task)
+            return task
+          }}
           onClose={() => setShowNew(false)}
         />
       )}

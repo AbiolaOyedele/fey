@@ -44,7 +44,7 @@ export default function DayPanel({ dateKey, posts, brandById, accent, onEdit, on
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden animate-fadeIn">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden h-full">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <CalendarDays size={15} style={{ color: accent }} className="flex-shrink-0" />

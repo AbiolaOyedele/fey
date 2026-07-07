@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { X, Trash2, Plus, Check, Calendar } from 'lucide-react'
+import { X, Trash2, Plus, Check } from 'lucide-react'
 import type { Task, TaskPriority, Subtask, UpdateTaskPayload, WorkflowStage } from '@/types/work-tasks'
 import type { MentionEntityType } from '@/types/mention'
 import AssigneePicker from './AssigneePicker'
+import DateField from '@/components/ui/DateField'
 import TaskAttachments from './TaskAttachments'
 import TaskComments from './TaskComments'
 import { useConfirm } from '@/contexts/ConfirmContext'
@@ -98,14 +99,14 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
   const doneSubs = task.subtasks.filter((s) => s.done).length
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" onMouseDown={onClose}>
-      <div className="absolute inset-0 bg-black/30" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" onMouseDown={onClose}>
+      <div className="absolute inset-0 bg-black/30 animate-fadeIn" />
       <div
-        className="relative w-full max-w-md h-full bg-white shadow-2xl overflow-y-auto"
+        className="relative w-full max-w-xl max-h-[85dvh] bg-white rounded-2xl shadow-2xl overflow-y-auto animate-slideUp"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">
           <div className="flex items-center gap-2 text-xs2 text-gray-400 min-w-0">
             {task.project_title ? <span className="truncate">{task.project_title}</span>
               : task.contact_name ? <span className="truncate">{task.contact_name}</span>
@@ -382,15 +383,5 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function DateInput({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
-  return (
-    <div className="relative inline-flex items-center">
-      <Calendar size={13} className="absolute left-2 text-gray-300 pointer-events-none" />
-      <input
-        type="date"
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value || null)}
-        className="pl-7 pr-2 py-1.5 rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
-      />
-    </div>
-  )
+  return <DateField value={value} onChange={onChange} clearable />
 }

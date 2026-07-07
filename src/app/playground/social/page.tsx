@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Megaphone, Plus, ArrowLeft, Pencil, CalendarDays } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useConfirm } from '@/contexts/ConfirmContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useContacts } from '@/hooks/useCrm'
 import { useSocialPlanner, toDateKey } from '@/hooks/useSocialPlanner'
+import { FadeIn } from '@/components/ui/motion'
 import SocialCalendar from '@/components/playground/SocialCalendar'
 import DayPanel from '@/components/playground/DayPanel'
 import PostEditor, { STATUS_STYLES } from '@/components/playground/PostEditor'
@@ -29,6 +31,8 @@ export default function SocialCornerPage() {
   const { contacts } = useContacts()
 
   const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
+  // -1 | 1 — which way the visible month last moved, so the grid slides that way.
+  const [monthDir, setMonthDir] = useState(0)
   const [brandFilter, setBrandFilter] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [editor, setEditor] = useState<EditorState>(null)
@@ -71,6 +75,7 @@ export default function SocialCornerPage() {
 
   const monthLabel = month.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
   const shiftMonth = (delta: number) => {
+    setMonthDir(delta > 0 ? 1 : -1)
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1))
     setSelectedDay(null)
   }
@@ -114,14 +119,16 @@ export default function SocialCornerPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 page-enter">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-1">
-        <Link href="/playground" title="Back to Playground" className="text-gray-300 hover:text-gray-600 transition-colors">
-          <ArrowLeft size={16} />
-        </Link>
-        <Megaphone size={18} style={{ color: accent }} />
-        <h1 className="font-display text-xl font-normal text-gray-800">Social Corner</h1>
-      </div>
-      <p className="text-xs text-gray-400 mb-4">Every brand’s content calendar, one place. Click a day to plan it.</p>
+      <FadeIn>
+        <div className="flex items-center gap-2 mb-1">
+          <Link href="/playground" title="Back to Playground" className="text-gray-300 hover:text-gray-600 transition-colors">
+            <ArrowLeft size={16} />
+          </Link>
+          <Megaphone size={18} style={{ color: accent }} />
+          <h1 className="font-display text-xl font-normal text-gray-800">Social Corner</h1>
+        </div>
+        <p className="text-xs text-gray-400 mb-4">Every brand’s content calendar, one place. Click a day to plan it.</p>
+      </FadeIn>
 
       {/* Toolbar: month nav + stats + actions */}
       <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -235,30 +242,47 @@ export default function SocialCornerPage() {
         <div className="flex flex-col lg:flex-row gap-4 items-stretch">
           {/* Calendar collapses to the side when a day is open */}
           <div className={`min-w-0 transition-all duration-300 ${selectedDay ? 'lg:w-[55%]' : 'w-full'}`}>
-            <SocialCalendar
-              month={month}
-              postsByDay={postsByDay}
-              brandById={brandById}
-              selectedDay={selectedDay}
-              compact={selectedDay !== null}
-              accent={accent}
-              onSelectDay={(key) => setSelectedDay((cur) => (cur === key ? null : key))}
-            />
-          </div>
-          {selectedDay && (
-            <div className="lg:w-[45%] min-w-0 lg:max-h-[calc(100vh-16rem)]">
-              <DayPanel
-                dateKey={selectedDay}
-                posts={dayPosts}
+            {/* Keyed on the month so switching months slides the grid in from the travel direction. */}
+            <motion.div
+              key={monthKey}
+              initial={{ opacity: 0, x: monthDir * 32 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            >
+              <SocialCalendar
+                month={month}
+                postsByDay={postsByDay}
                 brandById={brandById}
+                selectedDay={selectedDay}
+                compact={selectedDay !== null}
                 accent={accent}
-                onEdit={(post) => setEditor({ mode: 'edit', post })}
-                onAdd={() => setEditor({ mode: 'create', date: selectedDay, brandId: brandFilter })}
-                onMarkTask={(post) => void handleMarkTask(post.id)}
-                onClose={() => setSelectedDay(null)}
+                onSelectDay={(key) => setSelectedDay((cur) => (cur === key ? null : key))}
               />
-            </div>
-          )}
+            </motion.div>
+          </div>
+          <AnimatePresence>
+            {selectedDay && (
+              <motion.div
+                key="day-panel"
+                initial={{ opacity: 0, x: 32, scale: 0.98 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 24, scale: 0.98, transition: { duration: 0.15 } }}
+                transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                className="lg:w-[45%] min-w-0 lg:max-h-[calc(100vh-16rem)]"
+              >
+                <DayPanel
+                  dateKey={selectedDay}
+                  posts={dayPosts}
+                  brandById={brandById}
+                  accent={accent}
+                  onEdit={(post) => setEditor({ mode: 'edit', post })}
+                  onAdd={() => setEditor({ mode: 'create', date: selectedDay, brandId: brandFilter })}
+                  onMarkTask={(post) => void handleMarkTask(post.id)}
+                  onClose={() => setSelectedDay(null)}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 

@@ -1,5 +1,20 @@
 [
   {
+    "version": "1.18.0",
+    "date": "7 July 2026",
+    "title": "Social Corner",
+    "features": [
+      "Social Corner is live in the Playground — a content calendar for your social media team",
+      "Create color-coded brand calendars, optionally linked to your CRM clients",
+      "Plan posts with pillar, format, visual notes, caption, inspo link and a review status (draft → pending review → reviewed → approved)",
+      "Batch mode — Save & next keeps the card open so you can plan a whole week without leaving it",
+      "Click any calendar day to see everything scheduled that day, grouped per brand",
+      "Turn any planned post into a task on the Tasks page with one click"
+    ],
+    "improvements": [],
+    "fixes": []
+  },
+  {
     "version": "1.17.0",
     "date": "6 July 2026",
     "title": "Task comments & Playground",

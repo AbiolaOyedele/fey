@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { SocialBrand, SocialPost } from '@/types/social'
+import type { SocialBrand, SocialPost, SocialPostFile } from '@/types/social'
 
 /**
  * All Social Corner queries (social_brands + social_posts). Callers pass a
@@ -141,5 +141,51 @@ export async function updatePostRow(db: SupabaseClient, id: string, updates: Rec
 
 export async function softDeletePost(db: SupabaseClient, id: string): Promise<void> {
   const { error } = await db.from('social_posts').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+  if (error) throw error
+}
+
+export async function getPostOwner(db: SupabaseClient, id: string): Promise<{ owner_id: string } | null> {
+  const { data, error } = await db
+    .from('social_posts')
+    .select('owner_id')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .maybeSingle()
+  if (error) throw error
+  return data as { owner_id: string } | null
+}
+
+// ── Post files ────────────────────────────────────────────────────────────────
+
+const FILE_SELECT = 'id, file_name, file_url, public_id, file_size, file_type, uploader_name, created_at'
+
+export async function listPostFiles(db: SupabaseClient, postId: string): Promise<SocialPostFile[]> {
+  const { data, error } = await db
+    .from('social_post_files')
+    .select(FILE_SELECT)
+    .eq('post_id', postId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as unknown as SocialPostFile[]
+}
+
+export async function insertPostFile(db: SupabaseClient, row: Record<string, unknown>): Promise<SocialPostFile> {
+  const { data, error } = await db.from('social_post_files').insert(row).select(FILE_SELECT).single()
+  if (error) throw error
+  return data as unknown as SocialPostFile
+}
+
+export async function getPostFile(db: SupabaseClient, fileId: string): Promise<(SocialPostFile & { post_id: string }) | null> {
+  const { data, error } = await db
+    .from('social_post_files')
+    .select(`post_id, ${FILE_SELECT}`)
+    .eq('id', fileId)
+    .maybeSingle()
+  if (error) throw error
+  return data as unknown as (SocialPostFile & { post_id: string }) | null
+}
+
+export async function deletePostFileRow(db: SupabaseClient, fileId: string): Promise<void> {
+  const { error } = await db.from('social_post_files').delete().eq('id', fileId)
   if (error) throw error
 }

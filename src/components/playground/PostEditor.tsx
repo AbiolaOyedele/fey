@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Trash2, ListTodo, Layers, ChevronDown } from 'lucide-react'
+import { X, Trash2, ListTodo, Layers, ChevronDown, Paperclip } from 'lucide-react'
 import { SOCIAL_POST_STATUSES, SOCIAL_POST_FORMATS } from '@/types/social'
 import type { SocialBrand, SocialPost, SocialPostFormat, SocialPostStatus, CreatePostPayload } from '@/types/social'
 import DateField from '@/components/ui/DateField'
 import TimeField from '@/components/ui/TimeField'
+import SocialPostAttachments from '@/components/playground/SocialPostAttachments'
+import { useSocialPostFiles } from '@/hooks/useSocialPostFiles'
 
 export const STATUS_STYLES: Record<SocialPostStatus, { bg: string; text: string }> = {
   draft: { bg: '#F3F4F6', text: '#6B7280' },
@@ -86,6 +88,7 @@ export default function PostEditor({
   )
   const [saving, setSaving] = useState(false)
   const [batchCount, setBatchCount] = useState(0)
+  const { files, addFile, removeFile } = useSocialPostFiles(post?.id ?? null, Boolean(post))
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }))
 
@@ -258,6 +261,18 @@ export default function PostEditor({
               placeholder="https://…"
               className={inputCls}
             />
+          </div>
+
+          <div>
+            <label className={labelCls}>Inspiration files</label>
+            {post ? (
+              <SocialPostAttachments postId={post.id} files={files} onAdd={addFile} onRemove={removeFile} />
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-gray-200 text-gray-400">
+                <Paperclip size={14} className="flex-shrink-0" />
+                <span className="text-xs">Save the post first, then attach inspo images or files</span>
+              </div>
+            )}
           </div>
         </div>
 

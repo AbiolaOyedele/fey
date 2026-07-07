@@ -1,7 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { AppError } from '@/lib/errors'
-import type { SocialBrand, SocialPost } from '@/types/social'
+import { destroyCloudinaryAssetById, parseCloudinaryUrl } from '@/lib/cloudinary-server'
+import { MAX_UPLOAD_BYTES, ALLOWED_UPLOAD_EXTENSIONS } from '@/lib/constants'
+import type { SocialBrand, SocialPost, SocialPostFile } from '@/types/social'
 import * as repo from '@/repositories/social.repository'
 import { createTask } from '@/services/work-tasks.service'
 
@@ -205,4 +207,68 @@ export async function markPostAsTask(
   })
 
   return repo.updatePostRow(db, postId, { work_task_id: task.id })
+}
+
+// ── Post files ────────────────────────────────────────────────────────────────
+
+const fileSchema = z.object({
+  file_name: z.string().trim().min(1, 'File name is required.').max(300),
+  // Uploads go direct to Cloudinary; the metadata row must point back at it.
+  file_url: z.string().url().startsWith('https://res.cloudinary.com/', 'Invalid file URL.'),
+  public_id: z.string().min(1).max(300),
+  file_size: z.number().int().min(0).max(MAX_UPLOAD_BYTES, 'File is too large.').nullable().optional(),
+  file_type: z.string().max(100).nullable().optional(),
+})
+
+export async function listPostFiles(db: SupabaseClient, postId: string): Promise<SocialPostFile[]> {
+  const post = await repo.getPost(db, postId)
+  if (!post) throw new AppError(404, 'That post could not be found.', 'SOCIAL_POST_NOT_FOUND')
+  return repo.listPostFiles(db, postId)
+}
+
+/** Records a Cloudinary upload against a post. The binary is already uploaded
+ *  client-side (signed); this validates + stores the metadata row. */
+export async function addPostFile(
+  db: SupabaseClient,
+  postId: string,
+  input: unknown,
+  actor: { userId: string; name: string | null },
+): Promise<SocialPostFile> {
+  const post = await repo.getPostOwner(db, postId)
+  if (!post) throw new AppError(404, 'That post could not be found.', 'SOCIAL_POST_NOT_FOUND')
+
+  const parsed = fileSchema.safeParse(input)
+  if (!parsed.success) throw new AppError(400, parsed.error.issues[0]?.message ?? 'Invalid file.', 'SOCIAL_POST_FILE_INVALID')
+  const d = parsed.data
+
+  // Defense in depth: re-check the extension server-side (SECURITY.md) — the
+  // client validates before uploading, but the metadata write must not trust it.
+  const ext = d.file_name.split('.').pop()?.toLowerCase() ?? ''
+  if (!(ALLOWED_UPLOAD_EXTENSIONS as readonly string[]).includes(ext)) {
+    throw new AppError(422, 'That file type is not allowed.', 'SOCIAL_POST_FILE_INVALID_TYPE')
+  }
+
+  return repo.insertPostFile(db, {
+    post_id: postId,
+    owner_id: post.owner_id,
+    uploaded_by: actor.userId,
+    uploader_name: actor.name,
+    file_name: d.file_name,
+    file_url: d.file_url,
+    public_id: d.public_id,
+    file_size: d.file_size ?? null,
+    file_type: d.file_type ?? null,
+  })
+}
+
+/** Deletes a file's metadata row, then best-effort removes the Cloudinary
+ *  asset server-side. */
+export async function deletePostFile(db: SupabaseClient, postId: string, fileId: string): Promise<void> {
+  const file = await repo.getPostFile(db, fileId)
+  if (!file || file.post_id !== postId) throw new AppError(404, 'That file could not be found.', 'SOCIAL_POST_FILE_NOT_FOUND')
+  await repo.deletePostFileRow(db, fileId)
+
+  const resourceType = parseCloudinaryUrl(file.file_url)?.resourceType ?? 'image'
+  const cleaned = await destroyCloudinaryAssetById(file.public_id, resourceType)
+  if (!cleaned) console.warn('[deletePostFile] Cloudinary cleanup failed (metadata removed)', { fileId })
 }

@@ -47,6 +47,18 @@ export interface SocialBrand {
   created_at: string
 }
 
+/** A Cloudinary-backed file attached to a post (inspiration image/asset). */
+export interface SocialPostFile {
+  id: string
+  file_name: string
+  file_url: string
+  public_id: string
+  file_size: number | null
+  file_type: string | null
+  uploader_name: string | null
+  created_at: string
+}
+
 export interface SocialPost {
   id: string
   brand_id: string

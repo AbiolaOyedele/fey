@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Megaphone, Plus, ArrowLeft, Pencil, CalendarDays } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Megaphone, Plus, ArrowLeft, Pencil, CalendarDays, Layers } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useConfirm } from '@/contexts/ConfirmContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -12,6 +12,7 @@ import { useContacts } from '@/hooks/useCrm'
 import { useSocialPlanner, toDateKey } from '@/hooks/useSocialPlanner'
 import { FadeIn } from '@/components/ui/motion'
 import SocialCalendar from '@/components/playground/SocialCalendar'
+import PostStackView from '@/components/playground/PostStackView'
 import DayPanel from '@/components/playground/DayPanel'
 import PostEditor, { STATUS_STYLES } from '@/components/playground/PostEditor'
 import BrandModal from '@/components/playground/BrandModal'
@@ -50,6 +51,7 @@ export default function SocialCornerPage() {
   })
   // -1 | 1 — which way the visible month last moved, so the grid slides that way.
   const [monthDir, setMonthDir] = useState(0)
+  const [view, setView] = useState<'calendar' | 'stack'>('calendar')
   const [brandFilter, setBrandFilter] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(deepLinkDate)
   const [editor, setEditor] = useState<EditorState>(null)
@@ -200,6 +202,25 @@ export default function SocialCornerPage() {
           })}
         </div>
 
+        <div className="flex items-center gap-1 bg-white border border-gray-100 rounded-xl p-1 shadow-sm">
+          <button
+            onClick={() => setView('calendar')}
+            title="Calendar view"
+            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${view === 'calendar' ? 'text-white' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50'}`}
+            style={view === 'calendar' ? { backgroundColor: accent } : undefined}
+          >
+            <CalendarDays size={14} />
+          </button>
+          <button
+            onClick={() => setView('stack')}
+            title="Stack view"
+            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${view === 'stack' ? 'text-white' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50'}`}
+            style={view === 'stack' ? { backgroundColor: accent } : undefined}
+          >
+            <Layers size={14} />
+          </button>
+        </div>
+
         <div className="flex-1" />
         <button
           onClick={() => setEditor({ mode: 'create', date: selectedDay ?? toDateKey(new Date()), brandId: brandFilter })}
@@ -279,6 +300,13 @@ export default function SocialCornerPage() {
             <Plus size={15} /> Create your first brand
           </button>
         </div>
+      ) : view === 'stack' ? (
+        <PostStackView
+          posts={monthPosts}
+          brandById={brandById}
+          accent={accent}
+          onOpen={(post) => setEditor({ mode: 'edit', post })}
+        />
       ) : (
         <div className="flex flex-col lg:flex-row gap-4 items-stretch">
           {/* Calendar collapses to the side when a day is open */}

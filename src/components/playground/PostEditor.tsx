@@ -127,9 +127,9 @@ export default function PostEditor({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-end md:items-center justify-center z-50 animate-fadeIn" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4 animate-fadeIn" onClick={onClose}>
       <div
-        className="bg-white rounded-t-2xl md:rounded-2xl w-full md:max-w-lg shadow-xl animate-slideUp max-h-[90vh] flex flex-col"
+        className="bg-white rounded-2xl w-full max-w-lg shadow-xl animate-slideUp max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 flex-shrink-0">

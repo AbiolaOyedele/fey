@@ -23,6 +23,7 @@ import { PALETTE } from '@/data/defaultClients'
 import type { FeyTask, FeyThreadWithTasks } from '@/types'
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities'
 import type { DraggableAttributes } from '@dnd-kit/core'
+import DateField from '@/components/ui/DateField'
 
 const TASK_FILTER_OPTIONS = [
   { value: 'all',     label: 'All Tasks' },
@@ -86,8 +87,8 @@ function FeyTaskItem({ task, onUpdate, onDelete, onOpenNotes, dragListeners, dra
     else setTitleVal(task.title)
   }
 
-  const handleDeadlineChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    onUpdate({ ...task, deadline: e.target.value || null })
+  const handleDeadlineChange = (deadline: string | null) =>
+    onUpdate({ ...task, deadline })
 
   const handleDelete = () => {
     setDeleting(true)
@@ -149,23 +150,19 @@ function FeyTaskItem({ task, onUpdate, onDelete, onOpenNotes, dragListeners, dra
         )}
 
         <div className="flex items-center gap-0.5 flex-shrink-0">
-          <div
-            className={`relative w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+          <DateField
+            value={task.deadline ?? null}
+            onChange={handleDeadlineChange}
+            placeholder="Set deadline"
+            title={task.deadline ? `Due: ${fmtDeadline(task.deadline)}` : 'Set deadline'}
+            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
               isOverdue ? 'text-red-400 hover:bg-red-50'
               : task.deadline ? 'text-amber-400 hover:bg-amber-50'
               : 'opacity-0 group-hover/row:opacity-100 text-gray-300 hover:bg-gray-100 hover:text-gray-500'
             }`}
-            title={task.deadline ? `Due: ${fmtDeadline(task.deadline)}` : 'Set deadline'}
           >
             <Calendar size={13} className="pointer-events-none" />
-            <input
-              type="date"
-              value={task.deadline ?? ''}
-              onChange={handleDeadlineChange}
-              className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-              tabIndex={-1}
-            />
-          </div>
+          </DateField>
 
           <button
             onClick={handleDelete}

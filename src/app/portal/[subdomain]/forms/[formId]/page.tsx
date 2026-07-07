@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, ClipboardList, CheckCircle2 } from 'lucide-react'
 import type { CrmForm, FormField, FormResponse } from '@/types/crm'
 import { Checkbox } from '@/components/ui/checkbox'
+import DateField from '@/components/ui/DateField'
 
 function FormFieldInput({
   field,
@@ -53,7 +54,14 @@ function FormFieldInput({
       )
     }
     case 'date':
-      return <input type="date" value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value)} className={base} />
+      return (
+        <DateField
+          value={(value as string) || null}
+          onChange={(v) => onChange(v ?? '')}
+          placeholder={field.placeholder ?? 'Pick a date'}
+          className="w-full px-3! py-2.5! rounded-xl! bg-gray-50! focus-within:bg-white!"
+        />
+      )
     case 'file':
       return <p className="text-sm text-gray-400 italic">File upload not supported in portal.</p>
   }

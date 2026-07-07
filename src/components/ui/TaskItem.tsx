@@ -10,6 +10,7 @@ import type { DraggableSyntheticListeners } from '@dnd-kit/core'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useConfirm } from '@/contexts/ConfirmContext'
 import TaskFileAttachment from '@/components/ui/TaskFileAttachment'
+import DateField from '@/components/ui/DateField'
 import { useTaskFiles } from '@/hooks/useTaskFiles'
 import type { Task } from '@/types'
 
@@ -111,8 +112,7 @@ export default function TaskItem({
   const [amountEditing, setAmountEditing] = useState(false)
   const [paidMenuOpen, setPaidMenuOpen] = useState(false)
   const [fileOpen,     setFileOpen]     = useState(false)
-  const dateInputRef = useRef<HTMLInputElement>(null)
-  const paidMenuRef  = useRef<HTMLDivElement>(null)
+  const paidMenuRef = useRef<HTMLDivElement>(null)
 
   const { count: fileCount } = useTaskFiles(clientId ? task.id : null, false)
   const confirm = useConfirm()
@@ -177,8 +177,8 @@ export default function TaskItem({
     setAmountInput(raw > 0 ? formatWithCommas(raw) : '')
   }
 
-  const handleDeadlineChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onUpdate({ ...task, deadline: e.target.value || null })
+  const handleDeadlineChange = (deadline: string | null) => {
+    onUpdate({ ...task, deadline })
   }
 
   const handleDelete = async () => {
@@ -321,29 +321,21 @@ export default function TaskItem({
             </button>
           )}
 
-          <div className="relative">
-            <button
-              onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
-              className={`relative flex items-center justify-center w-6 h-6 transition-[opacity,color] after:absolute after:-inset-x-[3px] after:-inset-y-2 after:content-[''] ${
-                isOverdue
-                  ? 'text-red-400 hover:text-red-600'
-                  : task.deadline
-                  ? 'text-amber-400 hover:text-amber-600'
-                  : 'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-500'
-              }`}
-              title={task.deadline ? `Due: ${formatDeadline(task.deadline)}` : 'Set deadline'}
-            >
-              <Calendar size={14} />
-            </button>
-            <input
-              ref={dateInputRef}
-              type="date"
-              value={task.deadline || ''}
-              onChange={handleDeadlineChange}
-              className="absolute inset-0 opacity-0 w-0 h-0 pointer-events-none"
-              tabIndex={-1}
-            />
-          </div>
+          <DateField
+            value={task.deadline || null}
+            onChange={handleDeadlineChange}
+            placeholder="Set deadline"
+            title={task.deadline ? `Due: ${formatDeadline(task.deadline)}` : 'Set deadline'}
+            className={`flex items-center justify-center w-6 h-6 transition-[opacity,color] ${
+              isOverdue
+                ? 'text-red-400 hover:text-red-600'
+                : task.deadline
+                ? 'text-amber-400 hover:text-amber-600'
+                : 'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-500'
+            }`}
+          >
+            <Calendar size={14} />
+          </DateField>
 
           <button
             onClick={() => void handleDelete()}
@@ -379,14 +371,16 @@ export default function TaskItem({
 
         {noMoney && (
           <div className="md:hidden flex items-center gap-1.5 flex-shrink-0">
-            <button
-              onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
+            <DateField
+              value={task.deadline || null}
+              onChange={handleDeadlineChange}
+              placeholder="Set deadline"
               className={`flex items-center justify-center w-6 h-6 transition-colors ${
                 isOverdue ? 'text-red-400' : task.deadline ? 'text-amber-400' : 'text-gray-300'
               }`}
             >
               <Calendar size={14} />
-            </button>
+            </DateField>
             <button
               onClick={() => void handleDelete()}
               className="flex items-center justify-center w-6 h-6 text-gray-300 hover:text-danger transition-colors duration-150"
@@ -440,14 +434,16 @@ export default function TaskItem({
               </div>
             )}
           </div>
-          <button
-            onClick={() => dateInputRef.current?.showPicker?.() ?? dateInputRef.current?.click()}
+          <DateField
+            value={task.deadline || null}
+            onChange={handleDeadlineChange}
+            placeholder="Set deadline"
             className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${
               isOverdue ? 'text-red-400' : task.deadline ? 'text-amber-400' : 'text-gray-300'
             }`}
           >
             <Calendar size={14} />
-          </button>
+          </DateField>
           <button
             onClick={() => void handleDelete()}
             className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-300 hover:text-danger transition-colors duration-150"

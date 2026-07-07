@@ -33,9 +33,9 @@ export default function BrandModal({ brand, contacts, accent, onSave, onDelete, 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-end md:items-center justify-center z-50 animate-fadeIn" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4 animate-fadeIn" onClick={onClose}>
       <div
-        className="bg-white rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-sm shadow-xl animate-slideUp max-h-[85vh] overflow-y-auto"
+        className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl animate-slideUp max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">

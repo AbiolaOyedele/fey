@@ -4,6 +4,7 @@ import { use, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { FolderOpen, Plus, X, Loader2 } from 'lucide-react'
 import { useProjects } from '@/hooks/useProjects'
+import DateField from '@/components/ui/DateField'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { formatDate } from '@/utils/formatDate'
 import type { ProjectStatus } from '@/types/project'
@@ -94,11 +95,10 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
           />
           <div className="flex items-center gap-2 mb-2">
             <label className="text-xs text-gray-500">Due date</label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="text-sm px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-gray-400"
+            <DateField
+              value={dueDate || null}
+              onChange={(v) => setDueDate(v ?? '')}
+              className="px-3! py-2! rounded-xl!"
             />
           </div>
           {error && <p className="text-xs text-red-500 mb-2">{error}</p>}

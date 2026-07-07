@@ -8,6 +8,7 @@ import {
   Bold, Italic, Underline, List, ChevronDown, LayoutTemplate,
 } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
+import DateField from '@/components/ui/DateField'
 import { supabase } from '@/lib/supabase'
 import type { CrmContract, ContractContent, CrmTemplate } from '@/types/crm'
 
@@ -44,7 +45,8 @@ interface CustomSection {
 const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
 const iField    = 'w-full bg-transparent border border-transparent rounded px-1 py-0.5 outline-none hover:border-gray-200 focus:border-gray-300 focus:bg-white/80 transition-all text-inherit placeholder-gray-300'
-const iFieldSm  = 'bg-transparent border border-transparent rounded px-1 outline-none hover:border-gray-200 focus:border-gray-300 focus:bg-white/80 transition-all text-xs text-inherit'
+// DateField override matching iField's quiet inline look inside the document canvas.
+const dateFieldSm = 'bg-transparent! border-transparent! hover:border-gray-200! focus-within:border-gray-300! focus-within:bg-white/80! rounded! px-1! py-0! text-xs!'
 
 const SECTION_TYPES = [
   'Confidentiality',
@@ -376,20 +378,18 @@ export default function ContractBuilder({
             </div>
             <div>
               <p className="text-xs text-gray-400 mb-1.5">Effective Date</p>
-              <input
-                type="date"
-                value={effectiveDate}
-                onChange={(e) => setEffectiveDate(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-400"
+              <DateField
+                value={effectiveDate || null}
+                onChange={(v) => setEffectiveDate(v ?? '')}
+                className="w-full px-3! py-2! bg-gray-50! rounded-xl!"
               />
             </div>
             <div>
               <p className="text-xs text-gray-400 mb-1.5">Expiry Date</p>
-              <input
-                type="date"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-gray-400"
+              <DateField
+                value={expiryDate || null}
+                onChange={(v) => setExpiryDate(v ?? '')}
+                className="w-full px-3! py-2! bg-gray-50! rounded-xl!"
               />
             </div>
             <div>
@@ -476,20 +476,18 @@ export default function ContractBuilder({
           <div className="flex flex-wrap gap-4 mb-6 text-sm">
             <div>
               <span className="text-3xs font-bold uppercase tracking-widest opacity-40 mr-2">Effective Date</span>
-              <input
-                type="date"
-                value={effectiveDate}
-                onChange={(e) => setEffectiveDate(e.target.value)}
-                className={iFieldSm}
+              <DateField
+                value={effectiveDate || null}
+                onChange={(v) => setEffectiveDate(v ?? '')}
+                className={dateFieldSm}
               />
             </div>
             <div>
               <span className="text-3xs font-bold uppercase tracking-widest opacity-40 mr-2">Expiry Date</span>
-              <input
-                type="date"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-                className={iFieldSm}
+              <DateField
+                value={expiryDate || null}
+                onChange={(v) => setExpiryDate(v ?? '')}
+                className={dateFieldSm}
               />
             </div>
           </div>

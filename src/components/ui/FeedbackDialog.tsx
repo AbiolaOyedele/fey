@@ -82,7 +82,7 @@ export default function FeedbackDialog({ open, onClose, accent, onSubmit, onSucc
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div
         role="dialog"
         aria-label="Send feedback"

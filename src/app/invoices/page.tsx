@@ -12,6 +12,7 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useInvoiceData } from '@/hooks/useInvoiceData'
 import NewInvoiceModal from '@/components/ui/NewInvoiceModal'
+import DateField from '@/components/ui/DateField'
 import { CURRENCY_SYMBOLS } from '@/lib/constants'
 import { supabase } from '@/lib/supabase'
 import type { Invoice, Client } from '@/types'
@@ -328,20 +329,18 @@ export default function InvoicesPage() {
           <div className="w-full flex items-center gap-3 pt-2 border-t border-gray-100">
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400">From</span>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:border-gray-400"
+              <DateField
+                value={dateFrom || null}
+                onChange={(v) => setDateFrom(v ?? '')}
+                className="px-2! text-xs! bg-gray-50!"
               />
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400">To</span>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:border-gray-400"
+              <DateField
+                value={dateTo || null}
+                onChange={(v) => setDateTo(v ?? '')}
+                className="px-2! text-xs! bg-gray-50!"
               />
             </div>
             {(dateFrom || dateTo) && (

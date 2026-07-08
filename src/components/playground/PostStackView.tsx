@@ -12,7 +12,10 @@ import { thumbUrl, isImageType, getFileType, type FileType } from '@/utils/cloud
 // `dvh` (not `vh`) so mobile browser chrome collapsing/expanding the address
 // bar doesn't push content below the fold — `vh` is measured against the
 // largest possible viewport, which clips the bottom of the card on phones.
-const STACK_DVH = 92
+const STACK_DVH = 94
+// The card itself is deliberately near-full-height so its details read at a
+// glance — the slide is a hair taller than the card to leave sticky/stack room.
+const CARD_DVH = 85
 
 const statusLabel = (s: SocialPost['status']) => SOCIAL_POST_STATUSES.find((x) => x.value === s)?.label ?? s
 const formatLabel = (f: SocialPost['format']) => SOCIAL_POST_FORMATS.find((x) => x.value === f)?.label ?? null
@@ -60,48 +63,49 @@ function StackCard({
     >
       {/* Centered by the flex wrapper above; only a small per-card nudge (`y`)
        *  and `scale` are animated, so the stack fans out without fighting the
-       *  centering — no large top-offset hacks that can push a card off-screen. */}
+       *  centering — no large top-offset hacks that can push a card off-screen.
+       *  Near-full-bleed and near-full-height so the details read at a glance. */}
       <motion.div
-        style={{ scale, y: i * 12 }}
-        className="relative w-full max-w-4xl sm:max-w-5xl max-h-full overflow-y-auto rounded-3xl border border-gray-200 bg-white shadow-xl shadow-gray-300/30 flex flex-col sm:flex-row text-left"
+        style={{ scale, y: i * 12, height: `${CARD_DVH}dvh` }}
+        className="relative w-full overflow-y-auto rounded-3xl border border-gray-200 bg-white shadow-xl shadow-gray-300/30 flex flex-col sm:flex-row text-left"
       >
         {/* Bold date, top-left */}
-        <div className="absolute top-5 left-5 sm:top-6 sm:left-7 leading-none z-10">
-          <p className="text-3xl sm:text-4xl font-bold text-gray-900 tabular-nums">{day}</p>
-          <p className="text-2xs sm:text-xs font-semibold text-gray-400 tracking-wide mt-1">{month}</p>
+        <div className="absolute top-6 left-6 sm:top-7 sm:left-8 leading-none z-10">
+          <p className="text-4xl sm:text-5xl font-bold text-gray-900 tabular-nums">{day}</p>
+          <p className="text-xs sm:text-sm font-semibold text-gray-400 tracking-wide mt-1">{month}</p>
         </div>
 
         {/* Details */}
-        <div className="w-full sm:w-[40%] sm:flex-shrink-0 flex flex-col justify-center text-left px-5 sm:pl-7 sm:pr-6 pt-20 sm:pt-24 pb-5 sm:pb-8">
+        <div className="w-full sm:w-[42%] sm:flex-shrink-0 flex flex-col sm:justify-center text-left px-6 sm:pl-8 sm:pr-6 pt-24 sm:pt-0 pb-6 sm:pb-0">
           {brand && (
             <span className="inline-flex items-center gap-1.5 text-2xs font-medium text-gray-400 uppercase tracking-wide mb-2">
               <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: brand.color }} />
               {brand.name}
             </span>
           )}
-          <h3 className="font-display text-lg sm:text-2xl text-gray-900 leading-snug break-words line-clamp-2">
+          <h3 className="font-display text-xl sm:text-3xl text-gray-900 leading-snug break-words line-clamp-2">
             {post.title}
           </h3>
 
           <div className="flex flex-wrap items-center gap-1.5 mt-3">
             <span
-              className="inline-flex items-center text-2xs font-medium px-2 py-0.5 rounded-full"
+              className="inline-flex items-center text-2xs sm:text-xs font-medium px-2 py-0.5 rounded-full"
               style={{ backgroundColor: STATUS_STYLES[post.status].bg, color: STATUS_STYLES[post.status].text }}
             >
               {statusLabel(post.status)}
             </span>
             {format && (
-              <span className="inline-flex items-center text-2xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+              <span className="inline-flex items-center text-2xs sm:text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
                 {format}
               </span>
             )}
             {post.content_pillar && (
-              <span className="inline-flex items-center text-2xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 break-words">
+              <span className="inline-flex items-center text-2xs sm:text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 break-words">
                 {post.content_pillar}
               </span>
             )}
             {time && (
-              <span className="inline-flex items-center gap-1 text-2xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+              <span className="inline-flex items-center gap-1 text-2xs sm:text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
                 <Clock size={10} /> {time}
               </span>
             )}
@@ -110,14 +114,14 @@ function StackCard({
           {post.visual_notes && (
             <div className="mt-4">
               <p className="text-3xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Visual</p>
-              <p className="text-sm text-gray-600 leading-relaxed break-words line-clamp-3 sm:line-clamp-5">{post.visual_notes}</p>
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed break-words line-clamp-3 sm:line-clamp-5">{post.visual_notes}</p>
             </div>
           )}
 
           {post.caption && (
             <div className="mt-4">
               <p className="text-3xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Caption</p>
-              <p className="text-sm text-gray-500 leading-relaxed break-words line-clamp-2 sm:line-clamp-4">{post.caption}</p>
+              <p className="text-sm sm:text-base text-gray-500 leading-relaxed break-words line-clamp-2 sm:line-clamp-4">{post.caption}</p>
             </div>
           )}
 
@@ -142,12 +146,13 @@ function StackCard({
           </div>
         </div>
 
-        {/* Inspiration image(s) — padded square on mobile, edge-to-edge panel on desktop */}
-        <div className="w-full sm:w-[60%] sm:flex-shrink-0 p-4 sm:p-0 sm:h-auto sm:border-l sm:border-gray-100">
-          <div className="relative aspect-square sm:aspect-auto sm:h-full rounded-2xl sm:rounded-none overflow-hidden bg-gray-50">
+        {/* Inspiration image(s) — a large padded square inset, not an edge-to-edge
+         *  panel, on both mobile (below the details) and desktop (to the right). */}
+        <div className="flex-1 min-h-0 min-w-0 flex items-center justify-center p-5 sm:p-8 sm:border-l sm:border-gray-100">
+          <div className="relative w-full h-full max-w-full max-h-full aspect-square rounded-2xl overflow-hidden bg-gray-50">
             {images.length === 0 ? (
               <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-gray-300">
-                <ImageOff size={26} strokeWidth={1.5} />
+                <ImageOff size={28} strokeWidth={1.5} />
                 <span className="text-2xs text-gray-300">No inspiration image yet</span>
               </div>
             ) : images.length === 1 ? (

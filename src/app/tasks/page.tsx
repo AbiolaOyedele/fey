@@ -191,6 +191,7 @@ export default function TasksPage() {
       {showNew && (
         <NewTaskModal
           workspaceId={wsId}
+          stages={defaultStages}
           onCreate={async (payload) => {
             // Open the detail panel right away so the rest of the task
             // (description, subtasks, files) can be filled in one flow.

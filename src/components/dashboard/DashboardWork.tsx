@@ -252,7 +252,7 @@ function TaskRow({ task, last }: { task: Task; last: boolean }) {
   const due = task.due_date ? dueLabel(task.due_date) : null
   return (
     <Link
-      href="/tasks"
+      href={`/tasks?taskId=${task.id}`}
       className="flex items-center gap-3 py-3 -mx-2 px-2 rounded-xl hover:bg-gray-50 transition-colors"
       style={{ borderBottom: last ? 'none' : '1px solid #F9FAFB' }}
     >

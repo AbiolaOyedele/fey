@@ -50,7 +50,7 @@ export default function PlaygroundPage() {
             >
               <Megaphone size={20} />
             </div>
-            <h2 className="text-sm font-semibold text-gray-800 mb-1">Social Corner</h2>
+            <h2 className="text-sm font-semibold text-gray-800 mb-1">Social Media Corner</h2>
             <p className="text-xs text-gray-400 leading-relaxed mb-4">
               Plan content calendars per brand — schedule posts, review, approve, and turn them into tasks.
             </p>

@@ -168,7 +168,7 @@ export default function SocialCornerPage() {
             <ArrowLeft size={16} />
           </Link>
           <Megaphone size={18} style={{ color: accent }} />
-          <h1 className="font-display text-xl font-normal text-gray-800">Social Corner</h1>
+          <h1 className="font-display text-xl font-normal text-gray-800">Social Media Corner</h1>
         </div>
         <p className="text-xs text-gray-400 mb-4">Every brand’s content calendar, one place. Click a day to plan it.</p>
       </FadeIn>

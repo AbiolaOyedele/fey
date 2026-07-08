@@ -58,6 +58,8 @@ interface TaskDetailDrawerProps {
 }
 
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
+/** Sentinel for the synthetic "Completed" stage option — not a real stage_id. */
+const COMPLETED_STAGE = '__completed__'
 
 export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
   const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onRenameSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose } = props
@@ -157,15 +159,21 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
               </Field>
             )}
 
-            {/* Stage */}
+            {/* Stage — "Completed" is a synthetic option, not a real workflow
+             *  stage, so picking it marks the task done and sends it straight
+             *  to the Completed tab instead of writing a stage_id. */}
             {stages.length > 0 && (
               <Field label="Stage">
                 <select
-                  value={task.stage_id ?? ''}
-                  onChange={(e) => void onPatch(task.id, { stage_id: e.target.value || null })}
+                  value={task.done ? COMPLETED_STAGE : (task.stage_id ?? '')}
+                  onChange={(e) => {
+                    if (e.target.value === COMPLETED_STAGE) { if (!task.done) props.onToggleDone(task.id); return }
+                    void onPatch(task.id, { stage_id: e.target.value || null })
+                  }}
                   className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
                 >
                   {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  <option value={COMPLETED_STAGE}>Completed</option>
                 </select>
               </Field>
             )}

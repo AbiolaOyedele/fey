@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useRef, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ListTodo, ChevronDown } from 'lucide-react'
 import type { Task } from '@/types/work-tasks'
@@ -16,10 +16,12 @@ interface TaskListViewProps {
 interface Group { key: string; label: string; sub: string | null; tasks: Task[] }
 
 /** Grouped list. When `grouped`, splits by project/client with a Personal group on top.
- *  Each group header collapses to hide its tasks. */
+ *  Each group header collapses to hide its tasks — groups start collapsed. */
 export default function TaskListView({ tasks, grouped, onToggleDone, onOpen }: TaskListViewProps) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
-  const toggleGroup = (key: string) => setCollapsed((prev) => {
+  // Tracks which groups have been explicitly opened — absence means collapsed,
+  // so every group starts closed without needing to know the group keys upfront.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const toggleGroup = (key: string) => setExpanded((prev) => {
     const next = new Set(prev)
     if (next.has(key)) next.delete(key)
     else next.add(key)
@@ -43,16 +45,12 @@ export default function TaskListView({ tasks, grouped, onToggleDone, onOpen }: T
     return list.sort((a, b) => rank(a.key) - rank(b.key) || a.label.localeCompare(b.label))
   }, [tasks, grouped])
 
-  // Auto-collapse every group 2 minutes after the grouped view mounts, so a
-  // list left open in a background tab settles down on its own. One-shot —
-  // reads the latest group keys via a ref so it doesn't fire again as tasks load.
-  const groupsRef = useRef(groups)
-  useEffect(() => { groupsRef.current = groups }, [groups])
+  // Groups start collapsed; if the user opens any, re-collapse everything
+  // 2 minutes after mount so a list left open in a background tab settles
+  // back down on its own.
   useEffect(() => {
     if (!grouped) return
-    const timer = setTimeout(() => {
-      setCollapsed(new Set(groupsRef.current.map((g) => g.key)))
-    }, 2 * 60 * 1000)
+    const timer = setTimeout(() => setExpanded(new Set()), 2 * 60 * 1000)
     return () => clearTimeout(timer)
   }, [grouped])
 
@@ -69,7 +67,7 @@ export default function TaskListView({ tasks, grouped, onToggleDone, onOpen }: T
   return (
     <div className="space-y-5">
       {groups.map((g) => {
-        const isCollapsed = grouped && collapsed.has(g.key)
+        const isCollapsed = grouped && !expanded.has(g.key)
         return (
           <div key={g.key}>
             {grouped && (

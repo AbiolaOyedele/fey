@@ -1,26 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Loader2 } from 'lucide-react'
 import { useContacts } from '@/hooks/useCrm'
 import { useProjects } from '@/hooks/useProjects'
 import AssigneePicker from './AssigneePicker'
 import DateField from '@/components/ui/DateField'
 import { PRIORITY_META } from './TaskBits'
-import type { CreateTaskPayload, TaskPriority, TaskVisibility } from '@/types/work-tasks'
+import type { CreateTaskPayload, TaskPriority, TaskVisibility, WorkflowStage } from '@/types/work-tasks'
 
 interface NewTaskModalProps {
   workspaceId: string | null | undefined
   /** Pre-selected client/project — when set, the link pickers are hidden. */
   fixedContactId?: string | null
   fixedProjectId?: string | null
+  /** Board stages — lets the task land in a real column instead of the
+   *  server's default (first stage) silently, so the board choice is explicit. */
+  stages?: WorkflowStage[]
   onCreate: (payload: CreateTaskPayload) => Promise<unknown>
   onClose: () => void
 }
 
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 
-export default function NewTaskModal({ workspaceId, fixedContactId, fixedProjectId, onCreate, onClose }: NewTaskModalProps) {
+export default function NewTaskModal({ workspaceId, fixedContactId, fixedProjectId, stages = [], onCreate, onClose }: NewTaskModalProps) {
   const linkLocked = fixedContactId != null || fixedProjectId != null
   const { contacts } = useContacts()
   const [contactId, setContactId] = useState<string | null>(fixedContactId ?? null)
@@ -31,9 +34,16 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
   const [visibility, setVisibility] = useState<TaskVisibility>('personal')
   const [priority, setPriority] = useState<TaskPriority>('medium')
   const [dueDate, setDueDate] = useState('')
+  const [stageId, setStageId] = useState<string | null>(stages[0]?.id ?? null)
   const [assigneeIds, setAssigneeIds] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  // Stages can still be loading when the modal first opens — pick a default
+  // once they arrive if the user hasn't already touched the field.
+  useEffect(() => {
+    if (stageId === null && stages[0]) setStageId(stages[0].id)
+  }, [stages, stageId])
 
   const submit = async () => {
     if (!title.trim()) { setError('Add a task title.'); return }
@@ -47,6 +57,7 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
         contact_id: projectId ? null : contactId,
         project_id: projectId,
         visibility,
+        stage_id: stageId,
         assignee_ids: assigneeIds,
       })
       onClose()
@@ -142,6 +153,15 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
             ))}
           </div>
           <DateField value={dueDate || null} onChange={(v) => setDueDate(v ?? '')} placeholder="Due date" clearable />
+          {stages.length > 0 && (
+            <select
+              value={stageId ?? ''}
+              onChange={(e) => setStageId(e.target.value || null)}
+              className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
+            >
+              {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          )}
           <AssigneePicker workspaceId={workspaceId} selectedIds={assigneeIds} onChange={setAssigneeIds} />
         </div>
 

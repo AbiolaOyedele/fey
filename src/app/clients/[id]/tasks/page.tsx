@@ -102,7 +102,7 @@ export default function ClientTasksTab({ params }: { params: Promise<{ id: strin
       )}
 
       {showNew && (
-        <NewTaskModal workspaceId={wsId} fixedContactId={id} onCreate={tasks.createTask} onClose={() => setShowNew(false)} />
+        <NewTaskModal workspaceId={wsId} fixedContactId={id} stages={stages} onCreate={tasks.createTask} onClose={() => setShowNew(false)} />
       )}
     </div>
   )

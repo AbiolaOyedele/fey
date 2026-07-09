@@ -99,7 +99,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
   if (step === 'success') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
-        <div className="bg-white rounded-2xl w-full max-w-md flex flex-col max-h-[88dvh] overflow-y-auto overscroll-contain animate-scaleIn shadow-2xl">
+        <div className="bg-white rounded-2xl w-full max-w-md flex flex-col max-h-[88dvh] overflow-y-auto overscroll-contain animate-scale-in shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h2 className="text-lg font-bold text-gray-900">Client created</h2>
@@ -199,7 +199,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
   // ── Form screen ────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
-      <div className="bg-white rounded-2xl w-full max-w-md flex flex-col overflow-hidden animate-scaleIn shadow-2xl">
+      <div className="bg-white rounded-2xl w-full max-w-md flex flex-col overflow-hidden animate-scale-in shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-lg font-bold text-gray-900">New Client</h2>

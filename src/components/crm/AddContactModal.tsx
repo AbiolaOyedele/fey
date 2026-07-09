@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { X, Copy, Check, Link2, ArrowRight, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useScrollLock } from '@/hooks/useScrollLock'
 import type { CrmContact, ContactStatus, CreateContactPayload } from '@/types/crm'
 
 interface AddContactModalProps {
@@ -13,6 +14,7 @@ interface AddContactModalProps {
 type Step = 'form' | 'success'
 
 export default function AddContactModal({ onClose, onCreate }: AddContactModalProps) {
+  useScrollLock()
   // ── Form fields ────────────────────────────────────────────────────────────
   const [name,    setName]    = useState('')
   const [email,   setEmail]   = useState('')
@@ -97,7 +99,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
   if (step === 'success') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
-        <div className="bg-white rounded-2xl w-full max-w-md flex flex-col max-h-[88dvh] overflow-y-auto animate-scaleIn shadow-2xl">
+        <div className="bg-white rounded-2xl w-full max-w-md flex flex-col max-h-[88dvh] overflow-y-auto overscroll-contain animate-scaleIn shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h2 className="text-lg font-bold text-gray-900">Client created</h2>
@@ -182,7 +184,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
           <div className="px-6 pb-5 pt-3 border-t border-gray-100">
             <button
               onClick={onClose}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold text-white transition-opacity"
+              className="press w-full flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold text-white transition-opacity"
               style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
             >
               Done
@@ -277,7 +279,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
           <button
             onClick={(e) => void handleSubmit(e)}
             disabled={saving || !name.trim()}
-            className="flex-1 py-2.5 rounded-full text-sm font-semibold text-white disabled:opacity-40 transition-opacity"
+            className="press flex-1 py-2.5 rounded-full text-sm font-semibold text-white disabled:opacity-40 transition-opacity"
             style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             {saving ? 'Creating…' : 'Add Client'}

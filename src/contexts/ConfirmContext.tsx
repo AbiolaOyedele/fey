@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useRef, useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
+import { useScrollLock } from '@/hooks/useScrollLock'
 
 interface ConfirmOptions {
   /** Heading — short, action-oriented (e.g. "Delete project?"). */
@@ -41,6 +42,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const danger = (options?.tone ?? 'danger') === 'danger'
+  useScrollLock(options !== null)
 
   return (
     <ConfirmContext.Provider value={confirm}>
@@ -68,14 +70,14 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
               <button
                 onClick={() => settle(false)}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
+                className="press w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
               >
                 {options.cancelLabel ?? 'Cancel'}
               </button>
               <button
                 autoFocus
                 onClick={() => settle(true)}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                className="press w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ backgroundColor: danger ? '#EF4444' : 'var(--accent, #ED64A6)' }}
               >
                 {options.confirmLabel ?? 'Confirm'}

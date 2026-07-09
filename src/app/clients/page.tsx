@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Search, Plus, Users } from 'lucide-react'
 import { useContacts } from '@/hooks/useCrm'
 import { useWorkspace } from '@/hooks/useWorkspace'
+import { useSettings } from '@/contexts/SettingsContext'
 import ContactListRow from '@/components/crm/ContactListRow'
 import AddContactModal from '@/components/crm/AddContactModal'
 import { isActiveWithin } from '@/utils/relativeTime'
@@ -23,6 +24,7 @@ const STATUS_FILTERS: { label: string; value: ClientFilter }[] = [
 export default function CrmContactsPage() {
   const router = useRouter()
   const { contacts, loading, createContact } = useContacts()
+  const { showToast } = useSettings()
   const { canManage } = useWorkspace()
 
   const [search,      setSearch]      = useState('')
@@ -66,6 +68,7 @@ export default function CrmContactsPage() {
 
   const handleCreate = async (payload: CreateContactPayload) => {
     const contact = await createContact(payload)
+    showToast('Client added')
     setSelected(contact.id)
     router.push(`/clients/${contact.id}/messages`)
     return contact

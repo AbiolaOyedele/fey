@@ -116,7 +116,7 @@ function Card({ task, onOpen }: { task: Task; onOpen: (t: Task) => void }) {
       {...attributes}
       {...listeners}
       onClick={() => onOpen(task)}
-      className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 cursor-grab active:cursor-grabbing"
+      className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 cursor-grab active:cursor-grabbing transition-shadow duration-150 hover:shadow-md hover:border-gray-200"
     >
       <p className={`text-sm font-medium mb-2 ${task.done ? 'line-through text-gray-400' : 'text-gray-900'}`}>{task.title}</p>
       {(task.project_title || task.contact_name) && (

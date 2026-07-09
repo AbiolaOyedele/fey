@@ -6,6 +6,8 @@ import { Plus, Search, Loader2, FolderOpen, X, Archive, ArchiveRestore } from 'l
 import { useAllProjects } from '@/hooks/useProjects'
 import { useContacts } from '@/hooks/useCrm'
 import { useWorkspace } from '@/hooks/useWorkspace'
+import { useSettings } from '@/contexts/SettingsContext'
+import { useScrollLock } from '@/hooks/useScrollLock'
 import type { Project } from '@/types/project'
 
 const STATUS_STYLE: Record<string, string> = {
@@ -22,6 +24,7 @@ export default function ProjectsHubPage() {
   const { canManage } = useWorkspace()
   const { projects, archived, loading, error, createProject, restoreProject } = useAllProjects()
   const { contacts } = useContacts()
+  const { showToast } = useSettings()
 
   const [search, setSearch] = useState('')
   const [showNew, setShowNew] = useState(false)
@@ -52,7 +55,7 @@ export default function ProjectsHubPage() {
         {canManage && (
           <button
             onClick={() => setShowNew(true)}
-            className="flex items-center gap-1.5 px-4 py-2 text-white rounded-full text-sm font-semibold hover:opacity-90"
+            className="press flex items-center gap-1.5 px-4 py-2 text-white rounded-full text-sm font-semibold hover:opacity-90"
             style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             <Plus size={15} /> New brand
@@ -160,7 +163,7 @@ export default function ProjectsHubPage() {
       {showNew && (
         <NewProjectModal
           contacts={contacts.map((c) => ({ id: c.id, name: c.name }))}
-          onCreate={async (payload) => { const p = await createProject(payload); router.push(`/projects/${p.id}`) }}
+          onCreate={async (payload) => { const p = await createProject(payload); showToast('Project created'); router.push(`/projects/${p.id}`) }}
           onClose={() => setShowNew(false)}
         />
       )}
@@ -175,6 +178,7 @@ interface NewProjectModalProps {
 }
 
 function NewProjectModal({ contacts, onCreate, onClose }: NewProjectModalProps) {
+  useScrollLock()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [contactId, setContactId] = useState<string | null>(null)
@@ -236,7 +240,7 @@ function NewProjectModal({ contacts, onCreate, onClose }: NewProjectModalProps) 
           <button
             onClick={() => void submit()}
             disabled={submitting}
-            className="flex items-center gap-1.5 px-5 py-2 text-white rounded-full text-sm font-semibold disabled:opacity-50 hover:opacity-90"
+            className="press flex items-center gap-1.5 px-5 py-2 text-white rounded-full text-sm font-semibold disabled:opacity-50 hover:opacity-90"
             style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             {submitting && <Loader2 size={14} className="animate-spin" />}

@@ -59,7 +59,7 @@ export default function TaskComments({ taskId, workspaceId, taskLink, taskTitle 
             const isMine = c.author_id === user?.id
             const authorName = isMine ? 'You' : (nameById.get(c.author_id) ?? 'Teammate')
             return (
-              <div key={c.id} className="group">
+              <div key={c.id} className="group animate-slideUp">
                 <div className="flex items-center gap-1.5 mb-0.5">
                   <span className="text-xs2 font-semibold text-gray-700">{authorName}</span>
                   <span className="text-xs2 text-gray-300">{timeLabel(c.created_at)}{c.edited_at && ' · edited'}</span>
@@ -134,7 +134,7 @@ function Composer({
         type="button"
         disabled={isEmpty || sending}
         onClick={() => onSubmit(handle)}
-        className="px-3 py-2 rounded-lg text-xs2 font-semibold text-white disabled:opacity-40"
+        className="press px-3 py-2 rounded-lg text-xs2 font-semibold text-white disabled:opacity-40"
         style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
       >
         Post

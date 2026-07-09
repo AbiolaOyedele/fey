@@ -83,9 +83,10 @@ export function useTaskComments(
     return () => { cancelled = true; void supabase.removeChannel(channel) }
   }, [taskId])
 
-  const notifyMentions = useCallback((commentId: string, body: string) => {
+  /** Records @mentions in a comment (fire-and-forget). Returns the mentioned ids. */
+  const notifyMentions = useCallback((commentId: string, body: string): string[] => {
     const userIds = extractMentionedUserIds(body)
-    if (userIds.length === 0) return
+    if (userIds.length === 0) return []
     void apiFetch('/api/v1/mentions', {
       method: 'POST',
       body: JSON.stringify({
@@ -97,7 +98,21 @@ export function useTaskComments(
         userIds,
       }),
     }).catch(() => {})
+    return userIds
   }, [workspaceId, taskLink, taskTitle])
+
+  /**
+   * Notifies the task's assignees + creator that a new comment landed (server
+   * resolves the recipients). Mentioned users are excluded — they already get
+   * the more specific mention notification. Fire-and-forget.
+   */
+  const notifyParticipants = useCallback((excludeUserIds: string[]) => {
+    if (!taskId) return
+    void apiFetch(`/api/v1/tasks/${taskId}/comments/notify`, {
+      method: 'POST',
+      body: JSON.stringify({ excludeUserIds }),
+    }).catch(() => {})
+  }, [taskId])
 
   const addComment = useCallback(async (body: string) => {
     const trimmed = body.trim()
@@ -113,13 +128,14 @@ export function useTaskComments(
       const comment = data as TaskComment
       setComments((prev) => prev.some((c) => c.id === comment.id) ? prev : [...prev, comment])
       setError(null)
-      notifyMentions(comment.id, trimmed)
+      const mentioned = notifyMentions(comment.id, trimmed)
+      notifyParticipants(mentioned)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to post comment')
     } finally {
       setSending(false)
     }
-  }, [user, taskId, notifyMentions])
+  }, [user, taskId, notifyMentions, notifyParticipants])
 
   const editComment = useCallback(async (commentId: string, body: string) => {
     const trimmed = body.trim()

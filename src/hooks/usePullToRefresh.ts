@@ -23,6 +23,10 @@ export function usePullToRefresh(onRefresh: () => void | Promise<void>) {
     if (typeof window === 'undefined' || !('ontouchstart' in window)) return
 
     const onTouchStart = (e: TouchEvent) => {
+      // Don't hijack the gesture when a popup owns the touch surface (see
+      // useScrollLock) — otherwise pulling down inside a modal blocks its own
+      // scroll or triggers a page refresh.
+      if (document.documentElement.hasAttribute('data-scroll-locked')) { startY.current = null; return }
       if (window.scrollY > 0 || refreshingRef.current) { startY.current = null; return }
       startY.current = e.touches[0].clientY
     }

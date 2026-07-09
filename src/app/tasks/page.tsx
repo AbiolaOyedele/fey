@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Plus, Search, Loader2, User, Users } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useTasks } from '@/hooks/useTasks'
 import { useWorkflows } from '@/hooks/useWorkflows'
@@ -28,6 +29,7 @@ const VIEWS: Array<{ key: View; label: string }> = [
 
 export default function TasksPage() {
   const { user } = useAuth()
+  const { showToast } = useSettings()
   const { workspace } = useWorkspace()
   const wsId = workspace?.id ?? null
   const searchParams = useSearchParams()
@@ -73,6 +75,40 @@ export default function TasksPage() {
 
   // Keep the open drawer's task in sync with the latest data.
   const liveSelected = selected ? (active.tasks.find((t) => t.id === selected.id) ?? completed.tasks.find((t) => t.id === selected.id) ?? selected) : null
+
+  // ── Action handlers with confirmation toasts ──────────────────────────────
+  const handleCreate = useCallback(async (payload: Parameters<typeof active.createTask>[0]) => {
+    const task = await active.createTask(payload)
+    showToast('Task created')
+    return task
+  }, [active, showToast])
+
+  const handleMoveStage = useCallback((id: string, stageId: string) => {
+    void active.moveToStage(id, stageId)
+    const name = defaultStages.find((s) => s.id === stageId)?.name
+    showToast(name ? `Moved to ${name}` : 'Task moved')
+  }, [active, defaultStages, showToast])
+
+  const handleComplete = useCallback((id: string) => {
+    void active.toggleDone(id)
+    showToast('Task completed', { action: { label: 'Undo', onClick: () => void completed.toggleDone(id) } })
+  }, [active, completed, showToast])
+
+  const handleToggleDone = useCallback((id: string) => {
+    const wasDone = source.tasks.find((t) => t.id === id)?.done ?? false
+    void source.toggleDone(id)
+    showToast(wasDone ? 'Marked as not done' : 'Task completed')
+  }, [source, showToast])
+
+  const handleDelete = useCallback(async (id: string) => {
+    await source.deleteTask(id)
+    showToast('Task deleted')
+  }, [source, showToast])
+
+  const handleSetAssignees = useCallback(async (id: string, ids: string[]) => {
+    await source.setAssignees(id, ids)
+    showToast('Assignees updated')
+  }, [source, showToast])
 
   return (
     <div className="p-4 lg:p-8 page-enter">
@@ -144,7 +180,7 @@ export default function TasksPage() {
 
         <button
           onClick={() => setShowNew(true)}
-          className="flex items-center gap-1.5 px-4 py-2 text-white rounded-full text-sm font-semibold hover:opacity-90 ml-auto"
+          className="press flex items-center gap-1.5 px-4 py-2 text-white rounded-full text-sm font-semibold hover:opacity-90 ml-auto"
           style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
         >
           <Plus size={15} /> Add task
@@ -160,11 +196,11 @@ export default function TasksPage() {
           <button onClick={() => void source.refetch()} className="text-sm font-semibold" style={{ color: 'var(--accent, #ED64A6)' }}>Try again</button>
         </div>
       ) : view === 'board' ? (
-        <TaskBoardView tasks={filtered} stages={defaultStages} onMoveStage={active.moveToStage} onComplete={active.toggleDone} onOpen={setSelected} />
+        <TaskBoardView tasks={filtered} stages={defaultStages} onMoveStage={handleMoveStage} onComplete={handleComplete} onOpen={setSelected} />
       ) : view === 'table' ? (
-        <TaskTableView tasks={filtered} onToggleDone={source.toggleDone} onOpen={setSelected} />
+        <TaskTableView tasks={filtered} onToggleDone={handleToggleDone} onOpen={setSelected} />
       ) : (
-        <TaskListView tasks={filtered} grouped={scope === 'all'} onToggleDone={source.toggleDone} onOpen={setSelected} />
+        <TaskListView tasks={filtered} grouped={scope === 'all'} onToggleDone={handleToggleDone} onOpen={setSelected} />
       )}
 
       {/* Drawer */}
@@ -174,15 +210,15 @@ export default function TasksPage() {
           workspaceId={wsId}
           stages={defaultStages}
           onPatch={source.patchTask}
-          onSetAssignees={source.setAssignees}
+          onSetAssignees={handleSetAssignees}
           onAddSubtask={source.addSubtask}
           onToggleSubtask={source.toggleSubtask}
           onRenameSubtask={source.renameSubtask}
           onDeleteSubtask={source.deleteSubtask}
           onAddFile={source.addFile}
           onRemoveFile={source.removeFile}
-          onToggleDone={(id) => { source.toggleDone(id); setSelected(null) }}
-          onDelete={source.deleteTask}
+          onToggleDone={(id) => { handleToggleDone(id); setSelected(null) }}
+          onDelete={handleDelete}
           onClose={() => setSelected(null)}
         />
       )}
@@ -195,7 +231,7 @@ export default function TasksPage() {
           onCreate={async (payload) => {
             // Open the detail panel right away so the rest of the task
             // (description, subtasks, files) can be filled in one flow.
-            const task = await active.createTask(payload)
+            const task = await handleCreate(payload)
             setSelected(task)
             return task
           }}

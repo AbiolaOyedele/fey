@@ -6,6 +6,7 @@ import { useContacts } from '@/hooks/useCrm'
 import { useProjects } from '@/hooks/useProjects'
 import AssigneePicker from './AssigneePicker'
 import DateField from '@/components/ui/DateField'
+import { useScrollLock } from '@/hooks/useScrollLock'
 import { PRIORITY_META } from './TaskBits'
 import type { CreateTaskPayload, TaskPriority, TaskVisibility, WorkflowStage } from '@/types/work-tasks'
 
@@ -24,6 +25,7 @@ interface NewTaskModalProps {
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 
 export default function NewTaskModal({ workspaceId, fixedContactId, fixedProjectId, stages = [], onCreate, onClose }: NewTaskModalProps) {
+  useScrollLock()
   const linkLocked = fixedContactId != null || fixedProjectId != null
   const { contacts } = useContacts()
   const [contactId, setContactId] = useState<string | null>(fixedContactId ?? null)
@@ -70,7 +72,7 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl p-5 max-h-[88dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl p-5 max-h-[88dvh] overflow-y-auto overscroll-contain" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-gray-900">New task</h2>
           <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100"><X size={16} /></button>
@@ -172,7 +174,7 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
           <button
             onClick={() => void submit()}
             disabled={submitting}
-            className="flex items-center gap-1.5 px-5 py-2 text-white rounded-full text-sm font-semibold disabled:opacity-50 hover:opacity-90"
+            className="press flex items-center gap-1.5 px-5 py-2 text-white rounded-full text-sm font-semibold disabled:opacity-50 hover:opacity-90"
             style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             {submitting && <Loader2 size={14} className="animate-spin" />}

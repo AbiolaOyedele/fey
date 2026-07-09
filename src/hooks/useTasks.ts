@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { apiFetch } from '@/lib/api-client'
+import { supabase } from '@/lib/supabase'
 import type { Task, CreateTaskPayload, UpdateTaskPayload, TaskScope, Subtask, TaskFileRow } from '@/types/work-tasks'
 
 interface UseTasksArgs {
@@ -32,20 +33,44 @@ export function useTasks({ scope, workspaceId, projectId, contactId, done }: Use
     return p.toString()
   }, [scope, workspaceId, projectId, contactId, done])
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await apiFetch<{ tasks: Task[] }>(`/api/v1/tasks?${qs}`)
       setTasks(res.tasks)
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load tasks')
+      if (!silent) setError(e instanceof Error ? e.message : 'Failed to load tasks')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [qs])
 
-  useEffect(() => { void refetch() }, [refetch])
+  const refetch = useCallback(() => load(false), [load])
+
+  useEffect(() => { void load(false) }, [load])
+
+  // Live updates: silently reload when any task/assignee/subtask row this user
+  // can see changes (RLS scopes the realtime stream), so edits from another
+  // device, teammate, or view appear without a manual refresh. Debounced to
+  // coalesce bursts and to smooth over the echo of the user's own optimistic edit.
+  const loadRef = useRef(load)
+  useEffect(() => { loadRef.current = load }, [load])
+  const channelId = useRef(Math.random().toString(36).slice(2))
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const bump = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => { void loadRef.current(true) }, 400)
+    }
+    const channel = supabase
+      .channel(`work-tasks-live:${channelId.current}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_tasks' }, bump)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_task_assignees' }, bump)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_subtasks' }, bump)
+      .subscribe()
+    return () => { if (timer) clearTimeout(timer); void supabase.removeChannel(channel) }
+  }, [])
 
   const createTask = useCallback(async (payload: CreateTaskPayload) => {
     const { task } = await apiFetch<{ task: Task }>('/api/v1/tasks', {

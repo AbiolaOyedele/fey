@@ -9,6 +9,7 @@ import DateField from '@/components/ui/DateField'
 import TaskAttachments from './TaskAttachments'
 import TaskComments from './TaskComments'
 import { useConfirm } from '@/contexts/ConfirmContext'
+import { useScrollLock } from '@/hooks/useScrollLock'
 import { PRIORITY_META, formatMinutes, parseEstimate } from './TaskBits'
 import { renderMentions, extractMentionedUserIds } from '@/utils/mentions'
 import MentionAwareEditor from '@/components/mentions/MentionAwareEditor'
@@ -64,6 +65,7 @@ const COMPLETED_STAGE = '__completed__'
 export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
   const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onRenameSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose } = props
   const confirm = useConfirm()
+  useScrollLock()
 
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description ?? '')
@@ -104,7 +106,7 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" onMouseDown={onClose}>
       <div className="absolute inset-0 bg-black/30 animate-fadeIn" />
       <div
-        className="relative w-full max-w-xl max-h-[85dvh] bg-white rounded-2xl shadow-2xl overflow-y-auto animate-slideUp"
+        className="relative w-full max-w-xl max-h-[85dvh] bg-white rounded-2xl shadow-2xl overflow-y-auto overscroll-contain animate-slideUp"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}

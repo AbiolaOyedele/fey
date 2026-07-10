@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { posthog } from '@/lib/posthog'
 import { workspaceUrl, activeWorkspaceSlug } from '@/utils/host'
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react'
 
@@ -132,6 +133,7 @@ function LoginPageInner() {
       const { error: err } = await signUp(email, password)
       setLoading(false)
       if (err) { setError((err as Error).message); return }
+      posthog.capture('signup_completed')
       setInfo('Check your email to confirm your account, then sign in.')
       return
     }

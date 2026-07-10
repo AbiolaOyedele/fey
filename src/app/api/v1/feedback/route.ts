@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createUserClient } from '@/lib/supabase-server'
 import { requireAuth, handleError } from '@/lib/api-helpers'
 import { submitFeedback } from '@/services/feedback.service'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 /**
  * POST /api/v1/feedback
@@ -34,6 +35,7 @@ export async function POST(req: NextRequest) {
       },
       body,
     )
+    await captureServerEvent(user!.id, 'feedback_submitted', { type: feedback.type })
     return NextResponse.json({ feedback }, { status: 201 })
   } catch (err) {
     return handleError(err, 'FEEDBACK_CREATE_FAILED')

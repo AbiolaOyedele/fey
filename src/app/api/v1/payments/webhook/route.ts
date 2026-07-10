@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 import { env } from '@/config/env'
 import { notifyOwnerAdmins } from '@/services/notifications.service'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 // ── Paystack event shape ───────────────────────────────────────────────────
 
@@ -197,6 +198,8 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.warn('[payments/webhook] Failed to create paid notification:', err)
   }
+
+  await captureServerEvent(invoice.user_id as string, 'invoice_paid', { invoice_id: invoiceId })
 
   return new NextResponse(null, { status: 200 })
 }

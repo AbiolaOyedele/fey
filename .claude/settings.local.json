@@ -17,7 +17,8 @@
       "Bash(npm run:*)",
       "Bash(git checkout:*)",
       "Bash(git merge:*)",
-      "Read(//Users/abiola/Claude/**)"
+      "Read(//Users/abiola/Claude/**)",
+      "Bash(grep -iE \"label:|onClick|, \\\\{|, false|, true\")"
     ]
   }
 }

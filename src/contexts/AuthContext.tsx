@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { posthog } from '@/lib/posthog'
 import type { User, Session } from '@supabase/supabase-js'
 
 interface AuthContextValue {
@@ -58,6 +59,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Only resolve immediately on INITIAL_SESSION when there is no pending
         // PKCE exchange — otherwise wait for the SIGNED_IN event above.
         finishLoading(nextSession)
+      }
+
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && nextSession?.user) {
+        posthog.identify(nextSession.user.id, { email: nextSession.user.email })
+      } else if (event === 'SIGNED_OUT') {
+        posthog.reset()
       }
 
       if (event === 'SIGNED_IN' && nextSession?.user) {

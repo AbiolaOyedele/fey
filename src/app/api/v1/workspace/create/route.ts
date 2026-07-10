@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requireAuth, handleError, errorResponse } from '@/lib/api-helpers'
 import { validateSlugFormat } from '@/lib/workspace-slug'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 const bodySchema = z.object({
   name: z.string().trim().min(1).max(60),
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
 
     await db.from('internal_channels').insert({ workspace_id: workspaceId, name: 'general', created_by: user!.id })
 
+    await captureServerEvent(user!.id, 'workspace_created', { workspace_id: workspaceId })
     return NextResponse.json({ ok: true, workspace_id: workspaceId, slug })
   } catch (err) {
     return handleError(err, 'WORKSPACE_CREATE_FAILED')

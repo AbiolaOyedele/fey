@@ -38,6 +38,10 @@ const envSchema = z.object({
   NEXT_PUBLIC_VAPID_PUBLIC_KEY:       z.string().min(1).optional(),
   VAPID_PRIVATE_KEY:                  z.string().min(1).optional(),
   VAPID_SUBJECT:                      z.string().min(1).optional(),
+  // PostHog (product analytics). While unset, tracking is a no-op — nothing
+  // is sent, and posthog.ts / posthog-server.ts skip client construction.
+  NEXT_PUBLIC_POSTHOG_KEY:            z.string().min(1).optional(),
+  NEXT_PUBLIC_POSTHOG_HOST:           z.string().url().optional(),
 })
 
 const parsed = envSchema.safeParse({
@@ -61,6 +65,8 @@ const parsed = envSchema.safeParse({
   NEXT_PUBLIC_VAPID_PUBLIC_KEY:       process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
   VAPID_PRIVATE_KEY:                  process.env.VAPID_PRIVATE_KEY,
   VAPID_SUBJECT:                      process.env.VAPID_SUBJECT,
+  NEXT_PUBLIC_POSTHOG_KEY:            process.env.NEXT_PUBLIC_POSTHOG_KEY,
+  NEXT_PUBLIC_POSTHOG_HOST:           process.env.NEXT_PUBLIC_POSTHOG_HOST,
 })
 
 if (!parsed.success) {
@@ -97,6 +103,8 @@ export const env = parsed.success
       NEXT_PUBLIC_VAPID_PUBLIC_KEY:    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
       VAPID_PRIVATE_KEY:               process.env.VAPID_PRIVATE_KEY,
       VAPID_SUBJECT:                   process.env.VAPID_SUBJECT,
+      NEXT_PUBLIC_POSTHOG_KEY:         process.env.NEXT_PUBLIC_POSTHOG_KEY,
+      NEXT_PUBLIC_POSTHOG_HOST:        process.env.NEXT_PUBLIC_POSTHOG_HOST,
     }
 
 /**

@@ -137,13 +137,16 @@ export async function sendPortalMessage(
   if (!parsed.success) {
     throw new AppError(400, parsed.error.issues[0]?.message ?? 'Invalid message.', 'PORTAL_MESSAGE_VALIDATION')
   }
+  // Never persist client-supplied HTML. The portal composer only ever sends plain
+  // text (body_html: null); forcing null here closes the path where a crafted
+  // request stores markup that later renders in the owner's session (stored XSS).
   return portalRepo.createPortalMessage(
     db,
     portalUser.owner_id,
     portalUser.id,
     portalUser.contact_id,
     parsed.data.body,
-    parsed.data.body_html ?? null,
+    null,
     (parsed.data.attachments ?? []) as MessageAttachment[],
   )
 }

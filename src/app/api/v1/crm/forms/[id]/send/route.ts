@@ -4,7 +4,7 @@ import { requireAuth, handleError } from '@/lib/api-helpers'
 import * as crmService from '@/services/crm.service'
 import { sendEmail } from '@/services/email.service'
 import { env } from '@/config/env'
-import { EMAIL_FROM, appUrl } from '@/config/email'
+import { EMAIL_FROM, portalUrl } from '@/config/email'
 import { z } from 'zod'
 
 type Params = { params: Promise<{ id: string }> }
@@ -31,13 +31,22 @@ export async function POST(req: NextRequest, { params }: Params) {
     const form    = await crmService.getFormById(db, id, user!.id)
     const updated = await crmService.updateForm(db, id, user!.id, { status: 'sent' })
 
-    const portalUrl = appUrl()
+    // Build the client-facing portal link on the owner's workspace subdomain —
+    // the only URL shape the subdomain proxy rewrites to the real portal page.
+    const { data: settingsRow } = await db
+      .from('fey_settings')
+      .select('workspace_slug')
+      .eq('user_id', user!.id)
+      .maybeSingle()
+    const slug = (settingsRow as { workspace_slug: string | null } | null)?.workspace_slug ?? null
+    const link = portalUrl(slug, 'forms')
+
     await sendEmail({
       from:    EMAIL_FROM.documents,
       to:      [parsed.data.to],
       subject: `Form to complete: ${form.title}`,
       html: `<p>You have a form to fill out: <strong>${form.title}</strong>.</p>
-             <p><a href="${portalUrl}/portal/forms">Open in your portal</a></p>`,
+             <p><a href="${link}">Open in your portal</a></p>`,
     })
     return NextResponse.json({ form: updated })
   } catch (err) {

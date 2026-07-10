@@ -6,6 +6,7 @@ import { MessageSquare } from 'lucide-react'
 import type { CrmMessage, MessageAttachment } from '@/types/crm'
 import RichTextComposer from './RichTextComposer'
 import AttachmentPreview from './AttachmentPreview'
+import { escapeHtml } from '@/utils/escapeHtml'
 
 interface MessageThreadProps {
   messages: CrmMessage[]
@@ -140,11 +141,19 @@ export default function MessageThread({
                           {formatTime(msg.created_at)}{isOwner && (msg.read_at ? ' · Read' : ' · Sent')}
                         </span>
                       </div>
+                      {/* Client messages are untrusted: escape their plain body and never
+                          render client-supplied body_html — otherwise a crafted message
+                          injects HTML/script into the owner's session (stored XSS). Only the
+                          owner's own RichTextComposer output is trusted rich HTML. */}
                       {hasBody && (
                         <div
                           className={`px-3.5 py-2 text-sm leading-relaxed break-words rounded-2xl ${isOwner ? 'rounded-br-sm text-white' : 'rounded-bl-sm text-gray-800'}`}
                           style={isOwner ? { backgroundColor: 'var(--accent, #ED64A6)' } : { backgroundColor: '#F3F4F6' }}
-                          dangerouslySetInnerHTML={{ __html: msg.body_html ?? msg.body.replace(/\n/g, '<br>') }}
+                          dangerouslySetInnerHTML={{
+                            __html: isOwner
+                              ? (msg.body_html ?? escapeHtml(msg.body).replace(/\n/g, '<br>'))
+                              : escapeHtml(msg.body).replace(/\n/g, '<br>'),
+                          }}
                         />
                       )}
                       {msg.attachments.length > 0 && (

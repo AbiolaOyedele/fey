@@ -11,11 +11,21 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
   const { id, contractId } = use(params)
   const router = useRouter()
   const { contacts } = useContacts()
-  const { contracts, updateContract, sendContract } = useContracts(id)
+  const { contracts, loading, updateContract, sendContract } = useContracts(id)
   const { canManage } = useWorkspace()
 
   const contract = contracts.find((c) => c.id === contractId)
   const contact  = contacts.find((c) => c.id === id)
+
+  // Wait for the async contracts fetch before deciding the contract is missing —
+  // otherwise a direct link / refresh flashes "Contract not found" until it loads.
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="w-5 h-5 rounded-full border-2 border-gray-300 border-t-transparent animate-spin" />
+      </div>
+    )
+  }
 
   if (!contract) {
     return (

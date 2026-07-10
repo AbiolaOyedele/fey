@@ -17,6 +17,20 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
   const [portalEnabled, setPortalEnabled] = useState(contact?.portal_enabled ?? false)
   const [welcomeMsg,    setWelcomeMsg]    = useState(contact?.portal_welcome_message ?? '')
   const [saving,        setSaving]        = useState(false)
+
+  // `contact` comes from useContacts(), which loads asynchronously — on first
+  // render it's undefined, so the useState initializers above fall back to the
+  // disabled/empty defaults. Without this the toggle would always read as "off"
+  // and the welcome message blank once the real record arrives. Adjust state
+  // during render (React's sanctioned "reset state when a prop changes" pattern)
+  // keyed on the contact id, so a later background refetch can't clobber unsaved
+  // edits and no extra render pass is committed.
+  const [syncedContactId, setSyncedContactId] = useState<string | undefined>(contact?.id)
+  if (contact && contact.id !== syncedContactId) {
+    setSyncedContactId(contact.id)
+    setPortalEnabled(contact.portal_enabled ?? false)
+    setWelcomeMsg(contact.portal_welcome_message ?? '')
+  }
   const [copied,        setCopied]        = useState(false)
   const [copiedLink,    setCopiedLink]    = useState(false)
   const [inviteCode,    setInviteCode]    = useState<string | null>(null)

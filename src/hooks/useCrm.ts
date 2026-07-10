@@ -380,7 +380,10 @@ export function useCrmFiles(contactId: string | null) {
 
 export function useContracts(contactId: string | null) {
   const [contracts, setContracts] = useState<CrmContract[]>([])
-  const [loading,   setLoading]   = useState(false)
+  // Start in the loading state when there's a contact to fetch, so consumers
+  // render a spinner/skeleton on the first frame instead of momentarily flashing
+  // an empty / "not found" state before the fetch effect runs.
+  const [loading,   setLoading]   = useState(Boolean(contactId))
 
   const fetchContracts = useCallback(async () => {
     if (!contactId) return
@@ -467,7 +470,9 @@ export function useContracts(contactId: string | null) {
 
 export function useForms(contactId: string | null) {
   const [forms,   setForms]   = useState<CrmForm[]>([])
-  const [loading, setLoading] = useState(false)
+  // Start loading when there's a contact to fetch (see useContracts) so the first
+  // frame shows a spinner/skeleton rather than an empty / "not found" flash.
+  const [loading, setLoading] = useState(Boolean(contactId))
 
   const fetchForms = useCallback(async () => {
     if (!contactId) return

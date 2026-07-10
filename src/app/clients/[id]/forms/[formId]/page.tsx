@@ -11,11 +11,21 @@ export default function FormDetailPage({ params }: { params: Promise<{ id: strin
   const { id, formId } = use(params)
   const router = useRouter()
   const { contacts } = useContacts()
-  const { forms, updateForm, sendForm } = useForms(id)
+  const { forms, loading, updateForm, sendForm } = useForms(id)
   const { canManage } = useWorkspace()
 
   const form    = forms.find((f) => f.id === formId)
   const contact = contacts.find((c) => c.id === id)
+
+  // Wait for the async forms fetch before deciding the form is missing —
+  // otherwise a direct link / refresh flashes "Form not found" until it loads.
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="w-5 h-5 rounded-full border-2 border-gray-300 border-t-transparent animate-spin" />
+      </div>
+    )
+  }
 
   if (!form) {
     return (

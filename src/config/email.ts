@@ -46,3 +46,24 @@ export function appUrl(): string {
 
   return `https://app.${DOMAIN}`
 }
+
+/**
+ * Builds a link to a client-portal page on the owner's workspace subdomain —
+ * https://<slug>.theruff.agency/client/<path>. The subdomain proxy
+ * (src/proxy.ts) rewrites /client/* → /portal/<slug>/*, so this is the only
+ * URL shape that actually reaches a client's portal from an email. Never link
+ * to `${appUrl()}/portal/...` — the root host isn't a workspace subdomain, so
+ * the proxy doesn't rewrite it and the [subdomain] segment captures the wrong
+ * value. Falls back to the bare app host when the owner has no slug yet (their
+ * portal isn't reachable until workspace setup is complete anyway).
+ */
+export function portalUrl(slug: string | null | undefined, path: string): string {
+  const clean = path.replace(/^\/+/, '')
+  if (slug) {
+    const root = (env.NEXT_PUBLIC_ROOT_DOMAIN ?? DOMAIN)
+      .replace(/^https?:\/\//, '')
+      .replace(/\/$/, '')
+    return `https://${slug}.${root}/client/${clean}`
+  }
+  return `${appUrl()}/client/${clean}`
+}

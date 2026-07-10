@@ -228,7 +228,11 @@ function DirectLinkModal({ contactId, userId, defaultCurrency, onClose, onCreate
   const [created,  setCreated]  = useState<CrmPaymentRequest | null>(null)
   const [copied,   setCopied]   = useState(false)
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  // Absolute link so the copied URL always carries a host (matches InvoiceSendModal).
+  // This modal renders client-side only and has no memoized callbacks, so reading
+  // the live origin during render is safe here. NEXT_PUBLIC_APP_URL is an optional
+  // (often-unset) fallback used only during SSR.
+  const appUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? '')
 
   const handleSubmit = async () => {
     const amt = parseFloat(amount)
@@ -406,8 +410,6 @@ export default function PaymentsTab({ params }: { params: Promise<{ id: string }
 
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -471,13 +473,17 @@ export default function PaymentsTab({ params }: { params: Promise<{ id: string }
   }, [user?.id, id, router])
 
   const handleCopyLink = useCallback(async (req: CrmPaymentRequest) => {
-    const link = `${appUrl}/pay/${req.share_token}`
+    // Read the origin at click time so the copied link is absolute and carries a
+    // real host (a relative `/pay/…` is useless once pasted into a client's email).
+    // `/pay/*` passes through the subdomain proxy, so the owner's current host is
+    // always a valid base.
+    const link = `${window.location.origin}/pay/${req.share_token}`
     try {
       await navigator.clipboard.writeText(link)
       setCopiedId(req.id)
       setTimeout(() => setCopiedId(null), 2500)
     } catch { /* fallback */ }
-  }, [appUrl])
+  }, [])
 
   const handleCancelRequest = useCallback(async (reqId: string) => {
     if (!user?.id) return
@@ -574,7 +580,7 @@ export default function PaymentsTab({ params }: { params: Promise<{ id: string }
                           {copiedId === req.id ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
                         </button>
                         <a
-                          href={`${appUrl}/pay/${req.share_token}`}
+                          href={`/pay/${req.share_token}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Open payment page"

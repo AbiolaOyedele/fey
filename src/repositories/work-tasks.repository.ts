@@ -115,6 +115,12 @@ interface ListArgs {
   contactId?: string | null
   /** undefined = all, false = active only, true = completed only */
   done?: boolean
+  /**
+   * The caller, for role-scoped visibility on the workspace-wide `all` scope.
+   * Admins see every task; members see only tasks that are theirs (created or
+   * assigned) or team-visible. Omit to skip narrowing (e.g. portal/service reads).
+   */
+  viewer?: { id: string; isAdmin: boolean }
 }
 
 export async function listTasks(db: SupabaseClient, args: ListArgs): Promise<Task[]> {
@@ -132,7 +138,23 @@ export async function listTasks(db: SupabaseClient, args: ListArgs): Promise<Tas
   if (error) throw error
   const rows = (data ?? []) as RawTask[]
   const members = await getMembersMap(db, args.ownerId)
-  return rows.map((r) => mapTask(r, members))
+  let tasks = rows.map((r) => mapTask(r, members))
+
+  // Member scoping for the workspace-wide "all" view (dashboard + Tasks section):
+  // hide client/project tasks a member isn't on. RLS already limits members to
+  // their own personal tasks + all team-visible ones, so only linked tasks need
+  // narrowing here. Admins and the narrower scopes (personal/team/project/contact)
+  // are returned as-is. This only removes rows — it never widens visibility.
+  if (args.scope === 'all' && args.viewer && !args.viewer.isAdmin) {
+    const uid = args.viewer.id
+    tasks = tasks.filter((t) => {
+      const linked = t.project_id !== null || t.contact_id !== null
+      if (!linked) return true
+      return t.created_by === uid || t.assignees.some((a) => a.user_id === uid)
+    })
+  }
+
+  return tasks
 }
 
 export async function getTaskById(db: SupabaseClient, id: string): Promise<Task | null> {

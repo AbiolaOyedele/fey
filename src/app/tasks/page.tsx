@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Plus, Search, Loader2, User, Users } from 'lucide-react'
+import { Plus, Search, Loader2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -17,13 +17,13 @@ import WorkflowEditorModal from '@/components/tasks/WorkflowEditorModal'
 import { SlidersHorizontal } from 'lucide-react'
 import type { Task } from '@/types/work-tasks'
 
-type View = 'list' | 'board' | 'table' | 'completed'
-type Scope = 'personal' | 'team' | 'all'
+type View = 'board' | 'table' | 'list' | 'completed'
+type SubTab = 'personal' | 'all'
 
 const VIEWS: Array<{ key: View; label: string }> = [
-  { key: 'list', label: 'Tasks' },
   { key: 'board', label: 'Board' },
   { key: 'table', label: 'Table' },
+  { key: 'list', label: 'List' },
   { key: 'completed', label: 'Completed' },
 ]
 
@@ -36,15 +36,16 @@ export default function TasksPage() {
   const deepLinkTaskId = searchParams.get('taskId')
 
   const [view, setView] = useState<View>('list')
-  const [scope, setScope] = useState<Scope>('all')
+  const [subTab, setSubTab] = useState<SubTab>('all')
   const [search, setSearch] = useState('')
-  const [onlyMine, setOnlyMine] = useState(false)
   const [selected, setSelected] = useState<Task | null>(null)
   const [showNew, setShowNew] = useState(false)
 
-  const taskScope = scope
-  const active = useTasks({ scope: taskScope, workspaceId: wsId, done: false })
-  const completed = useTasks({ scope: taskScope, workspaceId: wsId, done: true })
+  // Fetch the full workspace-wide set (server-scoped by role: admins get every
+  // task, members get theirs + team-visible). The Personal sub-tab narrows this
+  // to the current user's own tasks client-side.
+  const active = useTasks({ scope: 'all', workspaceId: wsId, done: false })
+  const completed = useTasks({ scope: 'all', workspaceId: wsId, done: true })
   const { workflows, addStage, updateStage, deleteStage, reorderStages } = useWorkflows(wsId)
 
   const [showWorkflow, setShowWorkflow] = useState(false)
@@ -65,13 +66,16 @@ export default function TasksPage() {
   const source = view === 'completed' ? completed : active
   const filtered = useMemo(() => {
     let list = source.tasks
+    // Personal: only tasks the current user created or is assigned to.
+    if (subTab === 'personal' && user) {
+      list = list.filter((t) => t.created_by === user.id || t.assignees.some((a) => a.user_id === user.id))
+    }
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter((t) => t.title.toLowerCase().includes(q))
     }
-    if (onlyMine && user) list = list.filter((t) => t.created_by === user.id || t.assignees.some((a) => a.user_id === user.id))
     return list
-  }, [source.tasks, search, onlyMine, user])
+  }, [source.tasks, subTab, search, user])
 
   // Keep the open drawer's task in sync with the latest data.
   const liveSelected = selected ? (active.tasks.find((t) => t.id === selected.id) ?? completed.tasks.find((t) => t.id === selected.id) ?? selected) : null
@@ -135,15 +139,15 @@ export default function TasksPage() {
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
-        {/* Scope */}
+        {/* Sub-tabs */}
         <div className="flex bg-gray-100 rounded-lg p-0.5">
-          {(['personal', 'team', 'all'] as Scope[]).map((s) => (
+          {(['personal', 'all'] as SubTab[]).map((s) => (
             <button
               key={s}
-              onClick={() => setScope(s)}
-              className={`px-3 py-1.5 rounded-md text-xs2 font-medium capitalize transition-colors ${scope === s ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
+              onClick={() => setSubTab(s)}
+              className={`px-3 py-1.5 rounded-md text-xs2 font-medium transition-colors ${subTab === s ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
             >
-              {s === 'personal' ? 'Personal' : s === 'team' ? 'Team' : 'All'}
+              {s === 'personal' ? 'Personal' : 'All'}
             </button>
           ))}
         </div>
@@ -157,16 +161,6 @@ export default function TasksPage() {
             className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
           />
         </div>
-
-        <button
-          onClick={() => setOnlyMine((v) => !v)}
-          title={onlyMine ? 'Showing my tasks' : 'Showing everyone'}
-          className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs2 font-medium transition-colors ${onlyMine ? 'border-transparent text-white' : 'border-gray-200 text-gray-500'}`}
-          style={onlyMine ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
-        >
-          {onlyMine ? <User size={14} /> : <Users size={14} />}
-          {onlyMine ? 'Mine' : 'Everyone'}
-        </button>
 
         {view === 'board' && defaultWorkflow && (
           <button
@@ -200,7 +194,7 @@ export default function TasksPage() {
       ) : view === 'table' ? (
         <TaskTableView tasks={filtered} onToggleDone={handleToggleDone} onOpen={setSelected} />
       ) : (
-        <TaskListView tasks={filtered} grouped={scope === 'all'} onToggleDone={handleToggleDone} onOpen={setSelected} />
+        <TaskListView tasks={filtered} grouped={subTab === 'all'} onToggleDone={handleToggleDone} onOpen={setSelected} />
       )}
 
       {/* Drawer */}

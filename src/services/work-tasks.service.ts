@@ -113,9 +113,23 @@ async function defaultStageId(db: SupabaseClient, ownerId: string, workspaceId: 
 export async function listTasks(
   db: SupabaseClient,
   ownerId: string,
-  opts: { scope: TaskScope; projectId?: string | null; contactId?: string | null; done?: boolean },
+  opts: {
+    scope: TaskScope
+    projectId?: string | null
+    contactId?: string | null
+    done?: boolean
+    /** Caller identity + admin flag, for role-scoped visibility on the `all` scope. */
+    viewer?: { id: string; isAdmin: boolean }
+  },
 ): Promise<Task[]> {
-  return repo.listTasks(db, { ownerId, scope: opts.scope, projectId: opts.projectId ?? null, contactId: opts.contactId ?? null, ...(opts.done !== undefined ? { done: opts.done } : {}) })
+  return repo.listTasks(db, {
+    ownerId,
+    scope: opts.scope,
+    projectId: opts.projectId ?? null,
+    contactId: opts.contactId ?? null,
+    ...(opts.done !== undefined ? { done: opts.done } : {}),
+    ...(opts.viewer ? { viewer: opts.viewer } : {}),
+  })
 }
 
 export async function getTask(db: SupabaseClient, id: string): Promise<Task> {

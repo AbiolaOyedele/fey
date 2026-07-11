@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createUserClient } from '@/lib/supabase-server'
 import { requireAuth, handleError } from '@/lib/api-helpers'
-import { resolveOwnerContext } from '@/lib/owner-context'
+import { resolveOwnerContext, isWorkspaceAdmin } from '@/lib/owner-context'
 import { listTasks, createTask } from '@/services/work-tasks.service'
 import type { TaskScope } from '@/types/work-tasks'
 
@@ -21,11 +21,13 @@ export async function GET(req: NextRequest) {
   const db = createUserClient(token!)
   try {
     const { ownerId } = await resolveOwnerContext(db, user!.id, sp.get('workspace_id'))
+    const isAdmin = await isWorkspaceAdmin(db, user!.id, ownerId)
     const tasks = await listTasks(db, ownerId, {
       scope,
       projectId: sp.get('project_id'),
       contactId: sp.get('contact_id'),
       ...(done !== undefined ? { done } : {}),
+      viewer: { id: user!.id, isAdmin },
     })
     return NextResponse.json({ tasks })
   } catch (err) {

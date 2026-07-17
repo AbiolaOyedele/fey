@@ -1,5 +1,12 @@
 export const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
 
+/**
+ * WhatsApp Fey is soft-disabled: hidden from nav/Settings while it's replaced
+ * by an in-app assistant. All code and data stay intact — flip to `true` to
+ * bring the nav item and Settings connect flow back.
+ */
+export const WHATSAPP_FEY_ENABLED = false
+
 export const CURRENCY_SYMBOLS: Record<string, string> = {
   NGN: '₦', USD: '$', GBP: '£', EUR: '€',
   CAD: 'CA$', AUD: 'A$', JPY: '¥', CHF: 'CHF',

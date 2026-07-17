@@ -21,6 +21,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
+import { WHATSAPP_FEY_ENABLED } from '@/lib/constants'
 
 interface GuideStep {
   icon: LucideIcon
@@ -49,11 +50,11 @@ const STEPS: GuideStep[] = [
     title: 'Tasks',
     body: "Use Task Groups to organise personal to-dos that aren't tied to a client — think project phases, admin work, or recurring items.",
   },
-  {
+  ...(WHATSAPP_FEY_ENABLED ? [{
     icon: Sparkles,
     title: 'Meet Fey',
     body: 'Your AI task assistant. Send a WhatsApp message to Fey and it extracts tasks, notes, and deadlines automatically — no manual entry needed.',
-  },
+  }] : []),
   {
     icon: CreditCard,
     title: 'Payments',
@@ -62,7 +63,9 @@ const STEPS: GuideStep[] = [
   {
     icon: Settings,
     title: 'Settings',
-    body: 'Customise your accent colour, fonts, currency, and dashboard heading. Connect WhatsApp for Fey under the WhatsApp tab.',
+    body: WHATSAPP_FEY_ENABLED
+      ? 'Customise your accent colour, fonts, currency, and dashboard heading. Connect WhatsApp for Fey under the WhatsApp tab.'
+      : 'Customise your accent colour, fonts, currency, and dashboard heading.',
   },
 ]
 

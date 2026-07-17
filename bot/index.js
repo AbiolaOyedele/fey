@@ -33,6 +33,12 @@ const twilioClient = twilio(
   process.env.TWILIO_AUTH_TOKEN,
 );
 
+// ── Feature flag ──────────────────────────────────────────────────────────────
+// Off by default: WhatsApp task capture is paused while it's replaced by an
+// in-app assistant. Set FEY_WHATSAPP_ENABLED=true on Railway to bring it back —
+// no code change needed.
+const WHATSAPP_ENABLED = process.env.FEY_WHATSAPP_ENABLED === 'true';
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 // date-fns Day enum: 0=Sun 1=Mon 2=Tue 3=Wed 4=Thu 5=Fri 6=Sat
@@ -249,6 +255,10 @@ app.post('/webhook', async (req, res) => {
     res.type('text/xml').send(twiml.toString());
   };
 
+  if (!WHATSAPP_ENABLED) {
+    return reply("Fey's WhatsApp inbox is paused right now while we build something new — check the app for updates.");
+  }
+
   try {
     const fromRaw = req.body.From || '';
     const messageBody = (req.body.Body || '').trim();
@@ -362,6 +372,9 @@ app.post('/webhook', async (req, res) => {
 // ── POST /verify/send — send a 6-digit code to the user's WhatsApp ────────────
 
 async function handleVerifySend(req, res) {
+  if (!WHATSAPP_ENABLED) {
+    return res.status(503).json({ error: 'WhatsApp connection is temporarily unavailable.' });
+  }
   try {
     // B2: identity comes from the authenticated session, NOT the request body.
     // Otherwise an attacker could pass a victim's user_id to repoint that
@@ -423,6 +436,9 @@ app.post('/verify/send', handleVerifySend);
 // ── POST /verify/confirm — confirm the code and mark the number as verified ───
 
 app.post('/verify/confirm', async (req, res) => {
+  if (!WHATSAPP_ENABLED) {
+    return res.status(503).json({ error: 'WhatsApp connection is temporarily unavailable.' });
+  }
   try {
     const user = await requireUser(req, res);
     if (!user) return;

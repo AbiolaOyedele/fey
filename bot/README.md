@@ -2,6 +2,8 @@
 
 A lightweight Express webhook server that lets you add tasks to WorkBoard by sending a WhatsApp message to a Twilio number.
 
+> **Status: paused.** WhatsApp task capture is soft-disabled by default (`FEY_WHATSAPP_ENABLED` unset/`false`) while it's replaced by an in-app assistant. All code and data are intact — set `FEY_WHATSAPP_ENABLED=true` in Railway to bring it back. See the [Environment variables](#environment-variables) section.
+
 ---
 
 ## How it works
@@ -87,6 +89,7 @@ npm run dev
 | `SUPABASE_URL` | Your Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | The **service role** key — not the anon key. Found in Supabase → Project Settings → API |
 | `PORT` | Optional. Defaults to `3001`. Railway sets this automatically. |
+| `FEY_WHATSAPP_ENABLED` | Optional. Set to `true` to re-enable WhatsApp task capture. **Defaults to paused** (`/webhook` and `/verify/*` reply with a "temporarily unavailable" message and do no processing). |
 
 ---
 

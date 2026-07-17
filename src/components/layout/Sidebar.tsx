@@ -11,7 +11,7 @@ import {
   MoreHorizontal, X, Shapes, Briefcase,
 } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
-import { IS_DEMO } from '@/lib/constants'
+import { IS_DEMO, WHATSAPP_FEY_ENABLED } from '@/lib/constants'
 import { useAppNotifications } from '@/hooks/useNotifications'
 import { motion, AnimatePresence } from 'framer-motion'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
@@ -141,7 +141,7 @@ export default function Sidebar() {
     { href: '/chats', label: 'Internal Chats', icon: <MessagesSquare size={18} /> },
     { href: '/team', label: 'Team', icon: <UsersRound size={18} /> },
     { href: '/notifications', label: 'Notifications', icon: <Bell size={18} />, badge: unreadCount },
-    { href: '/fey', label: 'Fey', icon: <Sparkles size={18} /> },
+    ...(WHATSAPP_FEY_ENABLED ? [{ href: '/fey', label: 'Fey', icon: <Sparkles size={18} /> }] : []),
     ...(onAdminHost ? [{ href: '/admin', label: 'Admin', icon: <ShieldCheck size={18} /> }] : []),
     { href: '/settings', label: 'Settings', icon: <Settings size={18} /> },
   ]
@@ -208,7 +208,9 @@ export default function Sidebar() {
           <NavItem href="/chats" label="Internal Chats" accent={accent} expanded={showExpanded} icon={<MessagesSquare size={20} />} />
           <NavItem href="/playground" label="Playground" accent={accent} expanded={showExpanded} icon={<Shapes size={20} />} />
           <NavItem href="/team" label="Team" accent={accent} expanded={showExpanded} icon={<UsersRound size={20} />} />
-          <NavItem href="/fey" label="Fey" accent={accent} expanded={showExpanded} subtle icon={<Sparkles size={20} />} />
+          {WHATSAPP_FEY_ENABLED && (
+            <NavItem href="/fey" label="Fey" accent={accent} expanded={showExpanded} subtle icon={<Sparkles size={20} />} />
+          )}
         </nav>
 
         <div className={`pb-3 pt-3 border-t border-gray-100 flex flex-col gap-2 ${showExpanded ? 'items-stretch' : 'items-center'}`}>

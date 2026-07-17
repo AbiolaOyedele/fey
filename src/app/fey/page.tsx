@@ -15,6 +15,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useFeyData } from '@/hooks/useFeyData'
+import { WHATSAPP_FEY_ENABLED } from '@/lib/constants'
 import { getContrastColor } from '@/utils/colorContrast'
 import { PALETTE } from '@/data/defaultClients'
 import type { FeyThreadWithTasks } from '@/types'
@@ -326,9 +327,13 @@ export default function FeyPage() {
           </div>
           <h3 className="font-semibold text-gray-900 mb-1">No messages yet</h3>
           <p className="text-sm text-gray-400 max-w-xs mx-auto leading-relaxed">
-            Send a WhatsApp message to Fey and your tasks will appear here — with notes and deadlines extracted automatically.
+            {WHATSAPP_FEY_ENABLED
+              ? 'Send a WhatsApp message to Fey and your tasks will appear here — with notes and deadlines extracted automatically.'
+              : "WhatsApp task capture is paused right now — we're building something new."}
           </p>
-          <p className="text-xs text-gray-300 mt-4">Connect your number in Settings → WhatsApp</p>
+          {WHATSAPP_FEY_ENABLED && (
+            <p className="text-xs text-gray-300 mt-4">Connect your number in Settings → WhatsApp</p>
+          )}
         </div>
       ) : (
         <DndContext

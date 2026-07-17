@@ -9,7 +9,7 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSupabaseData } from '@/hooks/useSupabaseData'
 import { supabase } from '@/lib/supabase'
-import { IS_DEMO } from '@/lib/constants'
+import { IS_DEMO, WHATSAPP_FEY_ENABLED } from '@/lib/constants'
 import { env } from '@/config/env'
 import type { TrashItem } from '@/types'
 import { normalizeFontDataUrl } from '@/utils/fontHelpers'
@@ -263,9 +263,9 @@ function SettingsPageInner() {
   const [waError,        setWaError]        = useState('')
   const [waDisconnecting, setWaDisconnecting] = useState(false)
 
-  // Fetch WhatsApp on mount
+  // Fetch WhatsApp on mount (skipped while the feature is soft-disabled)
   useEffect(() => {
-    if (!user?.id) return
+    if (!user?.id || !WHATSAPP_FEY_ENABLED) return
     void supabase
       .from('whatsapp_connections')
       .select('phone_number, verified, connected_at')
@@ -1753,7 +1753,18 @@ function SettingsPageInner() {
 
     return (
       <>
-        {/* WhatsApp */}
+        {/* WhatsApp — soft-disabled; see WHATSAPP_FEY_ENABLED in lib/constants.ts */}
+        {!WHATSAPP_FEY_ENABLED ? (
+          <SectionGroup title="WhatsApp">
+            <div className="py-8 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mx-auto mb-3">
+                <MessageSquare size={20} className="text-gray-300" />
+              </div>
+              <p className="text-sm font-semibold text-gray-800 mb-1">Paused</p>
+              <p className="text-xs text-gray-400">WhatsApp task capture is paused while we build something new.</p>
+            </div>
+          </SectionGroup>
+        ) : (
         <SectionGroup title="WhatsApp">
           {waLoading ? (
             <div className="py-8 flex justify-center"><Loader2 size={20} className="animate-spin text-gray-300" /></div>
@@ -1846,6 +1857,7 @@ function SettingsPageInner() {
             </div>
           )}
         </SectionGroup>
+        )}
 
         {/* Paystack */}
         <SectionGroup title="Paystack">

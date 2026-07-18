@@ -37,7 +37,7 @@ const THEME_COLORS = [
 
 const NAV = [
   'Profile', 'Brand', 'Business', 'Invoices',
-  'App', 'CRM & Portal', 'Integrations', 'Billing', 'Redundant',
+  'App', 'Notifications', 'CRM & Portal', 'Integrations', 'Billing',
 ] as const
 
 type NavSection = typeof NAV[number]
@@ -48,8 +48,7 @@ const TAB_ALIASES: Record<string, NavSection> = {
   'Business Info': 'Business',
   'Payments':      'Invoices',
   'General':       'App',
-  'Emails':        'Redundant',
-  'Notifications': 'Redundant',
+  'Emails':        'Notifications',
   'CRM':           'CRM & Portal',
   'Portal':        'CRM & Portal',
   'WhatsApp':      'Integrations',
@@ -1188,16 +1187,6 @@ function SettingsPageInner() {
         </div>
       </SectionGroup>
 
-      <SectionGroup title="Task digest">
-        <SettingRow
-          icon={Mail}
-          title="Daily task digest"
-          description="A daily email at 8am with tasks due today, overdue, recently assigned to you, and what got done yesterday."
-          border={false}
-          action={<Toggle checked={settings.task_digest_enabled !== 'false'} onChange={(v) => void saveSetting('task_digest_enabled', v ? 'true' : 'false')} />}
-        />
-      </SectionGroup>
-
       <SectionGroup title="Currency &amp; exchange rates">
         <div className="py-4 border-b border-gray-100">
           <label className="block text-xs font-medium text-gray-500 mb-2">Display currency</label>
@@ -1354,6 +1343,20 @@ function SettingsPageInner() {
         )}
       </SectionGroup>
     </>
+  )
+
+  // ── Notifications ──────────────────────────────────────────────────────────
+
+  const renderNotifications = (): React.ReactNode => (
+    <SectionGroup title="Task digest">
+      <SettingRow
+        icon={Mail}
+        title="Daily task digest"
+        description="A daily email at 8am with tasks due today, overdue, recently assigned to you, and what got done yesterday."
+        border={false}
+        action={<Toggle checked={settings.task_digest_enabled !== 'false'} onChange={(v) => void saveSetting('task_digest_enabled', v ? 'true' : 'false')} />}
+      />
+    </SectionGroup>
   )
 
   // ── CRM & Portal ───────────────────────────────────────────────────────────
@@ -1613,92 +1616,6 @@ function SettingsPageInner() {
     )
   }
 
-  // ── Redundant ───────────────────────────────────────────────────────────────
-  // Settings that aren't currently wired to anything — parked here for review.
-
-  const renderRedundant = (): React.ReactNode => (
-    <>
-      <div className="mb-5 px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl flex items-start gap-3">
-        <AlertTriangle size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
-        <div>
-          <p className="text-sm font-semibold text-gray-700">Not currently in use</p>
-          <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-            These settings aren&apos;t connected to anything live yet. They&apos;re kept here so nothing is lost — review or remove them later.
-          </p>
-        </div>
-      </div>
-
-      <SectionGroup title="Billing defaults">
-        <div className="py-4">
-          <label className="block text-xs font-medium text-gray-500 mb-2">Default hourly rate</label>
-          <input
-            type="number" min="0" placeholder="e.g. 150"
-            value={settings.hourly_rate}
-            onChange={(e) => void saveSetting('hourly_rate', e.target.value)}
-            className={inputClass}
-          />
-          <p className="text-xs text-gray-400 mt-1.5">Saved for reference — not used when creating invoices yet</p>
-        </div>
-      </SectionGroup>
-
-      <SectionGroup title="Client cards">
-        <div className="py-4">
-          <label className="block text-xs font-medium text-gray-500 mb-2">Card size</label>
-          <div className="flex gap-2">
-            {(['compact', 'medium', 'large'] as const).map((size) => (
-              <button
-                key={size}
-                onClick={() => void saveSetting('card_size', size)}
-                className="flex-1 py-2 rounded-xl text-xs font-medium border capitalize transition-colors"
-                style={settings.card_size === size ? { borderColor: 'var(--accent)', backgroundColor: 'color-mix(in srgb, var(--accent) 8%, white)', color: 'var(--accent)' } : { borderColor: '#e5e7eb', color: '#6b7280' }}
-              >
-                {size}
-              </button>
-            ))}
-          </div>
-        </div>
-      </SectionGroup>
-
-      <SectionGroup title="Dashboard">
-        <div className="py-4">
-          <label className="block text-xs font-medium text-gray-500 mb-2">Dashboard subtitle</label>
-          <input
-            type="text" value={settings.dashboard_subtitle} placeholder="Optional tagline"
-            onChange={(e) => void saveSetting('dashboard_subtitle', e.target.value)}
-            className={inputClass}
-          />
-        </div>
-      </SectionGroup>
-
-      <SectionGroup title="Account emails">
-        <SettingRow icon={Mail} title="Project accepted" description="When a client accepts a proposal" badge={<SoonBadge />}
-          action={<Toggle checked={settings.email_acceptance === 'true'} onChange={(v) => void saveSetting('email_acceptance', v ? 'true' : 'false')} />}
-        />
-        <SettingRow icon={Mail} title="Payment received" description="When a task or invoice is marked paid" badge={<SoonBadge />}
-          action={<Toggle checked={settings.email_payment_received === 'true'} onChange={(v) => void saveSetting('email_payment_received', v ? 'true' : 'false')} />}
-        />
-        <SettingRow icon={Mail} title="Stripe activity" description="Payments processed through Stripe" badge={<SoonBadge />} border={false}
-          action={<Toggle checked={settings.email_stripe === 'true'} onChange={(v) => void saveSetting('email_stripe', v ? 'true' : 'false')} />}
-        />
-      </SectionGroup>
-
-      <SectionGroup title="Activity emails">
-        <SettingRow icon={Bell} title="Project activity" description="Updates on shared workspaces and tasks" badge={<SoonBadge />}
-          action={<Toggle checked={settings.email_project_activity === 'true'} onChange={(v) => void saveSetting('email_project_activity', v ? 'true' : 'false')} />}
-        />
-        <SettingRow icon={Bell} title="Chat — messages to you" description="Someone sends you a message" badge={<SoonBadge />}
-          action={<Toggle checked={settings.email_chat_to === 'true'} onChange={(v) => void saveSetting('email_chat_to', v ? 'true' : 'false')} />}
-        />
-        <SettingRow icon={Bell} title="Chat — messages from you" description="Copy of messages you send" badge={<SoonBadge />}
-          action={<Toggle checked={settings.email_chat_from === 'true'} onChange={(v) => void saveSetting('email_chat_from', v ? 'true' : 'false')} />}
-        />
-        <SettingRow icon={Bell} title="Auto reminders" description="Invoice follow-ups and payment reminders" badge={<SoonBadge />} border={false}
-          action={<Toggle checked={settings.email_auto_reminders === 'true'} onChange={(v) => void saveSetting('email_auto_reminders', v ? 'true' : 'false')} />}
-        />
-      </SectionGroup>
-    </>
-  )
-
   // ── Integrations ───────────────────────────────────────────────────────────
 
   const renderIntegrations = (): React.ReactNode => {
@@ -1929,8 +1846,8 @@ function SettingsPageInner() {
       case 'Business':     return renderBusiness()
       case 'Invoices':     return renderInvoices()
       case 'App':          return renderApp()
+      case 'Notifications': return renderNotifications()
       case 'CRM & Portal': return renderCrmAndPortal()
-      case 'Redundant':    return renderRedundant()
       case 'Integrations': return renderIntegrations()
       case 'Billing':      return renderBilling()
       default:             return null

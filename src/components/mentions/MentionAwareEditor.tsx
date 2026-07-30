@@ -1,11 +1,32 @@
 'use client'
 
-import { useRef, useEffect, useCallback, forwardRef, useImperativeHandle, type KeyboardEvent } from 'react'
+import {
+  useRef, useEffect, useCallback, forwardRef, useImperativeHandle,
+  type KeyboardEvent, type ClipboardEvent, type DragEvent,
+} from 'react'
 import { useMentionAutocomplete } from '@/hooks/useMentionAutocomplete'
 import MentionMenu from './MentionMenu'
-import { buildMentionHtml, serializeMentionEditor, mentionChipHtml } from '@/utils/mentions'
-import { caretOffset } from '@/utils/contentEditableCaret'
+import { buildMentionHtml, serializeMentionEditor, mentionChipHtml, imageChipHtml, isHostedImageUrl } from '@/utils/mentions'
+import { caretOffset, escapeHtml } from '@/utils/contentEditableCaret'
 import type { WorkspaceMember } from '@/types/team'
+
+/** Result of hosting a pasted image — only the URL is ever stored in the text. */
+export interface EditorImageUpload {
+  url: string
+  name: string
+}
+
+/** Transient chip shown in place of an image while it uploads. */
+function uploadingChipHtml(uploadId: string, fileName: string): string {
+  return (
+    `<span data-upload-id="${escapeHtml(uploadId)}" contenteditable="false" ` +
+    `style="display:inline-block;padding:0.125rem 0.5rem;border-radius:0.5rem;background:#f3f4f6;color:#6b7280;font-size:0.75rem;">` +
+    `Uploading ${escapeHtml(fileName)}…</span>`
+  )
+}
+
+const imageFilesOf = (list: FileList | null): File[] =>
+  Array.from(list ?? []).filter((f) => f.type.startsWith('image/'))
 
 export interface MentionAwareEditorHandle {
   clear: () => void
@@ -31,6 +52,14 @@ interface MentionAwareEditorProps {
   className?: string
   /** Cheap live signal (no serialization) for e.g. disabling a send button while empty. */
   onEmptyChange?: (isEmpty: boolean) => void
+  /**
+   * Enables pasting/dropping images: hosts the file and returns its URL, which
+   * is what gets embedded in the value. Without this prop, images are ignored
+   * (as before) and pasting stays text-only.
+   */
+  uploadImage?: (file: File) => Promise<EditorImageUpload>
+  /** Called with a plain-English message when an image upload fails. */
+  onImageError?: (message: string) => void
 }
 
 /**
@@ -42,12 +71,16 @@ interface MentionAwareEditorProps {
  * only changes what's shown while composing.
  */
 const MentionAwareEditor = forwardRef<MentionAwareEditorHandle, MentionAwareEditorProps>(function MentionAwareEditor(
-  { initialValue, workspaceId, onCommit, onEscape, multiline = false, placeholder, autoFocus, className = '', onEmptyChange },
+  { initialValue, workspaceId, onCommit, onEscape, multiline = false, placeholder, autoFocus, className = '', onEmptyChange, uploadImage, onImageError },
   ref,
 ) {
   const elRef = useRef<HTMLDivElement>(null)
   const initialRef = useRef(initialValue)
   const suppressBlur = useRef(false)
+  // Blurring mid-upload must not save a value whose image is still a
+  // placeholder — the commit is held back until the last upload settles.
+  const pendingUploads = useRef(0)
+  const deferredCommit = useRef(false)
   const mention = useMentionAutocomplete(workspaceId)
 
   useEffect(() => {
@@ -104,12 +137,82 @@ const MentionAwareEditor = forwardRef<MentionAwareEditorHandle, MentionAwareEdit
     mention.close()
   }, [mention])
 
-  const commit = useCallback(() => {
-    if (suppressBlur.current) { suppressBlur.current = false; return }
+  const commitNow = useCallback(() => {
     const el = elRef.current
     if (!el) return
     onCommit(serializeMentionEditor(el))
   }, [onCommit])
+
+  const commit = useCallback(() => {
+    if (suppressBlur.current) { suppressBlur.current = false; return }
+    if (pendingUploads.current > 0) { deferredCommit.current = true; return }
+    commitNow()
+  }, [commitNow])
+
+  /**
+   * Uploads a pasted/dropped image, showing a placeholder chip at the caret
+   * until the hosted URL comes back. Only the URL ends up in the value.
+   */
+  const insertImage = useCallback(async (file: File) => {
+    if (!uploadImage) return
+    const el = elRef.current
+    if (!el) return
+    const uploadId = crypto.randomUUID()
+    document.execCommand('insertHTML', false, uploadingChipHtml(uploadId, file.name || 'image'))
+    pendingUploads.current += 1
+    try {
+      const { url, name } = await uploadImage(file)
+      if (!isHostedImageUrl(url)) throw new Error('That image couldn’t be saved. Please try again.')
+      const placeholder = el.querySelector(`[data-upload-id="${uploadId}"]`)
+      if (placeholder) placeholder.outerHTML = imageChipHtml(name, url)
+      else el.insertAdjacentHTML('beforeend', imageChipHtml(name, url))
+      onEmptyChange?.(false)
+    } catch (err) {
+      el.querySelector(`[data-upload-id="${uploadId}"]`)?.remove()
+      if (!(err instanceof Error && err.message === 'cancelled')) {
+        onImageError?.(err instanceof Error ? err.message : 'That image couldn’t be uploaded.')
+      }
+    } finally {
+      pendingUploads.current -= 1
+      if (pendingUploads.current === 0 && deferredCommit.current) {
+        deferredCommit.current = false
+        commitNow()
+      }
+    }
+  }, [uploadImage, onImageError, onEmptyChange, commitNow])
+
+  const handlePaste = useCallback((e: ClipboardEvent<HTMLDivElement>) => {
+    const images = uploadImage ? imageFilesOf(e.clipboardData.files) : []
+    if (images.length > 0) {
+      e.preventDefault()
+      for (const file of images) void insertImage(file)
+      return
+    }
+    // Everything else pastes as plain text: keeps foreign markup and its
+    // styling out of the editor, and out of the serialized value.
+    const text = e.clipboardData.getData('text/plain')
+    if (!text) return
+    e.preventDefault()
+    document.execCommand('insertText', false, text)
+    handleInput()
+  }, [uploadImage, insertImage, handleInput])
+
+  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+    const images = uploadImage ? imageFilesOf(e.dataTransfer.files) : []
+    if (images.length === 0) return
+    e.preventDefault()
+    const el = elRef.current
+    if (!el) return
+    el.focus()
+    // Drop the image where it was dropped, not wherever the caret happened to be.
+    const range = document.caretRangeFromPoint?.(e.clientX, e.clientY)
+    if (range && el.contains(range.startContainer)) {
+      const sel = window.getSelection()
+      sel?.removeAllRanges()
+      sel?.addRange(range)
+    }
+    for (const file of images) void insertImage(file)
+  }, [uploadImage, insertImage])
 
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
     if (mention.trigger) {
@@ -142,6 +245,8 @@ const MentionAwareEditor = forwardRef<MentionAwareEditorHandle, MentionAwareEdit
         suppressContentEditableWarning
         onInput={handleInput}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
+        onDrop={handleDrop}
         onBlur={commit}
         data-placeholder={placeholder}
         className={`outline-none whitespace-pre-wrap break-words empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 ${className}`}

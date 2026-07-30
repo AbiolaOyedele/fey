@@ -45,3 +45,12 @@ export const BLOCKED_UPLOAD_EXTENSIONS = [
   'exe', 'msi', 'bat', 'cmd', 'sh', 'js', 'mjs', 'jar', 'app', 'dmg',
   'com', 'scr', 'vbs', 'ps1', 'html', 'htm', 'svg', 'php', 'py',
 ] as const
+
+/**
+ * Cloudinary subfolder for an image pasted into a task's description (relative
+ * to the `fey/` upload root). Shared so cleanup can recognise, from the URL
+ * alone, an asset this task owns — and never destroy one pasted in from
+ * somewhere else.
+ */
+export const taskDescriptionUploadFolder = (taskId: string): string =>
+  `work-tasks/${taskId}/description`

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, Megaphone, Plus, ArrowLeft, Pencil, CalendarDays, Layers } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useConfirm } from '@/contexts/ConfirmContext'
@@ -11,9 +11,8 @@ import { useWorkspace } from '@/hooks/useWorkspace'
 import { useContacts } from '@/hooks/useCrm'
 import { useSocialPlanner, toDateKey } from '@/hooks/useSocialPlanner'
 import { FadeIn } from '@/components/ui/motion'
-import SocialCalendar from '@/components/playground/SocialCalendar'
+import SocialCalendarBoard from '@/components/playground/SocialCalendarBoard'
 import PostStackView from '@/components/playground/PostStackView'
-import DayPanel from '@/components/playground/DayPanel'
 import PostEditor, { STATUS_STYLES } from '@/components/playground/PostEditor'
 import BrandModal from '@/components/playground/BrandModal'
 import AssignTaskModal from '@/components/playground/AssignTaskModal'
@@ -156,8 +155,6 @@ export default function SocialCornerPage() {
     if (brandFilter === brand.id) setBrandFilter(null)
     await withToast(() => deleteBrand(brand.id), 'Brand deleted')
   }
-
-  const dayPosts = selectedDay ? (postsByDay.get(selectedDay) ?? []) : []
 
   return (
     <div className="p-4 md:p-6 lg:p-8 page-enter">
@@ -308,51 +305,25 @@ export default function SocialCornerPage() {
           onOpen={(post) => setEditor({ mode: 'edit', post })}
         />
       ) : (
-        <div className="flex flex-col lg:flex-row gap-4 items-stretch">
-          {/* Calendar collapses to the side when a day is open */}
-          <div className={`min-w-0 transition-all duration-300 ${selectedDay ? 'lg:w-[55%]' : 'w-full'}`}>
-            {/* Keyed on the month so switching months slides the grid in from the travel direction. */}
-            <motion.div
-              key={monthKey}
-              initial={{ opacity: 0, x: monthDir * 32 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            >
-              <SocialCalendar
-                month={month}
-                postsByDay={postsByDay}
-                brandById={brandById}
-                selectedDay={selectedDay}
-                compact={selectedDay !== null}
-                accent={accent}
-                onSelectDay={(key) => setSelectedDay((cur) => (cur === key ? null : key))}
-              />
-            </motion.div>
-          </div>
-          <AnimatePresence>
-            {selectedDay && (
-              <motion.div
-                key="day-panel"
-                initial={{ opacity: 0, x: 32, scale: 0.98 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: 24, scale: 0.98, transition: { duration: 0.15 } }}
-                transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-                className="lg:w-[45%] min-w-0 lg:max-h-[calc(100vh-16rem)]"
-              >
-                <DayPanel
-                  dateKey={selectedDay}
-                  posts={dayPosts}
-                  brandById={brandById}
-                  accent={accent}
-                  onEdit={(post) => setEditor({ mode: 'edit', post })}
-                  onAdd={() => setEditor({ mode: 'create', date: selectedDay, brandId: brandFilter })}
-                  onMarkTask={(post) => setAssignPost(post)}
-                  onClose={() => setSelectedDay(null)}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        // Keyed on the month so switching months slides the board in from the travel direction.
+        <motion.div
+          key={monthKey}
+          initial={{ opacity: 0, x: monthDir * 32 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        >
+          <SocialCalendarBoard
+            month={month}
+            postsByDay={postsByDay}
+            brandById={brandById}
+            selectedDay={selectedDay}
+            accent={accent}
+            onSelectDay={(key) => setSelectedDay((cur) => (cur === key ? null : key))}
+            onEditPost={(post) => setEditor({ mode: 'edit', post })}
+            onAddPost={(date) => setEditor({ mode: 'create', date, brandId: brandFilter })}
+            onMarkTask={(post) => setAssignPost(post)}
+          />
+        </motion.div>
       )}
 
       {/* Modals */}

@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Shapes, Megaphone, CalendarDays, ArrowRight, Lock } from 'lucide-react'
+import { Shapes, Megaphone, CalendarDays, ArrowRight, Lock, Wrench, Sparkles } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { Stagger, StaggerItem, FadeIn } from '@/components/ui/motion'
 
@@ -61,6 +61,64 @@ export default function PlaygroundPage() {
               Open <ArrowRight size={13} />
             </span>
             <CalendarDays
+              size={96}
+              className="absolute -bottom-5 -right-5 text-gray-50 group-hover:text-gray-100 transition-colors pointer-events-none"
+            />
+          </Link>
+        </StaggerItem>
+
+        {/* Ruff Tools */}
+        <StaggerItem whileHover={{ y: -3 }} whileTap={{ scale: 0.97 }}>
+          <Link
+            href="/playground/ruff-tools"
+            className="group relative block h-full bg-white rounded-2xl border border-gray-100 shadow-sm p-5 overflow-hidden hover:shadow-md transition-shadow duration-200"
+          >
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6"
+              style={{ backgroundColor: `${accent}15`, color: accent }}
+            >
+              <Wrench size={20} />
+            </div>
+            <h2 className="text-sm font-semibold text-gray-800 mb-1">Ruff Tools</h2>
+            <p className="text-xs text-gray-400 leading-relaxed mb-4">
+              Quick browser-based utilities — QR codes, background removal, watermarks, cropping, splitting and more.
+            </p>
+            <span
+              className="inline-flex items-center gap-1 text-xs font-medium transition-transform duration-200 group-hover:translate-x-0.5"
+              style={{ color: accent }}
+            >
+              Open <ArrowRight size={13} />
+            </span>
+            <Wrench
+              size={96}
+              className="absolute -bottom-5 -right-5 text-gray-50 group-hover:text-gray-100 transition-colors pointer-events-none"
+            />
+          </Link>
+        </StaggerItem>
+
+        {/* Image Pipeline */}
+        <StaggerItem whileHover={{ y: -3 }} whileTap={{ scale: 0.97 }}>
+          <Link
+            href="/playground/image-pipeline"
+            className="group relative block h-full bg-white rounded-2xl border border-gray-100 shadow-sm p-5 overflow-hidden hover:shadow-md transition-shadow duration-200"
+          >
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6"
+              style={{ backgroundColor: `${accent}15`, color: accent }}
+            >
+              <Sparkles size={20} />
+            </div>
+            <h2 className="text-sm font-semibold text-gray-800 mb-1">Image Pipeline</h2>
+            <p className="text-xs text-gray-400 leading-relaxed mb-4">
+              Upload a reference, let Claude write the prompt and generate with Nano Banana — preview first, approve to finalize.
+            </p>
+            <span
+              className="inline-flex items-center gap-1 text-xs font-medium transition-transform duration-200 group-hover:translate-x-0.5"
+              style={{ color: accent }}
+            >
+              Open <ArrowRight size={13} />
+            </span>
+            <Sparkles
               size={96}
               className="absolute -bottom-5 -right-5 text-gray-50 group-hover:text-gray-100 transition-colors pointer-events-none"
             />

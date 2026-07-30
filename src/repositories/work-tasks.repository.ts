@@ -169,11 +169,11 @@ export async function getTaskById(db: SupabaseClient, id: string): Promise<Task 
 /** Lightweight fetch (no joins) — used for ownership re-checks in the service. */
 export async function getTaskCore(db: SupabaseClient, id: string): Promise<{
   id: string; owner_id: string; workspace_id: string | null; project_id: string | null
-  contact_id: string | null; created_by: string; done: boolean
+  contact_id: string | null; created_by: string; done: boolean; description: string | null
 } | null> {
   const { data, error } = await db
     .from('work_tasks')
-    .select('id, owner_id, workspace_id, project_id, contact_id, created_by, done')
+    .select('id, owner_id, workspace_id, project_id, contact_id, created_by, done, description')
     .eq('id', id)
     .is('deleted_at', null)
     .maybeSingle()

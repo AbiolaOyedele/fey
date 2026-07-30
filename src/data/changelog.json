@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.21.0",
+    "date": "30 July 2026",
+    "title": "Images in tasks, Ruff Tools & tidier Settings",
+    "features": [
+      "Paste an image straight into a task description — it uploads on the spot, sits inline with your text, and opens full size when clicked",
+      "Tasks now have a Save button next to the autosave, so you always know your changes are stored",
+      "New Ruff Tools corner in Playground — watermark your images and build styled QR codes",
+      "Notifications has its own Settings section now instead of hiding inside a tab",
+      "Get notified when someone comments on a task that's assigned to you",
+      "Jump straight from a task on your dashboard to the task itself"
+    ],
+    "improvements": [
+      "Tasks are scoped per person, with reworked list, board and mobile table views",
+      "Task changes from teammates show up live, no refresh needed",
+      "Smoother motion and better scrolling across tasks on mobile",
+      "WhatsApp Fey is hidden for now while an in-app assistant takes its place"
+    ],
+    "fixes": [
+      "Removed a duplicate Settings tab",
+      "Fixed CRM portal issues — a stored XSS hole, dead send links, portal settings that didn't sync, and a broken payment link",
+      "The Add Client modal animates properly again"
+    ]
+  },
+  {
     "version": "1.20.0",
     "date": "7 July 2026",
     "title": "Brands & Social Corner polish",

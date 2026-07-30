@@ -1,11 +1,11 @@
 'use client'
 
 import { useRef, useState, useCallback } from 'react'
-import { Upload, Trash2, Loader2, X, Download, FileText, FileSpreadsheet, FileArchive, File as FileIcon, ExternalLink } from 'lucide-react'
+import { Upload, Trash2, Loader2, X, FileText, FileSpreadsheet, FileArchive, File as FileIcon } from 'lucide-react'
 import {
-  uploadToCloudinary, getFileType, formatFileSize, isImageType,
-  downloadUrl, thumbUrl, type FileType,
+  uploadToCloudinary, getFileType, isImageType, thumbUrl, type FileType,
 } from '@/utils/cloudinary'
+import ImageLightbox from '@/components/ui/ImageLightbox'
 import type { TaskFileRow } from '@/types/work-tasks'
 
 function fileGlyph(fileType: FileType, size = 18) {
@@ -162,43 +162,12 @@ export default function TaskAttachments({ taskId, files, onAdd, onRemove, readOn
 
       {/* Image lightbox */}
       {preview && (
-        <div
-          className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4"
-          onClick={() => setPreview(null)}
-        >
-          <div className="relative max-w-3xl max-h-full" onClick={(e) => e.stopPropagation()}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={preview.file_url} alt={preview.file_name} className="max-w-full max-h-[80vh] rounded-2xl object-contain" />
-            <div className="flex items-center justify-between gap-3 mt-3 text-white">
-              <span className="text-sm truncate">{preview.file_name}{preview.file_size ? ` · ${formatFileSize(preview.file_size)}` : ''}</span>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <a
-                  href={preview.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
-                  title="Open in new tab"
-                >
-                  <ExternalLink size={14} />
-                </a>
-                <a
-                  href={downloadUrl(preview.file_url)}
-                  className="w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
-                  title="Download"
-                >
-                  <Download size={14} />
-                </a>
-                <button
-                  onClick={() => setPreview(null)}
-                  className="w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
-                  title="Close"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ImageLightbox
+          url={preview.file_url}
+          name={preview.file_name}
+          size={preview.file_size}
+          onClose={() => setPreview(null)}
+        />
       )}
     </div>
   )

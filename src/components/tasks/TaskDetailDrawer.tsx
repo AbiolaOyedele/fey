@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { X, Trash2, Plus, Check } from 'lucide-react'
 import type { Task, TaskPriority, Subtask, UpdateTaskPayload, WorkflowStage } from '@/types/work-tasks'
 import type { MentionEntityType } from '@/types/mention'
@@ -12,7 +12,10 @@ import { useConfirm } from '@/contexts/ConfirmContext'
 import { useScrollLock } from '@/hooks/useScrollLock'
 import { PRIORITY_META, formatMinutes, parseEstimate } from './TaskBits'
 import { renderMentions, extractMentionedUserIds } from '@/utils/mentions'
-import MentionAwareEditor from '@/components/mentions/MentionAwareEditor'
+import MentionAwareEditor, { type MentionAwareEditorHandle } from '@/components/mentions/MentionAwareEditor'
+import ImageLightbox from '@/components/ui/ImageLightbox'
+import { uploadToCloudinary } from '@/utils/cloudinary'
+import { taskDescriptionUploadFolder } from '@/lib/constants'
 import { apiFetch } from '@/lib/api-client'
 
 /** Fire-and-forget: records any @mentions in `text` and notifies the newly-mentioned. */
@@ -70,19 +73,28 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description ?? '')
   const [isEditingDescription, setIsEditingDescription] = useState(false)
+  const [descriptionError, setDescriptionError] = useState<string | null>(null)
+  const [preview, setPreview] = useState<{ url: string; name: string } | null>(null)
   const [estimate, setEstimate] = useState(task.estimated_minutes != null ? formatMinutes(task.estimated_minutes) : '')
   const [newSubtask, setNewSubtask] = useState('')
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const descriptionRef = useRef<MentionAwareEditorHandle>(null)
   const taskLink = task.contact_id ? `/clients/${task.contact_id}/tasks?taskId=${task.id}` : `/tasks?taskId=${task.id}`
 
   useEffect(() => {
     setTitle(task.title)
     setDescription(task.description ?? '')
     setIsEditingDescription(false)
+    setDescriptionError(null)
     setEstimate(task.estimated_minutes != null ? formatMinutes(task.estimated_minutes) : '')
   }, [task.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => {
+      // An open image preview owns Escape first — closing both at once would
+      // yank the drawer out from under the user.
+      if (e.key === 'Escape' && !document.querySelector('[data-lightbox]')) onClose()
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
@@ -92,6 +104,58 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
     if (t && t !== task.title) void onPatch(task.id, { title: t })
     else setTitle(task.title)
   }, [title, task.id, task.title, onPatch])
+
+  /** Hosts an image pasted into the description; only the URL is stored. */
+  const uploadDescriptionImage = useCallback(async (file: File) => {
+    setDescriptionError(null)
+    const { promise } = uploadToCloudinary(file, taskDescriptionUploadFolder(task.id))
+    const { url } = await promise
+    return { url, name: file.name || 'image' }
+  }, [task.id])
+
+  const commitDescription = useCallback((value: string) => {
+    setDescription(value)
+    setIsEditingDescription(false)
+    if (value !== (task.description ?? '')) {
+      void onPatch(task.id, { description: value || null })
+      void postMentions({
+        workspaceId, entityType: 'task_description', entityId: task.id,
+        link: taskLink, contextLabel: task.title, text: value,
+      })
+    }
+  }, [task.id, task.description, task.title, workspaceId, taskLink, onPatch])
+
+  /**
+   * Explicit save. Fields already persist on blur, so this mostly flushes
+   * whatever is still being edited — but it gives an unambiguous "it's saved"
+   * moment, and on touch devices it's easier than blurring a field.
+   */
+  const handleSave = useCallback(async () => {
+    setSaveState('saving')
+    // Blurring the description commits it through the same path as autosave,
+    // which also waits for any in-flight image upload.
+    if (isEditingDescription) descriptionRef.current?.blur()
+
+    const updates: UpdateTaskPayload = {}
+    const t = title.trim()
+    if (t && t !== task.title) updates.title = t
+    else if (!t) setTitle(task.title)
+    const minutes = parseEstimate(estimate)
+    if (minutes !== (task.estimated_minutes ?? null)) updates.estimated_minutes = minutes
+
+    try {
+      if (Object.keys(updates).length > 0) await onPatch(task.id, updates)
+      setSaveState('saved')
+    } catch {
+      setSaveState('idle')
+    }
+  }, [isEditingDescription, title, estimate, task.id, task.title, task.estimated_minutes, onPatch])
+
+  useEffect(() => {
+    if (saveState !== 'saved') return
+    const t = setTimeout(() => setSaveState('idle'), 2000)
+    return () => clearTimeout(t)
+  }, [saveState])
 
   const addSub = useCallback(async () => {
     const t = newSubtask.trim()
@@ -231,38 +295,38 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
             <p className="text-xs2 font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Description</p>
             {isEditingDescription ? (
               <MentionAwareEditor
+                ref={descriptionRef}
                 initialValue={description}
                 workspaceId={workspaceId}
                 multiline
                 autoFocus
-                placeholder="Add more detail…"
+                placeholder="Add more detail, or paste an image…"
                 className="w-full min-h-[6rem] text-sm px-3 py-2.5 rounded-xl border border-gray-200 focus:border-gray-400"
-                onCommit={(value) => {
-                  setDescription(value)
-                  setIsEditingDescription(false)
-                  if (value !== (task.description ?? '')) {
-                    void onPatch(task.id, { description: value || null })
-                    void postMentions({
-                      workspaceId, entityType: 'task_description', entityId: task.id,
-                      link: taskLink, contextLabel: task.title, text: value,
-                    })
-                  }
-                }}
+                uploadImage={uploadDescriptionImage}
+                onImageError={setDescriptionError}
+                onCommit={commitDescription}
                 onEscape={() => setIsEditingDescription(false)}
               />
             ) : (
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => setIsEditingDescription(true)}
-                className="w-full text-left text-sm px-3 py-2.5 rounded-xl -mx-3 hover:bg-gray-50 transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsEditingDescription(true) }
+                }}
+                className="w-full text-left text-sm px-3 py-2.5 rounded-xl -mx-3 hover:bg-gray-50 transition-colors cursor-text"
               >
                 {description ? (
-                  <p className="whitespace-pre-wrap text-gray-700">{renderMentions(description)}</p>
+                  <div className="whitespace-pre-wrap break-words text-gray-700">
+                    {renderMentions(description, { onImageClick: setPreview })}
+                  </div>
                 ) : (
-                  <p className="text-gray-400">Add more detail…</p>
+                  <p className="text-gray-400">Add more detail, or paste an image…</p>
                 )}
-              </button>
+              </div>
             )}
+            {descriptionError && <p className="mt-1.5 text-xs2 text-red-500">{descriptionError}</p>}
           </div>
 
           {/* Attachments */}
@@ -328,7 +392,28 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
             </button>
           </div>
         </div>
+
+        {/* Save — everything here autosaves, but an explicit save gives a clear
+         *  "it's stored" moment and flushes a field that's still being edited. */}
+        <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 px-5 py-3 bg-white/95 backdrop-blur border-t border-gray-100 rounded-b-2xl">
+          <span className="text-xs2 text-gray-400 min-w-0 truncate" aria-live="polite">
+            {saveState === 'saved' ? 'All changes saved' : 'Changes save automatically'}
+          </span>
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saveState === 'saving'}
+            className="min-h-[44px] px-5 rounded-xl text-sm font-medium text-white flex-shrink-0 disabled:opacity-60 transition-opacity"
+            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+          >
+            {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved' : 'Save'}
+          </button>
+        </div>
       </div>
+
+      {preview && (
+        <ImageLightbox url={preview.url} name={preview.name} onClose={() => setPreview(null)} />
+      )}
     </div>
   )
 }

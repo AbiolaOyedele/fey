@@ -3,7 +3,9 @@ import { z } from 'zod'
 import { AppError } from '@/lib/errors'
 import { createServiceClient } from '@/lib/supabase-server'
 import { destroyCloudinaryAssetById, parseCloudinaryUrl } from '@/lib/cloudinary-server'
-import { MAX_UPLOAD_BYTES, ALLOWED_UPLOAD_EXTENSIONS } from '@/lib/constants'
+import { MAX_UPLOAD_BYTES, ALLOWED_UPLOAD_EXTENSIONS, taskDescriptionUploadFolder } from '@/lib/constants'
+import { UPLOAD_ROOT_FOLDER } from '@/services/upload.service'
+import { extractImageUrls } from '@/utils/imageTokens'
 import type { Task, TaskFileRow, TaskScope } from '@/types/work-tasks'
 import * as repo from '@/repositories/work-tasks.repository'
 import * as wfRepo from '@/repositories/workflows.repository'
@@ -207,7 +209,32 @@ export async function updateTask(db: SupabaseClient, ctx: Ctx, id: string, input
   }
 
   await repo.updateTaskRow(db, id, updates)
+  if (d.description !== undefined) await cleanupRemovedDescriptionImages(id, existing.description, d.description)
   return getTask(db, id)
+}
+
+/**
+ * Images pasted into a description are stored as hosted URLs inside the text,
+ * so editing one out is the only "delete" a user gets — this drops the matching
+ * Cloudinary asset. Scoped to this task's own description folder, so a URL
+ * pasted in from an attachment or another task is never destroyed. Best-effort:
+ * the text is the source of truth, cleanup never fails the update.
+ */
+async function cleanupRemovedDescriptionImages(
+  taskId: string,
+  before: string | null,
+  after: string | null,
+): Promise<void> {
+  if (!before) return
+  const kept = new Set(extractImageUrls(after ?? ''))
+  const removed = extractImageUrls(before).filter((url) => !kept.has(url))
+  const prefix = `${UPLOAD_ROOT_FOLDER}/${taskDescriptionUploadFolder(taskId)}/`
+  for (const url of removed) {
+    const parsed = parseCloudinaryUrl(url)
+    if (!parsed?.publicId.startsWith(prefix)) continue
+    const cleaned = await destroyCloudinaryAssetById(parsed.publicId, parsed.resourceType)
+    if (!cleaned) console.warn('[updateTask] description image cleanup failed (description saved)', { taskId })
+  }
 }
 
 export async function deleteTask(db: SupabaseClient, id: string): Promise<void> {

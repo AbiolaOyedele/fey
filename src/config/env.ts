@@ -23,6 +23,25 @@ const envSchema = z.object({
   // Shared secret for the retention cron. While unset, the prune endpoint is
   // disabled — nothing is ever auto-deleted until you configure this.
   CRON_SECRET:                        z.string().min(1).optional(),
+
+  // PlayGround control plane. Shared secret PlayGround presents in the
+  // `x-playground-service-key` header when polling
+  // /api/v1/admin/platform/{stats,health,billing}. Machine-to-machine only —
+  // the ADMIN_EMAILS allowlist is session-based and no use to a server caller.
+  // Optional so boot doesn't hard-fail; those routes return 503 until it is
+  // set, so they can never be reached unprotected. Must match
+  // FEY_ADMIN_API_SERVICE_KEY in PlayGround's environment.
+  ADMIN_API_SERVICE_KEY:              z.string().min(32).optional(),
+
+  // Image Pipeline (Playground corner). Server-only — never NEXT_PUBLIC_, never
+  // sent to the browser. While unset, the pipeline's generate endpoints return
+  // a plain-English "not set up" error instead of failing at the provider.
+  ANTHROPIC_API_KEY:                  z.string().min(1).optional(),
+  GEMINI_API_KEY:                     z.string().min(1).optional(),
+  // Dedicated long-lived key for the optional Flow desktop worker (Step 14).
+  // While unset, the worker endpoints are disabled entirely (503).
+  FLOW_WORKER_API_KEY:                z.string().min(32).optional(),
+
   // Cloudinary admin — used to delete attachment files during the retention sweep.
   NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME:  z.string().min(1).optional(),
   NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: z.string().min(1).optional(),
@@ -58,6 +77,10 @@ const parsed = envSchema.safeParse({
   NEXT_PUBLIC_BUILD_ID:               process.env.NEXT_PUBLIC_BUILD_ID,
   VERCEL_GIT_COMMIT_SHA:              process.env.VERCEL_GIT_COMMIT_SHA,
   CRON_SECRET:                        process.env.CRON_SECRET,
+  ADMIN_API_SERVICE_KEY:              process.env.ADMIN_API_SERVICE_KEY,
+  ANTHROPIC_API_KEY:                  process.env.ANTHROPIC_API_KEY,
+  GEMINI_API_KEY:                     process.env.GEMINI_API_KEY,
+  FLOW_WORKER_API_KEY:                process.env.FLOW_WORKER_API_KEY,
   NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME:  process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_API_KEY:                 process.env.CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET:              process.env.CLOUDINARY_API_SECRET,
@@ -95,6 +118,10 @@ export const env = parsed.success
       NEXT_PUBLIC_BUILD_ID:            process.env.NEXT_PUBLIC_BUILD_ID,
       VERCEL_GIT_COMMIT_SHA:           process.env.VERCEL_GIT_COMMIT_SHA,
       CRON_SECRET:                     process.env.CRON_SECRET,
+      ADMIN_API_SERVICE_KEY:           process.env.ADMIN_API_SERVICE_KEY,
+      ANTHROPIC_API_KEY:               process.env.ANTHROPIC_API_KEY,
+      GEMINI_API_KEY:                  process.env.GEMINI_API_KEY,
+      FLOW_WORKER_API_KEY:             process.env.FLOW_WORKER_API_KEY,
       NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
       NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
       CLOUDINARY_API_KEY:              process.env.CLOUDINARY_API_KEY,

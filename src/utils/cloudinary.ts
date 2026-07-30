@@ -186,3 +186,10 @@ export const downloadUrl = (fileUrl: string): string =>
 /** Small square thumbnail variant of a Cloudinary image URL (fast to load). */
 export const thumbUrl = (fileUrl: string, size = 160): string =>
   fileUrl.replace(/\/upload\//, `/upload/w_${size},h_${size},c_fill,q_auto,f_auto/`)
+
+/**
+ * Width-capped variant of a Cloudinary image URL, aspect ratio preserved —
+ * for images rendered inline in a body of text (e.g. task descriptions).
+ */
+export const inlineImageUrl = (fileUrl: string, width = 640): string =>
+  fileUrl.replace(/\/upload\//, `/upload/w_${width},c_limit,q_auto,f_auto/`)

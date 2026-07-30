@@ -20,6 +20,9 @@ export interface UploadSignature {
   uploadPreset?: string
 }
 
+/** Root Cloudinary folder every upload lands under — also the public_id prefix. */
+export const UPLOAD_ROOT_FOLDER = 'fey'
+
 /**
  * Signs an upload into `fey/<folder>`. `rawFolder` is sanitised to a safe
  * subpath so a caller can't escape the `fey/` namespace.
@@ -38,7 +41,7 @@ export function buildUploadSignature(rawFolder: unknown): UploadSignature {
     .replace(/[^a-zA-Z0-9/_-]/g, '')
     .replace(/^\/+|\/+$/g, '')
     .slice(0, 100) || 'misc'
-  const folder = `fey/${safe}`
+  const folder = `${UPLOAD_ROOT_FOLDER}/${safe}`
   const timestamp = Math.floor(Date.now() / 1000)
 
   // Params that will be sent to Cloudinary AND must be signed (alpha-sorted,

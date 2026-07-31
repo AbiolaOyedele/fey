@@ -95,7 +95,7 @@ export default function TeamPage() {
               onClick={() => void handleInvite()}
               disabled={busy || !email.trim()}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-40 flex-shrink-0"
-              style={{ backgroundColor: accent }}
+              style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
             >
               <UserPlus size={14} /> Invite
             </button>
@@ -116,7 +116,7 @@ export default function TeamPage() {
                 <button
                   onClick={copyLink}
                   className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-2xs font-semibold text-white flex-shrink-0"
-                  style={{ backgroundColor: accent }}
+                  style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
                 >
                   {copied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
                 </button>

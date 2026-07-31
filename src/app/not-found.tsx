@@ -27,7 +27,7 @@ export default function NotFound() {
       <Link
         href="/"
         className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-white font-semibold text-sm shadow-md hover:opacity-90 hover:-translate-y-0.5 transition-all duration-150"
-        style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+        style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
       >
         <ArrowLeft size={16} />
         Back to Dashboard

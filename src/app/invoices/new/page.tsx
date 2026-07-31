@@ -146,8 +146,8 @@ function LayoutThumb({ id, accent }: LayoutThumbProps) {
   )
   if (id === 'bold_header') return (
     <div className="h-full flex flex-col overflow-hidden">
-      <div className="h-5 flex items-center justify-center" style={{ backgroundColor: accent + '30' }}>
-        <div className="h-1 w-10 rounded-sm" style={{ backgroundColor: accent }} />
+      <div className="h-5 flex items-center justify-center" style={{ backgroundColor: `var(--accent-fill, ${accent})` + '30' }}>
+        <div className="h-1 w-10 rounded-sm" style={{ backgroundColor: `var(--accent-fill, ${accent})` }} />
       </div>
       <div className="flex-1 p-1 space-y-0.5">
         <div className="h-px w-full bg-gray-200" />
@@ -582,7 +582,7 @@ function NewInvoicePageInner() {
             setShowSend(true)
           }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: accent }}
+          style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
         >
           <Send size={14} />Create/Send
         </button>
@@ -637,7 +637,7 @@ function NewInvoicePageInner() {
                 <span className="text-sm text-gray-700">{label}{placeholder && <span className="ml-1 text-3xs text-gray-400">(soon)</span>}</span>
                 <button disabled={placeholder} onClick={() => onChange(!checked)}
                   className="relative w-9 h-5 rounded-full transition-colors"
-                  style={checked && !placeholder ? { backgroundColor: accent } : { backgroundColor: '#e5e7eb' }}
+                  style={checked && !placeholder ? { backgroundColor: `var(--accent-fill, ${accent})` } : { backgroundColor: '#e5e7eb' }}
                 >
                   <span className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform" style={{ left: checked && !placeholder ? '17px' : '2px' }} />
                 </button>
@@ -1086,7 +1086,7 @@ function NewInvoicePageInner() {
               </div>
               <button onClick={() => setShowCover((o) => !o)}
                 className="relative w-9 h-5 rounded-full transition-colors"
-                style={showCover ? { backgroundColor: accent } : { backgroundColor: '#e5e7eb' }}
+                style={showCover ? { backgroundColor: `var(--accent-fill, ${accent})` } : { backgroundColor: '#e5e7eb' }}
                 disabled={!settings.cover_image}
               >
                 <span className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform" style={{ left: showCover ? '17px' : '2px' }} />

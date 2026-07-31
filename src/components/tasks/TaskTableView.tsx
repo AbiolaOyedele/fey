@@ -42,7 +42,7 @@ export default function TaskTableView({ tasks, onToggleDone, onOpen }: TaskTable
                   <button
                     onClick={() => onToggleDone(t.id)}
                     className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center flex-shrink-0 ${t.done ? 'border-transparent text-white' : 'border-gray-300'}`}
-                    style={t.done ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
+                    style={t.done ? { backgroundColor: 'var(--accent-fill, #ED64A6)' } : {}}
                   >
                     {t.done && <Check size={11} strokeWidth={3} />}
                   </button>

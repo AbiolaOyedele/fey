@@ -148,7 +148,7 @@ export default function MessageThread({
                       {hasBody && (
                         <div
                           className={`px-3.5 py-2 text-sm leading-relaxed break-words rounded-2xl ${isOwner ? 'rounded-br-sm text-white' : 'rounded-bl-sm text-gray-800'}`}
-                          style={isOwner ? { backgroundColor: 'var(--accent, #ED64A6)' } : { backgroundColor: '#F3F4F6' }}
+                          style={isOwner ? { backgroundColor: 'var(--accent-fill, #ED64A6)' } : { backgroundColor: '#F3F4F6' }}
                           dangerouslySetInnerHTML={{
                             __html: isOwner
                               ? (msg.body_html ?? escapeHtml(msg.body).replace(/\n/g, '<br>'))

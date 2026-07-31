@@ -159,7 +159,7 @@ export default function SocialCalendarBoard({
                     className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${
                       inMonth ? 'text-gray-700' : 'text-gray-300'
                     }`}
-                    style={isToday ? { backgroundColor: accent, color: '#fff' } : undefined}
+                    style={isToday ? { backgroundColor: `var(--accent-fill, ${accent})`, color: '#fff' } : undefined}
                   >
                     {date.getDate()}
                   </span>
@@ -179,7 +179,7 @@ export default function SocialCalendarBoard({
                     <motion.span
                       layoutId={`social-count-${key}`}
                       className="absolute bottom-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-4xs font-bold text-white"
-                      style={{ backgroundColor: accent }}
+                      style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
                     >
                       {count}
                     </motion.span>
@@ -190,7 +190,7 @@ export default function SocialCalendarBoard({
                         <motion.span
                           layoutId={`social-count-${key}`}
                           className="flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold text-white shadow-md"
-                          style={{ backgroundColor: accent }}
+                          style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
                         >
                           {count}
                         </motion.span>

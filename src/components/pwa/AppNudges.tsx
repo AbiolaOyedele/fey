@@ -88,7 +88,7 @@ export default function AppNudges() {
               <button
                 onClick={() => void installNow()}
                 className="w-full py-2 rounded-full text-xs2 font-semibold text-white hover:opacity-90"
-                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
               >
                 Install
               </button>
@@ -106,7 +106,7 @@ export default function AppNudges() {
             onClick={() => { void push.subscribe(); setHidden((h) => ({ ...h, push: true })) }}
             disabled={push.busy}
             className="w-full py-2 rounded-full text-xs2 font-semibold text-white hover:opacity-90 disabled:opacity-50"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
           >
             Enable notifications
           </button>

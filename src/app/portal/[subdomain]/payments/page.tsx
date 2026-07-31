@@ -89,7 +89,7 @@ export default function PortalPaymentsPage({ params }: { params: Promise<{ subdo
                 <a
                   href={`/pay/${p.share_token}`}
                   className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold text-white hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                  style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
                 >
                   Pay
                 </a>

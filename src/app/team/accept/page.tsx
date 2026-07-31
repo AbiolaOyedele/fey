@@ -139,7 +139,7 @@ function AcceptInviteInner() {
               onClick={() => void join()}
               disabled={!name.trim() || password.length < 8 || state === 'joining'}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-40"
-              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+              style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
             >
               {state === 'joining' && <Loader2 size={14} className="animate-spin" />}
               {state === 'joining' ? 'Joining…' : 'Join workspace'}

@@ -116,7 +116,7 @@ export default function TaskAttachments({ taskId, files, onAdd, onRemove, readOn
           <Loader2 size={12} className="animate-spin text-gray-400 flex-shrink-0" />
           <span className="text-xs2 text-gray-600 flex-1 truncate">{u.name}</span>
           <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
-            <div className="h-full rounded-full transition-[width]" style={{ width: `${u.progress}%`, backgroundColor: 'var(--accent, #ED64A6)' }} />
+            <div className="h-full rounded-full transition-[width]" style={{ width: `${u.progress}%`, backgroundColor: 'var(--accent-fill, #ED64A6)' }} />
           </div>
           <button onClick={() => abortsRef.current[u.id]?.()} className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0" title="Cancel upload">
             <X size={12} />

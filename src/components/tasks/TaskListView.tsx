@@ -79,7 +79,7 @@ export default function TaskListView({ tasks, grouped, onToggleDone, onOpen }: T
                   animate={{ rotate: isCollapsed ? -90 : 0 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                   className="flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0 text-white shadow-sm group-hover/header:opacity-80 transition-opacity"
-                  style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                  style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
                 >
                   <ChevronDown size={13} strokeWidth={2.5} />
                 </motion.span>

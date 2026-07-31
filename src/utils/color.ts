@@ -74,6 +74,27 @@ export function accessibleTextColor(accent: string, background = '#ffffff', targ
 }
 
 /**
+ * A version of `accent` dark enough that white text on top of it clears
+ * `target` — for filled surfaces that carry text (buttons, badges, avatars).
+ *
+ * Same walk as accessibleTextColor but solving the inverse problem: there the
+ * accent is the foreground, here it is the background. Keeps the hue, so the
+ * surface still reads as the brand colour, just deep enough for white to sit on.
+ */
+export function accessibleFillColor(accent: string, on = '#ffffff', target = 4.5): string {
+  const base = hexToRgb(accent)
+  const fg = hexToRgb(on)
+  if (!base || !fg) return accent
+  if (contrastRatio(base, fg) >= target) return accent
+
+  for (let step = 1; step <= 20; step++) {
+    const candidate = mix(base, BLACK, step / 20)
+    if (contrastRatio(candidate, fg) >= target) return rgbToHex(candidate)
+  }
+  return '#000000'
+}
+
+/**
  * Whether white or near-black text reads better on `accent` — for content sitting
  * ON a filled accent surface (buttons, badges, avatars).
  */

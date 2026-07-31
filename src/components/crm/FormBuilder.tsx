@@ -235,7 +235,7 @@ function LivePreview({ title, fields }: { title: string; fields: FormField[] }) 
         : fields.map((f) => <FieldPreview key={f.id} field={f} />)
       }
       {fields.length > 0 && (
-        <button type="button" disabled className="w-full py-2.5 rounded-full text-sm font-semibold text-white opacity-70" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
+        <button type="button" disabled className="w-full py-2.5 rounded-full text-sm font-semibold text-white opacity-70" style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}>
           Submit
         </button>
       )}
@@ -511,7 +511,7 @@ export default function FormBuilder({ form, contactEmail, onSave, onSend, onBack
             onClick={() => setShowSendModal(true)}
             disabled={form.status === 'submitted'}
             className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
           >
             <Send size={14} />
             Send to Client
@@ -605,7 +605,7 @@ export default function FormBuilder({ form, contactEmail, onSave, onSend, onBack
                 onClick={() => void handleSend()}
                 disabled={sending || !sendEmail}
                 className="flex-1 py-2.5 rounded-full text-sm font-semibold text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
               >
                 {sending ? 'Sending…' : 'Send'}
               </button>

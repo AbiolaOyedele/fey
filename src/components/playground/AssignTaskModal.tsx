@@ -55,7 +55,7 @@ export default function AssignTaskModal({ postTitle, workspaceId, accent, onConf
           onClick={() => void confirm()}
           disabled={submitting}
           className="w-full h-10 rounded-xl text-sm font-medium text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-50 hover:opacity-90"
-          style={{ backgroundColor: accent }}
+          style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
         >
           {submitting && <Loader2 size={14} className="animate-spin" />}
           {assigneeIds.length > 0 ? 'Create & assign task' : 'Create task'}

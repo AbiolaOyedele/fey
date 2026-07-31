@@ -78,7 +78,7 @@ export default function SocialCalendar({
                 className={`self-start text-xs font-medium w-6 h-6 rounded-full flex items-center justify-center ${
                   inMonth ? 'text-gray-700' : 'text-gray-300'
                 }`}
-                style={isToday ? { backgroundColor: accent, color: '#fff' } : undefined}
+                style={isToday ? { backgroundColor: `var(--accent-fill, ${accent})`, color: '#fff' } : undefined}
               >
                 {date.getDate()}
               </span>

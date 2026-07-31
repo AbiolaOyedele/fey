@@ -91,7 +91,7 @@ export default function ResetPasswordPage() {
               type="submit"
               disabled={loading}
               className="w-full py-3 rounded-full text-white text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60"
-              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+              style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
             >
               {loading && <Loader2 size={15} className="animate-spin" />}
               Update password

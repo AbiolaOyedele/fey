@@ -55,7 +55,7 @@ export default function DayPanel({ dateKey, posts, brandById, accent, onEdit, on
             onClick={onAdd}
             title="Add a post to this day"
             className="w-8 h-8 rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: accent }}
+            style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
           >
             <Plus size={15} />
           </button>

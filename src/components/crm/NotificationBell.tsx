@@ -93,7 +93,7 @@ export default function NotificationBell({ accent, expanded = false }: { accent:
           {unreadCount > 0 && (
             <span
               className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
-              style={{ backgroundColor: accent }}
+              style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
             >
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
@@ -151,7 +151,7 @@ export default function NotificationBell({ accent, expanded = false }: { accent:
                     <span className="mt-0.5 flex-shrink-0 text-gray-400">{iconOf(n)}</span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        {!n.read_at && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: accent }} />}
+                        {!n.read_at && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: `var(--accent-fill, ${accent})` }} />}
                         <p className="text-sm font-medium text-gray-800 truncate">{n.title}</p>
                       </div>
                       {n.body && <p className="text-xs2 text-gray-500 line-clamp-2">{n.body}</p>}

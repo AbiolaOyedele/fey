@@ -298,7 +298,7 @@ export default function WatermarkerTool({ accent }: RuffToolProps) {
                         key={p}
                         onClick={() => setPosition(p)}
                         className="w-10 h-10 rounded-lg border transition-colors cursor-pointer"
-                        style={active ? { backgroundColor: accent, borderColor: 'transparent' } : { backgroundColor: '#fff', borderColor: '#e5e7eb' }}
+                        style={active ? { backgroundColor: `var(--accent-fill, ${accent})`, borderColor: 'transparent' } : { backgroundColor: '#fff', borderColor: '#e5e7eb' }}
                         aria-label={p}
                       >
                         <span className={`block w-1.5 h-1.5 rounded-full mx-auto ${active ? 'bg-white' : 'bg-gray-300'}`} />

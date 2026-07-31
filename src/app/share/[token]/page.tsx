@@ -148,7 +148,7 @@ function SharedTaskRow({ task, permission, onToggleDone, onTogglePaid }: SharedT
           alignItems: 'center',
           justifyContent: 'center',
           ...(task.done
-            ? { backgroundColor: 'var(--accent, #ED64A6)', borderColor: 'var(--accent, #ED64A6)' }
+            ? { backgroundColor: 'var(--accent-fill, #ED64A6)', borderColor: 'var(--accent, #ED64A6)' }
             : { borderColor: '#d1d5db' }),
         }}
       >
@@ -345,7 +345,7 @@ function WelcomePage({ shareRecord, clientName, onAccept, prefillCode }: Welcome
             onClick={() => void handleAccept()}
             disabled={loading || !name.trim() || !code.trim()}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-white text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
           >
             {loading && <Loader2 size={15} className="animate-spin" />}
             Accept &amp; View
@@ -428,7 +428,7 @@ function SharedFilePreview({ file, onClose }: SharedFilePreviewProps) {
                 rel="noopener noreferrer"
                 download={file.file_name}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white"
-                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
               >
                 <Download size={14} /> Download to view
               </a>
@@ -828,7 +828,7 @@ function SharedCampaignView({ campaign, clientName, onBack, todayStr }: SharedCa
           <button
             onClick={onBack}
             className="w-full py-2.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
           >
             Try Fey free
           </button>
@@ -1271,7 +1271,7 @@ function SharedDashboard({
           <button
             onClick={() => router.push(`/register?from_share=true&token=${shareRecord.token}`)}
             className="w-full py-2.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
           >
             Try Fey free
           </button>
@@ -1301,7 +1301,7 @@ function AccessRevokedPage({ token }: AccessRevokedPageProps) {
         <button
           onClick={() => router.push(`/register?from_share=true&token=${token}`)}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+          style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
         >
           <Sparkles size={15} />
           Try Fey free

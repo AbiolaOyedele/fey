@@ -106,7 +106,7 @@ export default function WorkflowEditorModal({ workflow, onAddStage, onUpdateStag
             onClick={() => void add()}
             disabled={!newName.trim() || busy}
             className="px-3 py-1.5 rounded-full text-xs2 font-semibold text-white disabled:opacity-40"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
           >
             Add
           </button>

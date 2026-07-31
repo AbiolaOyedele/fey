@@ -44,7 +44,7 @@ export default function TaskRow({ task, onToggleDone, onOpen }: TaskRowProps) {
         className={`relative w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors after:absolute after:-inset-[6px] after:content-[''] ${
           task.done ? 'border-transparent text-white' : 'border-gray-300 hover:border-gray-400'
         }`}
-        style={task.done ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
+        style={task.done ? { backgroundColor: 'var(--accent-fill, #ED64A6)' } : {}}
       >
         {task.done && <Check size={12} strokeWidth={3} />}
       </button>

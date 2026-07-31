@@ -52,7 +52,7 @@ export default function ImageLightbox({ url, filename, accent, caption, onClose 
             onClick={save}
             disabled={busy}
             className="inline-flex items-center gap-1.5 rounded-xl px-4 h-11 text-sm font-medium text-white transition-transform active:scale-95 disabled:opacity-60"
-            style={{ backgroundColor: accent }}
+            style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
           >
             <Download size={16} /> {busy ? 'Saving…' : 'Download'}
           </button>

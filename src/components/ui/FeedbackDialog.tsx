@@ -141,7 +141,7 @@ export default function FeedbackDialog({ open, onClose, accent, onSubmit, onSucc
                 onClick={() => void submit()}
                 disabled={submitting}
                 className="flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-full disabled:opacity-50 hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: accent ?? 'var(--accent, #ED64A6)' }}
+                style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
               >
                 {submitting && <Loader2 size={14} className="animate-spin" />}
                 Send

@@ -129,14 +129,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           <button
             onClick={() => setPane('chat')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${pane === 'chat' ? 'text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-            style={pane === 'chat' ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
+            style={pane === 'chat' ? { backgroundColor: 'var(--accent-fill, #ED64A6)' } : {}}
           >
             <MessageSquare size={13} /> Chat
           </button>
           <button
             onClick={() => setPane('files')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${pane === 'files' ? 'text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-            style={pane === 'files' ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
+            style={pane === 'files' ? { backgroundColor: 'var(--accent-fill, #ED64A6)' } : {}}
           >
             <FolderOpen size={13} /> Files
           </button>

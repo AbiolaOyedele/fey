@@ -86,7 +86,7 @@ export default function CrmContactsPage() {
               <button
                 onClick={() => setShowModal(true)}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
               >
                 <Plus size={14} />
                 Add
@@ -117,7 +117,7 @@ export default function CrmContactsPage() {
                     ? 'text-white'
                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                 }`}
-                style={statusFilter === f.value ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
+                style={statusFilter === f.value ? { backgroundColor: 'var(--accent-fill, #ED64A6)' } : {}}
               >
                 {f.label}
               </button>
@@ -148,7 +148,7 @@ export default function CrmContactsPage() {
                 <button
                   onClick={() => setShowModal(true)}
                   className="mt-4 px-4 py-2 rounded-full text-xs font-semibold text-white hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                  style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
                 >
                   Add Client
                 </button>

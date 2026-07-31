@@ -204,7 +204,7 @@ export default function SocialCornerPage() {
             onClick={() => setView('calendar')}
             title="Calendar view"
             className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${view === 'calendar' ? 'text-white' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50'}`}
-            style={view === 'calendar' ? { backgroundColor: accent } : undefined}
+            style={view === 'calendar' ? { backgroundColor: `var(--accent-fill, ${accent})` } : undefined}
           >
             <CalendarDays size={14} />
           </button>
@@ -212,7 +212,7 @@ export default function SocialCornerPage() {
             onClick={() => setView('stack')}
             title="Stack view"
             className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${view === 'stack' ? 'text-white' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50'}`}
-            style={view === 'stack' ? { backgroundColor: accent } : undefined}
+            style={view === 'stack' ? { backgroundColor: `var(--accent-fill, ${accent})` } : undefined}
           >
             <Layers size={14} />
           </button>
@@ -223,7 +223,7 @@ export default function SocialCornerPage() {
           onClick={() => setEditor({ mode: 'create', date: selectedDay ?? toDateKey(new Date()), brandId: brandFilter })}
           disabled={brands.length === 0}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-white px-4 h-9 rounded-xl transition-opacity hover:opacity-90 disabled:opacity-40"
-          style={{ backgroundColor: accent }}
+          style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
         >
           <Plus size={15} /> New post
         </button>
@@ -292,7 +292,7 @@ export default function SocialCornerPage() {
           <button
             onClick={() => setBrandModal({ brand: null })}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-white px-4 h-9 rounded-xl hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: accent }}
+            style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
           >
             <Plus size={15} /> Create your first brand
           </button>

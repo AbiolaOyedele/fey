@@ -70,7 +70,7 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
           <button
             onClick={() => setShowForm((s) => !s)}
             className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
           >
             {showForm ? <X size={14} /> : <Plus size={14} />}
             {showForm ? 'Cancel' : 'New brand'}
@@ -107,7 +107,7 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
               onClick={() => void submit()}
               disabled={saving}
               className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-white disabled:opacity-50 hover:opacity-90"
-              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+              style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
               Create brand

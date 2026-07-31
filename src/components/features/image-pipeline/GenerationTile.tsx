@@ -117,7 +117,7 @@ export default function GenerationTile({
             onClick={retry}
             disabled={retrying}
             className="mt-2.5 w-full inline-flex items-center justify-center gap-1.5 rounded-lg h-9 text-xs font-medium text-white transition-all active:scale-[0.98] disabled:opacity-60"
-            style={{ backgroundColor: accent }}
+            style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
           >
             <RotateCcw size={13} className={retrying ? 'animate-spin' : ''} /> {retrying ? 'Retrying…' : 'Retry generation'}
           </button>

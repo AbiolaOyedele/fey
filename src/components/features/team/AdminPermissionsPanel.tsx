@@ -149,7 +149,7 @@ export default function AdminPermissionsPanel({
                 onClick={save}
                 disabled={!dirty || saving}
                 className="flex-1 min-h-11 rounded-xl text-white text-xs2 font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border-none"
-                style={{ backgroundColor: accent }}
+                style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>

@@ -57,14 +57,14 @@ export default function ClientTasksTab({ params }: { params: Promise<{ id: strin
           <button
             onClick={() => setShowDone((v) => !v)}
             className={`px-3 py-1.5 rounded-lg text-xs2 font-medium border transition-colors ${showDone ? 'border-transparent text-white' : 'border-gray-200 text-gray-500'}`}
-            style={showDone ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
+            style={showDone ? { backgroundColor: 'var(--accent-fill, #ED64A6)' } : {}}
           >
             {showDone ? 'All' : 'Active'}
           </button>
           <button
             onClick={() => setShowNew(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 text-white rounded-full text-sm font-semibold hover:opacity-90"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
           >
             <Plus size={14} /> Add task
           </button>

@@ -88,7 +88,7 @@ export default function ChangelogPopup({ open: controlledOpen, onClose }: Change
                     <div className="flex items-center gap-2 mb-2">
                       <span
                         className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
-                        style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                        style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
                       >
                         v{entry.version}
                       </span>
@@ -180,7 +180,7 @@ export default function ChangelogPopup({ open: controlledOpen, onClose }: Change
                     <div className="flex items-center gap-2 mb-2">
                       <span
                         className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
-                        style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                        style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
                       >
                         v{entry.version}
                       </span>

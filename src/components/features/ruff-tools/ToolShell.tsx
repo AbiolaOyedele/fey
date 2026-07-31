@@ -120,7 +120,7 @@ export default function ToolShell({ tool, accent, onClose, children }: ToolShell
                       <li key={i} className="flex gap-3">
                         <span
                           className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-2xs font-semibold text-white"
-                          style={{ backgroundColor: accent }}
+                          style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
                         >
                           {i + 1}
                         </span>

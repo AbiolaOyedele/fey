@@ -58,7 +58,7 @@ export function Checkbox({
         aria-checked={indeterminate ? 'mixed' : checked}
         disabled={disabled}
         onClick={handleToggle}
-        style={active ? { backgroundColor: 'var(--accent, #ED64A6)', borderColor: 'var(--accent, #ED64A6)' } : undefined}
+        style={active ? { backgroundColor: 'var(--accent-fill, #ED64A6)', borderColor: 'var(--accent, #ED64A6)' } : undefined}
         className={cn(
           'relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border-2 transition-colors duration-150 after:absolute after:-inset-x-[11px] after:-inset-y-[3px] after:content-[""]',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',

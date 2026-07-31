@@ -225,7 +225,7 @@ export default function SetupPage() {
 
   const btnPrimary: React.CSSProperties = {
     width: '100%', padding: '14px', borderRadius: '50px',
-    backgroundColor: accent, color: '#fff', fontSize: '15px',
+    backgroundColor: `var(--accent-fill, ${accent})`, color: '#fff', fontSize: '15px',
     fontWeight: 400, border: 'none', cursor: 'pointer',
     minHeight: '44px', marginTop: '8px',
   }

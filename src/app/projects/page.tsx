@@ -56,7 +56,7 @@ export default function ProjectsHubPage() {
           <button
             onClick={() => setShowNew(true)}
             className="press flex items-center gap-1.5 px-4 py-2 text-white rounded-full text-sm font-semibold hover:opacity-90"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
           >
             <Plus size={15} /> New brand
           </button>
@@ -147,7 +147,7 @@ export default function ProjectsHubPage() {
                       <button
                         onClick={() => void restoreProject(p.id)}
                         className="ml-auto inline-flex items-center gap-1.5 text-2xs font-semibold px-2.5 py-1.5 rounded-full text-white hover:opacity-90"
-                        style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                        style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
                       >
                         <ArchiveRestore size={12} /> Restore
                       </button>
@@ -241,7 +241,7 @@ function NewProjectModal({ contacts, onCreate, onClose }: NewProjectModalProps) 
             onClick={() => void submit()}
             disabled={submitting}
             className="press flex items-center gap-1.5 px-5 py-2 text-white rounded-full text-sm font-semibold disabled:opacity-50 hover:opacity-90"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
           >
             {submitting && <Loader2 size={14} className="animate-spin" />}
             Create

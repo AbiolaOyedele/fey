@@ -65,7 +65,7 @@ export default function RequestCreditsForm({ accent, onSubmit }: RequestCreditsF
         type="submit"
         disabled={!valid || busy}
         className="inline-flex items-center gap-1.5 rounded-xl px-4 h-12 text-sm font-medium text-white transition-all active:scale-[0.98] disabled:opacity-50"
-        style={{ backgroundColor: accent }}
+        style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
       >
         <Send size={15} /> {busy ? 'Sending…' : 'Send request'}
       </button>

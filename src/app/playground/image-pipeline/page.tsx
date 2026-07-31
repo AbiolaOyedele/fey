@@ -158,7 +158,7 @@ export default function ImagePipelineGeneratePage() {
             onClick={beginGeneration}
             disabled={!hasInput || busy || !canAfford || uploadingImages}
             className="inline-flex items-center gap-2 rounded-xl px-5 h-12 text-sm font-medium text-white transition-all active:scale-[0.98] disabled:opacity-50"
-            style={{ backgroundColor: accent }}
+            style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
           >
             <Sparkles size={16} /> {uploadingImages ? 'Uploading images…' : busy ? 'Starting…' : `Generate · ${fmtCredits(CREDIT_COST.preview)} credits`}
           </button>
@@ -217,7 +217,7 @@ export default function ImagePipelineGeneratePage() {
               onClick={downloadFinal}
               disabled={finalBusy}
               className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-12 text-sm font-medium text-white transition-all active:scale-[0.98] disabled:opacity-60"
-              style={{ backgroundColor: accent }}
+              style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
             >
               <Download size={16} /> {finalBusy ? 'Saving…' : 'Download 2K'}
             </button>
@@ -256,7 +256,7 @@ export default function ImagePipelineGeneratePage() {
             type="button"
             onClick={startNew}
             className="mt-4 inline-flex items-center gap-1.5 rounded-xl px-4 h-12 text-sm font-medium text-white transition-all active:scale-[0.98]"
-            style={{ backgroundColor: accent }}
+            style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
           >
             <RotateCcw size={15} /> Start a new generation
           </button>
@@ -283,7 +283,7 @@ export default function ImagePipelineGeneratePage() {
               onClick={doRetry}
               disabled={busy}
               className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-12 text-sm font-medium text-white transition-all active:scale-[0.98] disabled:opacity-60"
-              style={{ backgroundColor: accent }}
+              style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
             >
               <RotateCcw size={15} className={busy ? 'animate-spin' : ''} /> {busy ? 'Retrying…' : 'Retry generation'}
             </button>

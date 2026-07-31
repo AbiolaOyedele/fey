@@ -34,7 +34,7 @@ export default function ClientFilesCard({ clientId }: ClientFilesCardProps) {
         <button
           onClick={() => router.push(`/clients/${clientId}/files`)}
           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+          style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
         >
           <Upload size={11} />
           Upload

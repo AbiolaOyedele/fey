@@ -40,7 +40,7 @@ export default function CreditRequestQueue({ requests, accent, onResolve, nameOf
                   <button
                     type="button" onClick={() => onResolve(r.id, 'approved')}
                     className="inline-flex items-center gap-1 rounded-lg px-3 h-10 text-2xs font-medium text-white transition-all active:scale-95"
-                    style={{ backgroundColor: accent }}
+                    style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
                   >
                     <Check size={13} /> Approve
                   </button>

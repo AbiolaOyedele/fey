@@ -116,7 +116,7 @@ export default function WelcomeGuide() {
           className="h-full transition-all duration-300 rounded-full"
           style={{
             width: `${((step + 1) / STEPS.length) * 100}%`,
-            backgroundColor: 'var(--accent, #ED64A6)',
+            backgroundColor: 'var(--accent-fill, #ED64A6)',
           }}
         />
       </div>
@@ -178,7 +178,7 @@ export default function WelcomeGuide() {
             <button
               onClick={next}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+              style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
             >
               {isLast ? 'Done' : 'Next'}
               {!isLast && <ChevronRight size={13} />}

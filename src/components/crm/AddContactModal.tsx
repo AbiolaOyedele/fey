@@ -185,7 +185,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
             <button
               onClick={onClose}
               className="press w-full flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold text-white transition-opacity"
-              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+              style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
             >
               Done
               <ArrowRight size={14} />
@@ -280,7 +280,7 @@ export default function AddContactModal({ onClose, onCreate }: AddContactModalPr
             onClick={(e) => void handleSubmit(e)}
             disabled={saving || !name.trim()}
             className="press flex-1 py-2.5 rounded-full text-sm font-semibold text-white disabled:opacity-40 transition-opacity"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
           >
             {saving ? 'Creating…' : 'Add Client'}
           </button>

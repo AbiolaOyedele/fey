@@ -236,7 +236,7 @@ function PresetManager({
                   onClick={save}
                   disabled={busy}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-11 text-sm font-medium text-white transition-all active:scale-[0.98] disabled:opacity-60"
-                  style={{ backgroundColor: accent }}
+                  style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
                 >
                   {busy ? 'Saving…' : editing === 'new' ? 'Create preset' : 'Save changes'}
                 </button>
@@ -248,7 +248,7 @@ function PresetManager({
                 type="button"
                 onClick={startNew}
                 className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-11 text-sm font-medium text-white transition-all active:scale-[0.98]"
-                style={{ backgroundColor: accent }}
+                style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
               >
                 <Plus size={16} /> New preset
               </button>

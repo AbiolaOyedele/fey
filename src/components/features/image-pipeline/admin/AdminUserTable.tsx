@@ -138,7 +138,7 @@ function AdminUserRowItem({
                 <button
                   type="button" onClick={saveAllocation} disabled={busy}
                   className="inline-flex items-center gap-1 rounded-lg px-2.5 h-10 text-2xs font-medium text-white transition-all active:scale-95 disabled:opacity-50"
-                  style={{ backgroundColor: accent }}
+                  style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
                 >
                   <Coins size={12} /> Save
                 </button>

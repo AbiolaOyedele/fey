@@ -18,7 +18,7 @@ export default function UpdateBanner({ show, accent }: UpdateBannerProps) {
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-auto lg:right-6 lg:translate-x-0 z-[60] w-[calc(100%-3rem)] max-w-sm">
       <div
         className="flex items-center gap-3 text-white px-5 py-3.5 rounded-2xl shadow-lg animate-slideUp"
-        style={{ backgroundColor: accent }}
+        style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
       >
         <RefreshCw size={17} className="flex-shrink-0" />
         <div className="flex-1 min-w-0">

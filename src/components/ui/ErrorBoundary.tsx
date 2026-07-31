@@ -44,7 +44,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
           <button
             onClick={this.reset}
             className="mt-1 text-xs font-medium px-3 py-1.5 rounded-full text-white"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
           >
             Try again
           </button>

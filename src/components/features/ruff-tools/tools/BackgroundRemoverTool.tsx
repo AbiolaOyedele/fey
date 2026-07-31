@@ -303,7 +303,7 @@ function ModeToggle({ mode, accent, onSwitch }: { mode: Mode; accent: string; on
             key={m}
             onClick={() => onSwitch(m)}
             className="flex-1 py-2 rounded-full text-xs2 font-medium transition-all cursor-pointer border-none"
-            style={active ? { backgroundColor: accent, color: '#fff' } : { background: 'transparent', color: '#9ca3af' }}
+            style={active ? { backgroundColor: `var(--accent-fill, ${accent})`, color: '#fff' } : { background: 'transparent', color: '#9ca3af' }}
           >
             {m === 'single' ? 'Single image' : `Batch (up to ${MAX_BATCH})`}
           </button>
@@ -668,7 +668,7 @@ function ProcessingScreen({ label, pct, accent, showBar }: { label: string; pct?
         </div>
         {showBar && (
           <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full transition-all duration-200" style={{ width: `${pct ?? 0}%`, backgroundColor: accent }} />
+            <div className="h-full transition-all duration-200" style={{ width: `${pct ?? 0}%`, backgroundColor: `var(--accent-fill, ${accent})` }} />
           </div>
         )}
       </div>

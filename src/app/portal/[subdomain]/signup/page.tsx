@@ -110,7 +110,7 @@ function JoinPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
             ) : (
               <div style={{
                 width: '56px', height: '56px', borderRadius: '16px',
-                backgroundColor: accent, display: 'flex',
+                backgroundColor: `var(--accent-fill, ${accent})`, display: 'flex',
                 alignItems: 'center', justifyContent: 'center',
                 color: '#fff', fontSize: '22px', fontWeight: 600,
               }}>
@@ -221,7 +221,7 @@ function JoinPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
                   width: '100%',
                   padding: '14px',
                   borderRadius: '50px',
-                  backgroundColor: accent,
+                  backgroundColor: `var(--accent-fill, ${accent})`,
                   color: '#fff',
                   fontSize: '15px',
                   fontWeight: 500,

@@ -154,7 +154,7 @@ export default function PayPage({ params }: { params: Promise<{ token: string }>
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm bg-white rounded-3xl shadow-xl overflow-hidden">
         {/* Header band */}
-        <div className="h-2" style={{ backgroundColor: accent }} />
+        <div className="h-2" style={{ backgroundColor: `var(--accent-fill, ${accent})` }} />
 
         <div className="p-6">
           {/* Logo / business name */}
@@ -162,7 +162,7 @@ export default function PayPage({ params }: { params: Promise<{ token: string }>
             {branding?.logo ? (
               <img src={branding.logo} alt="Logo" className="w-10 h-10 rounded-xl object-contain bg-gray-50 border border-gray-100" />
             ) : (
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-base" style={{ backgroundColor: accent }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-base" style={{ backgroundColor: `var(--accent-fill, ${accent})` }}>
                 {(branding?.company_name ?? 'P').charAt(0).toUpperCase()}
               </div>
             )}
@@ -209,7 +209,7 @@ export default function PayPage({ params }: { params: Promise<{ token: string }>
             onClick={() => void handlePay()}
             disabled={paying || !email.trim()}
             className="w-full py-3.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ backgroundColor: accent }}
+            style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
           >
             {paying ? (
               <><Loader2 size={16} className="animate-spin" />Processing…</>

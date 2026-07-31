@@ -200,7 +200,7 @@ export default function ScrollTool({ accent }: RuffToolProps) {
                 {tiles.map((t, i) => (
                   <div key={t.name} className="relative group flex-shrink-0" style={{ width: 150 }}>
                     <img src={t.url} alt={t.name} className="w-full rounded-lg border border-gray-200 object-cover" style={{ aspectRatio: `${t.w} / ${t.h}` }} />
-                    <span className="absolute top-1.5 left-1.5 text-white text-3xs font-semibold w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: accent }}>{i + 1}</span>
+                    <span className="absolute top-1.5 left-1.5 text-white text-3xs font-semibold w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: `var(--accent-fill, ${accent})` }}>{i + 1}</span>
                     <a
                       href={t.url}
                       download={t.name}

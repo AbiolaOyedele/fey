@@ -39,7 +39,7 @@ export default function PipelineNav({ showAdmin, accent }: { showAdmin: boolean;
             className={`flex-shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3.5 h-11 text-xs font-medium transition-colors ${
               active ? 'text-white' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
             }`}
-            style={active ? { backgroundColor: accent } : undefined}
+            style={active ? { backgroundColor: `var(--accent-fill, ${accent})` } : undefined}
             aria-current={active ? 'page' : undefined}
           >
             <Icon size={14} />

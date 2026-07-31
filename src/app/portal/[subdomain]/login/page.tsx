@@ -66,7 +66,7 @@ function PortalLoginInner({ params }: { params: Promise<{ subdomain: string }> }
           ) : (
             <div
               className="h-10 w-10 rounded-xl flex items-center justify-center text-white text-base font-bold mx-auto mb-3"
-              style={{ backgroundColor: accentColor }}
+              style={{ backgroundColor: `var(--accent-fill, ${accentColor})` }}
             >
               {(branding?.business_name ?? subdomain).charAt(0).toUpperCase()}
             </div>
@@ -120,7 +120,7 @@ function PortalLoginInner({ params }: { params: Promise<{ subdomain: string }> }
             type="submit"
             disabled={loading || !email || !password}
             className="w-full py-2.5 rounded-full text-sm font-semibold text-white flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-40 transition-opacity"
-            style={{ backgroundColor: accentColor }}
+            style={{ backgroundColor: `var(--accent-fill, ${accentColor})` }}
           >
             {loading && <Loader2 size={15} className="animate-spin" />}
             {loading ? 'Signing in…' : 'Sign in'}

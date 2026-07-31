@@ -302,7 +302,7 @@ export default function PostEditor({
             onClick={() => void save(false)}
             disabled={!canSave}
             className="h-10 px-5 rounded-xl text-sm font-medium text-white transition-opacity disabled:opacity-40 hover:opacity-90"
-            style={{ backgroundColor: accent }}
+            style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
           >
             {saving ? 'Saving…' : post ? 'Save changes' : 'Save post'}
           </button>

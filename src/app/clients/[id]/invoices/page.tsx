@@ -153,7 +153,7 @@ export default function InvoicesTab({ params }: { params: Promise<{ id: string }
             onClick={() => void handleNew()}
             disabled={creating}
             className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
           >
             <Plus size={14} />
             {creating ? 'Creating…' : 'New Invoice'}
@@ -178,7 +178,7 @@ export default function InvoicesTab({ params }: { params: Promise<{ id: string }
                 onClick={() => void handleNew()}
                 disabled={creating}
                 className="px-5 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+                style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
               >
                 {creating ? 'Creating…' : '+ New Invoice'}
               </button>

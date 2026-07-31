@@ -94,7 +94,7 @@ export default function BrandModal({ brand, contacts, accent, onSave, onDelete, 
             onClick={() => void handleSave()}
             disabled={!name.trim() || saving}
             className="flex-1 h-10 rounded-xl text-sm font-medium text-white transition-opacity disabled:opacity-40 hover:opacity-90"
-            style={{ backgroundColor: accent }}
+            style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
           >
             {saving ? 'Saving…' : brand ? 'Save changes' : 'Create brand'}
           </button>

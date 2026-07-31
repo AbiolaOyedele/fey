@@ -121,7 +121,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <PullToRefreshIndicator pullDistance={pullDistance} refreshing={refreshing} accent={settings.accent_color} />
       <div className="flex flex-1 overflow-x-hidden">
         <Sidebar />
-        <main className="flex-1 min-w-0 ml-0 lg:ml-[var(--sidebar-w,72px)] pb-16 lg:pb-0 page-enter transition-[margin] duration-200">
+        {/* Margin is a layout property, but --sidebar-w only changes when the
+            sidebar is *pinned* (a deliberate, occasional click) — not on hover —
+            so this reflow is rare rather than per-frame during pointer movement. */}
+        <main className="flex-1 min-w-0 ml-0 lg:ml-[var(--sidebar-w,72px)] pb-16 lg:pb-0 page-enter transition-[margin] duration-200 motion-reduce:transition-none">
           {children}
         </main>
       </div>

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { CURRENCY_SYMBOLS } from '@/lib/constants'
 import { fontFaceSrc } from '@/utils/fontHelpers'
+import { accessibleTextColor, onAccentTextColor } from '@/utils/color'
 import type { Settings, Toast, ToastOptions, TrashItem, Client, RestoreResult } from '@/types'
 
 interface SettingsContextValue {
@@ -298,7 +299,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }, [userId, authLoading])
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--accent', settings.accent_color)
+    const root = document.documentElement
+    root.style.setProperty('--accent', settings.accent_color)
+    // The raw accent is a fill colour. Most accents (the #ED64A6 default scores
+    // 3.01:1 on white) fail WCAG AA as *text*, so derive a deeper variant that
+    // keeps the hue. Use var(--accent-text) for accent-coloured type, and
+    // var(--accent) for fills.
+    root.style.setProperty('--accent-text', accessibleTextColor(settings.accent_color))
+    // What reads on top of a filled accent surface.
+    root.style.setProperty('--accent-on', onAccentTextColor(settings.accent_color))
   }, [settings.accent_color])
 
   useEffect(() => {

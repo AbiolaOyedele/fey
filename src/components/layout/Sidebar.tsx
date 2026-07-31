@@ -174,7 +174,11 @@ export default function Sidebar() {
       <aside
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
-        className={`hidden lg:flex fixed left-0 ${topClass} bottom-0 bg-white border-r border-gray-100 flex-col z-20 transition-[width] duration-200 ${
+        // Width is a layout property, so this animation costs a relayout per
+        // frame. It's contained: the aside is position:fixed, so only its own
+        // subtree reflows, never the page. Honoured motion-reduce for anyone
+        // who has asked for less movement.
+        className={`hidden lg:flex fixed left-0 ${topClass} bottom-0 bg-white border-r border-gray-100 flex-col z-20 transition-[width] duration-200 motion-reduce:transition-none ${
           showExpanded ? 'w-[216px] px-3 items-stretch' : 'w-[72px] items-center'
         } ${hovering && !expanded ? 'shadow-2xl' : ''}`}
       >

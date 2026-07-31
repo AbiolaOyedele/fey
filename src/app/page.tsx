@@ -87,7 +87,7 @@ export default function DashboardPage() {
           <div className="mb-6 lg:mb-8 flex items-start justify-between gap-3">
             <div className="min-w-0">
               {workspaceName && (
-                <p className="text-xs font-medium uppercase tracking-wide mb-1 truncate" style={{ color: accent }}>
+                <p className="text-xs font-medium uppercase tracking-wide mb-1 truncate" style={{ color: 'var(--accent-text, currentColor)' }}>
                   {workspaceName}
                 </p>
               )}

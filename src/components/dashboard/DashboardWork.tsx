@@ -152,7 +152,7 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
 
       {/* Tasks + Projects */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <WorkCard title="Your tasks" icon={<CheckCircle2 size={14} className="text-gray-400" />} href="/tasks" accent={accent}>
+        <WorkCard title="Your tasks" icon={<CheckCircle2 size={14} className="text-gray-400" />} href="/tasks">
           {tasksLoading ? (
             <SkeletonRows />
           ) : openTasks.length === 0 ? (
@@ -162,7 +162,7 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
           )}
         </WorkCard>
 
-        <WorkCard title="Active brands" icon={<FolderKanban size={14} className="text-gray-400" />} href="/projects" accent={accent}>
+        <WorkCard title="Active brands" icon={<FolderKanban size={14} className="text-gray-400" />} href="/projects">
           {projectsLoading ? (
             <SkeletonRows />
           ) : activeProjects.length === 0 ? (
@@ -193,7 +193,7 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
       </div>
 
       {/* Team activity */}
-      <WorkCard title="Team activity" icon={<Hash size={14} className="text-gray-400" />} href="/chats" accent={accent}>
+      <WorkCard title="Team activity" icon={<Hash size={14} className="text-gray-400" />} href="/chats">
         {teamLoading ? (
           <SkeletonRows />
         ) : teamMessages.length === 0 ? (
@@ -231,7 +231,7 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
 
 // ── Internal building blocks ──────────────────────────────────────────────────
 
-function WorkCard({ title, icon, href, accent, children }: { title: string; icon: React.ReactNode; href: string; accent: string; children: React.ReactNode }) {
+function WorkCard({ title, icon, href, children }: { title: string; icon: React.ReactNode; href: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-3">
@@ -239,7 +239,7 @@ function WorkCard({ title, icon, href, accent, children }: { title: string; icon
           {icon}
           <p className="text-sm font-semibold text-gray-800">{title}</p>
         </div>
-        <Link href={href} className="text-xs font-medium transition-colors hover:opacity-80 flex items-center gap-0.5" style={{ color: accent }}>
+        <Link href={href} className="text-xs font-medium transition-colors hover:opacity-80 flex items-center gap-0.5" style={{ color: 'var(--accent-text, currentColor)' }}>
           View all <ArrowUpRight size={12} />
         </Link>
       </div>

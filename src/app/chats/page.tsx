@@ -315,7 +315,7 @@ export default function ChatsPage() {
                       ) : m.body.trim() ? (
                         <div
                           className={`px-3 py-2 text-sm break-words ${isMine ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm'}`}
-                          style={isMine ? { backgroundColor: `var(--accent-fill, ${accent})`, color: '#fff' } : { backgroundColor: '#F3F4F6', color: '#1F2937' }}
+                          style={isMine ? { backgroundColor: accent, color: '#fff' } : { backgroundColor: '#F3F4F6', color: '#1F2937' }}
                         >
                           {renderMentions(m.body)}
                         </div>
@@ -392,7 +392,7 @@ export default function ChatsPage() {
                 onClick={() => void handleSend(composerRef.current?.getValue() ?? '')}
                 disabled={(composerEmpty && attachments.length === 0) || sending || uploading > 0 || !workspace}
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-white transition-opacity disabled:opacity-40 hover:opacity-90 flex-shrink-0"
-                style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
+                style={{ backgroundColor: accent }}
               >
                 <Send size={16} />
               </button>

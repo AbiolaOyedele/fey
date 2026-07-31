@@ -287,7 +287,7 @@ export default function FeyPage() {
                   ? 'text-white'
                   : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
               }`}
-              style={sortMode !== 'newest' ? { backgroundColor: `var(--accent-fill, ${accent})` } : {}}
+              style={sortMode !== 'newest' ? { backgroundColor: accent } : {}}
             >
               {currentSortLabel}
               <ChevronDown size={13} />

@@ -175,7 +175,7 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
             onClick={() => void submit()}
             disabled={submitting}
             className="press flex items-center gap-1.5 px-5 py-2 text-white rounded-full text-sm font-semibold disabled:opacity-50 hover:opacity-90"
-            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             {submitting && <Loader2 size={14} className="animate-spin" />}
             Add task

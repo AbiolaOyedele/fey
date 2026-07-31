@@ -55,7 +55,7 @@ export default function WorkspaceSwitcher({
       // eslint-disable-next-line @next/next/no-img-element
       <img src={logo} alt="" className={`${size} rounded-full object-cover flex-shrink-0`} />
     ) : (
-      <div className={`${size} rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0`} style={{ backgroundColor: `var(--accent-fill, ${accent})` }}>
+      <div className={`${size} rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0`} style={{ backgroundColor: accent }}>
         {label.charAt(0).toUpperCase()}
       </div>
     )
@@ -307,7 +307,7 @@ function CreateWorkspaceModal({ accent, onClose }: { accent: string; onClose: ()
           onClick={() => void create()}
           disabled={!name.trim() || available !== true || creating}
           className="w-full mt-2 py-2.5 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
-          style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
+          style={{ backgroundColor: accent }}
         >
           {creating && <Loader2 size={14} className="animate-spin" />}
           Create workspace
@@ -381,7 +381,7 @@ function SignInWorkspaceModal({ accent, currentSlug, onClose }: { accent: string
             onClick={() => void find()}
             disabled={!email.trim() || loading}
             className="px-3.5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 flex items-center gap-1.5"
-            style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
+            style={{ backgroundColor: accent }}
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : 'Find'}
           </button>
@@ -401,7 +401,7 @@ function SignInWorkspaceModal({ accent, currentSlug, onClose }: { accent: string
                   onClick={() => go(w.slug)}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
                 >
-                  <span className="w-7 h-7 rounded-md flex items-center justify-center text-2xs font-bold text-white flex-shrink-0" style={{ backgroundColor: `var(--accent-fill, ${accent})` }}>
+                  <span className="w-7 h-7 rounded-md flex items-center justify-center text-2xs font-bold text-white flex-shrink-0" style={{ backgroundColor: accent }}>
                     {w.name.charAt(0).toUpperCase()}
                   </span>
                   <span className="flex-1 min-w-0">

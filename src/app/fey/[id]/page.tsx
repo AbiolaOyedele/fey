@@ -409,7 +409,7 @@ export default function FeyWorkspacePage({ params }: { params: Promise<{ id: str
                   ? 'text-white'
                   : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
               }`}
-              style={taskFilter !== 'all' ? { backgroundColor: `var(--accent-fill, ${accent})` } : {}}
+              style={taskFilter !== 'all' ? { backgroundColor: accent } : {}}
             >
               {currentFilterLabel}
               <ChevronDown size={13} />

@@ -135,7 +135,7 @@ function Composer({
         disabled={isEmpty || sending}
         onClick={() => onSubmit(handle)}
         className="press px-3 py-2 rounded-lg text-xs2 font-semibold text-white disabled:opacity-40"
-        style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+        style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
       >
         Post
       </button>

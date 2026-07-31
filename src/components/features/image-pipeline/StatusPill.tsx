@@ -40,7 +40,7 @@ export default function StatusPill({
   let dotColor = accent
   switch (meta.tone) {
     case 'success': // solid accent pill — distinct from the tinted in-progress states
-      style = { backgroundColor: `var(--accent-fill, ${accent})`, color: '#fff' }
+      style = { backgroundColor: accent, color: '#fff' }
       break
     case 'action':
       style = { backgroundColor: `${accent}1F`, color: accent }

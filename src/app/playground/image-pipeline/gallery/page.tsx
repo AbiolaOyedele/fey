@@ -45,7 +45,7 @@ export default function ImagePipelineGalleryPage() {
             className={`flex-shrink-0 rounded-lg px-3.5 h-11 text-xs font-medium transition-colors ${
               filter === f.key ? 'text-white' : 'text-gray-500 bg-gray-50 hover:text-gray-800'
             }`}
-            style={filter === f.key ? { backgroundColor: `var(--accent-fill, ${accent})` } : undefined}
+            style={filter === f.key ? { backgroundColor: accent } : undefined}
           >
             {f.label}
           </button>
@@ -91,7 +91,7 @@ function EmptyState({ accent, isFiltered }: { accent: string; isFiltered: boolea
         <Link
           href="/playground/image-pipeline"
           className="inline-flex items-center gap-1.5 rounded-xl px-4 h-11 text-sm font-medium text-white"
-          style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
+          style={{ backgroundColor: accent }}
         >
           <Sparkles size={15} /> Generate one
         </Link>

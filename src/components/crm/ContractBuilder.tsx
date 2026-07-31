@@ -350,7 +350,7 @@ export default function ContractBuilder({
           onClick={() => setShowSendModal(true)}
           disabled={contract.status === 'signed'}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
-          style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
+          style={{ backgroundColor: accent }}
         >
           <Send size={14} />Send
         </button>
@@ -426,7 +426,7 @@ export default function ContractBuilder({
                 : (
                   <div
                     className="w-12 h-12 rounded-xl mb-2 flex items-center justify-center text-white font-bold text-lg"
-                    style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
+                    style={{ backgroundColor: accent }}
                   >
                     {(fromDetails.name || 'C').slice(0, 1).toUpperCase()}
                   </div>
@@ -674,7 +674,7 @@ export default function ContractBuilder({
                 onClick={() => void handleSend()}
                 disabled={sending || !sendEmail}
                 className="flex-1 py-2.5 rounded-full text-sm font-semibold text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
+                style={{ backgroundColor: accent }}
               >
                 {sending ? 'Sending…' : 'Send'}
               </button>

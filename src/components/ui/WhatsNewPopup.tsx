@@ -76,7 +76,7 @@ export default function WhatsNewPopup({ open, onClose, entry: preloaded = null }
         }`}
       >
         {/* Accent header */}
-        <div className="relative p-6 pb-5" style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}>
+        <div className="relative p-6 pb-5" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
           <button
             onClick={handleClose}
             className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-xl text-white/60 hover:text-white hover:bg-white/20 transition-colors"
@@ -118,7 +118,7 @@ export default function WhatsNewPopup({ open, onClose, entry: preloaded = null }
                 <li key={i} className="flex items-start gap-2.5 text-gray-700 text-sm">
                   <span
                     className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center mt-0.5"
-                    style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+                    style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
                   >
                     <Check size={10} className="text-white" strokeWidth={3} />
                   </span>
@@ -138,7 +138,7 @@ export default function WhatsNewPopup({ open, onClose, entry: preloaded = null }
           <button
             onClick={handleClose}
             className="w-full py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             Got it
           </button>

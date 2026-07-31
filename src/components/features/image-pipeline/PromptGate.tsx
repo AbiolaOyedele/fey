@@ -42,7 +42,7 @@ export default function PromptGate({ generation, busy, onConfirm, accent }: Prom
           onClick={() => onConfirm(prompt.trim())}
           disabled={busy || !prompt.trim()}
           className="inline-flex items-center gap-1.5 rounded-xl px-4 h-12 text-sm font-medium text-white transition-all active:scale-[0.98] disabled:opacity-50"
-          style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
+          style={{ backgroundColor: accent }}
         >
           {edited ? <RefreshCw size={15} /> : <Check size={15} />}
           {edited ? 'Use edited prompt' : 'Generate preview'}

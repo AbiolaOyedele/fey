@@ -109,7 +109,7 @@ function MorePill({ href, label, icon, accent, badge, index, onNavigate }: MoreP
         {badge !== undefined && badge > 0 && (
           <span
             className="ml-1 min-w-5 h-5 px-1.5 rounded-full text-2xs font-semibold text-white flex items-center justify-center"
-            style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
+            style={{ backgroundColor: accent }}
           >
             {badge > 9 ? '9+' : badge}
           </span>
@@ -269,7 +269,7 @@ export default function Sidebar() {
             {unreadCount > 0 && !moreOpen && (
               <span
                 className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full ring-2 ring-white"
-                style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
+                style={{ backgroundColor: accent }}
               />
             )}
           </button>

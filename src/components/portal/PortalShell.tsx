@@ -81,7 +81,7 @@ export default function PortalShell({ subdomain, branding, clientName, children 
         ) : (
           <div
             className="h-8 w-8 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-            style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
+            style={{ backgroundColor: accent }}
           >
             {branding.business_name.charAt(0).toUpperCase()}
           </div>

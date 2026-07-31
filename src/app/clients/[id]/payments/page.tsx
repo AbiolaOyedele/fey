@@ -88,7 +88,7 @@ function RequestDropdown({ onSelect }: RequestDropdownProps) {
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity whitespace-nowrap flex-shrink-0"
-        style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+        style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
       >
         <Plus size={14} className="flex-shrink-0" /> Request Payment
         <ChevronDown size={13} className={`transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
@@ -197,7 +197,7 @@ function InvoicePickerModal({ contactId, userId, onClose, onNew }: InvoicePicker
           <button
             onClick={() => { onClose(); onNew() }}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             <Plus size={14} /> Create new invoice
           </button>
@@ -316,7 +316,7 @@ function DirectLinkModal({ contactId, userId, defaultCurrency, onClose, onCreate
             <button
               onClick={onClose}
               className="w-full py-2.5 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
             >
               Done
             </button>
@@ -381,7 +381,7 @@ function DirectLinkModal({ contactId, userId, defaultCurrency, onClose, onCreate
                 onClick={() => void handleSubmit()}
                 disabled={saving}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-1.5"
-                style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
               >
                 {saving ? <><Loader2 size={14} className="animate-spin" />Creating…</> : 'Generate Link'}
               </button>
@@ -543,7 +543,7 @@ export default function PaymentsTab({ params }: { params: Promise<{ id: string }
           <p className="text-sm2 font-medium text-gray-500 mb-1">No payments yet</p>
           <p className="text-xs2 text-gray-400">Request a payment via invoice or send a direct payment link.</p>
           <div className="flex gap-2 mt-5">
-            <button onClick={() => setModal('invoice')} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}>
+            <button onClick={() => setModal('invoice')} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
               <FileText size={13} />Via Invoice
             </button>
             <button onClick={() => setModal('direct')} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors">

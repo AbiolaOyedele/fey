@@ -90,7 +90,7 @@ export default function AssigneePicker({ workspaceId, selectedIds, onChange }: A
                 type="button"
                 onClick={() => setOpen(false)}
                 className="w-full h-10 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
               >
                 Done
               </button>

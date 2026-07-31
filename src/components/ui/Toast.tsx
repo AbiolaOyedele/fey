@@ -179,7 +179,7 @@ function ToastCard({
       style={{
         [anchor]: 0,
         transformOrigin: anchor,
-        backgroundColor: `var(--accent-fill, ${accent})`,
+        backgroundColor: accent,
         zIndex,
         pointerEvents: interactive ? 'auto' : 'none',
       }}

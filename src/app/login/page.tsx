@@ -90,7 +90,7 @@ function LoginPageInner() {
                 onClick={() => { window.location.href = workspaceUrl(w.slug) }}
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
               >
-                <span className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}>
+                <span className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
                   {w.name.charAt(0).toUpperCase()}
                 </span>
                 <span className="flex-1 min-w-0">
@@ -168,8 +168,8 @@ function LoginPageInner() {
         <button
           onClick={() => void handleGoogle()}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-3 py-4 rounded-full text-white text-base font-medium transition-opacity hover:opacity-90 disabled:opacity-60 mb-4"
-          style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+          className="w-full flex items-center justify-center gap-3 py-4 rounded-full text-white text-base font-normal transition-opacity hover:opacity-90 disabled:opacity-60 mb-4"
+          style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
         >
           {loading ? <Loader2 size={18} className="animate-spin" /> : <GoogleIcon />}
           Continue with Google
@@ -235,7 +235,7 @@ function LoginPageInner() {
               type="submit"
               disabled={loading}
               className="w-full py-3 rounded-full text-white text-sm font-normal flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60 transition-all"
-              style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
             >
               {loading && <Loader2 size={15} className="animate-spin" />}
               {mode === 'signup' ? 'Create Account' : 'Sign In'}

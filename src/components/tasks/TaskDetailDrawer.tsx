@@ -191,7 +191,7 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
             <button
               onClick={() => props.onToggleDone(task.id)}
               className={`mt-1 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${task.done ? 'border-transparent text-white' : 'border-gray-300'}`}
-              style={task.done ? { backgroundColor: 'var(--accent-fill, #ED64A6)' } : {}}
+              style={task.done ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
             >
               {task.done && <Check size={12} strokeWidth={3} />}
             </button>
@@ -404,7 +404,7 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
             onClick={() => void handleSave()}
             disabled={saveState === 'saving'}
             className="min-h-[44px] px-5 rounded-xl text-sm font-medium text-white flex-shrink-0 disabled:opacity-60 transition-opacity"
-            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved' : 'Save'}
           </button>
@@ -434,7 +434,7 @@ function SubtaskRow({
       <button
         onClick={onToggle}
         className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${subtask.done ? 'border-transparent text-white' : 'border-gray-300'}`}
-        style={subtask.done ? { backgroundColor: 'var(--accent-fill, #ED64A6)' } : {}}
+        style={subtask.done ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
       >
         {subtask.done && <Check size={9} strokeWidth={3} />}
       </button>

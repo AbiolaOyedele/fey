@@ -276,7 +276,7 @@ export default function ShareModal({ client, userId, onClose }: ShareModalProps)
                 onClick={handleCreate}
                 disabled={creating}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white mx-auto transition-opacity hover:opacity-90 disabled:opacity-60"
-                style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+                style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
               >
                 {creating && <Loader2 size={14} className="animate-spin" />}
                 <Link2 size={14} />
@@ -332,7 +332,7 @@ export default function ShareModal({ client, userId, onClose }: ShareModalProps)
                   <button
                     onClick={() => setShowLabelInput((v) => !v)}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+                    style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
                   >
                     <Plus size={12} />
                     Generate
@@ -362,7 +362,7 @@ export default function ShareModal({ client, userId, onClose }: ShareModalProps)
                       onClick={() => void handleGenerateCode()}
                       disabled={generatingCode}
                       className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-60 flex-shrink-0"
-                      style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+                      style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
                     >
                       {generatingCode ? (
                         <Loader2 size={12} className="animate-spin" />

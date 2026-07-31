@@ -41,7 +41,7 @@ export default function NotificationsPage() {
             onClick={() => void (push.subscribed ? push.unsubscribe() : push.subscribe())}
             disabled={push.busy || push.permission === 'denied'}
             className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs2 font-semibold transition-colors disabled:opacity-50 ${push.subscribed ? 'bg-gray-100 text-gray-600' : 'text-white'}`}
-            style={!push.subscribed ? { backgroundColor: 'var(--accent-fill, #ED64A6)' } : {}}
+            style={!push.subscribed ? { backgroundColor: 'var(--accent, #ED64A6)' } : {}}
           >
             {push.permission === 'denied' ? 'Blocked' : push.subscribed ? 'Turn off' : push.busy ? '…' : 'Turn on'}
           </button>
@@ -70,7 +70,7 @@ export default function NotificationsPage() {
               className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${!n.read_at ? 'bg-gray-50/60' : ''}`}
             >
               <div className="flex items-start gap-2.5">
-                {!n.read_at && <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }} />}
+                {!n.read_at && <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--accent, #ED64A6)' }} />}
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-800">{n.title}</p>
                   {n.body && <p className="text-xs2 text-gray-500">{n.body}</p>}

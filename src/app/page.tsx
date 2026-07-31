@@ -124,7 +124,7 @@ export default function DashboardPage() {
                   <MessageSquare size={14} className="text-gray-400" />
                   <p className="text-sm font-semibold text-gray-800">Client messages</p>
                   {feed.loaded && feed.unread.length > 0 && (
-                    <span className="text-3xs font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: `var(--accent-fill, ${accent})` }}>
+                    <span className="text-3xs font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: accent }}>
                       {feed.unread.length}
                     </span>
                   )}
@@ -153,10 +153,10 @@ export default function DashboardPage() {
                       className="flex items-start gap-3 py-3 -mx-2 px-2 rounded-xl hover:bg-gray-50 transition-colors"
                       style={{ borderBottom: i < arr.length - 1 ? '1px solid #F9FAFB' : 'none' }}
                     >
-                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold text-white flex-shrink-0 relative" style={{ backgroundColor: `var(--accent-fill, ${accent})` }}>
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold text-white flex-shrink-0 relative" style={{ backgroundColor: accent }}>
                         {m.contactName.charAt(0).toUpperCase()}
                         <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-white flex items-center justify-center">
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `var(--accent-fill, ${accent})` }} />
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accent }} />
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">

@@ -65,7 +65,7 @@ export default function TrashPage() {
                   <button
                     onClick={() => void restore(e.kind, e.id)}
                     className="inline-flex items-center gap-1.5 text-2xs font-semibold px-3 py-2 rounded-full text-white hover:opacity-90"
-                    style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+                    style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
                   >
                     <ArchiveRestore size={13} /> Restore
                   </button>

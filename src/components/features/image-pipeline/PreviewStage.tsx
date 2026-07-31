@@ -117,7 +117,7 @@ export default function PreviewStage({ generation, busy, onApprove, onReject, on
           onClick={onApprove}
           disabled={busy || rendering}
           className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-12 text-sm font-medium text-white transition-all active:scale-[0.98] disabled:opacity-50"
-          style={{ backgroundColor: `var(--accent-fill, ${accent})` }}
+          style={{ backgroundColor: accent }}
         >
           <Check size={16} /> Approve · render 2K ({fmtCredits(CREDIT_COST.final)})
         </button>

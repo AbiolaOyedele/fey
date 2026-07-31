@@ -284,7 +284,7 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
                   type="button"
                   onClick={applyLink}
                   className="text-xs font-semibold text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+                  style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
                 >
                   Add link
                 </button>
@@ -376,7 +376,7 @@ export default function RichTextComposer({ onSend, placeholder = 'Write a messag
           onClick={handleSend}
           disabled={!canSend}
           className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+          style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
         >
           <Send size={13} />
           Send

@@ -205,7 +205,7 @@ function PreviewModal({ file, isOwn, onClose, onDelete }: { file: CrmFile; isOwn
             </div>
             <p className="text-sm font-semibold text-gray-800">{file.file_name}</p>
             <p className="text-xs text-gray-400">{formatBytes(file.file_size)}</p>
-            <a href={file.file_url} download={file.file_name} className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}>
+            <a href={file.file_url} download={file.file_name} className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
               <Download size={14} /> Download file
             </a>
           </div>
@@ -262,7 +262,7 @@ export default function FileList({ files, loading, onUpload, onDelete, uploading
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
             className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
-            style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
             <Upload size={14} />
             {uploading ? 'Uploading…' : 'Upload'}

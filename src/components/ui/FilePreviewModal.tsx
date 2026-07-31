@@ -144,7 +144,7 @@ function FilePreview({ file }: FilePreviewProps) {
         rel="noopener noreferrer"
         download={file.file_name}
         className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
-        style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+        style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
       >
         <Download size={14} />
         Download to view

@@ -206,7 +206,7 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
               className="flex items-start gap-3 py-3 -mx-2 px-2 rounded-xl hover:bg-gray-50 transition-colors"
               style={{ borderBottom: i < arr.length - 1 ? '1px solid #F9FAFB' : 'none' }}
             >
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white flex-shrink-0" style={{ backgroundColor: `var(--accent-fill, ${accent})` }}>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white flex-shrink-0" style={{ backgroundColor: accent }}>
                 {(memberName.get(m.sender_id) ?? 'T').charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">

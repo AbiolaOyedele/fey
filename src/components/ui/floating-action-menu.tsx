@@ -40,7 +40,7 @@ export default function FloatingActionMenu({
         aria-label={triggerLabel}
         aria-expanded={isOpen}
         className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-        style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+        style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
       >
         <motion.span
           animate={{ rotate: isOpen ? 45 : 0 }}

@@ -137,10 +137,10 @@ function NewContractDropdown({ onBlank, onFromTemplate }: { onBlank: () => void;
   return (
     <div ref={ref} className="relative">
       <div className="flex">
-        <button onClick={onBlank} className="flex items-center gap-2 pl-4 pr-3 py-2 rounded-l-full text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}>
+        <button onClick={onBlank} className="flex items-center gap-2 pl-4 pr-3 py-2 rounded-l-full text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
           <Plus size={14} /> New Contract
         </button>
-        <button onClick={() => setOpen((o) => !o)} className="flex items-center pr-3 pl-2 py-2 rounded-r-full text-white hover:opacity-90 border-l border-white/30 transition-opacity" style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }} title="From template">
+        <button onClick={() => setOpen((o) => !o)} className="flex items-center pr-3 pl-2 py-2 rounded-r-full text-white hover:opacity-90 border-l border-white/30 transition-opacity" style={{ backgroundColor: 'var(--accent, #ED64A6)' }} title="From template">
           <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
       </div>
@@ -217,7 +217,7 @@ export default function ContractsTab({ params }: { params: Promise<{ id: string 
             <>
               <p className="text-xs2 text-gray-400">Create your first contract for this client.</p>
               <div className="flex gap-2 mt-5">
-                <button onClick={() => void handleBlank()} className="px-5 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}>
+                <button onClick={() => void handleBlank()} className="px-5 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
                   + Blank Contract
                 </button>
                 <button onClick={() => setShowTemplatePicker(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors">

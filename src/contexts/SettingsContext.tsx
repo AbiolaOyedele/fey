@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { CURRENCY_SYMBOLS } from '@/lib/constants'
 import { fontFaceSrc } from '@/utils/fontHelpers'
-import { accessibleTextColor, accessibleFillColor, onAccentTextColor } from '@/utils/color'
+import { accessibleTextColor, onAccentTextColor } from '@/utils/color'
 import type { Settings, Toast, ToastOptions, TrashItem, Client, RestoreResult } from '@/types'
 
 interface SettingsContextValue {
@@ -306,10 +306,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     // keeps the hue. Use var(--accent-text) for accent-coloured type, and
     // var(--accent) for fills.
     root.style.setProperty('--accent-text', accessibleTextColor(settings.accent_color))
-    // Filled surfaces that carry white text (buttons, badges, avatars) need the
-    // inverse: a fill deep enough for white to clear AA on top of it. Purely
-    // decorative accent — icons, dots, borders, charts — keeps var(--accent).
-    root.style.setProperty('--accent-fill', accessibleFillColor(settings.accent_color))
     // What reads on top of a filled accent surface.
     root.style.setProperty('--accent-on', onAccentTextColor(settings.accent_color))
   }, [settings.accent_color])

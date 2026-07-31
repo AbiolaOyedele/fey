@@ -132,7 +132,7 @@ export default function TaskFileAttachment({ taskId, clientId, open }: TaskFileA
           <div className="w-20 h-1 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
             <div
               className="h-full rounded-full transition-all"
-              style={{ width: `${u.progress}%`, backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+              style={{ width: `${u.progress}%`, backgroundColor: 'var(--accent, #ED64A6)' }}
             />
           </div>
           <span className="text-3xs text-gray-400 flex-shrink-0">{u.progress}%</span>

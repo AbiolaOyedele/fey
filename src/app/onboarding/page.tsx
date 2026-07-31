@@ -230,7 +230,7 @@ export default function OnboardingPage() {
     width:           '100%',
     padding:         '14px',
     borderRadius:    '50px',
-    backgroundColor: 'var(--accent-fill, #ED64A6)',
+    backgroundColor: 'var(--accent, #ED64A6)',
     color:           'white',
     fontSize:        '15px',
     fontWeight:      400,

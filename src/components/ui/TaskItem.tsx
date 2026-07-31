@@ -209,7 +209,7 @@ export default function TaskItem({
           } ${task.done ? 'text-white' : 'border-gray-300'}`}
           style={{
             width: 18, height: 18,
-            ...(task.done ? { backgroundColor: 'var(--accent-fill, #ED64A6)', borderColor: 'var(--accent, #ED64A6)' } : {}),
+            ...(task.done ? { backgroundColor: 'var(--accent, #ED64A6)', borderColor: 'var(--accent, #ED64A6)' } : {}),
           }}
           onMouseEnter={(e) => { if (!task.done) (e.currentTarget as HTMLSpanElement).style.borderColor = 'var(--accent, #ED64A6)' }}
           onMouseLeave={(e) => { if (!task.done) (e.currentTarget as HTMLSpanElement).style.borderColor = '' }}
@@ -313,7 +313,7 @@ export default function TaskItem({
               {fileCount > 0 && (
                 <span
                   className="absolute -top-1 -right-1.5 w-3.5 h-3.5 rounded-full text-white text-5xs font-bold flex items-center justify-center leading-none"
-                  style={{ backgroundColor: 'var(--accent-fill, #ED64A6)' }}
+                  style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
                 >
                   {fileCount > 9 ? '9+' : fileCount}
                 </span>

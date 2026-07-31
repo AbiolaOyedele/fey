@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requireAuth, handleError, errorResponse } from '@/lib/api-helpers'
-import { getMemberRole, isManager } from '@/lib/team-auth'
+import { getMemberRole, getWorkspaceCapabilities, isManager } from '@/lib/team-auth'
 
 /**
  * DELETE /api/v1/team/invites/[inviteId]
@@ -25,8 +25,10 @@ export async function DELETE(
       .maybeSingle()
     if (!invite) return errorResponse('TEAM_INVITE_NOT_FOUND', 'Invite not found.', 404)
 
-    const role = await getMemberRole(db, (invite as { workspace_id: string }).workspace_id, user!.id)
-    if (!isManager(role)) {
+    const inviteWorkspaceId = (invite as { workspace_id: string }).workspace_id
+    const role = await getMemberRole(db, inviteWorkspaceId, user!.id)
+    const capabilities = await getWorkspaceCapabilities(db, inviteWorkspaceId)
+    if (!isManager(role, capabilities)) {
       return errorResponse('TEAM_INVITE_FORBIDDEN', 'You don’t have permission to manage invites.', 403)
     }
 

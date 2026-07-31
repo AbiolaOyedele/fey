@@ -2,7 +2,7 @@ import type { NextRequest, NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createUserClient } from '@/lib/supabase-server'
 import { requireAuth } from '@/lib/api-helpers'
-import { resolveOwnerContext, isMemberOfForeignWorkspace } from '@/lib/owner-context'
+import { resolveOwnerContext, isMemberOfForeignWorkspace, hasImageCreditsGrant } from '@/lib/owner-context'
 import type { PipelineCtx } from '@/services/image-pipeline/tier.service'
 
 /**
@@ -31,8 +31,12 @@ export async function resolvePipelineRequest(
   // request without workspace_id resolves ownerId to the caller, so the naive
   // comparison is true for everyone — including a member of someone else's
   // workspace, who would then get the admin tab and the admin endpoints.
+  //
+  // A super_admin, or an admin granted `image_credits`, also administers the
+  // scope without owning it.
   const ownsScope =
-    ownerId === user!.id && !(await isMemberOfForeignWorkspace(db, user!.id))
+    (ownerId === user!.id && !(await isMemberOfForeignWorkspace(db, user!.id))) ||
+    (await hasImageCreditsGrant(db, user!.id, ownerId))
 
   return {
     db,

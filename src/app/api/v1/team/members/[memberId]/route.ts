@@ -2,16 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requireAuth, handleError, errorResponse } from '@/lib/api-helpers'
-import { getMemberRole, isManager } from '@/lib/team-auth'
+import { getMemberRole, getWorkspaceCapabilities, isManager } from '@/lib/team-auth'
 import { sendRoleChanged } from '@/services/email.service'
+import type { WorkspaceRole } from '@/types/team'
 
-const patchSchema = z.object({ role: z.enum(['admin', 'member']) })
+// 'owner' is deliberately absent — ownership transfer isn't this endpoint's job.
+const patchSchema = z.object({ role: z.enum(['super_admin', 'admin', 'member']) })
 
 interface MemberRow {
   id: string
   workspace_id: string
   user_id: string
-  role: 'owner' | 'admin' | 'member'
+  role: WorkspaceRole
   email: string | null
   name: string | null
 }
@@ -39,7 +41,7 @@ export async function PATCH(
   if (response) return response
   const { memberId } = await params
 
-  let role: 'admin' | 'member'
+  let role: 'super_admin' | 'admin' | 'member'
   try {
     role = patchSchema.parse(await req.json()).role
   } catch {
@@ -51,8 +53,14 @@ export async function PATCH(
     if (!member) return errorResponse('TEAM_MEMBER_NOT_FOUND', 'Member not found.', 404)
 
     const callerRole = await getMemberRole(db, member.workspace_id, user!.id)
-    if (!isManager(callerRole)) {
+    const capabilities = await getWorkspaceCapabilities(db, member.workspace_id)
+    if (!isManager(callerRole, capabilities)) {
       return errorResponse('TEAM_ROLE_FORBIDDEN', 'You don’t have permission to change roles.', 403)
+    }
+    // Only the owner may mint another full-access admin — a granted `team`
+    // capability must not become a route to handing out unrestricted access.
+    if (role === 'super_admin' && callerRole !== 'owner') {
+      return errorResponse('TEAM_ROLE_FORBIDDEN', 'Only the workspace owner can make someone a super admin.', 403)
     }
     if (member.role === 'owner') {
       return errorResponse('TEAM_ROLE_OWNER_LOCKED', 'The workspace owner’s role can’t be changed.', 409)
@@ -104,8 +112,9 @@ export async function DELETE(
     }
 
     const callerRole = await getMemberRole(db, member.workspace_id, user!.id)
+    const capabilities = await getWorkspaceCapabilities(db, member.workspace_id)
     const isSelf = member.user_id === user!.id
-    if (!isManager(callerRole) && !isSelf) {
+    if (!isManager(callerRole, capabilities) && !isSelf) {
       return errorResponse('TEAM_REMOVE_FORBIDDEN', 'You don’t have permission to remove teammates.', 403)
     }
 

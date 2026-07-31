@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { activeWorkspaceSlug } from '@/utils/host'
-import { canManageTeam, type Workspace, type WorkspaceRole } from '@/types/team'
+import { canManageTeam, hasCapability, type AdminCapability, type Workspace, type WorkspaceRole } from '@/types/team'
 
 export interface WorkspaceMembership {
   workspace: Workspace
@@ -17,6 +17,10 @@ interface WorkspaceState {
   role:      WorkspaceRole | null
   /** True for owner/admin of the active workspace — gates manage actions. */
   canManage: boolean
+  /** Capabilities the active workspace grants its admins (all, for owner/super_admin). */
+  capabilities: AdminCapability[]
+  /** Whether the current user may exercise a capability here. */
+  can: (capability: AdminCapability) => boolean
   /** Every workspace the user belongs to (for the switcher). */
   memberships: WorkspaceMembership[]
   loading:   boolean
@@ -42,7 +46,7 @@ export function useWorkspace(): WorkspaceState {
     try {
       const { data, error: mErr } = await supabase
         .from('workspace_members')
-        .select('role, workspaces ( id, name, slug, owner_id, created_at )')
+        .select('role, workspaces ( id, name, slug, owner_id, created_at, admin_permissions )')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
       if (mErr) throw mErr
@@ -76,10 +80,17 @@ export function useWorkspace(): WorkspaceState {
     return memberships[0]
   }, [memberships])
 
+  // What the workspace grants its admin role. owner/super_admin bypass this
+  // entirely via hasCapability, so it's only consulted for the admin tier.
+  const capabilities: AdminCapability[] = active?.workspace.admin_permissions ?? []
+  const role = active?.role ?? null
+
   return {
     workspace: active?.workspace ?? null,
-    role:      active?.role ?? null,
-    canManage: canManageTeam(active?.role ?? null),
+    role,
+    capabilities,
+    can: (capability: AdminCapability) => hasCapability(role, capabilities, capability),
+    canManage: canManageTeam(role, capabilities),
     memberships,
     loading,
     error,

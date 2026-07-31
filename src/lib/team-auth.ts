@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { WorkspaceRole } from '@/types/team'
+import { canManageTeam, hasCapability, type AdminCapability, type WorkspaceRole } from '@/types/team'
 
 /**
  * Returns the caller's role in a workspace, or null if they aren't a member.
@@ -19,9 +19,39 @@ export async function getMemberRole(
   return (data as { role: WorkspaceRole } | null)?.role ?? null
 }
 
-/** Roles permitted to manage the team. */
-export function isManager(role: WorkspaceRole | null): boolean {
-  return role === 'owner' || role === 'admin'
+/**
+ * Capabilities a workspace grants to its `admin` role. Empty when the workspace
+ * is missing or grants nothing — failing closed is the right default here.
+ */
+export async function getWorkspaceCapabilities(
+  db: SupabaseClient,
+  workspaceId: string,
+): Promise<AdminCapability[]> {
+  const { data } = await db
+    .from('workspaces')
+    .select('admin_permissions')
+    .eq('id', workspaceId)
+    .maybeSingle()
+  const raw = (data as { admin_permissions?: unknown } | null)?.admin_permissions
+  return Array.isArray(raw) ? (raw as AdminCapability[]) : []
+}
+
+/**
+ * Roles permitted to manage the team. owner/super_admin always; `admin` only
+ * when the workspace grants the `team` capability, so pass `granted` from
+ * getWorkspaceCapabilities — omitting it treats admin as restricted.
+ */
+export function isManager(role: WorkspaceRole | null, granted?: AdminCapability[] | null): boolean {
+  return canManageTeam(role, granted)
+}
+
+/** Server-side capability check for a resolved role. */
+export function roleHasCapability(
+  role: WorkspaceRole | null,
+  granted: AdminCapability[] | null,
+  capability: AdminCapability,
+): boolean {
+  return hasCapability(role, granted, capability)
 }
 
 /** Generates an unguessable invite token. */

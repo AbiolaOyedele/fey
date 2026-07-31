@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requireAuth, handleError, errorResponse } from '@/lib/api-helpers'
-import { getMemberRole, isManager, generateInviteToken } from '@/lib/team-auth'
+import { getMemberRole, getWorkspaceCapabilities, isManager, generateInviteToken } from '@/lib/team-auth'
 import { sendWorkspaceInvite } from '@/services/email.service'
 import { env } from '@/config/env'
 
@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
 
     // RBAC — only owners/admins may invite.
     const callerRole = await getMemberRole(db, workspace_id, user!.id)
-    if (!isManager(callerRole)) {
+    const capabilities = await getWorkspaceCapabilities(db, workspace_id)
+    if (!isManager(callerRole, capabilities)) {
       return errorResponse('TEAM_INVITE_FORBIDDEN', 'You don’t have permission to invite teammates.', 403)
     }
 

@@ -6,15 +6,17 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useTeam } from '@/hooks/useTeam'
 import { ROLE_LABELS, canManageTeam, type WorkspaceRole } from '@/types/team'
+import AdminPermissionsPanel from '@/components/features/team/AdminPermissionsPanel'
 
 export default function TeamPage() {
   const { settings } = useSettings()
   const accent = settings.accent_color ?? '#ED64A6'
 
-  const { workspace, role, loading: wsLoading } = useWorkspace()
+  const { workspace, role, capabilities, loading: wsLoading, refetch } = useWorkspace()
   const { members, invites, loading, error, invite, changeRole, removeMember, revokeInvite } = useTeam(workspace?.id ?? null)
 
-  const manager = canManageTeam(role)
+  const manager = canManageTeam(role, capabilities)
+  const isOwner = role === 'owner'
   const [email, setEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member')
   const [busy, setBusy] = useState(false)
@@ -54,6 +56,18 @@ export default function TeamPage() {
       <p className="text-xs text-gray-400 mb-6">
         {workspace ? `Members of ${workspace.name}` : 'Your workspace team'}
       </p>
+
+      {/* Admin permissions — owner only; super admins can't widen their own tier. */}
+      {isOwner && workspace && (
+        <div className="mb-5">
+          <AdminPermissionsPanel
+            workspaceId={workspace.id}
+            granted={capabilities}
+            accent={accent}
+            onSaved={() => refetch()}
+          />
+        </div>
+      )}
 
       {/* Invite */}
       {manager && (
@@ -148,6 +162,9 @@ export default function TeamPage() {
                   >
                     <option value="member">Member</option>
                     <option value="admin">Admin</option>
+                    {/* Only the owner can hand out full access; the API enforces
+                        this too, so a non-owner never sees a option that fails. */}
+                    {isOwner && <option value="super_admin">Super admin</option>}
                   </select>
                 ) : (
                   <span

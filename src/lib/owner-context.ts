@@ -42,6 +42,34 @@ export async function isMemberOfForeignWorkspace(db: SupabaseClient, userId: str
 }
 
 /**
+ * True if `userId` may administer the Image Pipeline inside `ownerId`'s scope
+ * without owning it: a super_admin, or an admin whose workspace grants the
+ * `image_credits` capability. Mirrors app_has_capability() in RLS.
+ */
+export async function hasImageCreditsGrant(
+  db: SupabaseClient,
+  userId: string,
+  ownerId: string,
+): Promise<boolean> {
+  if (userId === ownerId) return false // handled by the ownership path
+  const { data } = await db
+    .from('workspace_members')
+    .select('role, workspaces!inner ( owner_id, admin_permissions )')
+    .eq('user_id', userId)
+    .eq('workspaces.owner_id', ownerId)
+  if (!data) return false
+  return (data as unknown as {
+    role: string
+    workspaces: { admin_permissions: unknown } | null
+  }[]).some((row) => {
+    if (row.role === 'owner' || row.role === 'super_admin') return true
+    if (row.role !== 'admin') return false
+    const caps = row.workspaces?.admin_permissions
+    return Array.isArray(caps) && caps.includes('image_credits')
+  })
+}
+
+/**
  * True if `userId` is an admin of the workspace(s) owned by `ownerId` — i.e. the
  * owner themselves, or a member with the owner/admin role. Safe to call with a
  * user-scoped client: RLS only exposes the caller's own membership rows, so a

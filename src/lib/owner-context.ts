@@ -21,6 +21,27 @@ export async function resolveOwnerContext(
 }
 
 /**
+ * True if `userId` belongs to at least one workspace they do NOT own.
+ *
+ * Guards the personal-scope fallback above. That fallback makes `ownerId` equal
+ * the caller's own id, which any "am I the owner?" check reads as yes — so a
+ * request that simply omits workspace_id would otherwise promote a member to
+ * owner of a phantom personal scope. Someone who is a member of another
+ * person's workspace is never a solo user, so the fallback must not grant them
+ * owner rights. Safe with a user-scoped client: RLS exposes only their own
+ * membership rows.
+ */
+export async function isMemberOfForeignWorkspace(db: SupabaseClient, userId: string): Promise<boolean> {
+  const { data } = await db
+    .from('workspace_members')
+    .select('workspace_id, workspaces!inner ( owner_id )')
+    .eq('user_id', userId)
+  if (!data) return false
+  return (data as unknown as { workspaces: { owner_id: string } | null }[])
+    .some((row) => row.workspaces && row.workspaces.owner_id !== userId)
+}
+
+/**
  * True if `userId` is an admin of the workspace(s) owned by `ownerId` — i.e. the
  * owner themselves, or a member with the owner/admin role. Safe to call with a
  * user-scoped client: RLS only exposes the caller's own membership rows, so a

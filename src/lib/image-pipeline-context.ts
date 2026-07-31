@@ -2,7 +2,7 @@ import type { NextRequest, NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createUserClient } from '@/lib/supabase-server'
 import { requireAuth } from '@/lib/api-helpers'
-import { resolveOwnerContext } from '@/lib/owner-context'
+import { resolveOwnerContext, isMemberOfForeignWorkspace } from '@/lib/owner-context'
 import type { PipelineCtx } from '@/services/image-pipeline/tier.service'
 
 /**
@@ -27,9 +27,16 @@ export async function resolvePipelineRequest(
   const requested = workspaceId ?? req.nextUrl.searchParams.get('workspace_id')
   const { ownerId, workspaceId: resolvedWorkspaceId } = await resolveOwnerContext(db, user!.id, requested)
 
+  // Ownership is established here rather than by comparing ids downstream. A
+  // request without workspace_id resolves ownerId to the caller, so the naive
+  // comparison is true for everyone — including a member of someone else's
+  // workspace, who would then get the admin tab and the admin endpoints.
+  const ownsScope =
+    ownerId === user!.id && !(await isMemberOfForeignWorkspace(db, user!.id))
+
   return {
     db,
-    ctx: { userId: user!.id, email: user!.email, ownerId, workspaceId: resolvedWorkspaceId },
+    ctx: { userId: user!.id, email: user!.email, ownerId, workspaceId: resolvedWorkspaceId, ownsScope },
     response: null,
   }
 }

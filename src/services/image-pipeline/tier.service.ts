@@ -18,14 +18,20 @@ export interface PipelineCtx {
   email: string | null | undefined
   ownerId: string
   workspaceId: string | null
+  /**
+   * Whether the caller genuinely owns this scope. Resolved in
+   * resolvePipelineRequest, NOT inferred from `ownerId === userId`: when a
+   * request omits workspace_id, resolveOwnerContext falls back to the caller's
+   * own id, which that comparison reads as ownership and would hand every
+   * member the admin surface.
+   */
+  ownsScope: boolean
 }
 
 export function resolveAdminContext(ctx: PipelineCtx): ImagePipelineAdminContext {
   return {
     is_super_admin: isAdminEmail(ctx.email),
-    // resolveOwnerContext returns the workspace's owner_id, or the caller's own
-    // id when there is no workspace — so equality means "owns this scope".
-    is_workspace_owner: ctx.ownerId === ctx.userId,
+    is_workspace_owner: ctx.ownsScope,
   }
 }
 

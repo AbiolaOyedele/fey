@@ -52,6 +52,28 @@ function mix(color: Rgb, target: Rgb, amount: number): Rgb {
   }
 }
 
+/** Number of darkening steps. Fine enough that we never overshoot visibly. */
+const STEPS = 100
+
+/**
+ * Darkens `accent` until `measure` reports at least `target`.
+ *
+ * Each candidate is snapped to its final hex *before* being measured — rounding
+ * to 8-bit channels can shave a hundredth off the ratio, which is enough to
+ * land on 4.49 and fail the very check this exists to satisfy.
+ */
+function darkenUntil(accent: string, target: number, measure: (hex: string) => number): string {
+  const base = hexToRgb(accent)
+  if (!base) return accent
+  if (measure(rgbToHex(base)) >= target) return accent
+
+  for (let step = 1; step <= STEPS; step++) {
+    const candidate = rgbToHex(mix(base, BLACK, step / STEPS))
+    if (measure(candidate) >= target) return candidate
+  }
+  return '#000000'
+}
+
 /**
  * A version of `accent` dark enough to read as text on `background`.
  *
@@ -61,16 +83,12 @@ function mix(color: Rgb, target: Rgb, amount: number): Rgb {
  * rather than looping.
  */
 export function accessibleTextColor(accent: string, background = '#ffffff', target = 4.5): string {
-  const base = hexToRgb(accent)
   const bg = hexToRgb(background)
-  if (!base || !bg) return accent
-  if (contrastRatio(base, bg) >= target) return accent
-
-  for (let step = 1; step <= 20; step++) {
-    const candidate = mix(base, BLACK, step / 20)
-    if (contrastRatio(candidate, bg) >= target) return rgbToHex(candidate)
-  }
-  return '#000000'
+  if (!bg) return accent
+  return darkenUntil(accent, target, (hex) => {
+    const rgb = hexToRgb(hex)
+    return rgb ? contrastRatio(rgb, bg) : 0
+  })
 }
 
 /**
@@ -82,16 +100,12 @@ export function accessibleTextColor(accent: string, background = '#ffffff', targ
  * surface still reads as the brand colour, just deep enough for white to sit on.
  */
 export function accessibleFillColor(accent: string, on = '#ffffff', target = 4.5): string {
-  const base = hexToRgb(accent)
   const fg = hexToRgb(on)
-  if (!base || !fg) return accent
-  if (contrastRatio(base, fg) >= target) return accent
-
-  for (let step = 1; step <= 20; step++) {
-    const candidate = mix(base, BLACK, step / 20)
-    if (contrastRatio(candidate, fg) >= target) return rgbToHex(candidate)
-  }
-  return '#000000'
+  if (!fg) return accent
+  return darkenUntil(accent, target, (hex) => {
+    const rgb = hexToRgb(hex)
+    return rgb ? contrastRatio(rgb, fg) : 0
+  })
 }
 
 /**

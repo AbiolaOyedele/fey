@@ -49,25 +49,27 @@ export default function TeamPage() {
 
   return (
     <div className="min-h-screen p-4 md:p-6 lg:p-8 page-enter max-w-3xl">
-      <div className="flex items-center gap-2 mb-1">
-        <Users size={18} style={{ color: accent }} />
-        <h1 className="font-display text-xl font-normal text-gray-800">Team</h1>
-      </div>
-      <p className="text-xs text-gray-400 mb-6">
-        {workspace ? `Members of ${workspace.name}` : 'Your workspace team'}
-      </p>
+      <div className="flex items-start justify-between gap-3 mb-6">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <Users size={18} style={{ color: accent }} className="flex-shrink-0" />
+            <h1 className="font-display text-xl font-normal text-gray-800 truncate">Team</h1>
+          </div>
+          <p className="text-xs text-gray-400 m-0 truncate">
+            {workspace ? `Members of ${workspace.name}` : 'Your workspace team'}
+          </p>
+        </div>
 
-      {/* Admin permissions — owner only; super admins can't widen their own tier. */}
-      {isOwner && workspace && (
-        <div className="mb-5">
+        {/* Admin permissions — owner only; super admins can't widen their own tier. */}
+        {isOwner && workspace && (
           <AdminPermissionsPanel
             workspaceId={workspace.id}
             granted={capabilities}
             accent={accent}
             onSaved={() => refetch()}
           />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Invite */}
       {manager && (

@@ -12,6 +12,7 @@ import PwaRegister from '@/components/pwa/PwaRegister'
 import AppNudges from '@/components/pwa/AppNudges'
 import ToastContainer from '@/components/ui/Toast'
 import UpdateBanner from '@/components/ui/UpdateBanner'
+import WhatsNewGate from '@/components/ui/WhatsNewGate'
 import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
 import { useChunkErrorReload } from '@/hooks/useChunkErrorReload'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
@@ -127,6 +128,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <ToastContainer />
       <PwaRegister />
       <AppNudges />
+      <WhatsNewGate />
       <UpdateBanner show={updateAvailable} accent={settings.accent_color} />
     </div>
   )

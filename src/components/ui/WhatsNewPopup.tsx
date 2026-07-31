@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 
 const DISMISSED_KEY = 'whats_new_dismissed_version'
 
-interface WhatsNewEntry {
+export interface WhatsNewEntry {
   id: string
   version: string
   title: string
@@ -17,6 +17,8 @@ interface WhatsNewEntry {
 interface WhatsNewPopupProps {
   open: boolean
   onClose: () => void
+  /** Already-fetched entry (WhatsNewGate has one) — skips a duplicate query. */
+  entry?: WhatsNewEntry | null
 }
 
 export async function fetchLatestWhatsNew(): Promise<WhatsNewEntry | null> {
@@ -44,15 +46,15 @@ export function dismissVersion(version: string): void {
   localStorage.setItem(DISMISSED_KEY, version)
 }
 
-export default function WhatsNewPopup({ open, onClose }: WhatsNewPopupProps) {
-  const [entry, setEntry] = useState<WhatsNewEntry | null>(null)
+export default function WhatsNewPopup({ open, onClose, entry: preloaded = null }: WhatsNewPopupProps) {
+  const [entry, setEntry] = useState<WhatsNewEntry | null>(preloaded)
   const [closing, setClosing] = useState(false)
 
   useEffect(() => {
-    if (!open) return
+    if (!open || preloaded) return
     setEntry(null)
     void fetchLatestWhatsNew().then((e) => { if (e) setEntry(e) })
-  }, [open])
+  }, [open, preloaded])
 
   const handleClose = () => {
     setClosing(true)

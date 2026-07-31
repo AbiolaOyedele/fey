@@ -14,6 +14,8 @@ export type NotificationType =
   | 'image_credit_request'
   | 'image_credit_request_resolved'
   | 'image_credits_granted'
+  // A new Fey release shipped (sent by scripts/notify-release.mjs)
+  | 'product_update'
 
 export interface AppNotification {
   id: string

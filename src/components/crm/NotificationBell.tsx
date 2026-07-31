@@ -17,6 +17,7 @@ import {
   Paperclip,
   Inbox,
   Sparkles,
+  Rocket,
 } from 'lucide-react'
 import { useAppNotifications } from '@/hooks/useNotifications'
 import type { AppNotification } from '@/types/notification'
@@ -38,6 +39,8 @@ const TYPE_META: Record<string, { category?: Category; icon: ReactNode }> = {
   image_credit_request: { icon: <Sparkles size={15} /> },
   image_credit_request_resolved: { icon: <Sparkles size={15} /> },
   image_credits_granted: { icon: <Sparkles size={15} /> },
+  // Release announcements — no filter category (they surface under "All").
+  product_update: { icon: <Rocket size={15} /> },
 }
 
 const FILTERS: { key: 'all' | Category; label: string }[] = [

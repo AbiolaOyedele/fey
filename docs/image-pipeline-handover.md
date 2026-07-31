@@ -50,6 +50,39 @@ Full mock-backed frontend, typechecks clean (strict + `exactOptionalPropertyType
 
 ---
 
+## Enhancements (2026-08-01)
+
+Four changes landed on top of Batch 2. **They add a second migration** —
+`supabase/migrations/20260801_image_pipeline_enhancements.sql` — which must run
+**after** `20260731_image_pipeline.sql` (it's additive + idempotent).
+
+1. **Instant balance / live credits.** `ip_credit_ledger` and `ip_credit_requests`
+   are now on the realtime publication. The shared `PipelineProvider` and the
+   Credits page subscribe to the caller's ledger, so a grant/approval/allocation
+   updates the header + Credits page with no refresh; the admin queue subscribes
+   to requests so new ones appear live. Admin grant/resolve also refresh the
+   shared context for an instant self-grant update.
+2. **Notifications.** Wired into Fey's existing notification system
+   (`services/image-pipeline/notify.ts`, service-role): a filed request notifies
+   the owner + workspace admins; a grant or an approve/deny notifies the
+   recipient. New `NotificationType`s + a Sparkles icon in `NotificationBell`.
+3. **Multiple reference images (up to `MAX_REFERENCE_IMAGES` = 4).** `IpGeneration`
+   now carries `source_image_urls[]` / `source_image_public_ids[]` (the single
+   columns are retained, unused). Claude and Gemini both receive every image;
+   `ReferenceUploader` is a responsive multi-thumbnail grid.
+4. **Prompt presets + caching.** The prompt-writing step runs under a chosen
+   preset system prompt, marked **cacheable** at Anthropic (`cache_control:
+   ephemeral`) so a reused preset is discounted. Built-in presets live in
+   `lib/image-pipeline-presets.ts` (server-only text; the "Default" preset is
+   seeded). Workspaces author their own in `ip_prompt_presets` (RLS: any member
+   reads/uses; creator or admin edits/deletes). `PresetPicker` selects + manages
+   them; the generation stores the preset key it used.
+
+The Batch 1 mock (`src/mocks/image-pipeline/`) was **deleted** — it was dead once
+the hooks moved to `@/lib/image-pipeline-api`.
+
+---
+
 ## Architecture & the mock→real seam
 
 Layering (Fey rule): **routes → services → repositories**; components/hooks never touch the DB or AI directly.

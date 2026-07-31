@@ -1,6 +1,6 @@
 import { env } from '@/config/env'
 import { AppError } from '@/lib/errors'
-import type { ImageTier } from '@/types/image-pipeline'
+import { MAX_REFERENCE_IMAGES, type ImageTier } from '@/types/image-pipeline'
 
 /**
  * Gemini (Nano Banana) client for the Image Pipeline's render steps.
@@ -75,8 +75,8 @@ const isRetryable = (status: number): boolean => status === 429 || status >= 500
 export interface RenderImageInput {
   tier: ImageTier
   prompt: string
-  /** Cloudinary URL of the reference image, when the run has one. */
-  sourceImageUrl: string | null
+  /** Cloudinary URLs of the reference images, when the run has any. */
+  sourceImageUrls: string[]
   size: RenderSize
 }
 
@@ -89,8 +89,10 @@ export async function renderImage(input: RenderImageInput): Promise<RenderedImag
   const model = IMAGE_MODEL[input.tier]
 
   const parts: GeminiPart[] = [{ text: input.prompt }]
-  if (input.sourceImageUrl) {
-    const reference = await fetchReference(input.sourceImageUrl)
+  // Inline each reference image (capped). Fetched sequentially to keep peak
+  // memory bounded — these are up to 10MB each.
+  for (const url of input.sourceImageUrls.slice(0, MAX_REFERENCE_IMAGES)) {
+    const reference = await fetchReference(url)
     parts.push({ inlineData: { mimeType: reference.mimeType, data: reference.base64 } })
   }
 
@@ -104,19 +106,36 @@ export async function renderImage(input: RenderImageInput): Promise<RenderedImag
     },
   })
 
+  // Image generation is slow (~20s) and the API rate-limits bursts, so transient
+  // 429/5xx are common. Retry a few times with growing backoff, honouring any
+  // Retry-After the API sends, before giving up.
+  const BACKOFFS_MS = [0, 2000, 5000, 9000]
   let lastError: AppError | null = null
-  for (let attempt = 0; attempt < 2; attempt++) {
-    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 1500))
+  for (let attempt = 0; attempt < BACKOFFS_MS.length; attempt++) {
+    if (attempt > 0) {
+      const hinted = retryAfterMsOf(lastError)
+      await new Promise((resolve) => setTimeout(resolve, hinted ?? BACKOFFS_MS[attempt] ?? 9000))
+    }
     try {
       return await callGemini(model, key, body)
     } catch (err) {
       if (!(err instanceof AppError)) throw err
-      // Only transient failures are worth the second attempt.
+      // Only transient failures are worth another attempt.
       if (err.code !== 'IP_RENDER_TRANSIENT') throw err
       lastError = err
     }
   }
   throw lastError ?? new AppError(502, 'Couldn’t generate that image. Please try again.', 'IP_RENDER_FAILED')
+}
+
+/** Pulls a Retry-After hint (ms) off a transient error, if the API sent one. */
+function retryAfterMsOf(err: AppError | null): number | null {
+  const details = err?.details
+  if (details && typeof details === 'object' && 'retryAfterMs' in details) {
+    const value = (details as { retryAfterMs: unknown }).retryAfterMs
+    if (typeof value === 'number' && value > 0) return Math.min(value, 30_000)
+  }
+  return null
 }
 
 async function callGemini(model: string, key: string, body: string): Promise<RenderedImage> {
@@ -128,25 +147,67 @@ async function callGemini(model: string, key: string, body: string): Promise<Ren
       body,
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
-  } catch {
+  } catch (err) {
     // Network error or timeout — worth one retry.
+    console.error('[renderImage] fetch failed', { model, name: (err as Error)?.name, message: (err as Error)?.message })
     throw new AppError(504, 'Image generation timed out. Please try again.', 'IP_RENDER_TRANSIENT')
   }
 
   if (!res.ok) {
-    // Never log the response body — it echoes the prompt.
-    console.error('[renderImage] provider error', { model, status: res.status })
+    // The error body is the API's own error description (status/message), not a
+    // prompt echo, so it's safe — and useful — to log. Success bodies are the
+    // ones we never log.
+    const rawError = await res.text().catch(() => '')
+    let providerStatus: string | undefined
+    let providerMessage: string | undefined
+    try {
+      const parsed = JSON.parse(rawError) as GeminiResponse
+      providerStatus = parsed.error?.status
+      providerMessage = parsed.error?.message
+    } catch {
+      providerMessage = rawError.slice(0, 300) || undefined
+    }
+    console.error('[renderImage] provider error', {
+      model,
+      httpStatus: res.status,
+      providerStatus,
+      providerMessage,
+    })
+    // A free-tier / zero-quota exhaustion is a configuration problem, not a
+    // transient blip — retrying can't fix a hard `limit: 0`, so fail fast with an
+    // actionable message instead of burning the retry budget.
+    const quotaExhausted =
+      res.status === 429 &&
+      (providerStatus === 'RESOURCE_EXHAUSTED' || /quota|billing|free_tier|limit:\s*0/i.test(providerMessage ?? ''))
+    if (quotaExhausted && /free_tier|billing|limit:\s*0/i.test(providerMessage ?? '')) {
+      throw new AppError(
+        402,
+        'Image generation is out of quota. The image API key needs billing enabled to generate images.',
+        'IP_RENDER_QUOTA_EXHAUSTED',
+      )
+    }
     if (isRetryable(res.status)) {
-      throw new AppError(502, 'Image generation is busy right now. Please try again.', 'IP_RENDER_TRANSIENT')
+      const retryAfter = res.headers.get('retry-after')
+      const retryAfterMs = retryAfter && Number.isFinite(Number(retryAfter)) ? Number(retryAfter) * 1000 : undefined
+      throw new AppError(
+        502,
+        'Image generation is busy right now. Please try again.',
+        'IP_RENDER_TRANSIENT',
+        retryAfterMs ? { retryAfterMs } : undefined,
+      )
     }
     if (res.status === 401 || res.status === 403) {
       throw new AppError(503, 'Image generation isn’t set up correctly.', 'IP_GEMINI_NOT_CONFIGURED')
+    }
+    if (res.status === 404) {
+      throw new AppError(502, 'The image model isn’t available. Please try again or contact support.', 'IP_RENDER_MODEL_NOT_FOUND')
     }
     throw new AppError(502, 'Couldn’t generate that image. Please try again.', 'IP_RENDER_FAILED')
   }
 
   const json = (await res.json()) as GeminiResponse
   if (json.promptFeedback?.blockReason) {
+    console.error('[renderImage] blocked', { model, blockReason: json.promptFeedback.blockReason })
     throw new AppError(422, 'That prompt was blocked by the image model. Try rewording it.', 'IP_RENDER_BLOCKED')
   }
 
@@ -161,7 +222,10 @@ async function callGemini(model: string, key: string, body: string): Promise<Ren
 
   const finish = json.candidates?.[0]?.finishReason
   if (finish && finish !== 'STOP') {
-    throw new AppError(422, 'That prompt was blocked by the image model. Try rewording it.', 'IP_RENDER_BLOCKED')
+    // e.g. IMAGE_SAFETY / PROHIBITED_CONTENT — the model produced no image on purpose.
+    console.error('[renderImage] no image', { model, finishReason: finish })
+    throw new AppError(422, 'The image model wouldn’t render this prompt (it was flagged). Try rewording it.', 'IP_RENDER_BLOCKED')
   }
+  console.error('[renderImage] empty response', { model, hasCandidates: !!json.candidates?.length })
   throw new AppError(502, 'The image model returned nothing. Please try again.', 'IP_RENDER_EMPTY')
 }

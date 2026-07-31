@@ -9,10 +9,12 @@ import { generationRepository as generations } from '@/repositories/image-pipeli
 import { flowRepository as flow, userSettingsRepository as settingsRepo } from '@/repositories/image-pipeline/settings.repository'
 import {
   CREDIT_COST,
+  DEFAULT_PROMPT_PRESET_KEY,
   DEFAULT_RETENTION_WEEKS,
   GENERATION_CHANNELS,
   IN_FLIGHT_STATUSES,
   MAX_IN_FLIGHT_PER_USER,
+  MAX_REFERENCE_IMAGES,
   RETENTION_WEEK_OPTIONS,
   type ChannelAvailability,
   type ImageTier,
@@ -20,6 +22,7 @@ import {
   type RetentionWeeks,
 } from '@/types/image-pipeline'
 import { assertCanAfford, chargeStep, getBalance, refundStep } from './credits.service'
+import { isKnownPresetShape, resolveSystemPrompt } from './preset.service'
 import { resolveTier, type PipelineCtx } from './tier.service'
 
 /**
@@ -46,14 +49,19 @@ export type BackgroundRunner = (task: () => Promise<void>) => void
 const WORKER_STALE_MS = 90_000
 
 const createSchema = z.object({
-  source_image_public_id: z.string().max(300).optional(),
-  source_image_url: z
-    .string()
-    .url()
-    .startsWith('https://res.cloudinary.com/', 'That reference image isn’t valid.')
+  source_image_public_ids: z.array(z.string().max(300)).max(MAX_REFERENCE_IMAGES).optional(),
+  source_image_urls: z
+    .array(
+      z
+        .string()
+        .url()
+        .startsWith('https://res.cloudinary.com/', 'That reference image isn’t valid.'),
+    )
+    .max(MAX_REFERENCE_IMAGES)
     .optional(),
   user_prompt: z.string().trim().max(4000).optional(),
   user_notes: z.string().trim().max(2000).optional(),
+  prompt_preset: z.string().trim().max(64).optional(),
   channel: z.enum(GENERATION_CHANNELS).optional(),
   retention_weeks: z.union([z.literal(1), z.literal(2)]).optional(),
   workspace_id: z.string().uuid().optional(),
@@ -104,6 +112,61 @@ export async function getActiveGeneration(db: SupabaseClient, userId: string): P
   return all.find((g) => (IN_FLIGHT_STATUSES as readonly string[]).includes(g.status)) ?? null
 }
 
+/**
+ * Retry a failed run from where it broke, reusing what it already produced so
+ * the user never restarts from scratch (and Claude is never re-run for a prompt
+ * that already exists). The failed step's charge was refunded when it failed, so
+ * the matching step is charged again here — a retry that fails is refunded too.
+ *
+ *   • failed at the FINAL render (a preview exists) → re-charge 0.75, re-render 2K.
+ *   • failed at the PREVIEW render (a prompt exists) → re-charge 0.25, re-render 1K.
+ *   • failed at the PROMPT step (no prompt yet)      → re-charge 0.25, re-run the
+ *     prompt step (this is the only case that calls Claude again — there's no
+ *     prompt to reuse).
+ */
+export async function retryGeneration(
+  db: SupabaseClient,
+  ctx: PipelineCtx,
+  id: string,
+  background: BackgroundRunner,
+): Promise<{ generation: IpGeneration; balance: number }> {
+  const generation = await getGeneration(db, ctx, id)
+  assertStatus(generation, ['failed'])
+
+  const hasPreview = !!generation.preview_url
+  const prompt = generation.final_prompt
+
+  // Failed rendering the 2K final — the approved preview is still there.
+  if (hasPreview && prompt) {
+    const balance = await chargeStep(db, { userId: ctx.userId, amount: CREDIT_COST.final, reason: 'final_charge', generationId: id })
+    const updated = await generations.update(db, id, { status: 'generating_final', error_message: null })
+    background(() => runFinalStep(db, ctx, updated))
+    return { generation: updated, balance }
+  }
+
+  // Failed rendering the 1K preview — reuse the prompt Claude already wrote.
+  if (prompt) {
+    const balance = await chargeStep(db, { userId: ctx.userId, amount: CREDIT_COST.preview, reason: 'preview_charge', generationId: id })
+    const updated = await generations.update(db, id, {
+      status: 'generating_preview',
+      preview_url: null,
+      preview_public_id: null,
+      error_message: null,
+    })
+    background(() => runPreviewStep(db, ctx, updated, prompt))
+    return { generation: updated, balance }
+  }
+
+  // Failed writing the prompt itself — nothing to reuse, so run the prompt step
+  // again (respecting the user's prompt-review preference).
+  const balance = await chargeStep(db, { userId: ctx.userId, amount: CREDIT_COST.preview, reason: 'preview_charge', generationId: id })
+  const settings = await settingsRepo.getForUser(db, ctx.userId)
+  const skipReview = settings?.skip_prompt_review ?? false
+  const updated = await generations.update(db, id, { status: 'prompting', error_message: null })
+  background(() => runPromptStep(db, ctx, updated, skipReview))
+  return { generation: updated, balance }
+}
+
 export async function getGeneration(db: SupabaseClient, ctx: PipelineCtx, id: string): Promise<IpGeneration> {
   const generation = await generations.getById(db, id)
   if (!generation) throw notFound()
@@ -134,10 +197,22 @@ export async function startGeneration(
   }
   const d = parsed.data
 
-  const hasImage = !!d.source_image_url
+  // Index-aligned arrays: a URL must have a matching public_id and vice-versa.
+  const imageUrls = d.source_image_urls ?? []
+  const imagePublicIds = d.source_image_public_ids ?? []
+  if (imageUrls.length !== imagePublicIds.length) {
+    throw new AppError(400, 'Those reference images aren’t valid. Please re-add them.', 'IP_GENERATION_INVALID')
+  }
+
+  const hasImage = imageUrls.length > 0
   const hasPrompt = !!d.user_prompt?.trim()
   if (!hasImage && !hasPrompt) {
     throw new AppError(400, 'Add a reference image or a prompt to start a generation.', 'IP_GENERATION_NO_INPUT')
+  }
+
+  const presetKey = d.prompt_preset?.trim() || DEFAULT_PROMPT_PRESET_KEY
+  if (!isKnownPresetShape(presetKey)) {
+    throw new AppError(400, 'Pick a valid preset.', 'IP_GENERATION_INVALID')
   }
 
   const channel = d.channel ?? 'api'
@@ -177,10 +252,11 @@ export async function startGeneration(
     {
       channel,
       tier,
-      source_image_public_id: d.source_image_public_id ?? null,
-      source_image_url: d.source_image_url ?? null,
+      source_image_public_ids: imagePublicIds,
+      source_image_urls: imageUrls,
       user_prompt: d.user_prompt?.trim() ? d.user_prompt.trim() : null,
       user_notes: d.user_notes?.trim() ? d.user_notes.trim() : null,
+      prompt_preset: presetKey,
       retention_weeks: retention,
     },
   )
@@ -338,9 +414,11 @@ async function runPromptStep(
 ): Promise<void> {
   let prompt: string
   try {
+    const systemPrompt = await resolveSystemPrompt(db, generation.prompt_preset, ctx.ownerId)
     prompt = await generateImagePrompt({
       tier: generation.tier,
-      sourceImageUrl: generation.source_image_url,
+      systemPrompt,
+      sourceImageUrls: generation.source_image_urls,
       userPrompt: generation.user_prompt,
       userNotes: generation.user_notes,
     })
@@ -407,7 +485,7 @@ async function renderAndStore(
   const rendered = await renderImage({
     tier: generation.tier as ImageTier,
     prompt,
-    sourceImageUrl: generation.source_image_url,
+    sourceImageUrls: generation.source_image_urls,
     size,
   })
 
@@ -439,6 +517,8 @@ async function failRun(
   console.error('[image-pipeline] run failed', {
     generationId,
     code: err instanceof AppError ? err.code : 'IP_UNKNOWN',
+    httpStatus: err instanceof AppError ? err.statusCode : undefined,
+    detail: err instanceof AppError ? undefined : (err as Error)?.message,
   })
   await refundStep(db, { userId: ctx.userId, amount: refundAmount, generationId })
   await generations

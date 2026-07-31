@@ -14,6 +14,7 @@ import {
   type LedgerReason,
 } from '@/types/image-pipeline'
 import type { PipelineCtx } from './tier.service'
+import { notifyCreditRequestFiled } from './notify'
 
 /**
  * Credit business logic. Every delta goes through the ip_charge_credits
@@ -114,11 +115,21 @@ export async function createCreditRequest(
     throw new AppError(400, parsed.error.issues[0]?.message ?? 'That request isn’t valid.', 'IP_CREDIT_REQUEST_INVALID')
   }
   const { amount, note } = parsed.data
-  return requests.create(
+  const created = await requests.create(
     db,
     { user_id: ctx.userId, owner_id: ctx.ownerId },
     { amount: Math.round(amount * 100) / 100, note: note?.trim() ? note.trim() : null },
   )
+
+  // Let the owner + workspace admins know a request is waiting. Best-effort.
+  await notifyCreditRequestFiled({
+    ownerId: ctx.ownerId,
+    actorId: ctx.userId,
+    requesterName: ctx.email ?? null,
+    amount: created.amount,
+  })
+
+  return created
 }
 
 export { CREDIT_COST }

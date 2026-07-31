@@ -14,9 +14,11 @@ import type {
   IpCreditRequest,
   IpGeneration,
   IpRateConfig,
+  PromptPresetOption,
   RateKey,
   RetentionWeeks,
   TierResolution,
+  UpsertPromptPresetRequest,
 } from '@/types/image-pipeline'
 
 /**
@@ -64,10 +66,11 @@ export async function setSkipPromptReview(skip: boolean): Promise<void> {
 /* ── Generations ──────────────────────────────────────────────────────────── */
 
 export interface StartGenerationInput {
-  source_image_public_id?: string
-  source_image_url?: string
+  source_image_public_ids?: string[]
+  source_image_urls?: string[]
   user_prompt?: string
   user_notes?: string
+  prompt_preset?: string
   channel?: GenerationChannel
   retention_weeks?: RetentionWeeks
 }
@@ -112,6 +115,12 @@ export async function rejectGeneration(id: string): Promise<IpGeneration> {
   const { generation } = await apiFetch<{ generation: IpGeneration }>(`${BASE}/generations/${id}/reject`, {
     method: 'POST',
   })
+  return generation
+}
+
+/** Re-attempt a failed run from where it broke — reuses the existing prompt/preview. */
+export async function retryGeneration(id: string): Promise<IpGeneration> {
+  const { generation } = await apiFetch<GenerationResult>(`${BASE}/generations/${id}/retry`, { method: 'POST' })
   return generation
 }
 
@@ -190,6 +199,33 @@ export async function requestCredits(amount: number, note?: string): Promise<IpC
     body: JSON.stringify({ amount, note }),
   })
   return request
+}
+
+/* ── Prompt presets ───────────────────────────────────────────────────────── */
+
+export async function listPromptPresets(): Promise<PromptPresetOption[]> {
+  const { presets } = await apiFetch<{ presets: PromptPresetOption[] }>(`${BASE}/presets`)
+  return presets
+}
+
+export async function createPromptPreset(input: UpsertPromptPresetRequest): Promise<PromptPresetOption> {
+  const { preset } = await apiFetch<{ preset: PromptPresetOption }>(`${BASE}/presets`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  return preset
+}
+
+export async function updatePromptPreset(id: string, input: UpsertPromptPresetRequest): Promise<PromptPresetOption> {
+  const { preset } = await apiFetch<{ preset: PromptPresetOption }>(`${BASE}/presets/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
+  return preset
+}
+
+export async function deletePromptPreset(id: string): Promise<void> {
+  await apiFetch(`${BASE}/presets/${id}`, { method: 'DELETE' })
 }
 
 /* ── Admin ────────────────────────────────────────────────────────────────── */

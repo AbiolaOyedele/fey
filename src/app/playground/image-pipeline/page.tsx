@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Sparkles, RefreshCw, Download, RotateCcw, AlertCircle, Maximize2, Clock } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
-import { CREDIT_COST, RETENTION_WEEK_OPTIONS, DEFAULT_RETENTION_WEEKS } from '@/types/image-pipeline'
+import { CREDIT_COST, RETENTION_WEEK_OPTIONS, DEFAULT_RETENTION_WEEKS, DEFAULT_PROMPT_PRESET_KEY } from '@/types/image-pipeline'
 import type { GenerationChannel, GenerationStatus, RetentionWeeks } from '@/types/image-pipeline'
 import { useImagePipeline } from '@/hooks/useImagePipeline'
 import { useImagePipelineContext } from '@/hooks/useImagePipelineContext'
 import ReferenceUploader, { type ReferenceAsset } from '@/components/features/image-pipeline/ReferenceUploader'
+import PresetPicker from '@/components/features/image-pipeline/PresetPicker'
 import ChannelSelector from '@/components/features/image-pipeline/ChannelSelector'
 import PromptGate from '@/components/features/image-pipeline/PromptGate'
 import PreviewStage from '@/components/features/image-pipeline/PreviewStage'
@@ -26,10 +27,11 @@ export default function ImagePipelineGeneratePage() {
   const { settings, showToast } = useSettings()
   const accent = settings.accent_color || '#ED64A6'
   const { context, channels, refresh, updateRetention } = useImagePipelineContext()
-  const { generation, busy, error, start, confirm, edit, approve, reject, reset } = useImagePipeline(refresh)
+  const { generation, busy, error, start, confirm, edit, approve, reject, retry, reset } = useImagePipeline(refresh)
 
-  const [asset, setAsset] = useState<ReferenceAsset | null>(null)
+  const [assets, setAssets] = useState<ReferenceAsset[]>([])
   const [prompt, setPrompt] = useState('')
+  const [preset, setPreset] = useState<string>(DEFAULT_PROMPT_PRESET_KEY)
   const [channel, setChannel] = useState<GenerationChannel>('api')
   const [retention, setRetention] = useState<RetentionWeeks>(DEFAULT_RETENTION_WEEKS)
   const [retentionSynced, setRetentionSynced] = useState(false)
@@ -56,9 +58,11 @@ export default function ImagePipelineGeneratePage() {
   const balance = context?.balance ?? 0
   const canAfford = balance >= CREDIT_COST.preview
   const status = generation?.status
-  const hasInput = !!asset || prompt.trim().length > 0
+  const readyImages = assets.filter((a) => a.status === 'done' && a.url && a.public_id)
+  const uploadingImages = assets.some((a) => a.status === 'uploading')
+  const hasInput = readyImages.length > 0 || prompt.trim().length > 0
 
-  const startNew = () => { reset(); setAsset(null); setPrompt(''); prevStatus.current = null }
+  const startNew = () => { reset(); setAssets([]); setPrompt(''); prevStatus.current = null }
 
   const chooseRetention = (weeks: RetentionWeeks) => {
     setRetention(weeks)
@@ -71,8 +75,14 @@ export default function ImagePipelineGeneratePage() {
     const args = {
       channel,
       retention_weeks: retention,
-      ...(asset ? { source_image_public_id: asset.public_id, source_image_url: asset.url } : {}),
+      ...(readyImages.length > 0
+        ? {
+            source_image_public_ids: readyImages.map((a) => a.public_id as string),
+            source_image_urls: readyImages.map((a) => a.url as string),
+          }
+        : {}),
       ...(prompt.trim() ? { user_prompt: prompt.trim() } : {}),
+      prompt_preset: preset,
     }
     const r = await start(args)
     showToast(r.ok ? 'Generation started — writing your prompt…' : r.message ?? 'Couldn’t start the generation.')
@@ -94,6 +104,10 @@ export default function ImagePipelineGeneratePage() {
     const r = await reject()
     showToast(r.ok ? 'Preview rejected — it stays in your gallery until it expires.' : r.message ?? 'Couldn’t reject.')
   }
+  const doRetry = async () => {
+    const r = await retry()
+    showToast(r.ok ? 'Retrying — reusing your prompt…' : r.message ?? 'Couldn’t retry.')
+  }
 
   const downloadFinal = async () => {
     if (!generation?.final_url) return
@@ -113,8 +127,8 @@ export default function ImagePipelineGeneratePage() {
     return (
       <div className="space-y-5">
         <div>
-          <label className="block text-2xs font-semibold uppercase tracking-widest text-gray-300 mb-2">Reference image (optional)</label>
-          <ReferenceUploader asset={asset} onSelect={setAsset} accent={accent} />
+          <label className="block text-2xs font-semibold uppercase tracking-widest text-gray-300 mb-2">Reference images (optional)</label>
+          <ReferenceUploader assets={assets} setAssets={setAssets} accent={accent} />
         </div>
 
         <div>
@@ -123,11 +137,13 @@ export default function ImagePipelineGeneratePage() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             rows={3}
-            placeholder={asset ? 'Add direction for the reference — mood, style, framing… (optional)' : 'Describe what you want to generate…'}
+            placeholder={assets.length > 0 ? 'Add direction for the references — mood, style, framing… (optional)' : 'Describe what you want to generate…'}
             className="w-full rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700 outline-none resize-y focus:border-gray-300"
           />
-          <p className="text-2xs text-gray-400 mt-1.5">Claude refines your prompt before generating. A reference image is optional — a prompt alone works.</p>
+          <p className="text-2xs text-gray-400 mt-1.5">Claude refines your prompt before generating. Reference images are optional — a prompt alone works.</p>
         </div>
+
+        <PresetPicker value={preset} onChange={setPreset} accent={accent} />
 
         <RetentionChooser value={retention} onChange={chooseRetention} accent={accent} />
 
@@ -140,11 +156,11 @@ export default function ImagePipelineGeneratePage() {
           <button
             type="button"
             onClick={beginGeneration}
-            disabled={!hasInput || busy || !canAfford}
+            disabled={!hasInput || busy || !canAfford || uploadingImages}
             className="inline-flex items-center gap-2 rounded-xl px-5 h-12 text-sm font-medium text-white transition-all active:scale-[0.98] disabled:opacity-50"
             style={{ backgroundColor: accent }}
           >
-            <Sparkles size={16} /> {busy ? 'Starting…' : `Generate · ${fmtCredits(CREDIT_COST.preview)} credits`}
+            <Sparkles size={16} /> {uploadingImages ? 'Uploading images…' : busy ? 'Starting…' : `Generate · ${fmtCredits(CREDIT_COST.preview)} credits`}
           </button>
           {context && (
             <span className="text-2xs text-gray-400">
@@ -232,14 +248,10 @@ export default function ImagePipelineGeneratePage() {
         </div>
       )}
 
-      {(status === 'rejected' || status === 'failed') && (
+      {status === 'rejected' && (
         <div className="rounded-2xl border border-gray-100 bg-white p-8 flex flex-col items-center text-center">
-          <StatusPill status={status} accent={accent} />
-          <p className="text-sm text-gray-500 mt-3">
-            {status === 'rejected'
-              ? 'Preview rejected. It stays in your gallery and auto-deletes when it expires.'
-              : (generation.error_message ?? 'That generation failed. You can start a new one.')}
-          </p>
+          <StatusPill status="rejected" accent={accent} />
+          <p className="text-sm text-gray-500 mt-3">Preview rejected. It stays in your gallery and auto-deletes when it expires.</p>
           <button
             type="button"
             onClick={startNew}
@@ -248,6 +260,43 @@ export default function ImagePipelineGeneratePage() {
           >
             <RotateCcw size={15} /> Start a new generation
           </button>
+        </div>
+      )}
+
+      {status === 'failed' && (
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <StatusPill status="failed" accent={accent} />
+          </div>
+          <p className="text-sm text-gray-600">{generation.error_message ?? 'That generation failed.'}</p>
+
+          {(generation.final_prompt ?? generation.generated_prompt) && (
+            <div className="mt-3 rounded-xl bg-gray-50 border border-gray-100 p-3">
+              <p className="text-2xs font-semibold uppercase tracking-widest text-gray-300 mb-1">Your prompt — saved</p>
+              <p className="text-xs text-gray-600 whitespace-pre-wrap">{generation.final_prompt ?? generation.generated_prompt}</p>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-2 mt-4">
+            <button
+              type="button"
+              onClick={doRetry}
+              disabled={busy}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-12 text-sm font-medium text-white transition-all active:scale-[0.98] disabled:opacity-60"
+              style={{ backgroundColor: accent }}
+            >
+              <RotateCcw size={15} className={busy ? 'animate-spin' : ''} /> {busy ? 'Retrying…' : 'Retry generation'}
+            </button>
+            <button
+              type="button"
+              onClick={startNew}
+              disabled={busy}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 px-4 h-12 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all active:scale-[0.98] disabled:opacity-60"
+            >
+              Start new
+            </button>
+          </div>
+          <p className="text-2xs text-gray-400 mt-2">Retry reuses your saved prompt — Claude isn’t run again, and a failed retry is refunded.</p>
         </div>
       )}
 

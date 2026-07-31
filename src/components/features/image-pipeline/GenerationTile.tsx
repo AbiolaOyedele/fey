@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, Maximize2, Sparkles } from 'lucide-react'
+import { Download, Maximize2, Sparkles, RotateCcw } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import type { IpGeneration } from '@/types/image-pipeline'
 import StatusPill from './StatusPill'
@@ -15,12 +15,29 @@ import { fmtDateTime } from './format'
  * file to disk. Rejected previews are retained (they auto-delete on expiry like
  * any image), so they still show and remain downloadable.
  */
-export default function GenerationTile({ generation, accent }: { generation: IpGeneration; accent: string }) {
+export default function GenerationTile({
+  generation,
+  accent,
+  onRetry,
+}: {
+  generation: IpGeneration
+  accent: string
+  onRetry?: (id: string) => Promise<{ ok: boolean; message: string }>
+}) {
   const { showToast } = useSettings()
   const [lightbox, setLightbox] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [retrying, setRetrying] = useState(false)
 
-  const image = generation.final_url ?? generation.preview_url ?? generation.source_image_url
+  const retry = async () => {
+    if (!onRetry) return
+    setRetrying(true)
+    const result = await onRetry(generation.id)
+    setRetrying(false)
+    showToast(result.message)
+  }
+
+  const image = generation.final_url ?? generation.preview_url ?? generation.source_image_urls[0] ?? null
   const downloadable = generation.final_url ?? generation.preview_url
   const kind: 'final' | 'preview' = generation.final_url ? 'final' : 'preview'
   const caption = generation.final_prompt ?? generation.generated_prompt ?? generation.user_prompt ?? generation.user_notes ?? undefined
@@ -87,10 +104,24 @@ export default function GenerationTile({ generation, accent }: { generation: IpG
         <p className="text-xs text-gray-600 line-clamp-2 min-h-[2rem]">
           {caption ?? 'Untitled generation'}
         </p>
+        {generation.status === 'failed' && generation.error_message && (
+          <p className="text-2xs mt-1 line-clamp-2" style={{ color: '#E53E3E' }}>{generation.error_message}</p>
+        )}
         <div className="flex items-center justify-between mt-2">
           <span className="text-3xs text-gray-400">{fmtDateTime(generation.created_at)}</span>
           <ExpiryCountdown expiresAt={generation.expires_at} />
         </div>
+        {generation.status === 'failed' && onRetry && (
+          <button
+            type="button"
+            onClick={retry}
+            disabled={retrying}
+            className="mt-2.5 w-full inline-flex items-center justify-center gap-1.5 rounded-lg h-9 text-xs font-medium text-white transition-all active:scale-[0.98] disabled:opacity-60"
+            style={{ backgroundColor: accent }}
+          >
+            <RotateCcw size={13} className={retrying ? 'animate-spin' : ''} /> {retrying ? 'Retrying…' : 'Retry generation'}
+          </button>
+        )}
       </div>
 
       {lightbox && image && (

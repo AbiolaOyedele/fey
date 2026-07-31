@@ -19,7 +19,7 @@ import CostDashboard from '@/components/features/image-pipeline/admin/CostDashbo
 export default function ImagePipelineAdminPage() {
   const { settings, showToast } = useSettings()
   const accent = settings.accent_color || '#ED64A6'
-  const { context, loading: ctxLoading } = useImagePipelineContext()
+  const { context, loading: ctxLoading, refresh: refreshContext } = useImagePipelineContext()
   const admin = useImagePipelineAdmin()
 
   const nameOf = useCallback(
@@ -37,9 +37,9 @@ export default function ImagePipelineAdminPage() {
   const upsertAllocation = useCallback((userId: string, amount: number, cadence: AllocationCadence) =>
     toastOk(() => admin.upsertAllocation(userId, amount, cadence), 'Allocation saved'), [admin, toastOk])
   const grant = useCallback((userId: string, amount: number) =>
-    toastOk(() => admin.grant(userId, amount), 'Credits granted'), [admin, toastOk])
+    toastOk(async () => { await admin.grant(userId, amount); await refreshContext() }, 'Credits granted'), [admin, toastOk, refreshContext])
   const resolveRequest = useCallback((requestId: string, decision: 'approved' | 'denied') =>
-    toastOk(() => admin.resolveRequest(requestId, decision), decision === 'approved' ? 'Request approved' : 'Request denied'), [admin, toastOk])
+    toastOk(async () => { await admin.resolveRequest(requestId, decision); await refreshContext() }, decision === 'approved' ? 'Request approved' : 'Request denied'), [admin, toastOk, refreshContext])
   const updateRate = useCallback((key: RateKey, value: number) =>
     toastOk(() => admin.updateRate(key, value), 'Rate updated'), [admin, toastOk])
 

@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.22.0",
+    "date": "31 July 2026",
+    "title": "Image Pipeline upgrades & a smarter background remover",
+    "features": [
+      "Add up to four reference images to a generation instead of just one",
+      "Pick a style preset before you generate — choose a built-in one or save your own",
+      "Retry a failed generation without starting over — your prompt and reference images are kept",
+      "Get notified when you request credits, when they're granted, and when a request is resolved — admins are told too",
+      "The background remover now picks the best engine for your device, with a Quality menu if you'd rather choose"
+    ],
+    "improvements": [
+      "Your credit balance updates the moment credits are granted, with no refresh needed",
+      "Background removal models are stored properly now, so they stop re-downloading every few visits",
+      "The Quality menu shows the download size up front, or says it's ready when nothing needs downloading",
+      "Best quality quietly falls back to Fast on devices that can't run it, instead of failing",
+      "QR Generator moved to the bottom of the Ruff Tools list"
+    ],
+    "fixes": [
+      "Fixed \"That reference image isn't valid\" when adding a reference image",
+      "Fixed image generation failing with a vague \"busy right now\" message — it now explains what actually went wrong",
+      "Fixed the Best background-removal engine failing right after its model finished downloading"
+    ]
+  },
+  {
     "version": "1.21.0",
     "date": "30 July 2026",
     "title": "Images in tasks, Ruff Tools & tidier Settings",

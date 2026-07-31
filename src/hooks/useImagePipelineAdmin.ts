@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import {
   adminCostDashboard,
   adminGetRates,
@@ -49,6 +50,7 @@ export function useImagePipelineAdmin(): AdminState {
   const [period, setPeriodState] = useState<'week' | 'month'>('month')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const instanceId = useId()
 
   const refetch = useCallback(async () => {
     setLoading(true)
@@ -73,6 +75,20 @@ export function useImagePipelineAdmin(): AdminState {
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void refetch() }, [refetch])
+
+  // Live admin queue: a new request or a resolution (RLS scopes what we receive)
+  // refreshes the panel so the owner sees requests without reloading.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`ip-requests-${instanceId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'ip_credit_requests' },
+        () => { void refetch() },
+      )
+      .subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [refetch, instanceId])
 
   const setPeriod = useCallback((p: 'week' | 'month') => setPeriodState(p), [])
 

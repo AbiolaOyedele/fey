@@ -28,6 +28,7 @@ import {
   type RateKey,
 } from '@/types/image-pipeline'
 import { isPipelineAdmin, resolveAdminContext, resolveTierFor, type PipelineCtx } from './tier.service'
+import { notifyCreditsGranted, notifyCreditRequestResolved } from './notify'
 
 /**
  * Admin operations for the Image Pipeline: member tiers, allocations, credit
@@ -172,6 +173,11 @@ export async function adminManualGrant(db: SupabaseClient, ctx: PipelineCtx, inp
     reason: 'manual_grant',
     created_by: ctx.userId,
   })
+  await notifyCreditsGranted({
+    recipientId: parsed.data.user_id,
+    actorId: ctx.userId,
+    amount: parsed.data.amount,
+  })
 }
 
 export async function adminListRequests(db: SupabaseClient, ctx: PipelineCtx): Promise<IpCreditRequest[]> {
@@ -209,6 +215,13 @@ export async function adminResolveRequest(db: SupabaseClient, ctx: PipelineCtx, 
       created_by: ctx.userId,
     })
   }
+
+  await notifyCreditRequestResolved({
+    recipientId: resolved.user_id,
+    actorId: ctx.userId,
+    decision: parsed.data.decision,
+    amount: resolved.amount,
+  })
 }
 
 export async function adminGetRates(db: SupabaseClient, ctx: PipelineCtx): Promise<IpRateConfig[]> {

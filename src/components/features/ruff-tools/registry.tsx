@@ -11,16 +11,6 @@ import type { RuffTool, RuffToolGroup } from '@/types/ruffTool'
 export const RUFF_TOOLS: RuffTool[] = [
   // Greatest Hits
   {
-    id: 'qr', name: 'QR Generator', group: 'Greatest Hits', icon: QrCode,
-    tagline: 'Create custom QR codes for any link or text — your colours, shapes and a centre logo.',
-    howTo: [
-      'Type or paste what the code should point to — the preview updates as you go.',
-      'Style it: dot shape, colours, and drop in a centre logo if you like.',
-      'Save a style you like and reuse it on the next code.',
-      'Download as PNG or SVG when it looks right.',
-    ],
-  },
-  {
     id: 'background-remover', name: 'Background Remover', group: 'Greatest Hits', icon: Eraser, badge: 'Beta',
     tagline: 'Erase the background from one image or a whole batch, right in your browser. Clean transparent PNGs.',
     howTo: [
@@ -102,6 +92,16 @@ export const RUFF_TOOLS: RuffTool[] = [
       'Tune detail, colours and smoothing to balance fidelity vs file size.',
       'Preview the vector rebuilt from paths next to the original.',
       'Download the result as an SVG.',
+    ],
+  },
+  {
+    id: 'qr', name: 'QR Generator', group: 'Images & Assets', icon: QrCode,
+    tagline: 'Create custom QR codes for any link or text — your colours, shapes and a centre logo.',
+    howTo: [
+      'Type or paste what the code should point to — the preview updates as you go.',
+      'Style it: dot shape, colours, and drop in a centre logo if you like.',
+      'Save a style you like and reuse it on the next code.',
+      'Download as PNG or SVG when it looks right.',
     ],
   },
 ]

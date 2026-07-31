@@ -112,6 +112,87 @@ export const RETENTION_WEEK_OPTIONS = [1, 2] as const
 export type RetentionWeeks = (typeof RETENTION_WEEK_OPTIONS)[number]
 export const DEFAULT_RETENTION_WEEKS: RetentionWeeks = 2
 
+/** Max reference images a single run may carry (both Claude and Gemini accept several). */
+export const MAX_REFERENCE_IMAGES = 4
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Prompt presets
+ * The prompt-writing step runs under a chosen "preset" system prompt. Built-in
+ * presets are defined in code (their system-prompt text is server-only and is
+ * cached at the model). Workspaces can also author their own presets, stored in
+ * ip_prompt_presets. A generation records the preset KEY it used: a built-in key
+ * (e.g. 'default') or a custom preset's UUID.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export const DEFAULT_PROMPT_PRESET_KEY = 'default'
+
+/** Field limits shared by the DB, Zod schemas and the UI. */
+export const PRESET_LIMITS = {
+  name: 80,
+  description: 200,
+  systemPrompt: 8000,
+} as const
+
+/** Built-in preset metadata (label/description only — the system prompt is server-only). */
+export interface BuiltinPresetMeta {
+  key: string
+  label: string
+  description: string
+}
+
+/**
+ * Built-in presets, always available to every workspace. Keep the KEY stable
+ * (it's stored on generations); the system-prompt text for each lives in
+ * `src/lib/image-pipeline-presets.ts` (server-only).
+ */
+export const BUILTIN_PROMPT_PRESETS: readonly BuiltinPresetMeta[] = [
+  {
+    key: DEFAULT_PROMPT_PRESET_KEY,
+    label: 'Default — cinematic realism',
+    description: 'Richly detailed, photorealistic prompts with camera, lighting and film-grain cues.',
+  },
+] as const
+
+/** A workspace-authored preset. Maps to ip_prompt_presets. */
+export interface IpPromptPreset {
+  id: string
+  owner_id: string
+  /** The member who created it (drives "manage your own" rights). */
+  user_id: string
+  name: string
+  description: string | null
+  system_prompt: string
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * A selectable preset in the UI — a built-in or a custom one, in one shape.
+ * `key` is what gets stored on the generation and sent when starting a run.
+ */
+export interface PromptPresetOption {
+  key: string
+  label: string
+  description: string | null
+  builtin: boolean
+  /** Custom presets only — the user-authored text, shown in the manage UI. */
+  system_prompt?: string
+  /** Custom presets only — creator id, so the UI can gate edit/delete. */
+  created_by?: string
+}
+
+/** POST/PATCH body for creating or updating a custom preset. */
+export interface UpsertPromptPresetRequest {
+  name: string
+  description?: string
+  system_prompt: string
+}
+
+/** GET /api/v1/image-pipeline/presets — built-ins first, then the workspace's own. */
+export interface ListPromptPresetsResponse {
+  presets: PromptPresetOption[]
+}
+
 /* ────────────────────────────────────────────────────────────────────────────
  * Entity rows (mirror DB tables)
  * ──────────────────────────────────────────────────────────────────────────── */
@@ -126,12 +207,18 @@ export interface IpGeneration {
   channel: GenerationChannel
   tier: ImageTier
   status: GenerationStatus
-  /** Reference image is optional — a run can be prompt-only. */
-  source_image_public_id: string | null
-  source_image_url: string | null
+  /**
+   * Reference images are optional — a run can be prompt-only. Up to
+   * MAX_REFERENCE_IMAGES; empty arrays mean no reference. Index-aligned:
+   * source_image_urls[i] is the Cloudinary URL for source_image_public_ids[i].
+   */
+  source_image_public_ids: string[]
+  source_image_urls: string[]
   /** The user's own prompt when they supply one (Claude then improves it). */
   user_prompt: string | null
   user_notes: string | null
+  /** Which preset drove the prompt step: a built-in key or a custom preset UUID. */
+  prompt_preset: string
   /** Prompt returned by the prompt model; editable at the prompt gate. */
   generated_prompt: string | null
   /** Prompt actually used to render images (after any user edit). */
@@ -286,12 +373,14 @@ export interface ChannelAvailability {
  * can be image-based, prompt-only, or both.
  */
 export interface CreateGenerationRequest {
-  /** Reference image (optional), already uploaded via the client-signed flow. */
-  source_image_public_id?: string
-  source_image_url?: string
+  /** Reference images (optional), already uploaded via the client-signed flow. */
+  source_image_public_ids?: string[]
+  source_image_urls?: string[]
   /** The user's own prompt (optional); Claude improves it before generating. */
   user_prompt?: string
   user_notes?: string
+  /** Preset key driving the prompt step (built-in key or custom UUID); defaults to 'default'. */
+  prompt_preset?: string
   /** 'api' (default) or 'flow'; server rejects 'flow' unless a worker is online. */
   channel?: GenerationChannel
   /** Weeks to keep the images (1 or 2); defaults to the user's saved preference. */
@@ -456,10 +545,11 @@ export interface GenerationRepository {
     input: {
       channel: GenerationChannel
       tier: ImageTier
-      source_image_public_id: string | null
-      source_image_url: string | null
+      source_image_public_ids: string[]
+      source_image_urls: string[]
       user_prompt: string | null
       user_notes: string | null
+      prompt_preset: string
       retention_weeks: RetentionWeeks
     },
   ): Promise<IpGeneration>

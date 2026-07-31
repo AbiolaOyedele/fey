@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { env } from '@/config/env'
 import { AppError } from '@/lib/errors'
-import type { ImageTier } from '@/types/image-pipeline'
+import { MAX_REFERENCE_IMAGES, type ImageTier } from '@/types/image-pipeline'
 
 /**
  * Anthropic client for the Image Pipeline's prompt step: the user's reference
@@ -27,11 +27,12 @@ const MAX_USER_TEXT = 4000
 const TIMEOUT_MS = 60_000
 
 /**
- * System prompt for the prompt-writing step. Static by design: user notes and
- * prompts are untrusted input and are passed as message *content*, never
- * interpolated into these instructions.
+ * Fallback system prompt for the prompt-writing step, used only if a resolved
+ * preset ever comes through empty. Preset text (built-in or custom) is passed in
+ * by the caller. User notes and prompts are untrusted input and are passed as
+ * message *content*, never interpolated into these instructions.
  */
-const SYSTEM_PROMPT = `You write prompts for an image-generation model.
+const FALLBACK_SYSTEM_PROMPT = `You write prompts for an image-generation model.
 
 Given a reference image and/or a short description from a user, write ONE detailed image-generation prompt that captures:
 - subject and composition
@@ -66,8 +67,10 @@ function referenceUrl(url: string): string {
 
 export interface GeneratePromptInput {
   tier: ImageTier
-  /** Cloudinary URL of the reference image, when the run has one. */
-  sourceImageUrl: string | null
+  /** Resolved preset instructions (built-in or workspace-authored). Cached at the model. */
+  systemPrompt: string
+  /** Cloudinary URLs of the reference images, when the run has any. */
+  sourceImageUrls: string[]
   /** The user's own prompt, when they supplied one. */
   userPrompt: string | null
   userNotes: string | null
@@ -82,11 +85,15 @@ export async function generateImagePrompt(input: GeneratePromptInput): Promise<s
   const anthropic = getClient()
 
   const content: Anthropic.ContentBlockParam[] = []
-  if (input.sourceImageUrl) {
-    content.push({ type: 'image', source: { type: 'url', url: referenceUrl(input.sourceImageUrl) } })
+  const images = input.sourceImageUrls.slice(0, MAX_REFERENCE_IMAGES)
+  for (const url of images) {
+    content.push({ type: 'image', source: { type: 'url', url: referenceUrl(url) } })
   }
 
   const parts: string[] = []
+  if (images.length > 1) {
+    parts.push(`There are ${images.length} reference images. Treat the first as the main subject and the rest as supporting references for style, detail or context.`)
+  }
   if (input.userPrompt) parts.push(`What the user wants: ${input.userPrompt.slice(0, MAX_USER_TEXT)}`)
   if (input.userNotes) parts.push(`Extra direction: ${input.userNotes.slice(0, MAX_USER_TEXT)}`)
   if (parts.length === 0) parts.push('Describe the reference image as an image-generation prompt.')
@@ -96,10 +103,15 @@ export async function generateImagePrompt(input: GeneratePromptInput): Promise<s
     // Haiku 4.5 rejects `output_config.effort`; Sonnet 5 accepts it and runs
     // adaptive thinking by default, so pin it low — this is a short writing
     // task, not one that benefits from deep reasoning.
+    // Preset instructions go in the system block, marked cacheable: the same
+    // preset reused across runs (and across users) is served from Anthropic's
+    // prompt cache, so only the short per-run message is charged at full rate.
+    // Below the model's cache minimum it's a harmless no-op.
+    const systemText = input.systemPrompt.trim() || FALLBACK_SYSTEM_PROMPT
     const message = await anthropic.messages.create({
       model: PROMPT_MODEL[input.tier],
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content }],
       ...(input.tier === 'pro' ? { output_config: { effort: 'low' as const } } : {}),
     })

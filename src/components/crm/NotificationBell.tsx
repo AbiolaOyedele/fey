@@ -16,14 +16,15 @@ import {
   ListTodo,
   Paperclip,
   Inbox,
+  Sparkles,
 } from 'lucide-react'
 import { useAppNotifications } from '@/hooks/useNotifications'
 import type { AppNotification } from '@/types/notification'
 
 type Category = 'messages' | 'clients' | 'tasks'
 
-/** Maps each notification type to a filter category and an icon. */
-const TYPE_META: Record<string, { category: Category; icon: ReactNode }> = {
+/** Maps each notification type to a filter category (optional) and an icon. */
+const TYPE_META: Record<string, { category?: Category; icon: ReactNode }> = {
   client_message: { category: 'messages', icon: <MessageSquare size={15} /> },
   project_message: { category: 'messages', icon: <MessageSquare size={15} /> },
   mention: { category: 'messages', icon: <AtSign size={15} /> },
@@ -33,6 +34,10 @@ const TYPE_META: Record<string, { category: Category; icon: ReactNode }> = {
   invoice_paid: { category: 'clients', icon: <CreditCard size={15} /> },
   task_assigned: { category: 'tasks', icon: <ListTodo size={15} /> },
   project_file: { category: 'tasks', icon: <Paperclip size={15} /> },
+  // Image Pipeline credit events — no filter category (they surface under "All").
+  image_credit_request: { icon: <Sparkles size={15} /> },
+  image_credit_request_resolved: { icon: <Sparkles size={15} /> },
+  image_credits_granted: { icon: <Sparkles size={15} /> },
 }
 
 const FILTERS: { key: 'all' | Category; label: string }[] = [

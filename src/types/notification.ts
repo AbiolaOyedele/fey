@@ -10,6 +10,10 @@ export type NotificationType =
   | 'form_submitted'
   | 'contract_signed'
   | 'mention'
+  // Image Pipeline credit events
+  | 'image_credit_request'
+  | 'image_credit_request_resolved'
+  | 'image_credits_granted'
 
 export interface AppNotification {
   id: string

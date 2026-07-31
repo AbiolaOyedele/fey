@@ -23,7 +23,7 @@ const PENDING_STATUSES = ['prompting', 'prompt_review', 'generating_preview', 'p
 export default function ImagePipelineGalleryPage() {
   const { settings } = useSettings()
   const accent = settings.accent_color || '#ED64A6'
-  const { generations, loading, error } = useImageGallery()
+  const { generations, loading, error, retry } = useImageGallery()
   const [filter, setFilter] = useState<Filter>('all')
 
   const shown = useMemo<IpGeneration[]>(() => {
@@ -71,7 +71,7 @@ export default function ImagePipelineGalleryPage() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {shown.map((g) => (
-            <GenerationTile key={g.id} generation={g} accent={accent} />
+            <GenerationTile key={g.id} generation={g} accent={accent} onRetry={retry} />
           ))}
         </div>
       )}

@@ -9,6 +9,7 @@ import {
   getActiveGeneration,
   pipelineErrorMessage,
   rejectGeneration,
+  retryGeneration,
   startGeneration,
   subscribeGeneration,
   type StartGenerationInput,
@@ -106,7 +107,12 @@ export function useImagePipeline(onCharged?: () => void) {
     return run(() => rejectGeneration(generation.id))
   }, [generation, run]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const retry = useCallback(() => {
+    if (!generation) return Promise.resolve(noGen)
+    return run(() => retryGeneration(generation.id))
+  }, [generation, run]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const reset = useCallback(() => { setGeneration(null); setError(null) }, [])
 
-  return { generation, busy, error, resuming, start, confirm, edit, approve, reject, reset }
+  return { generation, busy, error, resuming, start, confirm, edit, approve, reject, retry, reset }
 }

@@ -13,7 +13,7 @@ import {
 
 const SELECT = `
   id, user_id, owner_id, channel, tier, status,
-  source_image_public_id, source_image_url, user_prompt, user_notes,
+  source_image_public_ids, source_image_urls, user_prompt, user_notes, prompt_preset,
   generated_prompt, final_prompt,
   preview_public_id, preview_url, final_public_id, final_url,
   error_message, created_at, updated_at, expires_at
@@ -32,10 +32,11 @@ export const generationRepository: GenerationRepository = {
         channel: input.channel,
         tier: input.tier,
         status: 'prompting',
-        source_image_public_id: input.source_image_public_id,
-        source_image_url: input.source_image_url,
+        source_image_public_ids: input.source_image_public_ids,
+        source_image_urls: input.source_image_urls,
         user_prompt: input.user_prompt,
         user_notes: input.user_notes,
+        prompt_preset: input.prompt_preset,
         expires_at: expiresAt,
       })
       .select(SELECT)

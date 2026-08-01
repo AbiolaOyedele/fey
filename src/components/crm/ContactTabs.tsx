@@ -16,22 +16,32 @@ export default function ContactTabs({ contactId }: ContactTabsProps) {
   const pathname = usePathname() ?? ''
   const base = `/clients/${contactId}`
 
+  /**
+   * Tasks leads — it's the thing most often being checked. Files, Contracts,
+   * Forms, Payments and Invoices now live behind one Documents tab; their pages
+   * are unchanged, they're just reached from there instead of from five tabs
+   * that overflowed the bar on any phone.
+   */
   const tabs: Tab[] = [
+    { label: 'Tasks',           href: `${base}/tasks` },
     { label: 'Messages',        href: `${base}/messages` },
     { label: 'Brands',          href: `${base}/projects` },
-    { label: 'Files',           href: `${base}/files` },
-    { label: 'Contracts',       href: `${base}/contracts` },
-    { label: 'Forms',           href: `${base}/forms` },
-    { label: 'Payments',        href: `${base}/payments` },
-    { label: 'Invoices',        href: `${base}/invoices` },
-    { label: 'Tasks',           href: `${base}/tasks` },
+    { label: 'Documents',       href: `${base}/documents` },
+    { label: 'Members',         href: `${base}/portal-members` },
     { label: 'Portal Settings', href: `${base}/portal-settings` },
   ]
 
+  /** Sub-pages that should keep the Documents tab lit while they're open. */
+  const DOCUMENT_PATHS = ['/files', '/contracts', '/forms', '/payments', '/invoices']
+
   return (
-    <div className="flex items-center gap-0 overflow-x-auto border-b border-gray-100 bg-white">
+    <div className="flex items-center gap-0 overflow-x-auto border-b border-gray-100 bg-white scrollbar-none">
       {tabs.map((tab) => {
-        const isActive = pathname === tab.href || pathname.startsWith(`${tab.href}/`)
+        const isDocuments = tab.href.endsWith('/documents')
+        const isActive =
+          pathname === tab.href ||
+          pathname.startsWith(`${tab.href}/`) ||
+          (isDocuments && DOCUMENT_PATHS.some((p) => pathname.startsWith(`${base}${p}`)))
         return (
           <Link
             key={tab.href}

@@ -27,3 +27,16 @@ export function usePortalBranding(subdomain: string): PortalBranding | null {
 
   return branding
 }
+
+/** Fey's default accent, used until branding resolves (or if none is set). */
+export const DEFAULT_PORTAL_ACCENT = '#ED64A6'
+
+/**
+ * Just the accent colour for a portal, with a sensible default while branding
+ * loads. Saves every page re-deriving `branding?.accent_color || '#ED64A6'`,
+ * and keeps the fallback in one place.
+ */
+export function usePortalAccent(subdomain: string): string {
+  const branding = usePortalBranding(subdomain)
+  return branding?.accent_color || DEFAULT_PORTAL_ACCENT
+}

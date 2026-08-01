@@ -63,7 +63,7 @@ export async function getPortalUser(
 ): Promise<PortalUser | null> {
   const { data, error } = await db
     .from('portal_users')
-    .select('id, contact_id, owner_id, workspace_slug, name, email, avatar_url, created_at')
+    .select('id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at')
     .eq('id', portalUserId)
     .maybeSingle()
   if (error ?? !data) return null
@@ -77,7 +77,7 @@ export async function getPortalUserByWorkspaceAndEmail(
 ): Promise<(PortalUser & { password_hash: string | null }) | null> {
   const { data, error } = await db
     .from('portal_users')
-    .select('id, contact_id, owner_id, workspace_slug, name, email, avatar_url, created_at, password_hash')
+    .select('id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at, password_hash')
     .eq('workspace_slug', workspaceSlug)
     .eq('email', email)
     .maybeSingle()
@@ -92,7 +92,7 @@ export async function getPortalUserByContactAndOwner(
 ): Promise<PortalUser | null> {
   const { data, error } = await db
     .from('portal_users')
-    .select('id, contact_id, owner_id, workspace_slug, name, email, avatar_url, created_at')
+    .select('id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at')
     .eq('contact_id', contactId)
     .eq('owner_id', ownerId)
     .maybeSingle()
@@ -165,7 +165,7 @@ export async function createPortalUser(
       password_hash:  payload.password_hash,
       avatar_url:     payload.avatar_url,
     })
-    .select('id, contact_id, owner_id, workspace_slug, name, email, avatar_url, created_at')
+    .select('id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at')
     .single()
   if (error) throw error
   return data as PortalUser

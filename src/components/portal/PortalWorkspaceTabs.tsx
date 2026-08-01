@@ -9,15 +9,31 @@ import { usePortalBase } from '@/hooks/usePortalBase'
  * ContactTabs. Each maps to an existing /portal/[subdomain]/<path> route.
  * Exported so PortalShell can decide when to show the tab bar.
  */
+/**
+ * Tasks leads — it's what a client checks most. Files, Contracts, Forms,
+ * Payments and Invoices sit behind one Documents tab: five tabs of paperwork
+ * overflowed the bar on any phone, and they're all the same kind of thing.
+ * Their pages are unchanged, only the way in.
+ *
+ * Note on `/projects`: the section is called **Brands** everywhere the client
+ * can see. The route and the underlying table keep the old name so existing
+ * links and data are untouched — this is a relabel, not a migration.
+ */
 export const PORTAL_SECTIONS: { label: string; path: string }[] = [
-  { label: 'Messages',  path: '/messages' },
-  { label: 'Projects',  path: '/projects' },
-  { label: 'Files',     path: '/files' },
-  { label: 'Contracts', path: '/contracts' },
-  { label: 'Forms',     path: '/forms' },
-  { label: 'Payments',  path: '/payments' },
-  { label: 'Invoices',  path: '/invoices' },
   { label: 'Tasks',     path: '/tasks' },
+  { label: 'Messages',  path: '/messages' },
+  { label: 'Brands',    path: '/projects' },
+  { label: 'Documents', path: '/documents' },
+]
+
+/** Sub-pages that keep the Documents tab lit while they're open. */
+export const PORTAL_DOCUMENT_PATHS = ['/files', '/contracts', '/forms', '/payments', '/invoices']
+
+/** Every section path, including the ones folded into Documents — used by the
+ *  shell to decide when to show the tab bar at all. */
+export const PORTAL_TAB_PATHS = [
+  ...PORTAL_SECTIONS.map((s) => s.path),
+  ...PORTAL_DOCUMENT_PATHS,
 ]
 
 interface PortalWorkspaceTabsProps {
@@ -39,17 +55,20 @@ export default function PortalWorkspaceTabs({ subdomain, accent }: PortalWorkspa
 
   return (
     <div
-      className="flex items-center gap-0 overflow-x-auto border-b bg-white flex-shrink-0"
+      className="flex items-center gap-0 overflow-x-auto border-b bg-white flex-shrink-0 scrollbar-none"
       style={{ borderColor: '#EBEBEB' }}
     >
       {PORTAL_SECTIONS.map(({ label, path }) => {
         const href = `${base}${path}`
-        const isActive = section === path || section.startsWith(`${path}/`)
+        const isActive =
+          section === path ||
+          section.startsWith(`${path}/`) ||
+          (path === '/documents' && PORTAL_DOCUMENT_PATHS.some((p) => section.startsWith(p)))
         return (
           <Link
             key={path}
             href={href}
-            className="flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors"
+            className="flex-shrink-0 px-4 h-12 inline-flex items-center text-sm font-medium border-b-2 transition-colors"
             style={{
               borderColor: isActive ? accent : 'transparent',
               color:       isActive ? '#111827' : 'rgba(0,0,0,0.40)',

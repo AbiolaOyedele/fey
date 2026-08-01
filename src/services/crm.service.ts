@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { AppError } from '@/lib/errors'
 import * as repo from '@/repositories/crm.repository'
 import { destroyCloudinaryAsset } from '@/lib/cloudinary-server'
+import { createServiceClient } from '@/lib/supabase-server'
+import { notifyClient } from './portal-notifications.service'
 import type {
   CrmContact,
   CrmMessage,
@@ -18,6 +20,20 @@ import type {
   UpdateFormPayload,
 } from '@/types/crm'
 import { z } from 'zod'
+
+/**
+ * Tells the client something arrived for them.
+ *
+ * Portal notifications live on their own table with their own recipient
+ * (portal users aren't auth users), and RLS has no client-facing insert policy
+ * — so this needs the service role regardless of which client the caller
+ * handed us. Created here rather than threaded through every route, and
+ * `notifyClient` already swallows its own failures: telling the client must
+ * never fail the owner's action.
+ */
+function announceToClient(args: Omit<Parameters<typeof notifyClient>[0], 'db'>): void {
+  void notifyClient({ db: createServiceClient(), ...args })
+}
 
 // ── Validation schemas ────────────────────────────────────────────────────────
 
@@ -163,7 +179,18 @@ export async function sendMessage(
   }
   const contact = await repo.getContact(db, parsed.data.contact_id, ownerId)
   if (!contact) throw new AppError(404, 'Contact not found.', 'CRM_CONTACT_NOT_FOUND')
-  return repo.createMessage(db, ownerId, senderId, parsed.data as CreateMessagePayload)
+  const message = await repo.createMessage(db, ownerId, senderId, parsed.data as CreateMessagePayload)
+  announceToClient({
+    contactId: parsed.data.contact_id,
+    ownerId,
+    type: 'message',
+    title: 'New message',
+    body: parsed.data.body.slice(0, 140),
+    link: '/messages',
+    entityType: 'crm_message',
+    entityId: message.id,
+  })
+  return message
 }
 
 export async function readMessages(db: SupabaseClient, contactId: string, ownerId: string): Promise<void> {
@@ -184,7 +211,18 @@ export async function addFile(
 ): Promise<CrmFile> {
   const contact = await repo.getContact(db, payload.contact_id, ownerId)
   if (!contact) throw new AppError(404, 'Contact not found.', 'CRM_CONTACT_NOT_FOUND')
-  return repo.createFile(db, ownerId, uploadedBy, payload)
+  const file = await repo.createFile(db, ownerId, uploadedBy, payload)
+  announceToClient({
+    contactId: payload.contact_id,
+    ownerId,
+    type: 'file',
+    title: 'New file shared',
+    body: file.file_name,
+    link: '/files',
+    entityType: 'crm_file',
+    entityId: file.id,
+  })
+  return file
 }
 
 export async function removeFile(db: SupabaseClient, id: string, ownerId: string): Promise<void> {
@@ -214,7 +252,22 @@ export async function createContract(
   }
   const contact = await repo.getContact(db, parsed.data.contact_id, ownerId)
   if (!contact) throw new AppError(404, 'Contact not found.', 'CRM_CONTACT_NOT_FOUND')
-  return repo.createContract(db, ownerId, parsed.data as CreateContractPayload)
+  const contract = await repo.createContract(db, ownerId, parsed.data as CreateContractPayload)
+  // Only a SENT contract is something the client can act on — a draft isn't
+  // theirs to see yet, so it stays silent until it's actually sent.
+  if (contract.status === 'sent') {
+    announceToClient({
+      contactId: parsed.data.contact_id,
+      ownerId,
+      type: 'contract',
+      title: 'A contract needs your signature',
+      body: contract.title ?? null,
+      link: '/contracts',
+      entityType: 'crm_contract',
+      entityId: contract.id,
+    })
+  }
+  return contract
 }
 
 export async function updateContract(
@@ -229,7 +282,23 @@ export async function updateContract(
   }
   const existing = await repo.getContract(db, id, ownerId)
   if (!existing) throw new AppError(404, 'Contract not found.', 'CRM_CONTRACT_NOT_FOUND')
-  return repo.updateContract(db, id, ownerId, parsed.data as UpdateContractPayload)
+  const contract = await repo.updateContract(db, id, ownerId, parsed.data as UpdateContractPayload)
+  // Draft → sent is the moment it becomes the client's to deal with. Comparing
+  // against `existing` keeps a later edit of an already-sent contract quiet
+  // rather than pinging them again for the same thing.
+  if (existing.status !== 'sent' && contract.status === 'sent') {
+    announceToClient({
+      contactId: contract.contact_id,
+      ownerId,
+      type: 'contract',
+      title: 'A contract needs your signature',
+      body: contract.title ?? null,
+      link: '/contracts',
+      entityType: 'crm_contract',
+      entityId: contract.id,
+    })
+  }
+  return contract
 }
 
 export async function deleteContract(db: SupabaseClient, id: string, ownerId: string): Promise<void> {
@@ -261,7 +330,20 @@ export async function createForm(
   }
   const contact = await repo.getContact(db, parsed.data.contact_id, ownerId)
   if (!contact) throw new AppError(404, 'Contact not found.', 'CRM_CONTACT_NOT_FOUND')
-  return repo.createForm(db, ownerId, parsed.data as CreateFormPayload)
+  const form = await repo.createForm(db, ownerId, parsed.data as CreateFormPayload)
+  if (form.status === 'sent') {
+    announceToClient({
+      contactId: parsed.data.contact_id,
+      ownerId,
+      type: 'form',
+      title: 'A form is waiting for you',
+      body: form.title ?? null,
+      link: '/forms',
+      entityType: 'crm_form',
+      entityId: form.id,
+    })
+  }
+  return form
 }
 
 export async function updateForm(
@@ -276,7 +358,20 @@ export async function updateForm(
   }
   const existing = await repo.getForm(db, id, ownerId)
   if (!existing) throw new AppError(404, 'Form not found.', 'CRM_FORM_NOT_FOUND')
-  return repo.updateForm(db, id, ownerId, parsed.data as UpdateFormPayload)
+  const form = await repo.updateForm(db, id, ownerId, parsed.data as UpdateFormPayload)
+  if (existing.status !== 'sent' && form.status === 'sent') {
+    announceToClient({
+      contactId: form.contact_id,
+      ownerId,
+      type: 'form',
+      title: 'A form is waiting for you',
+      body: form.title ?? null,
+      link: '/forms',
+      entityType: 'crm_form',
+      entityId: form.id,
+    })
+  }
+  return form
 }
 
 export async function deleteForm(db: SupabaseClient, id: string, ownerId: string): Promise<void> {

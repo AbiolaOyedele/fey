@@ -2,111 +2,76 @@
 
 import { use } from 'react'
 import Link from 'next/link'
-import {
-  MessageSquare, Folder, FileSignature, FolderOpen,
-  ClipboardList, CreditCard, FileText, CheckSquare2, ArrowRight,
-} from 'lucide-react'
+import { MessageSquare, Sparkles, FileText, CheckSquare2, ArrowRight, Briefcase } from 'lucide-react'
 import { usePortalBase } from '@/hooks/usePortalBase'
+import { usePortalAccent } from '@/hooks/usePortalBranding'
+import { Stagger, StaggerItem, FadeIn } from '@/components/ui/motion'
+
+/**
+ * Workspace — the client's hub, built to read like the owner's Playground: one
+ * card per corner, a single accent rather than a rainbow of per-section colours,
+ * and the same card/typography scale as the rest of the app.
+ */
 
 interface Section {
   label: string
   description: string
   icon: React.ElementType
-  color: string
-  href: string
+  /** Portal-relative path; the base is applied at render time. */
+  path: string
 }
+
+const SECTIONS: Section[] = [
+  { label: 'Tasks',     description: 'What’s in progress and what’s done.',     icon: CheckSquare2,  path: '/tasks' },
+  { label: 'Messages',  description: 'Chat directly with the team.',            icon: MessageSquare, path: '/messages' },
+  { label: 'Brands',    description: 'Each brand’s own chat and files.',        icon: Sparkles,      path: '/projects' },
+  { label: 'Documents', description: 'Files, contracts, forms and billing.',    icon: FileText,      path: '/documents' },
+]
 
 export default function WorkspacePage({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
-  const base = usePortalBase(subdomain)
-
-  const sections: Section[] = [
-    {
-      label:       'Messages',
-      description: 'Chat with your team',
-      icon:        MessageSquare,
-      color:       '#6366F1',
-      href:        `${base}/messages`,
-    },
-    {
-      label:       'Projects',
-      description: 'Each project’s chat and files',
-      icon:        FolderOpen,
-      color:       '#0EA5E9',
-      href:        `${base}/projects`,
-    },
-    {
-      label:       'Files',
-      description: 'Shared documents and assets',
-      icon:        Folder,
-      color:       '#F59E0B',
-      href:        `${base}/files`,
-    },
-    {
-      label:       'Contracts',
-      description: 'Sign and review agreements',
-      icon:        FileSignature,
-      color:       '#10B981',
-      href:        `${base}/contracts`,
-    },
-    {
-      label:       'Forms',
-      description: 'Requests and questionnaires',
-      icon:        ClipboardList,
-      color:       '#EC4899',
-      href:        `${base}/forms`,
-    },
-    {
-      label:       'Invoices',
-      description: 'Billing and payment history',
-      icon:        FileText,
-      color:       '#8B5CF6',
-      href:        `${base}/invoices`,
-    },
-    {
-      label:       'Payments',
-      description: 'Pending payment requests',
-      icon:        CreditCard,
-      color:       '#06B6D4',
-      href:        `${base}/payments`,
-    },
-    {
-      label:       'Tasks',
-      description: 'Your project deliverables',
-      icon:        CheckSquare2,
-      color:       '#84CC16',
-      href:        `${base}/tasks`,
-    },
-  ]
+  const base   = usePortalBase(subdomain)
+  const accent = usePortalAccent(subdomain)
 
   return (
-    <div className="p-6 max-w-3xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Workspace</h1>
-        <p className="text-sm text-gray-500 mt-1">Everything related to your project, in one place.</p>
-      </div>
+    <div className="p-4 md:p-6 lg:p-8 page-enter">
+      <FadeIn>
+        <div className="flex items-center gap-2 mb-1">
+          <Briefcase size={18} style={{ color: accent }} />
+          <h1 className="font-display text-xl font-normal text-gray-800">Workspace</h1>
+        </div>
+        <p className="text-xs text-gray-400 mb-6">Everything we’re working on together, in one place.</p>
+      </FadeIn>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {sections.map(({ label, description, icon: Icon, color, href }) => (
-          <Link
-            key={label}
-            href={href}
-            className="group flex items-center gap-4 bg-white rounded-2xl border border-gray-100 px-5 py-4 hover:border-gray-200 hover:shadow-sm transition-all"
-          >
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: `${color}18` }}
+      <Stagger className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-w-4xl">
+        {SECTIONS.map(({ label, description, icon: Icon, path }) => (
+          <StaggerItem key={path} whileHover={{ y: -3 }} whileTap={{ scale: 0.97 }}>
+            <Link
+              href={`${base}${path}`}
+              className="group relative block h-full bg-white rounded-2xl border border-gray-100 shadow-sm p-5 overflow-hidden hover:shadow-md transition-shadow duration-200"
             >
-              <Icon size={18} style={{ color }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900">{label}</p>
-              <p className="text-xs text-gray-400 truncate">{description}</p>
-            </div>
-            <ArrowRight size={14} className="text-gray-300 group-hover:text-gray-500 flex-shrink-0 transition-colors" />
-          </Link>
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6"
+                style={{ backgroundColor: `${accent}15`, color: accent }}
+              >
+                <Icon size={20} />
+              </div>
+              <h2 className="text-sm font-semibold text-gray-800 mb-1">{label}</h2>
+              <p className="text-xs text-gray-400 leading-relaxed mb-4">{description}</p>
+              <span
+                className="inline-flex items-center gap-1 text-xs font-medium transition-transform duration-200 group-hover:translate-x-0.5"
+                style={{ color: accent }}
+              >
+                Open <ArrowRight size={13} />
+              </span>
+              <Icon
+                size={96}
+                className="absolute -bottom-5 -right-5 text-gray-50 group-hover:text-gray-100 transition-colors pointer-events-none"
+              />
+            </Link>
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
     </div>
   )
 }

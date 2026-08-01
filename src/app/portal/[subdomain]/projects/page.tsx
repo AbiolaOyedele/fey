@@ -38,10 +38,12 @@ export default function PortalProjectsPage({ params }: { params: Promise<{ subdo
   }, [subdomain])
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6 lg:p-8 page-enter">
+      {/* Labelled "Brands" client-side; the route and table keep the old
+          `projects` name so existing links and data are untouched. */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
-        <p className="text-sm text-gray-400 mt-0.5">Each project keeps its chat and files together.</p>
+        <h1 className="font-display text-xl font-normal text-gray-800">Brands</h1>
+        <p className="text-xs text-gray-400 mt-1">Each brand keeps its chat and files together.</p>
       </div>
 
       {loading ? (
@@ -51,8 +53,8 @@ export default function PortalProjectsPage({ params }: { params: Promise<{ subdo
       ) : projects.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <FolderOpen size={32} className="text-gray-200 mb-3" />
-          <p className="text-sm2 font-medium text-gray-500">No projects yet</p>
-          <p className="text-xs2 text-gray-400 mt-1">Projects shared with you will appear here.</p>
+          <p className="text-sm2 font-medium text-gray-500">No brands yet</p>
+          <p className="text-xs2 text-gray-400 mt-1">Brands shared with you will appear here.</p>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-3">

@@ -587,7 +587,11 @@ function SettingsPageInner() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-800">Profile photo</p>
-                <p className="text-xs text-gray-400 mt-0.5">Max 2 MB</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Just for you inside Fey — clients never see it. Max 2 MB.
+                  <br />
+                  For the mark on invoices and your client portal, set a <span className="font-medium text-gray-500">Logo</span> under “Logo &amp; cover”.
+                </p>
                 {settings.avatar_url && (
                   <button onClick={() => void saveSetting('avatar_url', '')} className="text-xs text-red-400 hover:text-red-600 mt-1 underline underline-offset-2">Remove</button>
                 )}
@@ -795,7 +799,7 @@ function SettingsPageInner() {
                 </div>
               )}
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-800">Logo</p>
+                <p className="text-sm font-medium text-gray-800">Logo <span className="text-2xs font-normal text-gray-400">· clients see this</span></p>
                 <p className="text-xs text-gray-400 mt-0.5">Used on invoices and the client portal. Max 3 MB — optimised automatically</p>
                 <div className="flex gap-3 mt-1.5">
                   <button onClick={() => logoRef.current?.click()} className="text-xs font-medium underline underline-offset-2 text-gray-500 hover:text-gray-700">Upload</button>
@@ -803,6 +807,15 @@ function SettingsPageInner() {
                 </div>
               </div>
             </div>
+            {/* The avatar is a separate field, and uploading one there is the
+                usual reason this is still empty — say so rather than leaving the
+                portal quietly showing a letter. */}
+            {!settings.logo && (
+              <p className="text-2xs text-gray-500 leading-relaxed mt-3 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2">
+                No logo set, so your client portal and sidebar show the first letter of your business name instead.
+                Your profile picture is a different setting and isn’t used here — upload your logo above to replace the letter.
+              </p>
+            )}
             <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
           </div>
 

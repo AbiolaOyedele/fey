@@ -13,7 +13,8 @@ import {
 
 const SELECT = `
   id, user_id, owner_id, channel, tier, status,
-  source_image_public_ids, source_image_urls, user_prompt, user_notes, prompt_preset,
+  source_image_public_ids, source_image_urls, send_reference_to_image_model,
+  user_prompt, user_notes, prompt_preset,
   generated_prompt, final_prompt,
   preview_public_id, preview_url, final_public_id, final_url,
   error_message, created_at, updated_at, expires_at
@@ -34,6 +35,7 @@ export const generationRepository: GenerationRepository = {
         status: 'prompting',
         source_image_public_ids: input.source_image_public_ids,
         source_image_urls: input.source_image_urls,
+        send_reference_to_image_model: input.send_reference_to_image_model,
         user_prompt: input.user_prompt,
         user_notes: input.user_notes,
         prompt_preset: input.prompt_preset,

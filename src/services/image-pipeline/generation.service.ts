@@ -59,6 +59,7 @@ const createSchema = z.object({
     )
     .max(MAX_REFERENCE_IMAGES)
     .optional(),
+  send_reference_to_image_model: z.boolean().optional(),
   user_prompt: z.string().trim().max(4000).optional(),
   user_notes: z.string().trim().max(2000).optional(),
   prompt_preset: z.string().trim().max(64).optional(),
@@ -254,6 +255,8 @@ export async function startGeneration(
       tier,
       source_image_public_ids: imagePublicIds,
       source_image_urls: imageUrls,
+      // Defaults to true — the behaviour every run had before this was a choice.
+      send_reference_to_image_model: d.send_reference_to_image_model ?? true,
       user_prompt: d.user_prompt?.trim() ? d.user_prompt.trim() : null,
       user_notes: d.user_notes?.trim() ? d.user_notes.trim() : null,
       prompt_preset: presetKey,
@@ -482,10 +485,18 @@ async function renderAndStore(
   size: RenderSize,
   kind: 'preview' | 'final',
 ): Promise<{ url: string; publicId: string }> {
+  // The prompt step always saw the references — that's what it was written
+  // from. Whether the IMAGE model sees them too is the user's per-run choice:
+  // withholding them makes the prompt the only thing driving the render, so
+  // anything the reference carried but the prompt didn't ask for (text, logos,
+  // stray objects) can't come through. Read off the row, so a retry renders
+  // exactly like the run it's retrying.
+  const references = generation.send_reference_to_image_model ? generation.source_image_urls : []
+
   const rendered = await renderImage({
     tier: generation.tier as ImageTier,
     prompt,
-    sourceImageUrls: generation.source_image_urls,
+    sourceImageUrls: references,
     size,
   })
 

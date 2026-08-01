@@ -214,6 +214,14 @@ export interface IpGeneration {
    */
   source_image_public_ids: string[]
   source_image_urls: string[]
+  /**
+   * Whether the references are forwarded to the IMAGE model as well as being
+   * used to write the prompt. Claude always sees them; when this is false
+   * Gemini receives the prompt alone, so nothing that exists only in the
+   * reference (baked-in text, watermarks, stray background objects) can leak
+   * into the render. Defaults to true — the original behaviour.
+   */
+  send_reference_to_image_model: boolean
   /** The user's own prompt when they supply one (Claude then improves it). */
   user_prompt: string | null
   user_notes: string | null
@@ -376,6 +384,11 @@ export interface CreateGenerationRequest {
   /** Reference images (optional), already uploaded via the client-signed flow. */
   source_image_public_ids?: string[]
   source_image_urls?: string[]
+  /**
+   * Forward the references to the image model too, not just to Claude.
+   * Defaults to true. Set false to render strictly from the written prompt.
+   */
+  send_reference_to_image_model?: boolean
   /** The user's own prompt (optional); Claude improves it before generating. */
   user_prompt?: string
   user_notes?: string
@@ -547,6 +560,7 @@ export interface GenerationRepository {
       tier: ImageTier
       source_image_public_ids: string[]
       source_image_urls: string[]
+      send_reference_to_image_model: boolean
       user_prompt: string | null
       user_notes: string | null
       prompt_preset: string

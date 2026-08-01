@@ -55,6 +55,24 @@ export async function getChannelAvailability(): Promise<ChannelAvailability[]> {
   return (await getContext()).channels
 }
 
+/**
+ * Whether this account may open the Image Pipeline at all — the module is
+ * currently restricted to the platform super admin.
+ *
+ * Probes the same endpoint the corner loads, so the answer is whatever the
+ * server would actually enforce rather than a second copy of the rule (the
+ * allowlist is server-only and must stay out of the client bundle). Fails
+ * closed: any error hides the module.
+ */
+export async function checkImagePipelineAccess(): Promise<boolean> {
+  try {
+    await getContext()
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function setRetentionWeeks(weeks: RetentionWeeks): Promise<void> {
   await apiFetch(`${BASE}/context`, { method: 'PATCH', body: JSON.stringify({ retention_weeks: weeks }) })
 }
@@ -68,6 +86,8 @@ export async function setSkipPromptReview(skip: boolean): Promise<void> {
 export interface StartGenerationInput {
   source_image_public_ids?: string[]
   source_image_urls?: string[]
+  /** Forward the references to the image model too. Defaults to true server-side. */
+  send_reference_to_image_model?: boolean
   user_prompt?: string
   user_notes?: string
   prompt_preset?: string

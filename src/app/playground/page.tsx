@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Shapes, Megaphone, CalendarDays, ArrowRight, Lock, Wrench, Sparkles } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { Stagger, StaggerItem, FadeIn } from '@/components/ui/motion'
+import { checkImagePipelineAccess } from '@/lib/image-pipeline-api'
 
 /**
  * Playground — a hub of experimental mini-apps. Each corner opens a focused
@@ -16,6 +17,19 @@ export default function PlaygroundPage() {
   const accent = settings.accent_color || '#ED64A6'
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  // The Image Pipeline is restricted to the platform super admin while it's
+  // being built. The allowlist is server-only, so the card asks the API whether
+  // this account may open the module rather than re-implementing the rule here.
+  // Starts hidden and only appears on a yes — no flash of a card that vanishes.
+  const [showImagePipeline, setShowImagePipeline] = useState(false)
+  useEffect(() => {
+    let active = true
+    void checkImagePipelineAccess().then((allowed) => {
+      if (active) setShowImagePipeline(allowed)
+    })
+    return () => { active = false }
+  }, [])
 
   // Legacy deep links: Internal Chats used to live at /playground. Mention
   // notifications stored links like /playground?channel=...&message=... —
@@ -96,7 +110,8 @@ export default function PlaygroundPage() {
           </Link>
         </StaggerItem>
 
-        {/* Image Pipeline */}
+        {/* Image Pipeline — super admin only for now */}
+        {showImagePipeline && (
         <StaggerItem whileHover={{ y: -3 }} whileTap={{ scale: 0.97 }}>
           <Link
             href="/playground/image-pipeline"
@@ -124,6 +139,7 @@ export default function PlaygroundPage() {
             />
           </Link>
         </StaggerItem>
+        )}
 
         {/* Coming soon */}
         <StaggerItem>

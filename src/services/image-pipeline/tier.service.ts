@@ -41,6 +41,23 @@ export function isPipelineAdmin(ctx: PipelineCtx): boolean {
 }
 
 /**
+ * Module-wide visibility gate. While the Image Pipeline is still being built it
+ * is restricted to the platform super admin (the ADMIN_EMAILS allowlist) — NOT
+ * to workspace owners, who otherwise count as pipeline admins above.
+ *
+ * Enforced centrally in resolvePipelineRequest, so it covers every route in the
+ * module rather than relying on each one to remember. The Playground card and
+ * the corner's own chrome hide themselves off the same signal, but that is UX
+ * only — this function is the actual gate.
+ *
+ * To reopen the module to everyone, return `true` here and drop the client-side
+ * checks in the Playground hub and the pipeline layout.
+ */
+export function canUseImagePipeline(ctx: PipelineCtx): boolean {
+  return isAdminEmail(ctx.email)
+}
+
+/**
  * Resolves the tier for a user, in order:
  *   1. an explicit admin-set override
  *   2. admins default to pro

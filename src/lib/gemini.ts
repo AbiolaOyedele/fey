@@ -72,10 +72,31 @@ async function fetchReference(url: string): Promise<{ mimeType: string; base64: 
 /** True for the transient statuses worth one retry. */
 const isRetryable = (status: number): boolean => status === 429 || status >= 500
 
+/**
+ * Sent as the last part whenever reference images are attached.
+ *
+ * Without it the model treats the references as things to reproduce, so
+ * anything baked into the source — lettering, a watermark, a logo, background
+ * clutter — reappears in the output even though the prompt never asked for it
+ * (the prompt step routinely leaves such things out on purpose). This makes the
+ * split explicit: the images supply likeness and style, the prompt decides what
+ * is actually in the frame. It goes last so it is the final instruction the
+ * model reads.
+ */
+const REFERENCE_DIRECTIVE = `The preceding image(s) are VISUAL REFERENCE ONLY. Use them for subject likeness, style, colour and composition.
+
+The written prompt above is authoritative and complete. Render exactly what it describes — nothing more.
+
+Do not carry over any text, lettering, captions, watermarks, logos, labels, badges, UI elements, borders, frames, or background objects from the reference images unless the prompt explicitly asks for them. If something appears in a reference but is not described in the prompt, leave it out of the generated image.`
+
 export interface RenderImageInput {
   tier: ImageTier
   prompt: string
-  /** Cloudinary URLs of the reference images, when the run has any. */
+  /**
+   * Cloudinary URLs of the reference images to send with the prompt. Empty when
+   * the run has no references OR when the user chose to render from the prompt
+   * alone — the caller decides, this only renders what it is given.
+   */
   sourceImageUrls: string[]
   size: RenderSize
 }
@@ -91,10 +112,13 @@ export async function renderImage(input: RenderImageInput): Promise<RenderedImag
   const parts: GeminiPart[] = [{ text: input.prompt }]
   // Inline each reference image (capped). Fetched sequentially to keep peak
   // memory bounded — these are up to 10MB each.
-  for (const url of input.sourceImageUrls.slice(0, MAX_REFERENCE_IMAGES)) {
+  const references = input.sourceImageUrls.slice(0, MAX_REFERENCE_IMAGES)
+  for (const url of references) {
     const reference = await fetchReference(url)
     parts.push({ inlineData: { mimeType: reference.mimeType, data: reference.base64 } })
   }
+  // Only meaningful when there's actually a reference to constrain.
+  if (references.length > 0) parts.push({ text: REFERENCE_DIRECTIVE })
 
   const body = JSON.stringify({
     contents: [{ role: 'user', parts }],

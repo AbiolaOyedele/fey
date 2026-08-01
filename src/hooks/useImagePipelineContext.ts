@@ -10,6 +10,8 @@ interface ContextState {
   context: PipelineContext | null
   channels: ChannelAvailability[]
   loading: boolean
+  /** True when the server refused the module for this account (403). */
+  forbidden: boolean
   /** Re-read balance/tier/admin flags after a charge or admin change. */
   refresh: () => Promise<void>
   /** Persist the user's default image-retention preference. */
@@ -33,15 +35,25 @@ export function PipelineProvider({ children }: { children: ReactNode }) {
   const [context, setContext] = useState<PipelineContext | null>(null)
   const [channels, setChannels] = useState<ChannelAvailability[]>([])
   const [loading, setLoading] = useState(true)
+  const [forbidden, setForbidden] = useState(false)
   // A per-instance channel suffix avoids colliding with any other subscriber.
   const instanceId = useId()
 
   // One round trip: the context response carries channel availability with it.
+  // A rejection here has to be caught: the module is gated server-side, and an
+  // uncaught 403 would leave the corner spinning on `loading` forever instead
+  // of showing the locked state.
   const refresh = useCallback(async () => {
-    const ctx = await getContext()
-    setContext(ctx)
-    setChannels(ctx.channels)
-    setLoading(false)
+    try {
+      const ctx = await getContext()
+      setContext(ctx)
+      setChannels(ctx.channels)
+      setForbidden(false)
+    } catch {
+      setForbidden(true)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -66,7 +78,11 @@ export function PipelineProvider({ children }: { children: ReactNode }) {
     await refresh()
   }, [refresh])
 
-  return createElement(Ctx.Provider, { value: { context, channels, loading, refresh, updateRetention } }, children)
+  return createElement(
+    Ctx.Provider,
+    { value: { context, channels, loading, forbidden, refresh, updateRetention } },
+    children,
+  )
 }
 
 /** Reads the shared pipeline context. Must be used within <PipelineProvider>. */

@@ -31,6 +31,7 @@ export default function ImagePipelineGeneratePage() {
 
   const [assets, setAssets] = useState<ReferenceAsset[]>([])
   const [prompt, setPrompt] = useState('')
+  const [sendReference, setSendReference] = useState(true)
   const [preset, setPreset] = useState<string>(DEFAULT_PROMPT_PRESET_KEY)
   const [channel, setChannel] = useState<GenerationChannel>('api')
   const [retention, setRetention] = useState<RetentionWeeks>(DEFAULT_RETENTION_WEEKS)
@@ -62,7 +63,7 @@ export default function ImagePipelineGeneratePage() {
   const uploadingImages = assets.some((a) => a.status === 'uploading')
   const hasInput = readyImages.length > 0 || prompt.trim().length > 0
 
-  const startNew = () => { reset(); setAssets([]); setPrompt(''); prevStatus.current = null }
+  const startNew = () => { reset(); setAssets([]); setPrompt(''); setSendReference(true); prevStatus.current = null }
 
   // Back out of a gate to the input form. Unlike startNew this deliberately
   // keeps `assets` and `prompt`, so the user edits what they had instead of
@@ -85,6 +86,7 @@ export default function ImagePipelineGeneratePage() {
         ? {
             source_image_public_ids: readyImages.map((a) => a.public_id as string),
             source_image_urls: readyImages.map((a) => a.url as string),
+            send_reference_to_image_model: sendReference,
           }
         : {}),
       ...(prompt.trim() ? { user_prompt: prompt.trim() } : {}),
@@ -136,6 +138,10 @@ export default function ImagePipelineGeneratePage() {
           <label className="block text-2xs font-semibold uppercase tracking-widest text-gray-300 mb-2">Reference images (optional)</label>
           <ReferenceUploader assets={assets} setAssets={setAssets} accent={accent} />
         </div>
+
+        {readyImages.length > 0 && (
+          <ReferenceModeToggle value={sendReference} onChange={setSendReference} accent={accent} />
+        )}
 
         <div>
           <label className="block text-2xs font-semibold uppercase tracking-widest text-gray-300 mb-2">Your prompt</label>
@@ -307,6 +313,52 @@ export default function ImagePipelineGeneratePage() {
       )}
 
       {error && <InlineError message={error} />}
+    </div>
+  )
+}
+
+/**
+ * Chooses what the image model actually receives.
+ *
+ * Claude reads the references either way — that's how the prompt gets written.
+ * This decides whether Gemini sees them too. Left on, the render stays close to
+ * the reference but can also drag along things the prompt never asked for
+ * (text baked into the image, a watermark, background clutter). Turned off, the
+ * prompt is the only instruction, so the output contains what was described and
+ * nothing else.
+ */
+function ReferenceModeToggle({ value, onChange, accent }: { value: boolean; onChange: (v: boolean) => void; accent: string }) {
+  return (
+    <div>
+      <span className="block text-2xs font-semibold uppercase tracking-widest text-gray-300 mb-2">Reference handling</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={value}
+        onClick={() => onChange(!value)}
+        className="w-full flex items-start gap-3 rounded-xl border border-gray-100 bg-white p-3 text-left min-h-[44px] hover:bg-gray-50/60 transition-colors active:scale-[0.99]"
+      >
+        <span
+          aria-hidden
+          className="mt-0.5 flex-shrink-0 inline-flex items-center w-9 h-5 rounded-full p-0.5 transition-colors"
+          style={{ backgroundColor: value ? accent : '#E2E8F0' }}
+        >
+          <span
+            className="w-4 h-4 rounded-full bg-white shadow-sm transition-transform"
+            style={{ transform: value ? 'translateX(16px)' : 'translateX(0)' }}
+          />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-xs font-medium text-gray-700">
+            {value ? 'Send references to the image model' : 'Generate from the prompt only'}
+          </span>
+          <span className="block text-2xs text-gray-400 leading-relaxed mt-0.5">
+            {value
+              ? 'Closest match to your reference. Anything baked into it — text, watermarks, stray objects — can carry through even if the prompt leaves it out.'
+              : 'Claude still reads your references to write the prompt, but the image model only sees the prompt. Unwanted text and elements can’t come through.'}
+          </span>
+        </span>
+      </button>
     </div>
   )
 }

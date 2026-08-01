@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { ImagePlus, X, Plus, Loader2, AlertCircle } from 'lucide-react'
 import { MAX_REFERENCE_IMAGES } from '@/types/image-pipeline'
 import { uploadToCloudinary } from '@/utils/cloudinary'
@@ -24,6 +24,24 @@ const ALLOWED = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_BYTES = 10 * 1024 * 1024
 /** Reference images live under their own Cloudinary folder. */
 const UPLOAD_FOLDER = 'image-pipeline/references'
+
+/**
+ * Image files on a clipboard payload.
+ *
+ * Reads `files` first, then falls back to `items` — Safari populates one or the
+ * other depending on where the image was copied from. Type filtering is left
+ * broad here so an unsupported format still reaches addFiles and produces the
+ * normal "JPEG, PNG or WebP" message rather than being silently dropped.
+ */
+function imagesFromClipboard(data: DataTransfer | null): File[] {
+  if (!data) return []
+  const fromFiles = Array.from(data.files).filter((f) => f.type.startsWith('image/'))
+  if (fromFiles.length > 0) return fromFiles
+  return Array.from(data.items)
+    .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+    .map((item) => item.getAsFile())
+    .filter((f): f is File => f !== null)
+}
 
 interface ReferenceUploaderProps {
   assets: ReferenceAsset[]
@@ -111,6 +129,22 @@ export default function ReferenceUploader({ assets, setAssets, accent }: Referen
     [remaining, setAssets, startUpload],
   )
 
+  // Paste is bound to the document, not the drop zone: while building a run the
+  // prompt box holds focus, so a screenshot should land in references without
+  // the user clicking the uploader first. A clipboard with no image is left
+  // alone, so pasting text into the prompt still behaves normally.
+  useEffect(() => {
+    if (remaining <= 0) return
+    const onPaste = (e: ClipboardEvent) => {
+      const images = imagesFromClipboard(e.clipboardData)
+      if (images.length === 0) return
+      e.preventDefault()
+      addFiles(images)
+    }
+    document.addEventListener('paste', onPaste)
+    return () => document.removeEventListener('paste', onPaste)
+  }, [remaining, addFiles])
+
   const removeById = useCallback(
     (id: string) => {
       const target = assets.find((a) => a.id === id)
@@ -159,7 +193,7 @@ export default function ReferenceUploader({ assets, setAssets, accent }: Referen
           <span className="w-12 h-12 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: `${accent}15`, color: accent }}>
             <ImagePlus size={22} />
           </span>
-          <span className="text-sm font-medium text-gray-700">Drop reference images, or tap to browse</span>
+          <span className="text-sm font-medium text-gray-700">Drop or paste reference images, or tap to browse</span>
           <span className="text-2xs text-gray-400 mt-1">JPEG, PNG or WebP · up to 10MB each · max {MAX_REFERENCE_IMAGES}</span>
         </button>
         {fileInput}
@@ -221,7 +255,8 @@ export default function ReferenceUploader({ assets, setAssets, accent }: Referen
         )}
       </div>
       <p className="text-2xs text-gray-400 mt-1.5">
-        {assets.length} of {MAX_REFERENCE_IMAGES} · the first image is treated as the main subject.
+        {assets.length} of {MAX_REFERENCE_IMAGES} · the first image is treated as the main subject
+        {remaining > 0 ? ' · paste to add more' : ''}.
       </p>
       {fileInput}
       {error && <p className="text-xs mt-2" style={{ color: '#E53E3E' }}>{error}</p>}

@@ -64,6 +64,12 @@ export default function ImagePipelineGeneratePage() {
 
   const startNew = () => { reset(); setAssets([]); setPrompt(''); prevStatus.current = null }
 
+  // Back out of a gate to the input form. Unlike startNew this deliberately
+  // keeps `assets` and `prompt`, so the user edits what they had instead of
+  // re-uploading — reset() only clears the local generation, and the abandoned
+  // row stays in the gallery.
+  const backToInputs = () => { reset(); prevStatus.current = null }
+
   const chooseRetention = (weeks: RetentionWeeks) => {
     setRetention(weeks)
     void updateRetention(weeks)
@@ -186,7 +192,7 @@ export default function ImagePipelineGeneratePage() {
       )}
 
       {status === 'prompt_review' && (
-        <PromptGate generation={generation} busy={busy} onConfirm={doConfirm} accent={accent} />
+        <PromptGate generation={generation} busy={busy} onConfirm={doConfirm} onBack={backToInputs} accent={accent} />
       )}
 
       {(status === 'preview_ready' || status === 'generating_final') && (

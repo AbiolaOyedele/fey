@@ -163,7 +163,7 @@ export default function ProjectsHubPage() {
       {showNew && (
         <NewProjectModal
           contacts={contacts.map((c) => ({ id: c.id, name: c.name }))}
-          onCreate={async (payload) => { const p = await createProject(payload); showToast('Project created'); router.push(`/projects/${p.id}`) }}
+          onCreate={async (payload) => { const p = await createProject(payload); showToast('Brand created'); router.push(`/projects/${p.id}`) }}
           onClose={() => setShowNew(false)}
         />
       )}

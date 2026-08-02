@@ -7,6 +7,7 @@ import {
   Link2, ExternalLink, Loader2, Clock, Ban,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -211,13 +212,12 @@ function InvoicePickerModal({ contactId, userId, onClose, onNew }: InvoicePicker
 
 interface DirectLinkModalProps {
   contactId: string
-  userId: string
   defaultCurrency: string
   onClose: () => void
   onCreated: (req: CrmPaymentRequest) => void
 }
 
-function DirectLinkModal({ contactId, userId, defaultCurrency, onClose, onCreated }: DirectLinkModalProps) {
+function DirectLinkModal({ contactId, defaultCurrency, onClose, onCreated }: DirectLinkModalProps) {
   const [amount,      setAmount]      = useState('')
   const [currency,    setCurrency]    = useState(defaultCurrency)
   const [description, setDescription] = useState('')
@@ -242,27 +242,30 @@ function DirectLinkModal({ contactId, userId, defaultCurrency, onClose, onCreate
     setSaving(true)
     setError('')
 
-    const { data, error: err } = await supabase
-      .from('crm_payment_requests')
-      .insert({
-        owner_id:    userId,
-        contact_id:  contactId,
-        amount:      amt,
-        currency,
-        description: description.trim(),
-        message:     message.trim(),
+    // Goes through the API rather than inserting directly: creating the row is
+    // only half the job — the client also has to be told, and that needs a
+    // service-role write no component can make.
+    let req: CrmPaymentRequest
+    try {
+      // apiFetch returns the parsed body and throws the API's plain-English
+      // message on failure, so there's nothing to unwrap here.
+      const d = await apiFetch<{ request: CrmPaymentRequest }>('/api/v1/crm/payment-requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          contact_id:  contactId,
+          amount:      amt,
+          currency,
+          description: description.trim(),
+          message:     message.trim(),
+        }),
       })
-      .select()
-      .single()
-
-    setSaving(false)
-
-    if (err ?? !data) {
-      setError(err?.message ?? 'Failed to create payment request.')
+      req = d.request
+    } catch (e) {
+      setSaving(false)
+      setError(e instanceof Error ? e.message : 'Failed to create payment request.')
       return
     }
-
-    const req = data as CrmPaymentRequest
+    setSaving(false)
     setCreated(req)
     onCreated(req)
   }
@@ -636,7 +639,6 @@ export default function PaymentsTab({ params }: { params: Promise<{ id: string }
       {modal === 'direct' && user?.id && (
         <DirectLinkModal
           contactId={id}
-          userId={user.id}
           defaultCurrency={settings.currency || 'NGN'}
           onClose={() => setModal(null)}
           onCreated={handleRequestCreated}

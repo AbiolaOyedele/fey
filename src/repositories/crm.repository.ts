@@ -6,6 +6,7 @@ import type {
   CrmContract,
   CrmForm,
   CrmNotification,
+  CrmPaymentRequest,
   CreateContactPayload,
   UpdateContactPayload,
   CreateMessagePayload,
@@ -160,6 +161,10 @@ function rowToMessage(row: Record<string, unknown>): CrmMessage {
     attachments: (row.attachments as MessageAttachment[]) ?? [],
     read_at:     (row.read_at as string | null) ?? null,
     created_at:  row.created_at as string,
+    edited_at:   (row.edited_at as string | null) ?? null,
+    deleted_at:  (row.deleted_at as string | null) ?? null,
+    deleted_by:  (row.deleted_by as string | null) ?? null,
+    reply_to_id: (row.reply_to_id as string | null) ?? null,
   }
 }
 
@@ -471,4 +476,98 @@ export async function pruneOldMessages(
   const rows = (data ?? []) as Array<{ id: string; attachments: MessageAttachment[] | null }>
   const fileUrls = rows.flatMap((r) => (r.attachments ?? []).map((a) => a.file_url)).filter(Boolean)
   return { count: rows.length, fileUrls }
+}
+
+// ── Payment requests ──────────────────────────────────────────────────────────
+
+/**
+ * Creates a payment link for a contact.
+ *
+ * share_token, status and expiry all come from column defaults, so only what
+ * the owner actually typed is written here.
+ */
+export async function createPaymentRequest(
+  db: SupabaseClient,
+  payload: {
+    owner_id: string
+    contact_id: string
+    amount: number
+    currency: string
+    description: string
+    message: string
+  },
+): Promise<CrmPaymentRequest> {
+  const { data, error } = await db
+    .from('crm_payment_requests')
+    .insert(payload)
+    .select()
+    .single()
+  if (error) throw error
+  return data as CrmPaymentRequest
+}
+
+// ── Message edit / unsend ─────────────────────────────────────────────────────
+
+/**
+ * Unsends a message for everyone — a soft delete.
+ *
+ * The body is cleared as well as tombstoned: leaving the text in the row keeps
+ * it readable to anyone who can query the table, which isn't what "delete"
+ * means to the person who pressed it. The row itself survives so the thread
+ * stays coherent and any reply quoting it still has a parent.
+ */
+export async function softDeleteMessage(
+  db: SupabaseClient,
+  id: string,
+  ownerId: string,
+  deletedBy: string,
+): Promise<CrmMessage> {
+  const { data, error } = await db
+    .from('crm_messages')
+    .update({
+      body: '',
+      body_html: null,
+      attachments: [],
+      deleted_at: new Date().toISOString(),
+      deleted_by: deletedBy,
+    })
+    .eq('id', id)
+    .eq('owner_id', ownerId)
+    .select()
+    .single()
+  if (error) throw error
+  return rowToMessage(data)
+}
+
+export async function editMessage(
+  db: SupabaseClient,
+  id: string,
+  ownerId: string,
+  body: string,
+  bodyHtml: string | null,
+): Promise<CrmMessage> {
+  const { data, error } = await db
+    .from('crm_messages')
+    .update({ body, body_html: bodyHtml, edited_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('owner_id', ownerId)
+    .select()
+    .single()
+  if (error) throw error
+  return rowToMessage(data)
+}
+
+export async function getMessage(
+  db: SupabaseClient,
+  id: string,
+  ownerId: string,
+): Promise<CrmMessage | null> {
+  const { data, error } = await db
+    .from('crm_messages')
+    .select('*')
+    .eq('id', id)
+    .eq('owner_id', ownerId)
+    .maybeSingle()
+  if (error) throw error
+  return data ? rowToMessage(data) : null
 }

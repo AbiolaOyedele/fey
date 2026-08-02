@@ -11,6 +11,7 @@ import * as repo from '@/repositories/work-tasks.repository'
 import * as wfRepo from '@/repositories/workflows.repository'
 import { ensureDefaultWorkflow } from '@/services/workflows.service'
 import { notify } from '@/services/notifications.service'
+import { announceToClient } from '@/services/portal-notifications.service'
 
 /** Notify newly-added assignees (best-effort; never blocks the task write). */
 async function notifyAssigned(
@@ -172,6 +173,22 @@ export async function createTask(db: SupabaseClient, ctx: Ctx, input: unknown): 
     await repo.setAssignees(db, id, d.assignee_ids)
     await notifyAssigned({ id, owner_id: link.owner_id, workspace_id: link.workspace_id, contact_id: link.contact_id }, d.assignee_ids, d.title, ctx.userId)
   }
+
+  // Client-linked tasks are visible in the portal, so the client should hear
+  // about them the same way they hear about a file or a contract.
+  if (link.contact_id) {
+    announceToClient({
+      contactId: link.contact_id,
+      ownerId:   link.owner_id,
+      type:      'task',
+      title:     'New task added',
+      body:      d.title,
+      link:      '/tasks',
+      entityType: 'task',
+      entityId:   id,
+    })
+  }
+
   return getTask(db, id)
 }
 
@@ -210,6 +227,24 @@ export async function updateTask(db: SupabaseClient, ctx: Ctx, id: string, input
 
   await repo.updateTaskRow(db, id, updates)
   if (d.description !== undefined) await cleanupRemovedDescriptionImages(id, existing.description, d.description)
+
+  // Only completion is announced. A client doesn't need a notification every
+  // time someone nudges a due date or drags a card between board columns —
+  // "it's done" is the one change that's actually theirs to know about.
+  const contactId = (updates.contact_id as string | null | undefined) ?? existing.contact_id
+  if (contactId && d.done === true && !existing.done) {
+    announceToClient({
+      contactId,
+      ownerId:   existing.owner_id,
+      type:      'task',
+      title:     'Task completed',
+      body:      d.title ?? null,
+      link:      '/tasks',
+      entityType: 'task',
+      entityId:   id,
+    })
+  }
+
   return getTask(db, id)
 }
 

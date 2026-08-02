@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requirePortalAuth, handleError } from '@/lib/api-helpers'
-import * as portalRepo from '@/repositories/portal.repository'
 import * as portalService from '@/services/portal.service'
+import { requireCapability } from '@/services/portal-members.service'
 import { notifyOwnerAdmins } from '@/services/notifications.service'
 
 /**
@@ -36,11 +36,9 @@ export async function POST(req: NextRequest) {
   }
   const db = createServiceClient()
   try {
-    // Fetch the full portal user so the service can build the message correctly
-    const portalUser = await portalRepo.getPortalUser(db, payload!.portal_user_id)
-    if (!portalUser) {
-      return NextResponse.json({ error: { code: 'PORTAL_USER_NOT_FOUND', message: 'Portal access not found.' } }, { status: 403 })
-    }
+    // Fetches the portal user AND enforces that they aren't view-only — a
+    // viewer with a valid token could otherwise post by calling this directly.
+    const portalUser = await requireCapability(db, payload!.portal_user_id, 'write')
     const message = await portalService.sendPortalMessage(db, portalUser, body)
     await notifyOwnerAdmins(db, payload!.owner_id, {
       type: 'client_message',

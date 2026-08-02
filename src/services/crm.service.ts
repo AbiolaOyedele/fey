@@ -2,8 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { AppError } from '@/lib/errors'
 import * as repo from '@/repositories/crm.repository'
 import { destroyCloudinaryAsset } from '@/lib/cloudinary-server'
-import { createServiceClient } from '@/lib/supabase-server'
-import { notifyClient } from './portal-notifications.service'
+import { announceToClient } from './portal-notifications.service'
 import type {
   CrmContact,
   CrmMessage,
@@ -11,6 +10,7 @@ import type {
   CrmContract,
   CrmForm,
   CrmNotification,
+  CrmPaymentRequest,
   CreateContactPayload,
   UpdateContactPayload,
   CreateMessagePayload,
@@ -21,19 +21,6 @@ import type {
 } from '@/types/crm'
 import { z } from 'zod'
 
-/**
- * Tells the client something arrived for them.
- *
- * Portal notifications live on their own table with their own recipient
- * (portal users aren't auth users), and RLS has no client-facing insert policy
- * — so this needs the service role regardless of which client the caller
- * handed us. Created here rather than threaded through every route, and
- * `notifyClient` already swallows its own failures: telling the client must
- * never fail the owner's action.
- */
-function announceToClient(args: Omit<Parameters<typeof notifyClient>[0], 'db'>): void {
-  void notifyClient({ db: createServiceClient(), ...args })
-}
 
 // ── Validation schemas ────────────────────────────────────────────────────────
 
@@ -413,4 +400,111 @@ export async function pruneExpiredMessages(
     }
   }
   return { owners: owners.length, deleted, filesDeleted }
+}
+
+// ── Payment requests ──────────────────────────────────────────────────────────
+
+const createPaymentRequestSchema = z.object({
+  contact_id:  z.string().uuid(),
+  amount:      z.number().positive('Enter an amount greater than zero.'),
+  currency:    z.string().min(1).max(10),
+  description: z.string().min(1, 'Add a description for this payment.').max(500).trim(),
+  message:     z.string().max(2000).trim().optional(),
+})
+
+/**
+ * Creates a payment link and tells the client it's waiting.
+ *
+ * The payments page used to insert this row straight from the component, which
+ * meant no notification could ever fire — a service-role write is needed to
+ * reach portal users, and a component can't hold that key. Moving the insert
+ * here fixes both the missing notification and the layering.
+ */
+export async function createPaymentRequest(
+  db: SupabaseClient,
+  ownerId: string,
+  input: unknown,
+): Promise<CrmPaymentRequest> {
+  const parsed = createPaymentRequestSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new AppError(400, parsed.error.issues[0]?.message ?? 'That payment isn’t valid.', 'CRM_PAYMENT_INVALID')
+  }
+  const d = parsed.data
+
+  // Ownership is proved by reading the contact on the caller's own client — RLS
+  // rejects a contact that isn't theirs, so this can't be used to bill someone
+  // else's client.
+  await getContactById(db, d.contact_id, ownerId)
+
+  const request = await repo.createPaymentRequest(db, {
+    owner_id:    ownerId,
+    contact_id:  d.contact_id,
+    amount:      d.amount,
+    currency:    d.currency,
+    description: d.description,
+    message:     d.message ?? '',
+  })
+
+  announceToClient({
+    contactId: d.contact_id,
+    ownerId,
+    type:      'payment',
+    title:     'Payment requested',
+    body:      d.description,
+    link:      '/payments',
+    entityType: 'payment_request',
+    entityId:   request.id,
+  })
+
+  return request
+}
+
+// ── Message edit / unsend ─────────────────────────────────────────────────────
+
+const editMessageSchema = z.object({
+  body:      z.string().min(1, 'A message can’t be empty.').max(20_000),
+  body_html: z.string().max(100_000).nullish(),
+})
+
+/**
+ * Unsends a message for everyone.
+ *
+ * The owner may remove anyone's message in their own thread — including the
+ * client's — which is the same authority a group admin has in WhatsApp, and the
+ * reason this doesn't check sender_id. What it does check is the 48h window for
+ * the owner's own messages... deliberately NOT applied here: an agency needs to
+ * be able to pull a wrong invoice link or a misdirected message at any point,
+ * and the client already saw it either way. The tombstone is the honest record.
+ */
+export async function deleteMessage(
+  db: SupabaseClient,
+  id: string,
+  ownerId: string,
+): Promise<CrmMessage> {
+  const existing = await repo.getMessage(db, id, ownerId)
+  if (!existing) throw new AppError(404, 'That message could not be found.', 'CRM_MESSAGE_NOT_FOUND')
+  if (existing.deleted_at) return existing
+  return repo.softDeleteMessage(db, id, ownerId, ownerId)
+}
+
+/** Edits one of the owner's own messages. A client's words are not theirs to rewrite. */
+export async function editMessage(
+  db: SupabaseClient,
+  id: string,
+  ownerId: string,
+  input: unknown,
+): Promise<CrmMessage> {
+  const parsed = editMessageSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new AppError(400, parsed.error.issues[0]?.message ?? 'That edit isn’t valid.', 'CRM_MESSAGE_INVALID')
+  }
+  const existing = await repo.getMessage(db, id, ownerId)
+  if (!existing) throw new AppError(404, 'That message could not be found.', 'CRM_MESSAGE_NOT_FOUND')
+  if (existing.deleted_at) {
+    throw new AppError(409, 'That message was deleted, so it can’t be edited.', 'CRM_MESSAGE_DELETED')
+  }
+  if (existing.sender_type !== 'owner') {
+    throw new AppError(403, 'You can only edit your own messages.', 'CRM_MESSAGE_NOT_YOURS')
+  }
+  return repo.editMessage(db, id, ownerId, parsed.data.body, parsed.data.body_html ?? null)
 }

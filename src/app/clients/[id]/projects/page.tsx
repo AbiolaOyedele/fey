@@ -2,31 +2,19 @@
 
 import { use, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { FolderOpen, Plus, X, Loader2 } from 'lucide-react'
+import { Sparkles, Plus, X, Loader2 } from 'lucide-react'
 import { useProjects } from '@/hooks/useProjects'
 import DateField from '@/components/ui/DateField'
 import { useWorkspace } from '@/hooks/useWorkspace'
-import { formatDate } from '@/utils/formatDate'
-import type { ProjectStatus } from '@/types/project'
-
-const STATUS_LABEL: Record<ProjectStatus, string> = {
-  active: 'Active',
-  on_hold: 'On hold',
-  completed: 'Completed',
-  archived: 'Archived',
-}
-
-const STATUS_STYLE: Record<ProjectStatus, string> = {
-  active: 'bg-green-50 text-green-600',
-  on_hold: 'bg-amber-50 text-amber-600',
-  completed: 'bg-blue-50 text-blue-600',
-  archived: 'bg-gray-100 text-gray-500',
-}
+import { useSettings } from '@/contexts/SettingsContext'
+import BrandCard from '@/components/crm/BrandCard'
 
 export default function ProjectsTab({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
   const { canManage } = useWorkspace()
+  const { settings } = useSettings()
+  const accent = settings.accent_color || '#ED64A6'
   const { projects, loading, createProject } = useProjects(id)
 
   const [showForm, setShowForm] = useState(false)
@@ -117,36 +105,26 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
       )}
 
       {loading ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-w-4xl">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 rounded-2xl bg-gray-100 animate-pulse" />
+            <div key={i} className="h-40 rounded-2xl bg-gray-100 animate-pulse" />
           ))}
         </div>
       ) : visible.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <FolderOpen size={28} className="text-gray-200 mb-3" />
+          <Sparkles size={28} className="text-gray-200 mb-3" />
           <p className="text-sm font-medium text-gray-500 mb-1">No brands yet</p>
           <p className="text-xs text-gray-400">Create a brand to keep its chat and files together.</p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-w-4xl">
           {visible.map((p) => (
-            <button
+            <BrandCard
               key={p.id}
-              onClick={() => router.push(`/projects/${p.id}`)}
-              className="text-left bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all p-4"
-            >
-              <div className="flex items-start justify-between gap-2 mb-1.5">
-                <h3 className="text-sm font-semibold text-gray-900 truncate">{p.title}</h3>
-                <span className={`flex-shrink-0 text-2xs font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLE[p.status]}`}>
-                  {STATUS_LABEL[p.status]}
-                </span>
-              </div>
-              {p.description && <p className="text-xs text-gray-500 line-clamp-2 mb-2">{p.description}</p>}
-              <p className="text-2xs text-gray-400">
-                {p.due_date ? `Due ${formatDate(p.due_date)}` : `Created ${formatDate(p.created_at)}`}
-              </p>
-            </button>
+              project={p}
+              accent={accent}
+              onOpen={() => router.push(`/projects/${p.id}`)}
+            />
           ))}
         </div>
       )}

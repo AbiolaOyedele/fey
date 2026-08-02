@@ -68,6 +68,10 @@ function rowToMessage(row: Record<string, unknown>): CrmMessage {
     attachments: (row.attachments as MessageAttachment[]) ?? [],
     read_at:     (row.read_at as string | null) ?? null,
     created_at:  row.created_at as string,
+    edited_at:   (row.edited_at as string | null) ?? null,
+    deleted_at:  (row.deleted_at as string | null) ?? null,
+    deleted_by:  (row.deleted_by as string | null) ?? null,
+    reply_to_id: (row.reply_to_id as string | null) ?? null,
   }
 }
 
@@ -271,7 +275,32 @@ export function useMessages(contactId: string | null) {
     return () => { if (channelRef.current) void supabase.removeChannel(channelRef.current) }
   }, [contactId, fetchMessages])
 
-  const sendMessage = useCallback(async (body: string, bodyHtml: string | null, attachments: MessageAttachment[] = [], contactName?: string) => {
+  /** Unsend for everyone. The row survives as a tombstone — see the service. */
+  const deleteMessage = useCallback(async (messageId: string) => {
+    const previous = messages
+    setMessages((prev) => prev.map((m) => (
+      m.id === messageId
+        ? { ...m, body: '', body_html: null, attachments: [], deleted_at: new Date().toISOString() }
+        : m
+    )))
+    try {
+      const d = await apiFetch<{ message: CrmMessage }>(`/api/v1/crm/messages/${messageId}`, { method: 'DELETE' })
+      setMessages((prev) => prev.map((m) => (m.id === d.message.id ? d.message : m)))
+    } catch (e) {
+      setMessages(previous)
+      throw e
+    }
+  }, [messages])
+
+  const editMessage = useCallback(async (messageId: string, body: string, bodyHtml: string | null) => {
+    const d = await apiFetch<{ message: CrmMessage }>(`/api/v1/crm/messages/${messageId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ body, body_html: bodyHtml }),
+    })
+    setMessages((prev) => prev.map((m) => (m.id === d.message.id ? d.message : m)))
+  }, [])
+
+  const sendMessage = useCallback(async (body: string, bodyHtml: string | null, attachments: MessageAttachment[] = [], contactName?: string, replyToId: string | null = null) => {
     if (!contactId) return
     const session = await getSession()
     if (!session) throw new Error('Not authenticated')
@@ -287,6 +316,7 @@ export function useMessages(contactId: string | null) {
         body,
         body_html:    bodyHtml ?? null,
         attachments,
+        ...(replyToId ? { reply_to_id: replyToId } : {}),
       })
       .select()
       .single()
@@ -317,7 +347,7 @@ export function useMessages(contactId: string | null) {
     return msg
   }, [contactId])
 
-  return { messages, loading, sendMessage, refetch: fetchMessages }
+  return { messages, loading, sendMessage, deleteMessage, editMessage, refetch: fetchMessages }
 }
 
 // ── useCrmFiles ───────────────────────────────────────────────────────────────

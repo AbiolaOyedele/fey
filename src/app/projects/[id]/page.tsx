@@ -41,6 +41,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       sender_type: m.sender_type, sender_id: m.sender_id,
       body: m.body, body_html: m.body_html, attachments: m.attachments,
       read_at: m.read_at, created_at: m.created_at,
+      // Brand chat has its own table without the unsend/reply columns, so the
+      // thread renders it as plain messages — the controls simply don't appear.
+      edited_at: null, deleted_at: null, deleted_by: null, reply_to_id: null,
     })),
     [messages],
   )

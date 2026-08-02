@@ -4,6 +4,7 @@ import { formatDate } from '@/utils/formatDate'
 
 import { use, useState, useEffect, useRef, useCallback } from 'react'
 import { Paperclip, X, Loader2, Send } from 'lucide-react'
+import { usePortalAccent } from '@/hooks/usePortalBranding'
 import { uploadToCloudinary } from '@/utils/cloudinary'
 import AttachmentPreview from '@/components/crm/AttachmentPreview'
 import EmojiPicker from '@/components/crm/EmojiPicker'
@@ -39,6 +40,7 @@ function fmtDate(iso: string) {
 
 export default function PortalMessagesPage({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
+  const accent = usePortalAccent(subdomain)
   const bottomRef     = useRef<HTMLDivElement>(null)
   const fileRef       = useRef<HTMLInputElement>(null)
 
@@ -105,7 +107,7 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
   return (
     <div className="flex flex-col h-full">
       {/* Message thread */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -140,7 +142,7 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
                             className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                               isMe ? 'text-white rounded-tr-sm' : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm'
                             }`}
-                            style={isMe ? { backgroundColor: '#101010' } : {}}
+                            style={isMe ? { backgroundColor: accent } : {}}
                           >
                             {msg.body_html ? (
                               <div dangerouslySetInnerHTML={{ __html: msg.body_html }} className="prose prose-sm max-w-none" />

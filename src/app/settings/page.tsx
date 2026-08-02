@@ -14,6 +14,7 @@ import { env } from '@/config/env'
 import type { TrashItem } from '@/types'
 import { normalizeFontDataUrl } from '@/utils/fontHelpers'
 import { compressImage } from '@/utils/imageHelpers'
+import { uploadToCloudinary } from '@/utils/cloudinary'
 import {
   Upload, RefreshCw, Trash2, RotateCcw, X, User,
   History, LogOut, ChevronDown, ChevronRight,
@@ -292,10 +293,29 @@ function SettingsPageInner() {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 3 * 1024 * 1024) { showToast('Logo must be under 3 MB'); return }
-    // Accept a generous source file, then downscale + re-encode to a compact
-    // WebP so the stored logo loads fast everywhere it renders.
+    // Downscale + re-encode to a compact WebP first, then push it to Cloudinary
+    // and store the URL.
+    //
+    // This used to store the base64 string directly in the column. The logo is
+    // read on every portal page load, so a few hundred KB of data URL rode along
+    // with every request — the single biggest drag on how fast a client's portal
+    // appeared. A URL is a hundred bytes and gets cached by the browser.
+    //
+    // Falls back to the old inline form if Cloudinary is unreachable: a logo
+    // that loads slowly beats an upload that fails.
     const compressed = await compressImage(file, { maxDimension: 512, quality: 0.85 })
-    void saveSetting('logo', compressed)
+    try {
+      const blob = await (await fetch(compressed)).blob()
+      const upload = uploadToCloudinary(
+        new File([blob], 'logo.webp', { type: blob.type || 'image/webp' }),
+        'branding',
+      )
+      const result = await upload.promise
+      void saveSetting('logo', result.url)
+    } catch {
+      showToast('Couldn’t upload to storage — saved locally instead')
+      void saveSetting('logo', compressed)
+    }
   }
 
   const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>): void => {

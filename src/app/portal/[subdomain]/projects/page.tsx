@@ -2,25 +2,18 @@
 
 import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { FolderOpen } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { portalBasePath } from '@/hooks/usePortalBase'
-import { formatDate } from '@/utils/formatDate'
-import type { Project, ProjectStatus } from '@/types/project'
-
-const STATUS_LABEL: Record<ProjectStatus, string> = {
-  active: 'Active', on_hold: 'On hold', completed: 'Completed', archived: 'Archived',
-}
-const STATUS_STYLE: Record<ProjectStatus, string> = {
-  active: 'bg-green-50 text-green-600',
-  on_hold: 'bg-amber-50 text-amber-600',
-  completed: 'bg-blue-50 text-blue-600',
-  archived: 'bg-gray-100 text-gray-500',
-}
+import { usePortalAccent } from '@/hooks/usePortalBranding'
+import BrandCard from '@/components/crm/BrandCard'
+import { FadeIn } from '@/components/ui/motion'
+import type { Project } from '@/types/project'
 
 export default function PortalProjectsPage({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
   const router = useRouter()
+  const accent = usePortalAccent(subdomain)
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -41,40 +34,33 @@ export default function PortalProjectsPage({ params }: { params: Promise<{ subdo
     <div className="p-4 md:p-6 lg:p-8 page-enter">
       {/* Labelled "Brands" client-side; the route and table keep the old
           `projects` name so existing links and data are untouched. */}
-      <div className="mb-6">
-        <h1 className="font-display text-xl font-normal text-gray-800">Brands</h1>
-        <p className="text-xs text-gray-400 mt-1">Each brand keeps its chat and files together.</p>
-      </div>
+      <FadeIn>
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles size={18} style={{ color: accent }} />
+          <h1 className="font-display text-xl font-normal text-gray-800">Brands</h1>
+        </div>
+        <p className="text-xs text-gray-400 mb-5">Each brand keeps its chat and files together.</p>
+      </FadeIn>
 
       {loading ? (
-        <div className="grid sm:grid-cols-2 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-24 rounded-2xl bg-gray-100 animate-pulse" />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-w-4xl">
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-40 rounded-2xl bg-gray-100 animate-pulse" />)}
         </div>
       ) : projects.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <FolderOpen size={32} className="text-gray-200 mb-3" />
-          <p className="text-sm2 font-medium text-gray-500">No brands yet</p>
-          <p className="text-xs2 text-gray-400 mt-1">Brands shared with you will appear here.</p>
+          <Sparkles size={28} className="text-gray-200 mb-3" />
+          <p className="text-sm font-medium text-gray-500">No brands yet</p>
+          <p className="text-xs text-gray-400 mt-1">Brands shared with you will appear here.</p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-w-4xl">
           {projects.map((p) => (
-            <button
+            <BrandCard
               key={p.id}
-              onClick={() => router.push(`${portalBasePath(subdomain)}/projects/${p.id}`)}
-              className="text-left bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all p-4"
-            >
-              <div className="flex items-start justify-between gap-2 mb-1.5">
-                <h3 className="text-sm font-semibold text-gray-900 truncate">{p.title}</h3>
-                <span className={`flex-shrink-0 text-2xs font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLE[p.status]}`}>
-                  {STATUS_LABEL[p.status]}
-                </span>
-              </div>
-              {p.description && <p className="text-xs text-gray-500 line-clamp-2 mb-2">{p.description}</p>}
-              <p className="text-2xs text-gray-400">
-                {p.due_date ? `Due ${formatDate(p.due_date)}` : `Created ${formatDate(p.created_at)}`}
-              </p>
-            </button>
+              project={p}
+              accent={accent}
+              onOpen={() => router.push(`${portalBasePath(subdomain)}/projects/${p.id}`)}
+            />
           ))}
         </div>
       )}

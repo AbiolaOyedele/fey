@@ -66,6 +66,15 @@ export interface InternalMessage {
   attachments: import('./crm').MessageAttachment[]
   created_at: string
   edited_at: string | null
+  /**
+   * Set when the message was unsent for everyone. The row deliberately stays —
+   * a tombstone keeps the thread readable and any reply quoting it coherent.
+   */
+  deleted_at: string | null
+  /** Who unsent it — the sender, or an admin removing someone else's. */
+  deleted_by: string | null
+  /** The message this one replies to, when it's a quote. */
+  reply_to_id: string | null
 }
 
 /** Role → human label + the permissions it grants on the team surface. */

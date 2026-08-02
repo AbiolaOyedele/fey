@@ -2,6 +2,8 @@
 
 import { use, useState, useEffect, useCallback } from 'react'
 import { FileText, ExternalLink } from 'lucide-react'
+import { usePortalAccent } from '@/hooks/usePortalBranding'
+import { FadeIn } from '@/components/ui/motion'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { CURRENCY_SYMBOLS } from '@/lib/constants'
 import type { PortalInvoice } from '@/types/crm'
@@ -20,6 +22,7 @@ function fmtMoney(amount: number, currency: string): string {
 
 export default function PortalInvoicesPage({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
+  const accent = usePortalAccent(subdomain)
   const [invoices, setInvoices] = useState<PortalInvoice[]>([])
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState(false)
@@ -44,13 +47,14 @@ export default function PortalInvoicesPage({ params }: { params: Promise<{ subdo
   useEffect(() => { void load() }, [load])
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
-        {!loading && !error && (
-          <p className="text-sm text-gray-400 mt-0.5">{invoices.length} invoice{invoices.length !== 1 ? 's' : ''}</p>
-        )}
-      </div>
+    <div className="p-4 md:p-6 lg:p-8 page-enter">
+      <FadeIn>
+        <div className="flex items-center gap-2 mb-1">
+          <FileText size={18} style={{ color: accent }} />
+          <h1 className="font-display text-xl font-normal text-gray-800">Invoices</h1>
+        </div>
+        <p className="text-xs text-gray-400 mb-5">What has been billed, and what is still outstanding.</p>
+      </FadeIn>
 
       {loading ? (
         <div className="space-y-2">
@@ -58,15 +62,15 @@ export default function PortalInvoicesPage({ params }: { params: Promise<{ subdo
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <FileText size={32} className="text-gray-200 mb-3" />
-          <p className="text-sm2 font-medium text-gray-500">Couldn&apos;t load your invoices</p>
-          <button onClick={() => void load()} className="text-xs2 mt-2 underline text-gray-500 hover:text-gray-700">Try again</button>
+          <FileText size={28} className="text-gray-200 mb-3" />
+          <p className="text-sm font-medium text-gray-500">Couldn&apos;t load your invoices</p>
+          <button onClick={() => void load()} className="text-xs mt-2 font-semibold" style={{ color: accent }}>Try again</button>
         </div>
       ) : invoices.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <FileText size={32} className="text-gray-200 mb-3" />
-          <p className="text-sm2 font-medium text-gray-500">No invoices yet</p>
-          <p className="text-xs2 text-gray-400 mt-1">Invoices sent to you will appear here.</p>
+          <FileText size={28} className="text-gray-200 mb-3" />
+          <p className="text-sm font-medium text-gray-500">No invoices yet</p>
+          <p className="text-xs text-gray-400 mt-1">Invoices sent to you will appear here.</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">

@@ -57,17 +57,31 @@ export async function getOwnerIdByWorkspaceSlug(
 
 // ── Portal user lookup ────────────────────────────────────────────────────────
 
+/** Columns that make up a PortalUser, plus the hash `pending` is derived from. */
+const PORTAL_USER_COLS =
+  'id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at, password_hash'
+
+/**
+ * Maps a portal_users row to the client-facing shape.
+ * password_hash is read only to derive `pending` and is dropped here — it must
+ * never travel further than this function.
+ */
+export function mapPortalUser(row: Record<string, unknown>): PortalUser {
+  const { password_hash, ...rest } = row as Record<string, unknown> & { password_hash?: string | null }
+  return { ...(rest as Omit<PortalUser, 'pending'>), pending: !password_hash }
+}
+
 export async function getPortalUser(
   db: SupabaseClient,
   portalUserId: string,
 ): Promise<PortalUser | null> {
   const { data, error } = await db
     .from('portal_users')
-    .select('id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at')
+    .select(PORTAL_USER_COLS)
     .eq('id', portalUserId)
     .maybeSingle()
   if (error ?? !data) return null
-  return data as PortalUser
+  return mapPortalUser(data as Record<string, unknown>)
 }
 
 export async function getPortalUserByWorkspaceAndEmail(
@@ -77,12 +91,13 @@ export async function getPortalUserByWorkspaceAndEmail(
 ): Promise<(PortalUser & { password_hash: string | null }) | null> {
   const { data, error } = await db
     .from('portal_users')
-    .select('id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at, password_hash')
+    .select(PORTAL_USER_COLS)
     .eq('workspace_slug', workspaceSlug)
     .eq('email', email)
     .maybeSingle()
   if (error ?? !data) return null
-  return data as PortalUser & { password_hash: string | null }
+  const row = data as Record<string, unknown>
+  return { ...mapPortalUser(row), password_hash: (row.password_hash as string | null) ?? null }
 }
 
 export async function getPortalUserByContactAndOwner(
@@ -92,12 +107,12 @@ export async function getPortalUserByContactAndOwner(
 ): Promise<PortalUser | null> {
   const { data, error } = await db
     .from('portal_users')
-    .select('id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at')
+    .select(PORTAL_USER_COLS)
     .eq('contact_id', contactId)
     .eq('owner_id', ownerId)
     .maybeSingle()
   if (error ?? !data) return null
-  return data as PortalUser
+  return mapPortalUser(data as Record<string, unknown>)
 }
 
 /**
@@ -165,10 +180,34 @@ export async function createPortalUser(
       password_hash:  payload.password_hash,
       avatar_url:     payload.avatar_url,
     })
-    .select('id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at')
+    .select(PORTAL_USER_COLS)
     .single()
   if (error) throw error
-  return data as PortalUser
+  return mapPortalUser(data as Record<string, unknown>)
+}
+
+/**
+ * Claims an invited row: the person was added by a colleague, has no password
+ * yet, and is now completing signup. Returns null if the row isn't claimable
+ * (already has a password, or belongs to a different contact).
+ */
+export async function claimInvitedPortalUser(
+  db: SupabaseClient,
+  portalUserId: string,
+  contactId: string,
+  name: string,
+  passwordHash: string,
+): Promise<PortalUser | null> {
+  const { data, error } = await db
+    .from('portal_users')
+    .update({ name, password_hash: passwordHash })
+    .eq('id', portalUserId)
+    .eq('contact_id', contactId)
+    .is('password_hash', null)
+    .select(PORTAL_USER_COLS)
+    .maybeSingle()
+  if (error ?? !data) return null
+  return mapPortalUser(data as Record<string, unknown>)
 }
 
 // ── Contact for portal client ─────────────────────────────────────────────────
@@ -287,6 +326,10 @@ function rowToMessage(row: Record<string, unknown>): CrmMessage {
     attachments: (row.attachments as MessageAttachment[]) ?? [],
     read_at:     (row.read_at as string | null) ?? null,
     created_at:  row.created_at as string,
+    edited_at:   (row.edited_at as string | null) ?? null,
+    deleted_at:  (row.deleted_at as string | null) ?? null,
+    deleted_by:  (row.deleted_by as string | null) ?? null,
+    reply_to_id: (row.reply_to_id as string | null) ?? null,
   }
 }
 
@@ -455,13 +498,19 @@ export async function listPortalPayments(
 export async function listPortalTasks(
   db: SupabaseClient,
   contactId: string,
+  /**
+   * The agency people this client is allowed to see, keyed by user_id. Assignees
+   * outside this map are omitted rather than shown anonymously — the client is
+   * not entitled to know the rest of the roster exists.
+   */
+  visibleMembers: Map<string, string> = new Map(),
 ): Promise<PortalTask[]> {
   // Reads from the new unified task system (work_tasks), scoped to this client.
   // Every task linked to the client — directly or via one of their projects —
   // carries contact_id, so a single filter covers both. Service-role client.
   const { data, error } = await db
     .from('work_tasks')
-    .select('id, title, done, due_date, priority, created_at, projects:project_id ( title ), work_task_files ( id, file_name, file_url, file_size, file_type )')
+    .select('id, title, description, done, due_date, priority, created_at, requested_by_portal_user, projects:project_id ( title ), work_task_files ( id, file_name, file_url, file_size, file_type ), work_task_assignees ( user_id )')
     .eq('contact_id', contactId)
     .is('deleted_at', null)
     .order('done', { ascending: true })
@@ -470,17 +519,114 @@ export async function listPortalTasks(
   return (data ?? []).map((row: Record<string, unknown>) => {
     const proj = row.projects as { title: string } | { title: string }[] | null
     const projTitle = Array.isArray(proj) ? (proj[0]?.title ?? null) : (proj?.title ?? null)
+    const assigneeRows = (row.work_task_assignees as { user_id: string }[] | null) ?? []
     return {
       id:            row.id as string,
       title:         row.title as string,
+      description:   (row.description as string | null) ?? null,
       done:          (row.done as boolean | null) ?? false,
       due_date:      (row.due_date as string | null) ?? null,
       priority:      (row.priority as PortalTask['priority']) ?? 'medium',
       project_title: projTitle,
       created_at:    row.created_at as string,
       files:         (row.work_task_files as PortalTask['files'] | null) ?? [],
+      assignees: assigneeRows
+        .filter((a) => visibleMembers.has(a.user_id))
+        .map((a) => ({ user_id: a.user_id, name: visibleMembers.get(a.user_id) ?? '' })),
+      requested_by_client: (row.requested_by_portal_user as string | null) !== null,
     }
   })
+}
+
+/**
+ * Inserts a task raised by a client from their portal.
+ *
+ * `created_by` is the workspace owner, not the client: work_tasks.created_by is
+ * an FK to auth.users and portal users are a separate table entirely. The real
+ * requester is recorded in requested_by_portal_user, which is what the task
+ * shows on both sides.
+ */
+export async function insertPortalTask(
+  db: SupabaseClient,
+  args: {
+    ownerId: string
+    workspaceId: string | null
+    contactId: string
+    portalUserId: string
+    stageId: string | null
+    title: string
+    description: string | null
+    priority: PortalTask['priority']
+    dueDate: string | null
+  },
+): Promise<string> {
+  const { data, error } = await db
+    .from('work_tasks')
+    .insert({
+      owner_id:     args.ownerId,
+      workspace_id: args.workspaceId,
+      contact_id:   args.contactId,
+      created_by:   args.ownerId,
+      requested_by_portal_user: args.portalUserId,
+      stage_id:     args.stageId,
+      // Client tasks are always workspace-visible — a private client task is a
+      // contradiction, and the visibility column only governs unlinked tasks.
+      visibility:   'team',
+      title:        args.title,
+      description:  args.description,
+      priority:     args.priority,
+      due_date:     args.dueDate,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return (data as { id: string }).id
+}
+
+export async function assignPortalTask(
+  db: SupabaseClient,
+  taskId: string,
+  userIds: string[],
+): Promise<void> {
+  if (userIds.length === 0) return
+  const { error } = await db
+    .from('work_task_assignees')
+    .insert(userIds.map((user_id) => ({ task_id: taskId, user_id })))
+  if (error) throw error
+}
+
+/** The owner's first workspace, used to scope tasks a client creates. */
+export async function getOwnerWorkspaceId(
+  db: SupabaseClient,
+  ownerId: string,
+): Promise<string | null> {
+  const { data, error } = await db
+    .from('workspaces')
+    .select('id')
+    .eq('owner_id', ownerId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  if (error || !data) return null
+  return (data as { id: string }).id
+}
+
+/** Renames a portal user. Scoped by contact so one client can't rename another's. */
+export async function updatePortalUserName(
+  db: SupabaseClient,
+  portalUserId: string,
+  contactId: string,
+  name: string,
+): Promise<PortalUser> {
+  const { data, error } = await db
+    .from('portal_users')
+    .update({ name })
+    .eq('id', portalUserId)
+    .eq('contact_id', contactId)
+    .select('id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at')
+    .single()
+  if (error) throw error
+  return { ...(data as Omit<PortalUser, 'pending'>), pending: false }
 }
 
 // ── Owner settings lookup ─────────────────────────────────────────────────────
@@ -489,9 +635,17 @@ export async function getOwnerSettings(
   db: SupabaseClient,
   ownerId: string,
 ): Promise<Record<string, unknown> | null> {
+  // Only the columns the portal actually renders.
+  //
+  // This was `select('*')`, which dragged the whole settings row into every
+  // portal session check — including avatar_url and cover_image, which are
+  // stored as base64 data URLs and can run to hundreds of KB each. None of
+  // that is shown to a client: the portal uses `logo`. Narrowing the select
+  // is the single biggest win available on portal load time, and it costs
+  // nothing.
   const { data, error } = await db
     .from('fey_settings')
-    .select('*')
+    .select('user_id, username, company_name, logo, accent_color, font_family, workspace_slug, workspace_name, portal_active, business_email, portal_read_receipts')
     .eq('user_id', ownerId)
     .maybeSingle()
   if (error ?? !data) return null

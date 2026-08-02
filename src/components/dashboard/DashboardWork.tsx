@@ -180,7 +180,7 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-800 truncate">{p.title}</p>
-                    <p className="text-xs text-gray-400 truncate">{client ?? 'Personal project'}</p>
+                    <p className="text-xs text-gray-400 truncate">{client ?? 'Personal brand'}</p>
                   </div>
                   <span className="text-3xs font-medium px-2 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.bg, color: s.fg }}>
                     {s.label}

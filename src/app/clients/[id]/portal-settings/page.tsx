@@ -6,6 +6,7 @@ import { useContacts } from '@/hooks/useCrm'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { supabase } from '@/lib/supabase'
+import ClientTeamAccess from '@/components/crm/ClientTeamAccess'
 
 export default function PortalSettingsTab({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -258,6 +259,9 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
           </code>
         </div>
       )}
+
+      {/* Team the client can see and assign to */}
+      <ClientTeamAccess contactId={id} />
 
       {/* Welcome message */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">

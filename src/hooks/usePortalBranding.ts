@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePortalBrandingContext } from '@/contexts/PortalSessionContext'
 
 export interface PortalBranding {
   business_name: string
@@ -32,11 +33,20 @@ export function usePortalBranding(subdomain: string): PortalBranding | null {
 export const DEFAULT_PORTAL_ACCENT = '#ED64A6'
 
 /**
- * Just the accent colour for a portal, with a sensible default while branding
- * loads. Saves every page re-deriving `branding?.accent_color || '#ED64A6'`,
- * and keeps the fallback in one place.
+ * The portal's accent colour.
+ *
+ * Reads the branding the layout already resolved rather than fetching again.
+ * An earlier version always fetched, which meant every page navigation fired a
+ * redundant `/branding` request and painted the default pink before repainting
+ * in the workspace's real colour.
+ *
+ * The fetch only happens outside the provider — login, signup and join, which
+ * render before there's a session to carry branding.
  */
 export function usePortalAccent(subdomain: string): string {
-  const branding = usePortalBranding(subdomain)
-  return branding?.accent_color || DEFAULT_PORTAL_ACCENT
+  const fromContext = usePortalBrandingContext()
+  // Hooks can't be called conditionally, so the fetching hook still runs; it
+  // no-ops on an empty subdomain, which is what it gets once context is present.
+  const fetched = usePortalBranding(fromContext ? '' : subdomain)
+  return fromContext?.accent_color || fetched?.accent_color || DEFAULT_PORTAL_ACCENT
 }

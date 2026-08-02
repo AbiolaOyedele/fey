@@ -4,6 +4,7 @@ import { use } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
+import { useSettings } from '@/contexts/SettingsContext'
 import { useContacts, useMessages } from '@/hooks/useCrm'
 import MessageThread from '@/components/crm/MessageThread'
 import type { MessageAttachment } from '@/types/crm'
@@ -14,7 +15,8 @@ export default function MessagesTab({ params }: { params: Promise<{ id: string }
   const { workspace } = useWorkspace()
   const { contacts } = useContacts()
   const contact = contacts.find((c) => c.id === id)
-  const { messages, loading, sendMessage } = useMessages(id)
+  const { messages, loading, sendMessage, deleteMessage, editMessage } = useMessages(id)
+  const { settings } = useSettings()
   const searchParams = useSearchParams()
   const highlightMessageId = searchParams.get('message')
 
@@ -33,6 +35,10 @@ export default function MessagesTab({ params }: { params: Promise<{ id: string }
         showWelcomeBanner={!!contact?.portal_welcome_message}
         loading={loading}
         highlightMessageId={highlightMessageId}
+        onDelete={deleteMessage}
+        onEdit={(messageId, body) => editMessage(messageId, body, null)}
+        accent={settings.accent_color || '#ED64A6'}
+        viewer={user ? { id: user.id, name: 'You' } : null}
       />
     </div>
   )

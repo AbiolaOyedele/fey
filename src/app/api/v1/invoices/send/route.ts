@@ -5,6 +5,7 @@ import { env } from '@/config/env'
 import { EMAIL_FROM, appUrl } from '@/config/email'
 import { sendEmail } from '@/services/email.service'
 import { AppError, isAppError } from '@/lib/errors'
+import { announceToClient } from '@/services/portal-notifications.service'
 
 // ── Request validation ─────────────────────────────────────────────────────
 
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
   // 4. Verify the invoice belongs to this user (ownership check)
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
-    .select('id, invoice_number, from_details, share_token, share_enabled, status')
+    .select('id, invoice_number, from_details, share_token, share_enabled, status, crm_contact_id')
     .eq('id', invoiceId)
     .eq('user_id', user.id)
     .single()
@@ -128,6 +129,23 @@ export async function POST(req: NextRequest) {
         .update({ status: 'sent', updated_at: new Date().toISOString() })
         .eq('id', invoiceId)
         .eq('user_id', user.id)
+    }
+
+    // 8. Tell the client in their portal. The email may go to one address while
+    //    several people hold portal access, so the in-app notification isn't a
+    //    duplicate of the email — it's how the rest of them find out.
+    const contactId = invoice.crm_contact_id as string | null
+    if (contactId) {
+      announceToClient({
+        contactId,
+        ownerId:    user.id,
+        type:       'invoice',
+        title:      'New invoice',
+        body:       (invoice.invoice_number as string) || null,
+        link:       '/invoices',
+        entityType: 'invoice',
+        entityId:   invoiceId,
+      })
     }
 
     return NextResponse.json({ success: true })

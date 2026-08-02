@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { AppError } from '@/lib/errors'
+import { createServiceClient } from '@/lib/supabase-server'
 import * as repo from '@/repositories/portal-notifications.repository'
 import {
   PREF_KEY_FOR_TYPE,
@@ -43,6 +44,18 @@ export async function notifyClient(args: NotifyClientArgs): Promise<void> {
   } catch (err) {
     console.warn('[notifyClient] failed:', err)
   }
+}
+
+/**
+ * Fire-and-forget wrapper that brings its own service-role client.
+ *
+ * Portal notifications have no client-facing insert policy, so this needs the
+ * service role no matter which caller triggered it — pushing that detail into
+ * every call site meant the same three lines repeated in each service. Not
+ * awaited: telling the client must never delay or fail the owner's action.
+ */
+export function announceToClient(args: Omit<NotifyClientArgs, 'db'>): void {
+  void notifyClient({ db: createServiceClient(), ...args })
 }
 
 async function notifyClientInner(args: NotifyClientArgs): Promise<void> {

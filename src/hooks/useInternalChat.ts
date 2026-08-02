@@ -17,9 +17,11 @@ interface InternalChatState {
   loadingMessages: boolean
   sending:         boolean
   error:           string | null
-  send:            (body: string, attachments?: MessageAttachment[]) => Promise<void>
+  send:            (body: string, attachments?: MessageAttachment[], replyToId?: string | null) => Promise<void>
   editMessage:     (messageId: string, body: string) => Promise<void>
   deleteMessage:   (messageId: string) => Promise<void>
+  /** Hide for yourself only — everyone else keeps seeing it. */
+  hideMessage:     (messageId: string) => Promise<void>
   createChannel:   (name: string) => Promise<void>
 }
 
@@ -69,15 +71,26 @@ export function useInternalChat(workspaceId: string | null): InternalChatState {
 
     void (async () => {
       setLoadingMessages(true)
-      const { data, error: err } = await supabase
-        .from('internal_messages')
-        .select('*')
-        .eq('channel_id', activeChannelId)
-        .order('created_at', { ascending: true })
-        .limit(200)
+      // "Delete for me" is per-viewer, so it can't live on the message row —
+      // the hides are fetched alongside and applied here. Without this the
+      // message would reappear on the next refresh.
+      const [{ data, error: err }, { data: hiddenRows }] = await Promise.all([
+        supabase
+          .from('internal_messages')
+          .select('*')
+          .eq('channel_id', activeChannelId)
+          .order('created_at', { ascending: true })
+          .limit(200),
+        supabase
+          .from('message_hidden')
+          .select('message_id')
+          .eq('scope', 'internal'),
+      ])
       if (cancelled) return
       if (err) { setError(err.message); setLoadingMessages(false); return }
-      setMessages((data ?? []) as InternalMessage[])
+      // RLS already scopes message_hidden to this viewer.
+      const hidden = new Set((hiddenRows ?? []).map((r) => (r as { message_id: string }).message_id))
+      setMessages(((data ?? []) as InternalMessage[]).filter((m) => !hidden.has(m.id)))
       setLoadingMessages(false)
     })()
 
@@ -112,7 +125,7 @@ export function useInternalChat(workspaceId: string | null): InternalChatState {
     return () => { cancelled = true; void supabase.removeChannel(channel) }
   }, [activeChannelId])
 
-  const send = useCallback(async (body: string, attachments: MessageAttachment[] = []) => {
+  const send = useCallback(async (body: string, attachments: MessageAttachment[] = [], replyToId: string | null = null) => {
     const trimmed = body.trim()
     if ((!trimmed && attachments.length === 0) || !user || !workspaceId || !activeChannelId) return
     setSending(true)
@@ -126,6 +139,9 @@ export function useInternalChat(workspaceId: string | null): InternalChatState {
         body:         trimmed,
       }
       if (attachments.length > 0) payload.attachments = attachments
+      // Only set when replying, so a plain send doesn't depend on the column
+      // existing in an environment that hasn't run the migration yet.
+      if (replyToId) payload.reply_to_id = replyToId
       const { data, error: err } = await supabase
         .from('internal_messages')
         .insert(payload)
@@ -191,15 +207,58 @@ export function useInternalChat(workspaceId: string | null): InternalChatState {
     }
   }, [workspaceId, activeChannelId, channels])
 
+  /**
+   * Unsend for everyone — a soft delete, the way WhatsApp does it.
+   *
+   * This used to hard-DELETE the row, which is the one thing WhatsApp doesn't
+   * do: the message vanished and the thread silently closed up, so nobody could
+   * tell a message had been removed rather than never sent, and any reply
+   * quoting it lost its parent. The row now stays as a tombstone and renders as
+   * "This message was deleted".
+   */
   const deleteMessage = useCallback(async (messageId: string) => {
-    setMessages((prev) => prev.filter((m) => m.id !== messageId))
+    if (!user) return
+    const deletedAt = new Date().toISOString()
+    const previous = messages
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? { ...m, body: '', attachments: [], deleted_at: deletedAt, deleted_by: user.id }
+          : m,
+      ),
+    )
     try {
-      const { error: err } = await supabase.from('internal_messages').delete().eq('id', messageId)
+      const { error: err } = await supabase
+        .from('internal_messages')
+        // The body is cleared as well as tombstoned: leaving the text in the row
+        // would keep it readable to anyone who can query the table.
+        .update({ body: '', attachments: [], deleted_at: deletedAt, deleted_by: user.id })
+        .eq('id', messageId)
       if (err) throw err
     } catch (e) {
+      setMessages(previous)
       setError(e instanceof Error ? e.message : 'Failed to delete message')
     }
-  }, [])
+  }, [user, messages])
+
+  /** Hide a message for yourself only — everyone else still sees it. */
+  const hideMessage = useCallback(async (messageId: string) => {
+    if (!user) return
+    const previous = messages
+    setMessages((prev) => prev.filter((m) => m.id !== messageId))
+    try {
+      const { error: err } = await supabase
+        .from('message_hidden')
+        .upsert(
+          { message_id: messageId, scope: 'internal', viewer_id: user.id },
+          { onConflict: 'message_id,scope,viewer_id' },
+        )
+      if (err) throw err
+    } catch (e) {
+      setMessages(previous)
+      setError(e instanceof Error ? e.message : 'Failed to hide message')
+    }
+  }, [user, messages])
 
   const createChannel = useCallback(async (name: string) => {
     const clean = name.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
@@ -217,6 +276,6 @@ export function useInternalChat(workspaceId: string | null): InternalChatState {
 
   return {
     channels, activeChannelId, setActiveChannel: setActiveChannelId,
-    messages, loadingChannels, loadingMessages, sending, error, send, editMessage, deleteMessage, createChannel,
+    messages, loadingChannels, loadingMessages, sending, error, send, editMessage, deleteMessage, hideMessage, createChannel,
   }
 }

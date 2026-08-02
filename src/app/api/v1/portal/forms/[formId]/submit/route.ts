@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase-server'
 import { requirePortalAuth, handleError } from '@/lib/api-helpers'
 import * as portalService from '@/services/portal.service'
+import { requireCapability } from '@/services/portal-members.service'
 import { notifyOwnerAdmins } from '@/services/notifications.service'
 
 const submitSchema = z.object({
@@ -32,11 +33,13 @@ export async function POST(
   }
   const db = createServiceClient()
   try {
+    // A viewer must not be able to submit a form on the client's behalf.
+    const submitter = await requireCapability(db, payload!.portal_user_id, 'write')
     await portalService.submitPortalForm(db, formId, payload!.contact_id, parsed.data.responses)
     await notifyOwnerAdmins(db, payload!.owner_id, {
       type: 'form_submitted',
       title: 'Form submitted',
-      body: 'A client completed one of your forms.',
+      body: `${submitter.name} completed one of your forms.`,
       link: `/clients/${payload!.contact_id}/forms`,
       entityType: 'form',
       entityId: formId,

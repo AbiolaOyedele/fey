@@ -1,11 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { formatDate as fmtDate } from '@/utils/formatDate'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, CornerUpLeft, Pencil, Trash2, Ban } from 'lucide-react'
 import type { CrmMessage, MessageAttachment } from '@/types/crm'
 import RichTextComposer from './RichTextComposer'
 import AttachmentPreview from './AttachmentPreview'
+import MessageReactions from '@/components/chat/MessageReactions'
+import ReplyPreview from '@/components/chat/ReplyPreview'
+import { useMessageReactions } from '@/hooks/useMessageReactions'
+import { DELETED_MESSAGE_PLACEHOLDER } from '@/types/chat'
 import { escapeHtml } from '@/utils/escapeHtml'
 
 interface MessageThreadProps {
@@ -18,6 +22,13 @@ interface MessageThreadProps {
   loading?: boolean
   /** Scrolls to and briefly highlights this message on mount (e.g. from a mention notification link). */
   highlightMessageId?: string | null
+  /** Unsend for everyone. Omit where the surface doesn't support it (brand chat). */
+  onDelete?: (messageId: string) => Promise<void>
+  /** Edit one of your own messages. */
+  onEdit?: (messageId: string, body: string) => Promise<void>
+  /** Viewer identity, for reactions. */
+  viewer?: { id: string; name: string } | null
+  accent?: string
 }
 
 function initial(name: string): string {
@@ -55,10 +66,34 @@ function groupByDate(messages: CrmMessage[]): Array<{ date: string; messages: Cr
 export default function MessageThread({
   messages, ownerId, workspaceId = null, contactName = 'Client', onSend,
   showWelcomeBanner = false, loading = false, highlightMessageId = null,
+  onDelete, onEdit, viewer = null, accent = 'var(--accent, #ED64A6)',
 }: MessageThreadProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const [highlightId, setHighlightId] = useState<string | null>(null)
+  const [menuFor, setMenuFor]   = useState<string | null>(null)
+  const [editingId, setEditing] = useState<string | null>(null)
+  const [editDraft, setDraft]   = useState('')
+  const [replyTo, setReplyTo]   = useState<CrmMessage | null>(null)
+
+  const messageIds = useMemo(() => messages.map((m) => m.id), [messages])
+  const { byMessage: reactions, toggle: toggleReaction } = useMessageReactions('crm', messageIds, viewer)
+
+  const commitEdit = async (msg: CrmMessage) => {
+    const next = editDraft.trim()
+    setEditing(null)
+    if (!onEdit || !next || next === msg.body) return
+    await onEdit(msg.id, next)
+  }
+
+  /** Scrolls to a quoted message and flashes it, so a reply can be traced back. */
+  const jumpTo = (id: string) => {
+    const el = messageRefs.current.get(id)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightId(id)
+    setTimeout(() => setHighlightId((cur) => (cur === id ? null : cur)), 1600)
+  }
 
   useEffect(() => {
     if (highlightMessageId) return // deep-link scroll takes priority over autoscroll
@@ -122,12 +157,73 @@ export default function MessageThread({
                 const isOwner = msg.sender_id === ownerId
                 const senderName = isOwner ? 'You' : contactName
                 const hasBody = !!(msg.body_html?.trim() || msg.body.trim())
+                const isEditing = editingId === msg.id
+                // The parent may have been pruned; a quote with no parent in
+                // view simply doesn't render rather than erroring.
+                const parent = msg.reply_to_id ? messages.find((x) => x.id === msg.reply_to_id) ?? null : null
                 return (
                   <div
                     key={msg.id}
                     ref={(el) => { if (el) messageRefs.current.set(msg.id, el); else messageRefs.current.delete(msg.id) }}
-                    className={`flex gap-3 rounded-xl transition-colors duration-500 ${isOwner ? 'flex-row-reverse' : 'flex-row'} ${highlightId === msg.id ? 'bg-amber-50' : ''}`}
+                    className={`group/msg relative flex gap-3 rounded-xl transition-colors duration-500 ${isOwner ? 'flex-row-reverse' : 'flex-row'} ${highlightId === msg.id ? 'bg-amber-50' : ''}`}
                   >
+                    {!msg.deleted_at && (onDelete || onEdit) && (
+                      <div
+                        className={`absolute top-0 z-10 flex items-center gap-0.5 bg-white rounded-full border border-gray-100 shadow-sm px-1 opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 transition-opacity ${isOwner ? 'left-0' : 'right-0'}`}
+                      >
+                        <button
+                          onClick={() => setReplyTo(msg)}
+                          title="Reply"
+                          aria-label="Reply to this message"
+                          className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 rounded-full"
+                        >
+                          <CornerUpLeft size={13} />
+                        </button>
+                        {onEdit && isOwner && (
+                          <button
+                            onClick={() => { setEditing(msg.id); setDraft(msg.body) }}
+                            title="Edit"
+                            aria-label="Edit this message"
+                            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 rounded-full"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            onClick={() => setMenuFor(menuFor === msg.id ? null : msg.id)}
+                            title="Delete for everyone"
+                            aria-label="Delete this message for everyone"
+                            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 rounded-full"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {menuFor === msg.id && onDelete && (
+                      <div className={`absolute top-9 z-20 w-56 bg-white rounded-xl border border-gray-100 shadow-lg p-3 ${isOwner ? 'left-0' : 'right-0'}`}>
+                        <p className="text-2xs text-gray-500 leading-relaxed mb-2">
+                          Replaced with &ldquo;This message was deleted&rdquo; for you and the client.
+                        </p>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setMenuFor(null)}
+                            className="px-2.5 py-1.5 rounded-full text-2xs text-gray-500 hover:text-gray-700"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => { setMenuFor(null); void onDelete(msg.id) }}
+                            className="px-3 py-1.5 rounded-full text-2xs font-semibold text-white"
+                            style={{ backgroundColor: '#E53E3E' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white flex-shrink-0"
                       style={{ backgroundColor: isOwner ? 'var(--accent, #ED64A6)' : '#9CA3AF' }}
@@ -138,27 +234,73 @@ export default function MessageThread({
                       <div className="flex items-center gap-2 mb-0.5">
                         {!isOwner && <span className="text-xs font-semibold text-gray-700">{senderName}</span>}
                         <span className="text-3xs text-gray-400">
-                          {formatTime(msg.created_at)}{isOwner && (msg.read_at ? ' · Read' : ' · Sent')}
+                          {formatTime(msg.created_at)}
+                          {msg.edited_at && !msg.deleted_at && ' · edited'}
+                          {isOwner && !msg.deleted_at && (msg.read_at ? ' · Read' : ' · Sent')}
                         </span>
                       </div>
                       {/* Client messages are untrusted: escape their plain body and never
                           render client-supplied body_html — otherwise a crafted message
                           injects HTML/script into the owner's session (stored XSS). Only the
                           owner's own RichTextComposer output is trusted rich HTML. */}
-                      {hasBody && (
+                      {parent && !msg.deleted_at && (
+                        <div className={`w-full max-w-[280px] ${isOwner ? 'self-end' : ''}`}>
+                          <ReplyPreview
+                            senderName={parent.sender_id === ownerId ? 'You' : contactName}
+                            body={parent.body}
+                            deleted={!!parent.deleted_at}
+                            accent={accent}
+                            onJump={() => jumpTo(parent.id)}
+                          />
+                        </div>
+                      )}
+
+                      {msg.deleted_at ? (
+                        // The row survives on purpose: a thread that silently
+                        // closes up leaves nobody able to tell a message was
+                        // removed rather than never sent.
+                        <div className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-sm italic text-gray-400 border border-dashed border-gray-200 rounded-2xl ${isOwner ? 'rounded-br-sm' : 'rounded-bl-sm'}`}>
+                          <Ban size={12} />
+                          {DELETED_MESSAGE_PLACEHOLDER}
+                        </div>
+                      ) : isEditing ? (
+                        <div className="w-64 bg-white rounded-2xl border border-gray-200 shadow-sm px-3 py-2">
+                          <textarea
+                            value={editDraft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void commitEdit(msg) }
+                              if (e.key === 'Escape') setEditing(null)
+                            }}
+                            autoFocus
+                            rows={3}
+                            className="w-full text-sm text-gray-800 outline-none resize-none"
+                          />
+                          <p className="text-3xs text-gray-400 mt-1">Enter to save · Esc to cancel</p>
+                        </div>
+                      ) : hasBody ? (
                         <div
                           className={`px-3.5 py-2 text-sm leading-relaxed break-words rounded-2xl ${isOwner ? 'rounded-br-sm text-white' : 'rounded-bl-sm text-gray-800'}`}
-                          style={isOwner ? { backgroundColor: 'var(--accent, #ED64A6)' } : { backgroundColor: '#F3F4F6' }}
+                          style={isOwner ? { backgroundColor: accent } : { backgroundColor: '#F3F4F6' }}
                           dangerouslySetInnerHTML={{
                             __html: isOwner
                               ? (msg.body_html ?? escapeHtml(msg.body).replace(/\n/g, '<br>'))
                               : escapeHtml(msg.body).replace(/\n/g, '<br>'),
                           }}
                         />
-                      )}
-                      {msg.attachments.length > 0 && (
+                      ) : null}
+
+                      {!msg.deleted_at && msg.attachments.length > 0 && (
                         <AttachmentPreview attachments={msg.attachments} />
                       )}
+
+                      <MessageReactions
+                        summaries={reactions.get(msg.id) ?? []}
+                        accent={accent}
+                        canReact={!msg.deleted_at && !!viewer}
+                        align={isOwner ? 'end' : 'start'}
+                        onToggle={(emoji) => void toggleReaction(msg.id, emoji)}
+                      />
                     </div>
                   </div>
                 )
@@ -171,6 +313,15 @@ export default function MessageThread({
 
       {/* Composer */}
       <div className="flex-shrink-0 px-6 pb-6 pt-2">
+        {replyTo && (
+          <ReplyPreview
+            senderName={replyTo.sender_id === ownerId ? 'You' : contactName}
+            body={replyTo.body}
+            deleted={!!replyTo.deleted_at}
+            accent={accent}
+            onCancel={() => setReplyTo(null)}
+          />
+        )}
         <RichTextComposer onSend={(text, html, attachments) => void onSend(text, html, attachments)} workspaceId={workspaceId} />
       </div>
     </div>

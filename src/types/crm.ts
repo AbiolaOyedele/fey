@@ -65,6 +65,19 @@ export interface PortalUser {
   can_sign:       boolean
   can_pay:        boolean
   created_at:     string
+  /**
+   * True when they were added by a colleague but haven't set a password yet.
+   * Derived from password_hash being null — the hash itself never leaves the
+   * server, so the flag is computed there.
+   */
+  pending:        boolean
+}
+
+/** What a client_admin supplies when adding someone from their own side. */
+export interface InvitePortalMemberRequest {
+  name:  string
+  email: string
+  role?: PortalRole
 }
 
 /** Only a client_admin may change their own side's roles. */
@@ -109,6 +122,16 @@ export interface CrmMessage {
   attachments: MessageAttachment[]
   read_at: string | null
   created_at: string
+  /** Set when edited. Shown as an "edited" marker, the way WhatsApp does it. */
+  edited_at: string | null
+  /**
+   * Set when unsent for everyone. The row deliberately survives — a tombstone
+   * keeps the thread readable and any reply quoting it coherent.
+   */
+  deleted_at: string | null
+  deleted_by: string | null
+  /** The message this one replies to, when it's a quote. */
+  reply_to_id: string | null
 }
 
 export interface CrmFile {
@@ -338,13 +361,33 @@ export interface PortalTaskFile {
   file_type: string | null
 }
 
+/** One of the agency's people, as the client sees them. No email — just who to pick. */
+export interface ClientTeamMember {
+  user_id: string
+  name:    string
+}
+
 export interface PortalTask {
   id:            string
   title:         string
+  description:   string | null
   done:          boolean
   due_date:      string | null
   priority:      'low' | 'medium' | 'high'
   project_title: string | null
   created_at:    string
   files:         PortalTaskFile[]
+  /** The agency people working on it, limited to those this client may see. */
+  assignees:     ClientTeamMember[]
+  /** True when the client raised it themselves rather than the agency. */
+  requested_by_client: boolean
+}
+
+/** What a client sends when raising a task from their portal. */
+export interface CreatePortalTaskRequest {
+  title:        string
+  description?: string | null
+  due_date?:    string | null
+  priority?:    'low' | 'medium' | 'high'
+  assignee_ids?: string[]
 }

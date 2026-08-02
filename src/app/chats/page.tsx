@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Hash, Send, MessagesSquare, Plus, Paperclip, X, Loader2, Pencil, Trash2 } from 'lucide-react'
+import { Hash, Send, MessagesSquare, Plus, Paperclip, X, Loader2, Pencil, Trash2, EyeOff, Ban, CornerUpLeft } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -15,6 +15,12 @@ import AttachmentPreview from '@/components/crm/AttachmentPreview'
 import EmojiPicker from '@/components/crm/EmojiPicker'
 import { uploadToCloudinary, formatFileSize } from '@/utils/cloudinary'
 import type { MessageAttachment } from '@/types/crm'
+import { canDeleteForEveryone, canEdit, DELETED_MESSAGE_PLACEHOLDER } from '@/types/chat'
+import { useMessageReactions } from '@/hooks/useMessageReactions'
+import MessageReactions from '@/components/chat/MessageReactions'
+import ReplyPreview from '@/components/chat/ReplyPreview'
+import type { InternalMessage } from '@/types/team'
+import { isUnrestrictedRole } from '@/types/team'
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024
 const LONG_PRESS_MS = 450
@@ -29,11 +35,24 @@ function timeLabel(iso: string): string {
 
 interface MenuState { messageId: string; x: number; y: number }
 
-/** Right-click (desktop) / long-press (mobile) menu for editing or deleting your own message. */
-function MessageMenu({ state, onEdit, onDelete, onClose }: {
+/**
+ * Right-click (desktop) / long-press (mobile) message menu.
+ *
+ * Two deletes, the way WhatsApp does it: "Delete for everyone" replaces the
+ * message with a tombstone for the whole channel, "Delete for me" hides it from
+ * this viewer alone. They are genuinely different actions and collapsing them
+ * into one "Delete" is how people lose messages they only meant to tidy away.
+ * Options are shown only when they're actually available — editing expires
+ * after 15 minutes, unsending after 48 hours.
+ */
+function MessageMenu({ state, canEditMsg, canUnsend, onReply, onEdit, onDelete, onHide, onClose }: {
   state: MenuState
+  canEditMsg: boolean
+  canUnsend: boolean
+  onReply: () => void
   onEdit: () => void
   onDelete: () => void
+  onHide: () => void
   onClose: () => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -55,16 +74,32 @@ function MessageMenu({ state, onEdit, onDelete, onClose }: {
       className="fixed z-50 w-40 bg-white rounded-xl shadow-xl border border-gray-100 py-1"
     >
       <button
-        onClick={onEdit}
-        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
+        onClick={onReply}
+        className="w-full flex items-center gap-2 px-3 py-2 min-h-[40px] text-sm text-gray-700 hover:bg-gray-50 text-left"
       >
-        <Pencil size={13} /> Edit
+        <CornerUpLeft size={13} /> Reply
       </button>
+      {canEditMsg && (
+        <button
+          onClick={onEdit}
+          className="w-full flex items-center gap-2 px-3 py-2 min-h-[40px] text-sm text-gray-700 hover:bg-gray-50 text-left"
+        >
+          <Pencil size={13} /> Edit
+        </button>
+      )}
+      {canUnsend && (
+        <button
+          onClick={onDelete}
+          className="w-full flex items-center gap-2 px-3 py-2 min-h-[40px] text-sm text-red-500 hover:bg-red-50 text-left"
+        >
+          <Trash2 size={13} /> Delete for everyone
+        </button>
+      )}
       <button
-        onClick={onDelete}
-        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 text-left"
+        onClick={onHide}
+        className="w-full flex items-center gap-2 px-3 py-2 min-h-[40px] text-sm text-gray-700 hover:bg-gray-50 text-left"
       >
-        <Trash2 size={13} /> Delete
+        <EyeOff size={13} /> Delete for me
       </button>
     </div>
   )
@@ -75,11 +110,13 @@ export default function ChatsPage() {
   const { settings } = useSettings()
   const accent = settings.accent_color ?? '#ED64A6'
 
-  const { workspace, loading: wsLoading } = useWorkspace()
+  const { workspace, role, loading: wsLoading } = useWorkspace()
+  // Owners and super admins can unsend anyone's message, past the 48h window.
+  const isAdmin = isUnrestrictedRole(role)
   const { members } = useTeam(workspace?.id ?? null)
   const {
     channels, activeChannelId, setActiveChannel,
-    messages, loadingMessages, sending, send, editMessage, deleteMessage, createChannel,
+    messages, loadingMessages, sending, send, editMessage, deleteMessage, hideMessage, createChannel,
   } = useInternalChat(workspace?.id ?? null)
   const confirm = useConfirm()
 
@@ -87,6 +124,8 @@ export default function ChatsPage() {
   const deepLinkChannel = searchParams.get('channel')
   const deepLinkMessage = searchParams.get('message')
   const [highlightId, setHighlightId] = useState<string | null>(null)
+  const [replyTo, setReplyTo] = useState<InternalMessage | null>(null)
+  const messageIds = useMemo(() => messages.map((m) => m.id), [messages])
   const consumedDeepLinkChannel = useRef<string | null>(null)
 
   const [attachments, setAttachments] = useState<MessageAttachment[]>([])
@@ -170,14 +209,34 @@ export default function ChatsPage() {
     if (fileRef.current) fileRef.current.value = ''
   }
 
+  // Reactor names are stored on the row, so a reaction stays readable even
+  // if the person later leaves the workspace.
+  const myName = members.find((mem) => mem.user_id === user?.id)?.name ?? 'Teammate'
+  const { byMessage: reactions, toggle: toggleReaction } = useMessageReactions(
+    'internal',
+    messageIds,
+    user ? { id: user.id, name: myName } : null,
+  )
+
   const handleSend = async (body: string) => {
     if ((!body.trim() && attachments.length === 0) || uploading > 0) return
     const atts = attachments
+    const parentId = replyTo?.id ?? null
     composerRef.current?.clear()
     setComposerEmpty(true)
     setAttachments([])
-    await send(body, atts)
+    setReplyTo(null)
+    await send(body, atts, parentId)
     composerRef.current?.focus()
+  }
+
+  /** Scrolls to a quoted message and flashes it, so a reply can be traced back. */
+  const jumpToMessage = (id: string) => {
+    const el = messageRefs.current.get(id)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightId(id)
+    setTimeout(() => setHighlightId((cur) => (cur === id ? null : cur)), 1600)
   }
 
   const handleCreateChannel = async () => {
@@ -274,12 +333,15 @@ export default function ChatsPage() {
                 const senderName = isMine ? 'You' : (nameById.get(m.sender_id) ?? 'Teammate')
                 const atts = m.attachments ?? []
                 const isEditing = editingId === m.id
+                // The parent may have been hidden or pruned; a quote with no
+                // parent in view simply doesn't render rather than erroring.
+                const parent = m.reply_to_id ? messages.find((x) => x.id === m.reply_to_id) ?? null : null
                 return (
                   <div
                     key={m.id}
                     ref={(el) => { if (el) messageRefs.current.set(m.id, el); else messageRefs.current.delete(m.id) }}
-                    onContextMenu={(e) => { if (isMine) { e.preventDefault(); openMenu(m.id, e.clientX, e.clientY) } }}
-                    onTouchStart={handleTouchStart(m.id, isMine)}
+                    onContextMenu={(e) => { if (!m.deleted_at) { e.preventDefault(); openMenu(m.id, e.clientX, e.clientY) } }}
+                    onTouchStart={handleTouchStart(m.id, !m.deleted_at)}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
                     className={`flex gap-3 rounded-xl transition-colors duration-500 ${isMine ? 'flex-row-reverse' : ''} ${highlightId === m.id ? 'bg-amber-50' : ''}`}
@@ -294,9 +356,22 @@ export default function ChatsPage() {
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-xs font-semibold text-gray-700">{senderName}</span>
                         <span className="text-3xs text-gray-400">
-                          {timeLabel(m.created_at)}{m.edited_at && ' · edited'}
+                          {timeLabel(m.created_at)}{m.edited_at && !m.deleted_at && ' · edited'}
                         </span>
                       </div>
+                      {parent && !m.deleted_at && (
+                        <div className={`w-full max-w-full ${isMine ? 'flex justify-end' : ''}`}>
+                          <div className="max-w-[280px]">
+                            <ReplyPreview
+                              senderName={parent.sender_id === user?.id ? 'You' : (nameById.get(parent.sender_id) ?? 'Teammate')}
+                              body={parent.body}
+                              deleted={!!parent.deleted_at}
+                              accent={accent}
+                              onJump={() => jumpToMessage(parent.id)}
+                            />
+                          </div>
+                        </div>
+                      )}
                       {isEditing ? (
                         <div className="w-64 bg-white rounded-2xl border border-gray-200 shadow-sm px-3 py-2">
                           <MentionAwareEditor
@@ -312,6 +387,18 @@ export default function ChatsPage() {
                           />
                           <p className="text-3xs text-gray-400 mt-1">Enter to save · Esc to cancel</p>
                         </div>
+                      ) : m.deleted_at ? (
+                        // The row survives deletion on purpose: a thread that
+                        // silently closes up leaves nobody able to tell a
+                        // message was removed rather than never sent.
+                        <div
+                          className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm italic text-gray-400 border border-dashed border-gray-200 ${
+                            isMine ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm'
+                          }`}
+                        >
+                          <Ban size={12} />
+                          {DELETED_MESSAGE_PLACEHOLDER}
+                        </div>
                       ) : m.body.trim() ? (
                         <div
                           className={`px-3 py-2 text-sm break-words ${isMine ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm'}`}
@@ -320,7 +407,15 @@ export default function ChatsPage() {
                           {renderMentions(m.body)}
                         </div>
                       ) : null}
-                      {atts.length > 0 && <AttachmentPreview attachments={atts} />}
+                      {!m.deleted_at && atts.length > 0 && <AttachmentPreview attachments={atts} />}
+
+                      <MessageReactions
+                        summaries={reactions.get(m.id) ?? []}
+                        accent={accent}
+                        canReact={!m.deleted_at}
+                        align={isMine ? 'end' : 'start'}
+                        onToggle={(emoji) => void toggleReaction(m.id, emoji)}
+                      />
                     </div>
                   </div>
                 )
@@ -328,25 +423,53 @@ export default function ChatsPage() {
             )}
           </div>
 
-          {menuState && (
-            <MessageMenu
-              state={menuState}
-              onEdit={() => { setEditingId(menuState.messageId); setMenuState(null) }}
-              onDelete={() => {
-                const id = menuState.messageId
-                setMenuState(null)
-                void confirm({
-                  title: 'Delete this message?',
-                  message: 'This can’t be undone.',
-                  confirmLabel: 'Delete',
-                }).then((ok) => { if (ok) void deleteMessage(id) })
-              }}
-              onClose={() => setMenuState(null)}
-            />
-          )}
+          {menuState && (() => {
+            const target = messages.find((m) => m.id === menuState.messageId)
+            if (!target) return null
+            return (
+              <MessageMenu
+                state={menuState}
+                canEditMsg={canEdit(target, user?.id ?? null)}
+                // Admins can remove anyone's message at any time — the same
+                // authority a WhatsApp group admin has, and the reason this
+                // isn't simply "am I the sender".
+                canUnsend={canDeleteForEveryone(target, user?.id ?? null, isAdmin)}
+                onReply={() => { setReplyTo(target); setMenuState(null); composerRef.current?.focus() }}
+                onEdit={() => { setEditingId(menuState.messageId); setMenuState(null) }}
+                onDelete={() => {
+                  const id = menuState.messageId
+                  setMenuState(null)
+                  void confirm({
+                    title: 'Delete for everyone?',
+                    message: 'It will be replaced with “This message was deleted” for the whole channel.',
+                    confirmLabel: 'Delete',
+                  }).then((ok) => { if (ok) void deleteMessage(id) })
+                }}
+                onHide={() => {
+                  const id = menuState.messageId
+                  setMenuState(null)
+                  void confirm({
+                    title: 'Delete for me?',
+                    message: 'It disappears from your view only — everyone else still sees it.',
+                    confirmLabel: 'Delete for me',
+                  }).then((ok) => { if (ok) void hideMessage(id) })
+                }}
+                onClose={() => setMenuState(null)}
+              />
+            )
+          })()}
 
           {/* Composer */}
           <div className="border-t border-gray-100 p-3 flex-shrink-0">
+            {replyTo && (
+              <ReplyPreview
+                senderName={replyTo.sender_id === user?.id ? 'You' : (nameById.get(replyTo.sender_id) ?? 'Teammate')}
+                body={replyTo.body}
+                deleted={!!replyTo.deleted_at}
+                accent={accent}
+                onCancel={() => setReplyTo(null)}
+              />
+            )}
             {(attachments.length > 0 || uploading > 0) && (
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {attachments.map((att, i) => (

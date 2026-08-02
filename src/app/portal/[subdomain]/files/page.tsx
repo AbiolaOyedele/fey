@@ -4,6 +4,8 @@ import { formatDate } from '@/utils/formatDate'
 
 import { use, useState, useEffect } from 'react'
 import { Folder, Download, FileText, Image, Archive } from 'lucide-react'
+import { usePortalAccent } from '@/hooks/usePortalBranding'
+import { FadeIn } from '@/components/ui/motion'
 import type { CrmFile } from '@/types/crm'
 
 function fileIcon(type: string | null) {
@@ -22,6 +24,7 @@ function fmtSize(bytes: number | null) {
 
 export default function PortalFilesPage({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
+  const accent = usePortalAccent(subdomain)
   const [files,   setFiles]   = useState<CrmFile[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -41,11 +44,14 @@ export default function PortalFilesPage({ params }: { params: Promise<{ subdomai
   }, [subdomain])
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Files</h1>
-        <p className="text-sm text-gray-400 mt-0.5">{files.length} file{files.length !== 1 ? 's' : ''} shared with you</p>
-      </div>
+    <div className="p-4 md:p-6 lg:p-8 page-enter">
+      <FadeIn>
+        <div className="flex items-center gap-2 mb-1">
+          <Folder size={18} style={{ color: accent }} />
+          <h1 className="font-display text-xl font-normal text-gray-800">Files</h1>
+        </div>
+        <p className="text-xs text-gray-400 mb-5">Everything the team has shared with you.</p>
+      </FadeIn>
 
       {loading ? (
         <div className="space-y-2">
@@ -53,9 +59,9 @@ export default function PortalFilesPage({ params }: { params: Promise<{ subdomai
         </div>
       ) : files.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <Folder size={32} className="text-gray-200 mb-3" />
-          <p className="text-sm2 font-medium text-gray-500">No files yet</p>
-          <p className="text-xs2 text-gray-400 mt-1">Files shared with you will appear here.</p>
+          <Folder size={28} className="text-gray-200 mb-3" />
+          <p className="text-sm font-medium text-gray-500">No files yet</p>
+          <p className="text-xs text-gray-400 mt-1">Files shared with you will appear here.</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">

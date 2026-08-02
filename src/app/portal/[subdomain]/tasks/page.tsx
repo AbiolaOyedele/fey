@@ -481,14 +481,17 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
                     </span>
                   </button>
                 ) : (
+                  // A circle, not a square. An agency task can't be closed from
+                  // here, and a marker identical to the tappable checkbox above
+                  // invites a tap that silently does nothing.
                   <span
-                    aria-hidden
-                    className={`mt-0.5 w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 ${
-                      t.done ? '' : 'border-2 border-gray-200'
+                    title={t.done ? 'Completed by the team' : 'Tracked by the team'}
+                    className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      t.done ? '' : 'border border-gray-200'
                     }`}
-                    style={t.done ? { backgroundColor: accent } : {}}
+                    style={t.done ? { backgroundColor: `${accent}30` } : {}}
                   >
-                    {t.done && <Check size={12} className="text-white" />}
+                    {t.done && <Check size={11} style={{ color: accent }} />}
                   </span>
                 )}
 

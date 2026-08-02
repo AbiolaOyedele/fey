@@ -22,7 +22,7 @@ import { usePortalBase } from '@/hooks/usePortalBase'
 export const PORTAL_SECTIONS: { label: string; path: string }[] = [
   { label: 'Tasks',     path: '/tasks' },
   { label: 'Messages',  path: '/messages' },
-  { label: 'Team chat', path: '/team-chat' },
+  { label: 'Private', path: '/team-chat' },
   { label: 'Brands',    path: '/projects' },
   { label: 'Documents', path: '/documents' },
 ]
@@ -69,7 +69,7 @@ export default function PortalWorkspaceTabs({ subdomain, accent }: PortalWorkspa
           <Link
             key={path}
             href={href}
-            className="flex-shrink-0 px-4 h-12 inline-flex items-center text-sm font-medium border-b-2 transition-colors"
+            className="flex-shrink-0 px-2.5 sm:px-4 h-12 inline-flex items-center text-sm font-medium border-b-2 transition-colors whitespace-nowrap"
             style={{
               borderColor: isActive ? accent : 'transparent',
               color:       isActive ? '#111827' : 'rgba(0,0,0,0.40)',

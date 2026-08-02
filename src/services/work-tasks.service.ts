@@ -38,6 +38,57 @@ async function notifyAssigned(
   } catch { /* best-effort */ }
 }
 
+/**
+ * Tells everyone attached to a task that it moved column.
+ *
+ * The bug this fixes: moving a task to "Review" notified nobody, so the person
+ * meant to review it only found out by looking at the board. Recipients are the
+ * creator AND every assignee — a stage change is exactly the moment the next
+ * person needs to know, and that person is often not the one who was assigned
+ * the work.
+ *
+ * Also reaches the client's portal when the task is theirs, so "your thing is
+ * in review" arrives without anyone remembering to send it.
+ */
+async function notifyStageMoved(
+  core: { id: string; owner_id: string; workspace_id: string | null; contact_id: string | null },
+  taskTitle: string,
+  stageName: string,
+  actorId: string,
+): Promise<void> {
+  try {
+    const db = createServiceClient()
+    const participants = await repo.getTaskParticipants(db, core.id)
+    const recipients = participants.filter((id) => id !== actorId)
+    if (recipients.length > 0) {
+      await notify({
+        db,
+        recipientIds: recipients,
+        workspaceId: core.workspace_id,
+        actorId,
+        type: 'task_assigned',
+        title: `Moved to ${stageName}`,
+        body: taskTitle,
+        link: `/tasks?taskId=${core.id}`,
+        entityType: 'task',
+        entityId: core.id,
+      })
+    }
+    if (core.contact_id) {
+      announceToClient({
+        contactId: core.contact_id,
+        ownerId:   core.owner_id,
+        type:      'task',
+        title:     `Moved to ${stageName}`,
+        body:      taskTitle,
+        link:      '/tasks',
+        entityType: 'task',
+        entityId:   core.id,
+      })
+    }
+  } catch { /* best-effort — never blocks the move */ }
+}
+
 interface Ctx {
   userId: string
   ownerId: string
@@ -227,6 +278,25 @@ export async function updateTask(db: SupabaseClient, ctx: Ctx, id: string, input
 
   await repo.updateTaskRow(db, id, updates)
   if (d.description !== undefined) await cleanupRemovedDescriptionImages(id, existing.description, d.description)
+
+  // A real column change — not a re-save of the same stage — is what everyone
+  // on the task needs to hear about.
+  if (d.stage_id !== undefined && d.stage_id && d.stage_id !== existing.stage_id) {
+    const stageName = await repo.getStageName(db, d.stage_id)
+    if (stageName) {
+      await notifyStageMoved(
+        {
+          id,
+          owner_id: existing.owner_id,
+          workspace_id: existing.workspace_id,
+          contact_id: (updates.contact_id as string | null | undefined) ?? existing.contact_id,
+        },
+        d.title ?? existing.title,
+        stageName,
+        ctx.userId,
+      )
+    }
+  }
 
   // Only completion is announced. A client doesn't need a notification every
   // time someone nudges a due date or drags a card between board columns —

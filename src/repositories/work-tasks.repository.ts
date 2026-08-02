@@ -170,15 +170,34 @@ export async function getTaskById(db: SupabaseClient, id: string): Promise<Task 
 export async function getTaskCore(db: SupabaseClient, id: string): Promise<{
   id: string; owner_id: string; workspace_id: string | null; project_id: string | null
   contact_id: string | null; created_by: string; done: boolean; description: string | null
+  stage_id: string | null; title: string
 } | null> {
   const { data, error } = await db
     .from('work_tasks')
-    .select('id, owner_id, workspace_id, project_id, contact_id, created_by, done, description')
+    .select('id, owner_id, workspace_id, project_id, contact_id, created_by, done, description, stage_id, title')
     .eq('id', id)
     .is('deleted_at', null)
     .maybeSingle()
   if (error) throw error
   return (data as never) ?? null
+}
+
+export async function getStageName(db: SupabaseClient, stageId: string): Promise<string | null> {
+  const { data } = await db.from('workflow_stages').select('name').eq('id', stageId).maybeSingle()
+  return (data as { name?: string } | null)?.name ?? null
+}
+
+/** Everyone attached to a task: its creator plus every assignee, de-duplicated. */
+export async function getTaskParticipants(db: SupabaseClient, taskId: string): Promise<string[]> {
+  const [{ data: task }, { data: assignees }] = await Promise.all([
+    db.from('work_tasks').select('created_by').eq('id', taskId).maybeSingle(),
+    db.from('work_task_assignees').select('user_id').eq('task_id', taskId),
+  ])
+  const ids = new Set<string>()
+  const createdBy = (task as { created_by?: string } | null)?.created_by
+  if (createdBy) ids.add(createdBy)
+  for (const a of (assignees ?? []) as { user_id: string }[]) ids.add(a.user_id)
+  return [...ids]
 }
 
 export async function insertTask(db: SupabaseClient, row: Record<string, unknown>): Promise<{ id: string }> {

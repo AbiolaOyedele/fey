@@ -19,12 +19,20 @@ interface NewTaskModalProps {
    *  server's default (first stage) silently, so the board choice is explicit. */
   stages?: WorkflowStage[]
   onCreate: (payload: CreateTaskPayload) => Promise<unknown>
+  /**
+   * Hides the client and brand pickers and supplies the assignable people.
+   *
+   * The client portal needs both: which client the task belongs to is already
+   * implied, and a portal user can't authenticate to load the workspace roster.
+   */
+  members?: { user_id: string; name: string | null; email: string | null }[]
+  hideLinks?: boolean
   onClose: () => void
 }
 
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 
-export default function NewTaskModal({ workspaceId, fixedContactId, fixedProjectId, stages = [], onCreate, onClose }: NewTaskModalProps) {
+export default function NewTaskModal({ workspaceId, fixedContactId, fixedProjectId, stages = [], onCreate, onClose, members, hideLinks }: NewTaskModalProps) {
   useScrollLock()
   const linkLocked = fixedContactId != null || fixedProjectId != null
   const { contacts } = useContacts()
@@ -87,7 +95,7 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
           className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-400 mb-4"
         />
 
-        {!linkLocked && (
+        {!linkLocked && !hideLinks && (
           <div className="grid grid-cols-2 gap-2 mb-4">
             <div>
               <p className="text-2xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Client</p>
@@ -164,7 +172,7 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
               {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           )}
-          <AssigneePicker workspaceId={workspaceId} selectedIds={assigneeIds} onChange={setAssigneeIds} />
+          <AssigneePicker workspaceId={workspaceId} selectedIds={assigneeIds} onChange={setAssigneeIds} {...(members ? { members } : {})} />
         </div>
 
         {error && <p className="text-xs text-red-500 mb-3">{error}</p>}

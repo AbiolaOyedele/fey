@@ -6,17 +6,35 @@ import { useTeam } from '@/hooks/useTeam'
 import { AssigneeAvatars, initials, avatarColor } from './TaskBits'
 import type { TaskAssignee } from '@/types/work-tasks'
 
+interface PickableMember {
+  user_id: string
+  name: string | null
+  email: string | null
+}
+
 interface AssigneePickerProps {
   workspaceId: string | null | undefined
   selectedIds: string[]
   onChange: (userIds: string[]) => void
+  /**
+   * Supply the people who can be picked instead of loading the workspace team.
+   *
+   * The client portal needs this: a portal user isn't an auth user, so
+   * `useTeam` can't authenticate for them, and they may only ever see the
+   * subset of the agency the owner has granted them.
+   */
+  members?: PickableMember[]
 }
 
 /** Multi-select assignee button — opens a centered popup (not an anchored
  *  dropdown) so it has room to show full names instead of truncating them,
  *  and works the same on mobile where a dropdown would run off-screen. */
-export default function AssigneePicker({ workspaceId, selectedIds, onChange }: AssigneePickerProps) {
-  const { members } = useTeam(workspaceId ?? null)
+export default function AssigneePicker({ workspaceId, selectedIds, onChange, members: provided }: AssigneePickerProps) {
+  // Hooks can't be called conditionally, so the team hook still runs; it no-ops
+  // on a null workspace, which is what the portal passes.
+  const { members: fromTeam } = useTeam(provided ? null : workspaceId ?? null)
+  const members: PickableMember[] = provided
+    ?? fromTeam.map((m) => ({ user_id: m.user_id, name: m.name ?? null, email: m.email ?? null }))
   const [open, setOpen] = useState(false)
 
   const selected: TaskAssignee[] = members

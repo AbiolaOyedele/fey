@@ -16,11 +16,12 @@ export async function GET(req: NextRequest) {
   if (response) return response
   const db = createServiceClient()
   try {
-    const tasks = await portalTasks.listTasks(db, {
-      contactId: payload!.contact_id,
-      ownerId:   payload!.owner_id,
-    })
-    return NextResponse.json({ tasks })
+    const scope = { contactId: payload!.contact_id, ownerId: payload!.owner_id }
+    const [tasks, stages] = await Promise.all([
+      portalTasks.listTasks(db, scope),
+      portalTasks.listStages(db, scope),
+    ])
+    return NextResponse.json({ tasks, stages })
   } catch (err) {
     return handleError(err, 'PORTAL_TASKS_GET_FAILED')
   }

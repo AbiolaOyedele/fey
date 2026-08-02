@@ -29,7 +29,7 @@ export async function PATCH(
     const me = await portalRepo.getPortalUser(db, payload!.portal_user_id)
     if (!me) return errorResponse('PORTAL_USER_NOT_FOUND', 'Portal access not found.', 403)
 
-    const task = await portalTasks.setTaskDone(
+    const task = await portalTasks.patchTask(
       db,
       { contactId: payload!.contact_id, ownerId: payload!.owner_id },
       { id: me.id, role: me.role },

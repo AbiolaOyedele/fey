@@ -59,6 +59,15 @@ interface TaskDetailDrawerProps {
   onToggleDone: (id: string) => void
   onDelete: (id: string) => Promise<void>
   onClose: () => void
+  /**
+   * Supply assignable people instead of loading the workspace team — the client
+   * portal has its own, narrower list and can't authenticate as an app user.
+   */
+  members?: { user_id: string; name: string | null; email: string | null }[]
+  /** Comments need workspace mentions, which a portal client has no access to. */
+  hideComments?: boolean
+  /** Hides delete — clients don't remove tasks, they just stop tracking them. */
+  hideDelete?: boolean
 }
 
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
@@ -66,7 +75,7 @@ const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 const COMPLETED_STAGE = '__completed__'
 
 export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
-  const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onRenameSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose } = props
+  const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onRenameSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose, members, hideComments, hideDelete } = props
   const confirm = useConfirm()
   useScrollLock()
 
@@ -264,6 +273,7 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
             {/* Assignees */}
             <Field label="Assignees">
               <AssigneePicker
+                {...(members ? { members } : {})}
                 workspaceId={workspaceId}
                 selectedIds={task.assignees.map((a) => a.user_id)}
                 onChange={(ids) => void onSetAssignees(task.id, ids)}
@@ -373,9 +383,12 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
           </div>
 
           {/* Comments */}
-          <TaskComments taskId={task.id} workspaceId={workspaceId} taskLink={taskLink} taskTitle={task.title} />
+          {!hideComments && (
+            <TaskComments taskId={task.id} workspaceId={workspaceId} taskLink={taskLink} taskTitle={task.title} />
+          )}
 
           {/* Delete */}
+          {!hideDelete && (
           <div className="pt-2 border-t border-gray-100">
             <button
               onClick={async () => {
@@ -391,6 +404,7 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
               <Trash2 size={14} /> Delete task
             </button>
           </div>
+          )}
         </div>
 
         {/* Save — everything here autosaves, but an explicit save gives a clear

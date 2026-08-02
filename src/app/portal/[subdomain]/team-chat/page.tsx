@@ -1,12 +1,13 @@
 'use client'
 
 import { use, useCallback, useEffect, useRef, useState } from 'react'
-import { Lock, Send, Trash2, Ban, Loader2, CornerUpLeft } from 'lucide-react'
+import { Lock, Send, Ban, Loader2 } from 'lucide-react'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { usePortalAccent } from '@/hooks/usePortalBranding'
 import { usePortalSession } from '@/contexts/PortalSessionContext'
 import { FadeIn } from '@/components/ui/motion'
 import ReplyPreview from '@/components/chat/ReplyPreview'
+import MessageContextMenu, { useMessageMenu, type MessageAction } from '@/components/chat/MessageContextMenu'
 import { canDeleteForEveryone, DELETED_MESSAGE_PLACEHOLDER } from '@/types/chat'
 import type { PortalTeamMessage } from '@/services/portal-team-chat.service'
 
@@ -37,6 +38,7 @@ export default function PortalTeamChatPage({ params }: { params: Promise<{ subdo
   const [sending, setSending]   = useState(false)
   const [replyTo, setReplyTo]   = useState<PortalTeamMessage | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const menu = useMessageMenu()
 
   const headers = useCallback((): HeadersInit | null => {
     const token = localStorage.getItem(portalTokenKey(subdomain))
@@ -151,12 +153,15 @@ export default function PortalTeamChatPage({ params }: { params: Promise<{ subdo
           messages.map((m) => {
             const isMine = m.sender_id === me?.id
             const parent = m.reply_to_id ? messages.find((x) => x.id === m.reply_to_id) ?? null : null
-            // The client's own admin can remove anyone's message: there is no
-            // agency moderator in this room by design, so without that a room
-            // could be left with something nobody is able to take down.
-            const canRemove = !m.deleted_at && canDeleteForEveryone(m, me?.id ?? null, me?.role === 'client_admin')
             return (
-              <div key={m.id} className={`group/msg flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+              <div
+                key={m.id}
+                onContextMenu={m.deleted_at ? undefined : menu.onContextMenu(m.id)}
+                onTouchStart={m.deleted_at ? undefined : menu.onTouchStart(m.id)}
+                onTouchMove={menu.onTouchMove}
+                onTouchEnd={menu.onTouchEnd}
+                className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
+              >
                 <div className={`max-w-[80%] flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-xs font-semibold text-gray-700">
@@ -192,26 +197,6 @@ export default function PortalTeamChatPage({ params }: { params: Promise<{ subdo
                     </div>
                   )}
 
-                  {!m.deleted_at && canPost && (
-                    <div className="flex items-center gap-1 mt-0.5 opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => setReplyTo(m)}
-                        aria-label="Reply to this message"
-                        className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-gray-500 rounded-full"
-                      >
-                        <CornerUpLeft size={12} />
-                      </button>
-                      {canRemove && (
-                        <button
-                          onClick={() => void remove(m.id)}
-                          aria-label="Delete this message for everyone"
-                          className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-red-500 rounded-full"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             )
@@ -219,6 +204,37 @@ export default function PortalTeamChatPage({ params }: { params: Promise<{ subdo
         )}
         <div ref={bottomRef} />
       </div>
+
+      {menu.menu && (() => {
+        const target = messages.find((x) => x.id === menu.menu!.id)
+        if (!target || target.deleted_at || !canPost) return null
+        const actions: MessageAction[] = [
+          { key: 'reply', label: 'Reply', icon: 'reply', onSelect: () => setReplyTo(target) },
+        ]
+        if (target.body.trim()) {
+          actions.push({
+            key: 'copy', label: 'Copy', icon: 'copy',
+            onSelect: () => void navigator.clipboard?.writeText(target.body),
+          })
+        }
+        // The client's own admin can remove anyone's message: there is no agency
+        // moderator in this room by design, so without that a room could be left
+        // with something nobody is able to take down.
+        if (canDeleteForEveryone(target, me?.id ?? null, me?.role === 'client_admin')) {
+          actions.push({
+            key: 'delete', label: 'Delete for everyone', icon: 'delete', destructive: true,
+            onSelect: () => void remove(target.id),
+          })
+        }
+        return (
+          <MessageContextMenu
+            x={menu.menu.x}
+            y={menu.menu.y}
+            actions={actions}
+            onClose={menu.close}
+          />
+        )
+      })()}
 
       {/* Composer */}
       {canPost ? (

@@ -1,31 +1,16 @@
 'use client'
 
 import { use, useState, useEffect, useCallback, useMemo } from 'react'
-import { CheckSquare2, Check, Plus, Search, Download, FileText, X, Loader2 } from 'lucide-react'
+import { CheckSquare2, Check, Plus, Search, Download, FileText, X, Loader2, Paperclip } from 'lucide-react'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { usePortalAccent } from '@/hooks/usePortalBranding'
 import { usePortalSession } from '@/contexts/PortalSessionContext'
-import { FadeIn, Stagger, StaggerItem } from '@/components/ui/motion'
+import { FadeIn } from '@/components/ui/motion'
 import { getFileType, isImageType, formatFileSize, downloadUrl, thumbUrl, type FileType } from '@/utils/cloudinary'
+import { AssigneeAvatars, DueChip, PriorityFlag, PriorityPill, formatDue as formatDueLabel } from '@/components/tasks/TaskBits'
 import type { ClientTeamMember, PortalTask, PortalTaskFile } from '@/types/crm'
 
 type Tab = 'open' | 'done'
-
-const PRIORITY: Record<PortalTask['priority'], { label: string; dot: string }> = {
-  high:   { label: 'High',   dot: '#EF4444' },
-  medium: { label: 'Medium', dot: '#F59E0B' },
-  low:    { label: 'Low',    dot: '#22C55E' },
-}
-
-function formatDue(due: string): string {
-  const d = new Date(due + 'T00:00:00')
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
-/** True for a due date already in the past — the one thing worth colouring red. */
-function isOverdue(due: string): boolean {
-  return new Date(due + 'T23:59:59') < new Date()
-}
 
 /** Read-only attachment strip: thumbs open full-size, everything gets a download. */
 function TaskFiles({ files }: { files: PortalTaskFile[] }) {
@@ -59,25 +44,6 @@ function TaskFiles({ files }: { files: PortalTaskFile[] }) {
         )
       })}
     </div>
-  )
-}
-
-/** Initials avatar for an assigned team member. */
-function MemberChip({ name, accent }: { name: string; accent: string }) {
-  return (
-    <span
-      title={name}
-      className="inline-flex items-center gap-1.5 rounded-full pl-0.5 pr-2 py-0.5 bg-gray-50 border border-gray-100"
-    >
-      <span
-        aria-hidden
-        className="w-4 h-4 rounded-full flex items-center justify-center text-3xs font-semibold text-white"
-        style={{ backgroundColor: accent }}
-      >
-        {name.charAt(0).toUpperCase()}
-      </span>
-      <span className="text-2xs text-gray-500 truncate max-w-[90px]">{name}</span>
-    </span>
   )
 }
 
@@ -201,7 +167,7 @@ function NewTaskModal({ accent, members, onCreate, onClose }: NewTaskModalProps)
                       priority === p ? 'bg-white shadow-sm text-gray-800' : 'text-gray-400'
                     }`}
                   >
-                    {PRIORITY[p].label}
+                    {p === 'low' ? 'Low' : p === 'medium' ? 'Medium' : 'High'}
                   </button>
                 ))}
               </div>
@@ -271,6 +237,127 @@ function NewTaskModal({ accent, members, onCreate, onClose }: NewTaskModalProps)
   )
 }
 
+
+// ── Task detail ─────────────────────────────────────────────────────────────
+
+/**
+ * The full task, opened from a row.
+ *
+ * Rows are deliberately one line each — that's what makes a long list readable,
+ * and it's how the app's own task list works. Everything that used to be
+ * crammed into the row (description, attachments, who's on it) lives here.
+ */
+function TaskDetailSheet({
+  task, accent, canToggle, onToggle, onClose,
+}: {
+  task: PortalTask
+  accent: string
+  canToggle: boolean
+  onToggle: () => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 p-0 sm:p-4">
+      <div className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl border border-gray-100 shadow-xl max-h-[88vh] overflow-y-auto">
+        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-50 sticky top-0 bg-white">
+          <div className="min-w-0 flex-1">
+            <h2 className={`font-display text-base font-normal ${task.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+              {task.title}
+            </h2>
+            {task.requested_by_client && (
+              <p className="text-2xs text-gray-400 mt-0.5">Raised by you</p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="w-11 h-11 -mr-3 -mt-2 flex items-center justify-center text-gray-300 hover:text-gray-500 flex-shrink-0"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {/* Facts, as a definition list rather than a run-on line */}
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+            <div>
+              <dt className="text-2xs font-semibold uppercase tracking-widest text-gray-300 mb-1">Status</dt>
+              <dd className="text-sm text-gray-700">{task.done ? 'Completed' : 'In progress'}</dd>
+            </div>
+            <div>
+              <dt className="text-2xs font-semibold uppercase tracking-widest text-gray-300 mb-1">Priority</dt>
+              <dd><PriorityPill priority={task.priority} /></dd>
+            </div>
+            <div>
+              <dt className="text-2xs font-semibold uppercase tracking-widest text-gray-300 mb-1">Due</dt>
+              <dd className="text-sm text-gray-700">
+                {task.due_date ? formatDueLabel(task.due_date) : 'No date set'}
+              </dd>
+            </div>
+            {task.project_title && (
+              <div>
+                <dt className="text-2xs font-semibold uppercase tracking-widest text-gray-300 mb-1">Brand</dt>
+                <dd className="text-sm text-gray-700 truncate">{task.project_title}</dd>
+              </div>
+            )}
+          </dl>
+
+          {task.assignees.length > 0 && (
+            <div>
+              <span className="block text-2xs font-semibold uppercase tracking-widest text-gray-300 mb-2">Working on it</span>
+              <div className="flex flex-wrap gap-1.5">
+                {task.assignees.map((a) => (
+                  <span key={a.user_id} className="inline-flex items-center gap-1.5 rounded-full pl-0.5 pr-2.5 py-0.5 bg-gray-50 border border-gray-100">
+                    <span
+                      aria-hidden
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-3xs font-semibold text-white"
+                      style={{ backgroundColor: accent }}
+                    >
+                      {a.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="text-xs text-gray-600">{a.name}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {task.description && (
+            <div>
+              <span className="block text-2xs font-semibold uppercase tracking-widest text-gray-300 mb-2">Details</span>
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{task.description}</p>
+            </div>
+          )}
+
+          {task.files.length > 0 && (
+            <div>
+              <span className="block text-2xs font-semibold uppercase tracking-widest text-gray-300 mb-2">
+                Attachments
+              </span>
+              <TaskFiles files={task.files} />
+            </div>
+          )}
+        </div>
+
+        {canToggle && (
+          <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-50 sticky bottom-0 bg-white">
+            <button
+              onClick={() => { onToggle(); onClose() }}
+              className="press inline-flex items-center gap-1.5 px-5 py-2.5 min-h-[44px] rounded-full text-sm font-semibold"
+              style={task.done
+                ? { border: '1px solid #E5E7EB', color: '#6B7280' }
+                : { backgroundColor: accent, color: '#fff' }}
+            >
+              {!task.done && <Check size={15} />}
+              {task.done ? 'Mark as not done' : 'Mark as done'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function PortalTasksPage({ params }: { params: Promise<{ subdomain: string }> }) {
@@ -287,6 +374,9 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
   const [tab,     setTab]     = useState<Tab>('open')
   const [search,  setSearch]  = useState('')
   const [showNew, setShowNew] = useState(false)
+  // Rows are single-line now, matching the app. The full description and any
+  // attachments live in a detail sheet rather than bloating every row.
+  const [openTask, setOpenTask] = useState<PortalTask | null>(null)
 
   const headers = useCallback((): HeadersInit | null => {
     const token = localStorage.getItem(portalTokenKey(subdomain))
@@ -454,92 +544,90 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
           )}
         </div>
       ) : (
-        <Stagger className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-          {visible.map((t) => (
-            <StaggerItem key={t.id}>
-              <div className="flex items-start gap-3 px-4 py-3.5 border-b border-gray-50 last:border-b-0">
-                {/* Only tasks the client raised are theirs to close — the API
-                    enforces the same rule, so an agency task shows a static
-                    marker rather than a control that would always fail. */}
-                {t.requested_by_client && canCreate ? (
-                  <button
-                    type="button"
-                    role="checkbox"
-                    aria-checked={t.done}
-                    aria-label={t.done ? `Mark "${t.title}" as not done` : `Mark "${t.title}" as done`}
-                    onClick={() => void toggleDone(t)}
-                    className="-m-3 p-3 flex-shrink-0 flex items-start"
-                  >
-                    <span
-                      aria-hidden
-                      className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${
-                        t.done ? '' : 'border-2 border-gray-200 hover:border-gray-300'
+        <FadeIn className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
+          {visible.map((t) => {
+            const mine = t.requested_by_client && canCreate
+            return (
+              <div key={t.id}>
+                <div className="group flex items-center gap-3 px-3 sm:px-4 py-2.5 hover:bg-gray-50 transition-colors">
+                  {/* Same round checkbox as the app's task list. Only tasks the
+                      client raised are theirs to close, so an agency task gets a
+                      static marker instead of a control that would always fail. */}
+                  {mine ? (
+                    <button
+                      onClick={() => void toggleDone(t)}
+                      aria-label={t.done ? `Mark "${t.title}" not done` : `Mark "${t.title}" done`}
+                      className={`relative w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors after:absolute after:-inset-[6px] after:content-[''] ${
+                        t.done ? 'border-transparent text-white' : 'border-gray-300 hover:border-gray-400'
                       }`}
                       style={t.done ? { backgroundColor: accent } : {}}
                     >
-                      {t.done && <Check size={12} className="text-white" />}
-                    </span>
-                  </button>
-                ) : (
-                  // A circle, not a square. An agency task can't be closed from
-                  // here, and a marker identical to the tappable checkbox above
-                  // invites a tap that silently does nothing.
-                  <span
-                    title={t.done ? 'Completed by the team' : 'Tracked by the team'}
-                    className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      t.done ? '' : 'border border-gray-200'
-                    }`}
-                    style={t.done ? { backgroundColor: `${accent}30` } : {}}
-                  >
-                    {t.done && <Check size={11} style={{ color: accent }} />}
-                  </span>
-                )}
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start gap-2">
-                    <span className={`text-sm flex-1 min-w-0 ${t.done ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
-                      {t.title}
-                    </span>
+                      {t.done && <Check size={12} strokeWidth={3} />}
+                    </button>
+                  ) : (
                     <span
-                      aria-hidden
-                      title={`${PRIORITY[t.priority].label} priority`}
-                      className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: PRIORITY[t.priority].dot }}
-                    />
-                  </div>
-
-                  {t.description && (
-                    <p className="text-xs text-gray-400 mt-1 line-clamp-2 leading-relaxed">{t.description}</p>
+                      title={t.done ? 'Completed by the team' : 'Tracked by the team'}
+                      className="w-5 h-5 rounded-full border-2 border-dashed flex items-center justify-center flex-shrink-0"
+                      style={t.done
+                        ? { backgroundColor: `${accent}22`, borderColor: 'transparent' }
+                        : { borderColor: '#E5E7EB' }}
+                    >
+                      {t.done && <Check size={12} strokeWidth={3} style={{ color: accent }} />}
+                    </span>
                   )}
 
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-1.5">
-                    {t.project_title && (
-                      <span className="text-2xs text-gray-400 truncate max-w-[160px]">{t.project_title}</span>
+                  <button
+                    onClick={() => setOpenTask(t)}
+                    className="flex-1 min-w-0 text-left"
+                  >
+                    <p className={`text-sm truncate ${t.done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                      {t.title}
+                    </p>
+                    {(t.project_title || t.requested_by_client) && (
+                      <p className="text-2xs text-gray-400 mt-0.5 truncate">
+                        {t.project_title}
+                        {t.project_title && t.requested_by_client && ' · '}
+                        {t.requested_by_client && 'Raised by you'}
+                      </p>
                     )}
-                    {t.due_date && (
-                      <span
-                        className="text-2xs"
-                        style={{ color: !t.done && isOverdue(t.due_date) ? '#E53E3E' : '#9CA3AF' }}
-                      >
-                        {!t.done && isOverdue(t.due_date) ? 'Overdue · ' : 'Due '}
-                        {formatDue(t.due_date)}
+                  </button>
+
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {t.files.length > 0 && (
+                      <span className="hidden sm:flex items-center gap-0.5 text-2xs text-gray-400">
+                        <Paperclip size={11} />{t.files.length}
                       </span>
                     )}
-                    {t.requested_by_client && (
-                      <span className="text-2xs text-gray-300">Raised by you</span>
+                    {/* Only when someone is actually on it — the app renders a
+                        dashed "+" placeholder here, but that's an add-assignee
+                        affordance, and a client has nothing to add. */}
+                    {t.assignees.length > 0 && (
+                      <AssigneeAvatars assignees={t.assignees.map((a) => ({ user_id: a.user_id, name: a.name, email: null }))} />
                     )}
-                    {t.assignees.map((a) => (
-                      <MemberChip key={a.user_id} name={a.name} accent={accent} />
-                    ))}
+                    <div className="hidden sm:block w-20 text-right"><DueChip due={t.due_date} done={t.done} /></div>
+                    <PriorityFlag priority={t.priority} />
                   </div>
-
-                  <TaskFiles files={t.files} />
                 </div>
               </div>
-            </StaggerItem>
-          ))}
-        </Stagger>
+            )
+          })}
+        </FadeIn>
       )}
+
+      {openTask && (() => {
+        // Read the live row rather than the captured one, so ticking it in the
+        // sheet updates what the sheet itself shows.
+        const live = tasks.find((t) => t.id === openTask.id) ?? openTask
+        return (
+          <TaskDetailSheet
+            task={live}
+            accent={accent}
+            canToggle={live.requested_by_client && canCreate}
+            onToggle={() => void toggleDone(live)}
+            onClose={() => setOpenTask(null)}
+          />
+        )
+      })()}
 
       {showNew && (
         <NewTaskModal

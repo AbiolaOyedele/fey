@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Hash, Send, MessagesSquare, Plus, Paperclip, X, Loader2, Pencil, Trash2, EyeOff, Ban, CornerUpLeft } from 'lucide-react'
+import { Hash, Send, MessagesSquare, Plus, Paperclip, X, Loader2, Ban } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -19,6 +19,7 @@ import { canDeleteForEveryone, canEdit, DELETED_MESSAGE_PLACEHOLDER } from '@/ty
 import { useMessageReactions } from '@/hooks/useMessageReactions'
 import MessageReactions from '@/components/chat/MessageReactions'
 import ReplyPreview from '@/components/chat/ReplyPreview'
+import MessageContextMenu, { type MessageAction } from '@/components/chat/MessageContextMenu'
 import type { InternalMessage } from '@/types/team'
 import { isUnrestrictedRole } from '@/types/team'
 
@@ -34,76 +35,6 @@ function timeLabel(iso: string): string {
 }
 
 interface MenuState { messageId: string; x: number; y: number }
-
-/**
- * Right-click (desktop) / long-press (mobile) message menu.
- *
- * Two deletes, the way WhatsApp does it: "Delete for everyone" replaces the
- * message with a tombstone for the whole channel, "Delete for me" hides it from
- * this viewer alone. They are genuinely different actions and collapsing them
- * into one "Delete" is how people lose messages they only meant to tidy away.
- * Options are shown only when they're actually available — editing expires
- * after 15 minutes, unsending after 48 hours.
- */
-function MessageMenu({ state, canEditMsg, canUnsend, onReply, onEdit, onDelete, onHide, onClose }: {
-  state: MenuState
-  canEditMsg: boolean
-  canUnsend: boolean
-  onReply: () => void
-  onEdit: () => void
-  onDelete: () => void
-  onHide: () => void
-  onClose: () => void
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose() }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [onClose])
-
-  // Clamp so the menu never renders off-screen.
-  const left = Math.min(state.x, window.innerWidth - 160)
-  const top = Math.min(state.y, window.innerHeight - 100)
-
-  return (
-    <div
-      ref={ref}
-      style={{ left, top }}
-      className="fixed z-50 w-40 bg-white rounded-xl shadow-xl border border-gray-100 py-1"
-    >
-      <button
-        onClick={onReply}
-        className="w-full flex items-center gap-2 px-3 py-2 min-h-[40px] text-sm text-gray-700 hover:bg-gray-50 text-left"
-      >
-        <CornerUpLeft size={13} /> Reply
-      </button>
-      {canEditMsg && (
-        <button
-          onClick={onEdit}
-          className="w-full flex items-center gap-2 px-3 py-2 min-h-[40px] text-sm text-gray-700 hover:bg-gray-50 text-left"
-        >
-          <Pencil size={13} /> Edit
-        </button>
-      )}
-      {canUnsend && (
-        <button
-          onClick={onDelete}
-          className="w-full flex items-center gap-2 px-3 py-2 min-h-[40px] text-sm text-red-500 hover:bg-red-50 text-left"
-        >
-          <Trash2 size={13} /> Delete for everyone
-        </button>
-      )}
-      <button
-        onClick={onHide}
-        className="w-full flex items-center gap-2 px-3 py-2 min-h-[40px] text-sm text-gray-700 hover:bg-gray-50 text-left"
-      >
-        <EyeOff size={13} /> Delete for me
-      </button>
-    </div>
-  )
-}
 
 export default function ChatsPage() {
   const { user } = useAuth()
@@ -248,6 +179,52 @@ export default function ChatsPage() {
   }
 
   const activeChannel = channels.find((c) => c.id === activeChannelId)
+
+  // Built above the JSX rather than in an inline IIFE — the actions close over
+  // refs and state, and computing them during render is what the hooks lint
+  // rule (rightly) objects to.
+  const menuTarget = menuState ? messages.find((m) => m.id === menuState.messageId) ?? null : null
+  const menuActions = useMemo<MessageAction[]>(() => {
+    const target = menuTarget
+    if (!target || target.deleted_at) return []
+    const actions: MessageAction[] = [
+      { key: 'reply', label: 'Reply', icon: 'reply',
+        onSelect: () => setReplyTo(target) },
+    ]
+    if (target.body.trim()) {
+      actions.push({
+        key: 'copy', label: 'Copy', icon: 'copy',
+        onSelect: () => void navigator.clipboard?.writeText(target.body),
+      })
+    }
+    if (canEdit(target, user?.id ?? null)) {
+      actions.push({ key: 'edit', label: 'Edit', icon: 'edit', onSelect: () => setEditingId(target.id) })
+    }
+    // Admins can unsend anyone's message past the 48h window — the same
+    // authority a WhatsApp group admin has.
+    if (canDeleteForEveryone(target, user?.id ?? null, isAdmin)) {
+      actions.push({
+        key: 'delete', label: 'Delete for everyone', icon: 'delete', destructive: true,
+        onSelect: () => void confirm({
+          title: 'Delete for everyone?',
+          message: 'It will be replaced with \u201CThis message was deleted\u201D for the whole channel.',
+          confirmLabel: 'Delete',
+        }).then((ok) => { if (ok) void deleteMessage(target.id) }),
+      })
+    }
+    actions.push({
+      key: 'hide', label: 'Delete for me', icon: 'hide',
+      onSelect: () => void confirm({
+        title: 'Delete for me?',
+        message: 'It disappears from your view only \u2014 everyone else still sees it.',
+        confirmLabel: 'Delete for me',
+      }).then((ok) => { if (ok) void hideMessage(target.id) }),
+    })
+    return actions
+  }, [menuTarget, user, isAdmin, confirm, deleteMessage, hideMessage])
+
+  // Focus the composer whenever a reply is started, from wherever.
+  useEffect(() => { if (replyTo) composerRef.current?.focus() }, [replyTo])
 
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)] lg:h-screen p-4 md:p-6 lg:p-8 page-enter">
@@ -423,41 +400,16 @@ export default function ChatsPage() {
             )}
           </div>
 
-          {menuState && (() => {
-            const target = messages.find((m) => m.id === menuState.messageId)
-            if (!target) return null
-            return (
-              <MessageMenu
-                state={menuState}
-                canEditMsg={canEdit(target, user?.id ?? null)}
-                // Admins can remove anyone's message at any time — the same
-                // authority a WhatsApp group admin has, and the reason this
-                // isn't simply "am I the sender".
-                canUnsend={canDeleteForEveryone(target, user?.id ?? null, isAdmin)}
-                onReply={() => { setReplyTo(target); setMenuState(null); composerRef.current?.focus() }}
-                onEdit={() => { setEditingId(menuState.messageId); setMenuState(null) }}
-                onDelete={() => {
-                  const id = menuState.messageId
-                  setMenuState(null)
-                  void confirm({
-                    title: 'Delete for everyone?',
-                    message: 'It will be replaced with “This message was deleted” for the whole channel.',
-                    confirmLabel: 'Delete',
-                  }).then((ok) => { if (ok) void deleteMessage(id) })
-                }}
-                onHide={() => {
-                  const id = menuState.messageId
-                  setMenuState(null)
-                  void confirm({
-                    title: 'Delete for me?',
-                    message: 'It disappears from your view only — everyone else still sees it.',
-                    confirmLabel: 'Delete for me',
-                  }).then((ok) => { if (ok) void hideMessage(id) })
-                }}
-                onClose={() => setMenuState(null)}
-              />
-            )
-          })()}
+          {menuState && menuTarget && !menuTarget.deleted_at && (
+            <MessageContextMenu
+              x={menuState.x}
+              y={menuState.y}
+              actions={menuActions}
+              onReact={user ? (emoji) => void toggleReaction(menuTarget.id, emoji) : undefined}
+              activeReaction={(reactions.get(menuTarget.id) ?? []).find((r) => r.mine)?.emoji}
+              onClose={() => setMenuState(null)}
+            />
+          )}
 
           {/* Composer */}
           <div className="border-t border-gray-100 p-3 flex-shrink-0">

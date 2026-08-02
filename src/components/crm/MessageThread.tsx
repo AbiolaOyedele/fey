@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { formatDate as fmtDate } from '@/utils/formatDate'
-import { MessageSquare, CornerUpLeft, Pencil, Trash2, Ban } from 'lucide-react'
+import { MessageSquare, Ban } from 'lucide-react'
 import type { CrmMessage, MessageAttachment } from '@/types/crm'
 import RichTextComposer from './RichTextComposer'
 import AttachmentPreview from './AttachmentPreview'
 import MessageReactions from '@/components/chat/MessageReactions'
 import ReplyPreview from '@/components/chat/ReplyPreview'
+import MessageContextMenu, { useMessageMenu, type MessageAction } from '@/components/chat/MessageContextMenu'
 import { useMessageReactions } from '@/hooks/useMessageReactions'
 import { DELETED_MESSAGE_PLACEHOLDER } from '@/types/chat'
 import { escapeHtml } from '@/utils/escapeHtml'
@@ -71,7 +72,7 @@ export default function MessageThread({
   const bottomRef = useRef<HTMLDivElement>(null)
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const [highlightId, setHighlightId] = useState<string | null>(null)
-  const [menuFor, setMenuFor]   = useState<string | null>(null)
+  const menu = useMessageMenu()
   const [editingId, setEditing] = useState<string | null>(null)
   const [editDraft, setDraft]   = useState('')
   const [replyTo, setReplyTo]   = useState<CrmMessage | null>(null)
@@ -165,65 +166,12 @@ export default function MessageThread({
                   <div
                     key={msg.id}
                     ref={(el) => { if (el) messageRefs.current.set(msg.id, el); else messageRefs.current.delete(msg.id) }}
-                    className={`group/msg relative flex gap-3 rounded-xl transition-colors duration-500 ${isOwner ? 'flex-row-reverse' : 'flex-row'} ${highlightId === msg.id ? 'bg-amber-50' : ''}`}
+                    onContextMenu={msg.deleted_at ? undefined : menu.onContextMenu(msg.id)}
+                    onTouchStart={msg.deleted_at ? undefined : menu.onTouchStart(msg.id)}
+                    onTouchMove={menu.onTouchMove}
+                    onTouchEnd={menu.onTouchEnd}
+                    className={`flex gap-3 rounded-xl transition-colors duration-500 ${isOwner ? 'flex-row-reverse' : 'flex-row'} ${highlightId === msg.id ? 'bg-amber-50' : ''}`}
                   >
-                    {!msg.deleted_at && (onDelete || onEdit) && (
-                      <div
-                        className={`absolute top-0 z-10 flex items-center gap-0.5 bg-white rounded-full border border-gray-100 shadow-sm px-1 opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 transition-opacity ${isOwner ? 'left-0' : 'right-0'}`}
-                      >
-                        <button
-                          onClick={() => setReplyTo(msg)}
-                          title="Reply"
-                          aria-label="Reply to this message"
-                          className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 rounded-full"
-                        >
-                          <CornerUpLeft size={13} />
-                        </button>
-                        {onEdit && isOwner && (
-                          <button
-                            onClick={() => { setEditing(msg.id); setDraft(msg.body) }}
-                            title="Edit"
-                            aria-label="Edit this message"
-                            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 rounded-full"
-                          >
-                            <Pencil size={13} />
-                          </button>
-                        )}
-                        {onDelete && (
-                          <button
-                            onClick={() => setMenuFor(menuFor === msg.id ? null : msg.id)}
-                            title="Delete for everyone"
-                            aria-label="Delete this message for everyone"
-                            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 rounded-full"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {menuFor === msg.id && onDelete && (
-                      <div className={`absolute top-9 z-20 w-56 bg-white rounded-xl border border-gray-100 shadow-lg p-3 ${isOwner ? 'left-0' : 'right-0'}`}>
-                        <p className="text-2xs text-gray-500 leading-relaxed mb-2">
-                          Replaced with &ldquo;This message was deleted&rdquo; for you and the client.
-                        </p>
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => setMenuFor(null)}
-                            className="px-2.5 py-1.5 rounded-full text-2xs text-gray-500 hover:text-gray-700"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={() => { setMenuFor(null); void onDelete(msg.id) }}
-                            className="px-3 py-1.5 rounded-full text-2xs font-semibold text-white"
-                            style={{ backgroundColor: '#E53E3E' }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    )}
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white flex-shrink-0"
                       style={{ backgroundColor: isOwner ? 'var(--accent, #ED64A6)' : '#9CA3AF' }}
@@ -310,6 +258,44 @@ export default function MessageThread({
         ))}
         <div ref={bottomRef} />
       </div>
+
+      {menu.menu && (() => {
+        const target = messages.find((m) => m.id === menu.menu!.id)
+        if (!target || target.deleted_at) return null
+        const isOwner = target.sender_id === ownerId
+        const actions: MessageAction[] = [
+          { key: 'reply', label: 'Reply', icon: 'reply', onSelect: () => setReplyTo(target) },
+        ]
+        if (target.body.trim()) {
+          actions.push({
+            key: 'copy', label: 'Copy', icon: 'copy',
+            onSelect: () => void navigator.clipboard?.writeText(target.body),
+          })
+        }
+        // Only your own words are yours to rewrite.
+        if (onEdit && isOwner) {
+          actions.push({
+            key: 'edit', label: 'Edit', icon: 'edit',
+            onSelect: () => { setEditing(target.id); setDraft(target.body) },
+          })
+        }
+        if (onDelete) {
+          actions.push({
+            key: 'delete', label: 'Delete for everyone', icon: 'delete', destructive: true,
+            onSelect: () => void onDelete(target.id),
+          })
+        }
+        return (
+          <MessageContextMenu
+            x={menu.menu.x}
+            y={menu.menu.y}
+            actions={actions}
+            onReact={viewer ? (emoji) => void toggleReaction(target.id, emoji) : undefined}
+            activeReaction={(reactions.get(target.id) ?? []).find((r) => r.mine)?.emoji}
+            onClose={menu.close}
+          />
+        )
+      })()}
 
       {/* Composer */}
       <div className="flex-shrink-0 px-6 pb-6 pt-2">

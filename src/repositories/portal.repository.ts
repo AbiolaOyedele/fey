@@ -297,6 +297,51 @@ export async function createPortalMessage(
 }
 
 /**
+ * Deletes one of the client's own messages, permanently.
+ *
+ * Scoped by contact AND sender: a portal user may remove what they sent, never
+ * what the agency sent. The scope lives in the query rather than in a check
+ * before it, so there's no window between deciding and doing.
+ */
+export async function deletePortalMessage(
+  db: SupabaseClient,
+  messageId: string,
+  contactId: string,
+  senderId: string,
+): Promise<{ deleted: boolean; attachments: MessageAttachment[] }> {
+  const { data, error } = await db
+    .from('crm_messages')
+    .delete()
+    .eq('id', messageId)
+    .eq('contact_id', contactId)
+    .eq('sender_type', 'client')
+    .eq('sender_id', senderId)
+    .select('id, attachments')
+    .maybeSingle()
+  if (error) throw error
+  const row = data as { attachments: MessageAttachment[] | null } | null
+  return { deleted: !!row, attachments: row?.attachments ?? [] }
+}
+
+/** Empties the client's thread with the agency — both directions. */
+export async function clearPortalMessages(
+  db: SupabaseClient,
+  contactId: string,
+): Promise<{ count: number; fileUrls: string[] }> {
+  const { data, error } = await db
+    .from('crm_messages')
+    .delete()
+    .eq('contact_id', contactId)
+    .select('id, attachments')
+  if (error) throw error
+  const rows = (data ?? []) as Array<{ id: string; attachments: MessageAttachment[] | null }>
+  return {
+    count: rows.length,
+    fileUrls: rows.flatMap((r) => (r.attachments ?? []).map((a) => a.file_url)).filter(Boolean),
+  }
+}
+
+/**
  * Marks the owner's messages to this contact as read. Called when the client
  * opens their portal messages, so the owner can see read receipts. Only touches
  * rows that are still unread, so repeat calls are cheap no-ops.

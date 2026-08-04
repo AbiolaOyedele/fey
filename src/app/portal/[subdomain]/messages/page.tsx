@@ -3,11 +3,14 @@ import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { formatDate } from '@/utils/formatDate'
 
 import { use, useState, useEffect, useRef, useCallback } from 'react'
-import { Paperclip, X, Loader2, Send } from 'lucide-react'
+import { Paperclip, X, Loader2, Send, Eraser } from 'lucide-react'
 import { usePortalAccent } from '@/hooks/usePortalBranding'
+import { usePortalSession } from '@/contexts/PortalSessionContext'
+import { useConfirm } from '@/contexts/ConfirmContext'
 import { uploadToCloudinary } from '@/utils/cloudinary'
 import AttachmentPreview from '@/components/crm/AttachmentPreview'
 import EmojiPicker from '@/components/crm/EmojiPicker'
+import MessageContextMenu, { useMessageMenu, type MessageAction } from '@/components/chat/MessageContextMenu'
 import { composerKeyDown } from '@/utils/composerKeys'
 import type { CrmMessage, MessageAttachment } from '@/types/crm'
 
@@ -41,6 +44,11 @@ function fmtDate(iso: string) {
 export default function PortalMessagesPage({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
   const accent = usePortalAccent(subdomain)
+  const session = usePortalSession()
+  const confirm = useConfirm()
+  const menu = useMessageMenu()
+  // Viewers read the thread; they don't delete from it.
+  const canWrite = session ? session.session.portalUser.role !== 'viewer' : false
   const bottomRef     = useRef<HTMLDivElement>(null)
   const fileRef       = useRef<HTMLInputElement>(null)
 
@@ -59,7 +67,9 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
       if (!portalToken) { setLoading(false); return }
       setToken(portalToken)
       const data = await apiFetch<{ messages: CrmMessage[]; read_receipts?: boolean }>('/api/v1/portal/messages', portalToken)
-      setMessages(data.messages ?? [])
+      // Deletes are permanent now; rows tombstoned by the old behaviour have an
+      // empty body and would render as a stray timestamp with no bubble.
+      setMessages((data.messages ?? []).filter((m) => !m.deleted_at))
       setReadReceipts(data.read_receipts ?? true)
       setLoading(false)
     })()
@@ -102,10 +112,53 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
     setSending(false)
   }, [body, token, attachments, uploading])
 
+  /** Deletes one of the client's own messages, permanently. */
+  const deleteMessage = useCallback(async (id: string) => {
+    if (!token) return
+    const previous = messages
+    setMessages((prev) => prev.filter((m) => m.id !== id))
+    const res = await fetch(`/api/v1/portal/messages?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => null)
+    if (!res?.ok) setMessages(previous)
+  }, [token, messages])
+
+  /** Empties the thread for both sides. Confirmed first — it can't be undone. */
+  const clearChat = useCallback(async () => {
+    if (!token) return
+    const ok = await confirm({
+      title: 'Clear this chat?',
+      message: 'Every message here is deleted for you and the team, permanently. This can’t be undone.',
+      confirmLabel: 'Clear chat',
+      tone: 'danger',
+    })
+    if (!ok) return
+    const previous = messages
+    setMessages([])
+    const res = await fetch('/api/v1/portal/messages', {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => null)
+    if (!res?.ok) setMessages(previous)
+  }, [token, messages, confirm])
+
   const groups = groupByDate(messages)
 
   return (
     <div className="flex flex-col h-full">
+      {canWrite && messages.length > 0 && (
+        <div className="flex-shrink-0 flex justify-end px-4 md:px-6 pt-3">
+          <button
+            type="button"
+            onClick={() => void clearChat()}
+            className="inline-flex items-center gap-1.5 h-11 px-3 rounded-xl text-xs font-medium text-gray-400 hover:text-red-500 hover:bg-red-50/60 transition-colors"
+          >
+            <Eraser size={14} /> Clear chat
+          </button>
+        </div>
+      )}
+
       {/* Message thread */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
         {loading ? (
@@ -135,7 +188,17 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
                   const bodyText = msg.body === '(file)' ? '' : msg.body
                   const hasBody = !!(msg.body_html?.trim() || bodyText.trim())
                   return (
-                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      key={msg.id}
+                      // Press-and-hold (or right-click) opens the actions, the
+                      // same gesture the app side uses — nothing is pinned to
+                      // hover, which a phone doesn't have.
+                      onContextMenu={menu.onContextMenu(msg.id)}
+                      onTouchStart={menu.onTouchStart(msg.id)}
+                      onTouchMove={menu.onTouchMove}
+                      onTouchEnd={menu.onTouchEnd}
+                      className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                    >
                       <div className={`max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'} gap-1`}>
                         {hasBody && (
                           <div
@@ -168,6 +231,35 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ subdo
         )}
         <div ref={bottomRef} />
       </div>
+
+      {menu.menu && (() => {
+        const target = messages.find((m) => m.id === menu.menu!.id)
+        if (!target) return null
+        const actions: MessageAction[] = []
+        if (target.body && target.body !== '(file)') {
+          actions.push({
+            key: 'copy', label: 'Copy', icon: 'copy',
+            onSelect: () => void navigator.clipboard?.writeText(target.body),
+          })
+        }
+        // Only your own words are yours to remove.
+        if (canWrite && target.sender_type === 'client') {
+          actions.push({
+            key: 'delete', label: 'Delete for everyone', icon: 'delete', destructive: true,
+            onSelect: () => void (async () => {
+              const ok = await confirm({
+                title: 'Delete this message?',
+                message: 'It goes for everyone, permanently. Nothing is left in its place.',
+                confirmLabel: 'Delete',
+                tone: 'danger',
+              })
+              if (ok) await deleteMessage(target.id)
+            })(),
+          })
+        }
+        if (actions.length === 0) return null
+        return <MessageContextMenu x={menu.menu.x} y={menu.menu.y} actions={actions} onClose={menu.close} />
+      })()}
 
       {/* Composer */}
       <div className="flex-shrink-0 border-t border-gray-100 bg-white px-4 py-3">

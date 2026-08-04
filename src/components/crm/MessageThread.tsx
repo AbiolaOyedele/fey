@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { formatDate as fmtDate } from '@/utils/formatDate'
-import { MessageSquare, Ban } from 'lucide-react'
+import { MessageSquare, Eraser } from 'lucide-react'
+import { useConfirm } from '@/contexts/ConfirmContext'
 import type { CrmMessage, MessageAttachment } from '@/types/crm'
 import RichTextComposer from './RichTextComposer'
 import AttachmentPreview from './AttachmentPreview'
@@ -10,7 +11,6 @@ import MessageReactions from '@/components/chat/MessageReactions'
 import ReplyPreview from '@/components/chat/ReplyPreview'
 import MessageContextMenu, { useMessageMenu, type MessageAction } from '@/components/chat/MessageContextMenu'
 import { useMessageReactions } from '@/hooks/useMessageReactions'
-import { DELETED_MESSAGE_PLACEHOLDER } from '@/types/chat'
 import { escapeHtml } from '@/utils/escapeHtml'
 
 interface MessageThreadProps {
@@ -23,8 +23,10 @@ interface MessageThreadProps {
   loading?: boolean
   /** Scrolls to and briefly highlights this message on mount (e.g. from a mention notification link). */
   highlightMessageId?: string | null
-  /** Unsend for everyone. Omit where the surface doesn't support it (brand chat). */
+  /** Delete for everyone, permanently. Omit where the surface doesn't support it. */
   onDelete?: (messageId: string) => Promise<void>
+  /** Empties the whole thread. Omit to hide the control. */
+  onClearChat?: () => Promise<void>
   /** Edit one of your own messages. */
   onEdit?: (messageId: string, body: string) => Promise<void>
   /** Viewer identity, for reactions. */
@@ -65,10 +67,15 @@ function groupByDate(messages: CrmMessage[]): Array<{ date: string; messages: Cr
 }
 
 export default function MessageThread({
-  messages, ownerId, workspaceId = null, contactName = 'Client', onSend,
+  messages: allMessages, ownerId, workspaceId = null, contactName = 'Client', onSend,
   showWelcomeBanner = false, loading = false, highlightMessageId = null,
-  onDelete, onEdit, viewer = null, accent = 'var(--accent, #ED64A6)',
+  onDelete, onClearChat, onEdit, viewer = null, accent = 'var(--accent, #ED64A6)',
 }: MessageThreadProps) {
+  // Deletes are permanent now. Rows tombstoned by the previous behaviour are
+  // dropped here rather than migrated: a thread of "This message was deleted"
+  // markers is exactly what the change was meant to get rid of.
+  const messages = useMemo(() => allMessages.filter((m) => !m.deleted_at), [allMessages])
+  const confirm = useConfirm()
   const bottomRef = useRef<HTMLDivElement>(null)
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const [highlightId, setHighlightId] = useState<string | null>(null)
@@ -113,8 +120,31 @@ export default function MessageThread({
 
   const groups = groupByDate(messages)
 
+  const clearChat = async () => {
+    if (!onClearChat) return
+    const ok = await confirm({
+      title: 'Clear this chat?',
+      message: `All ${messages.length} message${messages.length === 1 ? '' : 's'} and their attachments are deleted for everyone, permanently. This can’t be undone.`,
+      confirmLabel: 'Clear chat',
+      tone: 'danger',
+    })
+    if (ok) await onClearChat()
+  }
+
   return (
     <div className="flex flex-col h-full">
+      {onClearChat && messages.length > 0 && (
+        <div className="flex-shrink-0 flex justify-end px-4 sm:px-6 pt-3">
+          <button
+            type="button"
+            onClick={() => void clearChat()}
+            className="inline-flex items-center gap-1.5 h-11 px-3 rounded-xl text-xs font-medium text-gray-400 hover:text-red-500 hover:bg-red-50/60 transition-colors"
+          >
+            <Eraser size={14} /> Clear chat
+          </button>
+        </div>
+      )}
+
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
         {showWelcomeBanner && messages.length === 0 && (
@@ -166,8 +196,8 @@ export default function MessageThread({
                   <div
                     key={msg.id}
                     ref={(el) => { if (el) messageRefs.current.set(msg.id, el); else messageRefs.current.delete(msg.id) }}
-                    onContextMenu={msg.deleted_at ? undefined : menu.onContextMenu(msg.id)}
-                    onTouchStart={msg.deleted_at ? undefined : menu.onTouchStart(msg.id)}
+                    onContextMenu={menu.onContextMenu(msg.id)}
+                    onTouchStart={menu.onTouchStart(msg.id)}
                     onTouchMove={menu.onTouchMove}
                     onTouchEnd={menu.onTouchEnd}
                     className={`flex gap-3 rounded-xl transition-colors duration-500 ${isOwner ? 'flex-row-reverse' : 'flex-row'} ${highlightId === msg.id ? 'bg-amber-50' : ''}`}
@@ -183,35 +213,26 @@ export default function MessageThread({
                         {!isOwner && <span className="text-xs font-semibold text-gray-700">{senderName}</span>}
                         <span className="text-3xs text-gray-400">
                           {formatTime(msg.created_at)}
-                          {msg.edited_at && !msg.deleted_at && ' · edited'}
-                          {isOwner && !msg.deleted_at && (msg.read_at ? ' · Read' : ' · Sent')}
+                          {msg.edited_at && ' · edited'}
+                          {isOwner && (msg.read_at ? ' · Read' : ' · Sent')}
                         </span>
                       </div>
                       {/* Client messages are untrusted: escape their plain body and never
                           render client-supplied body_html — otherwise a crafted message
                           injects HTML/script into the owner's session (stored XSS). Only the
                           owner's own RichTextComposer output is trusted rich HTML. */}
-                      {parent && !msg.deleted_at && (
+                      {parent && (
                         <div className={`w-full max-w-[280px] ${isOwner ? 'self-end' : ''}`}>
                           <ReplyPreview
                             senderName={parent.sender_id === ownerId ? 'You' : contactName}
                             body={parent.body}
-                            deleted={!!parent.deleted_at}
                             accent={accent}
                             onJump={() => jumpTo(parent.id)}
                           />
                         </div>
                       )}
 
-                      {msg.deleted_at ? (
-                        // The row survives on purpose: a thread that silently
-                        // closes up leaves nobody able to tell a message was
-                        // removed rather than never sent.
-                        <div className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-sm italic text-gray-400 border border-dashed border-gray-200 rounded-2xl ${isOwner ? 'rounded-br-sm' : 'rounded-bl-sm'}`}>
-                          <Ban size={12} />
-                          {DELETED_MESSAGE_PLACEHOLDER}
-                        </div>
-                      ) : isEditing ? (
+                      {isEditing ? (
                         <div className="w-64 bg-white rounded-2xl border border-gray-200 shadow-sm px-3 py-2">
                           <textarea
                             value={editDraft}
@@ -238,14 +259,14 @@ export default function MessageThread({
                         />
                       ) : null}
 
-                      {!msg.deleted_at && msg.attachments.length > 0 && (
+                      {msg.attachments.length > 0 && (
                         <AttachmentPreview attachments={msg.attachments} />
                       )}
 
                       <MessageReactions
                         summaries={reactions.get(msg.id) ?? []}
                         accent={accent}
-                        canReact={!msg.deleted_at && !!viewer}
+                        canReact={!!viewer}
                         align={isOwner ? 'end' : 'start'}
                         onToggle={(emoji) => void toggleReaction(msg.id, emoji)}
                       />
@@ -261,7 +282,7 @@ export default function MessageThread({
 
       {menu.menu && (() => {
         const target = messages.find((m) => m.id === menu.menu!.id)
-        if (!target || target.deleted_at) return null
+        if (!target) return null
         const isOwner = target.sender_id === ownerId
         const actions: MessageAction[] = [
           { key: 'reply', label: 'Reply', icon: 'reply', onSelect: () => setReplyTo(target) },
@@ -282,7 +303,15 @@ export default function MessageThread({
         if (onDelete) {
           actions.push({
             key: 'delete', label: 'Delete for everyone', icon: 'delete', destructive: true,
-            onSelect: () => void onDelete(target.id),
+            onSelect: () => void (async () => {
+              const ok = await confirm({
+                title: 'Delete this message?',
+                message: 'It goes for everyone, permanently. Nothing is left in its place.',
+                confirmLabel: 'Delete',
+                tone: 'danger',
+              })
+              if (ok) await onDelete(target.id)
+            })(),
           })
         }
         return (

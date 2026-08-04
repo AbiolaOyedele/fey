@@ -2,6 +2,7 @@
 
 import { Sparkles, ArrowRight } from 'lucide-react'
 import { formatDate } from '@/utils/formatDate'
+import BrandLogo from './BrandLogo'
 import type { Project, ProjectStatus } from '@/types/project'
 
 /**
@@ -40,12 +41,12 @@ export default function BrandCard({ project: p, accent, onOpen }: BrandCardProps
       className="group relative block w-full h-full text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-5 overflow-hidden hover:shadow-md transition-shadow duration-200"
     >
       <div className="flex items-start justify-between gap-2 mb-4">
-        <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6"
-          style={{ backgroundColor: `${accent}15`, color: accent }}
-        >
-          <Sparkles size={20} />
-        </div>
+        <BrandLogo
+          name={p.title}
+          logoUrl={p.logo_url}
+          accent={accent}
+          className="w-11 h-11 transition-transform duration-200 group-hover:scale-110"
+        />
         <span
           className="flex-shrink-0 text-2xs font-semibold uppercase tracking-widest"
           style={{ color: live ? accent : '#CBD5E1' }}

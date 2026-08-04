@@ -9,7 +9,8 @@ import {
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { usePortalBase } from '@/hooks/usePortalBase'
 import { usePortalAccent } from '@/hooks/usePortalBranding'
-import { usePortalNotifications } from '@/hooks/usePortalNotifications'
+import { usePortalNotificationFeed } from '@/contexts/PortalNotificationsContext'
+import { portalNotificationHref } from '@/utils/portalNotificationLink'
 import { Stagger, StaggerItem, FadeIn } from '@/components/ui/motion'
 
 /**
@@ -32,7 +33,7 @@ export default function PortalHome({ params }: { params: Promise<{ subdomain: st
   const { subdomain } = use(params)
   const base   = usePortalBase(subdomain)
   const accent = usePortalAccent(subdomain)
-  const { notifications, unread } = usePortalNotifications(subdomain)
+  const { notifications, unread, markRead } = usePortalNotificationFeed()
 
   const [unreadMessages, setUnreadMessages]     = useState(0)
   const [pendingContracts, setPendingContracts] = useState(0)
@@ -171,7 +172,8 @@ export default function PortalHome({ params }: { params: Promise<{ subdomain: st
               {recent.map((n, i) => (
                 <Link
                   key={n.id}
-                  href={`${base}${n.link ?? '/notifications'}`}
+                  href={`${base}${portalNotificationHref(n)}`}
+                  onClick={() => { if (!n.read_at) void markRead(n.id) }}
                   className={`flex items-start gap-3 p-4 min-h-[44px] hover:bg-gray-50/60 transition-colors ${i > 0 ? 'border-t border-gray-50' : ''}`}
                 >
                   <span

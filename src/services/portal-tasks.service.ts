@@ -186,8 +186,9 @@ const patchSchema = z.object({
 
 /** Edits a task the client raised. Scope is enforced by `assertOwnTask`. */
 export async function patchTask(
-  db: SupabaseClient, scope: Scope, actor: Pick<PortalUser, 'id' | 'role'>, taskId: string, input: unknown,
+  db: SupabaseClient, scope: Scope, actor: Pick<PortalUser, 'id' | 'name' | 'role'>, taskId: string, input: unknown,
 ): Promise<Task> {
+  const actorName = actor.name
   if (isReadOnly(actor.role)) {
     throw new AppError(403, 'Your access is view-only, so you can’t change tasks.', 'PORTAL_TASK_FORBIDDEN')
   }
@@ -222,7 +223,109 @@ export async function patchTask(
   const all = await listTasks(db, scope)
   const updated = all.find((t) => t.id === taskId)
   if (!updated) throw new AppError(500, 'The task was updated but couldn’t be loaded.', 'PORTAL_TASK_RELOAD_FAILED')
+
+  // The agency hears about the client's edit the same way the client hears
+  // about theirs — otherwise a brief can change under the team without a word.
+  await announceClientEdit(db, scope, actorName, updated, d)
+
   return updated
+}
+
+/** Field names as they read to the team, for the "what changed" line. */
+const CLIENT_FIELD_LABELS: Record<string, string> = {
+  title:       'title',
+  description: 'description',
+  priority:    'priority',
+  due_date:    'due date',
+  stage_id:    'status',
+}
+
+async function announceClientEdit(
+  db: SupabaseClient,
+  scope: Scope,
+  actorName: string,
+  task: Task,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  const completed = patch.done === true
+  const reopened  = patch.done === false
+  const changed = Object.keys(CLIENT_FIELD_LABELS).filter((k) => patch[k] !== undefined)
+  if (!completed && !reopened && changed.length === 0 && patch.assignee_ids === undefined) return
+
+  const headline = completed ? `${actorName} completed a task`
+    : reopened ? `${actorName} reopened a task`
+    : `${actorName} updated a task`
+  const detail = completed || reopened || changed.length === 0
+    ? task.title
+    : `${task.title} — ${changed.map((k) => CLIENT_FIELD_LABELS[k]).join(', ')} changed`
+
+  const workspaceId = await portalRepo.getOwnerWorkspaceId(db, scope.ownerId)
+  const recipients = await taskRepo.getTaskParticipants(db, task.id)
+  const args = {
+    type:  'task_updated',
+    title: headline,
+    body:  detail,
+    link:  `/tasks?taskId=${task.id}`,
+    entityType: 'task',
+    entityId:   task.id,
+  } as const
+
+  if (recipients.length > 0) await notify({ db, recipientIds: recipients, workspaceId, ...args })
+  else await notifyOwnerAdmins(db, scope.ownerId, args)
+}
+
+/**
+ * Removes a task the client raised.
+ *
+ * A client can create work, so a client can withdraw it — the alternative was a
+ * task board that only ever grows and a message asking the agency to tidy up.
+ * The scope is deliberately narrow: `assertOwnTask` means only tasks raised from
+ * this portal, by this client, can go. Agency-created work is not theirs to
+ * delete, and the 404 says so plainly.
+ *
+ * Soft delete, like the app's own — it lands in the recycle bin, not the void.
+ * Everyone who was on the task is told, so nobody discovers it by its absence.
+ */
+export async function deleteTask(
+  db: SupabaseClient,
+  scope: Scope,
+  actor: Pick<PortalUser, 'name' | 'role'>,
+  taskId: string,
+): Promise<void> {
+  if (isReadOnly(actor.role)) {
+    throw new AppError(403, 'Your access is view-only, so you can’t remove tasks.', 'PORTAL_TASK_FORBIDDEN')
+  }
+  await assertOwnTask(db, scope, taskId)
+
+  const task = await taskRepo.getTaskById(db, taskId)
+  const recipients = await taskRepo.getTaskParticipants(db, taskId)
+  await taskRepo.softDeleteTask(db, taskId)
+
+  const workspaceId = await portalRepo.getOwnerWorkspaceId(db, scope.ownerId)
+  if (recipients.length > 0) {
+    await notify({
+      db,
+      recipientIds: recipients,
+      workspaceId,
+      type:  'task_deleted',
+      title: `${actor.name} removed a task`,
+      body:  task?.title ?? null,
+      link:  '/tasks',
+      entityType: 'task',
+      entityId:   taskId,
+    })
+  } else {
+    // Nobody was assigned, so the people who can act on it are the ones who saw
+    // it arrive on the board.
+    await notifyOwnerAdmins(db, scope.ownerId, {
+      type:  'task_deleted',
+      title: `${actor.name} removed a task`,
+      body:  task?.title ?? null,
+      link:  '/tasks',
+      entityType: 'task',
+      entityId:   taskId,
+    })
+  }
 }
 
 // ── Subtasks ────────────────────────────────────────────────────────────────

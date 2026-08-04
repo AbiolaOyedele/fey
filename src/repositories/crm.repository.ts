@@ -509,34 +509,54 @@ export async function createPaymentRequest(
 // ── Message edit / unsend ─────────────────────────────────────────────────────
 
 /**
- * Unsends a message for everyone — a soft delete.
+ * Deletes a message outright, and reports its attachments so the caller can
+ * remove the files too.
  *
- * The body is cleared as well as tombstoned: leaving the text in the row keeps
- * it readable to anyone who can query the table, which isn't what "delete"
- * means to the person who pressed it. The row itself survives so the thread
- * stays coherent and any reply quoting it still has a parent.
+ * This used to soft-delete into a "This message was deleted" tombstone. The
+ * tombstone was the problem: a thread full of them announces that something was
+ * removed and invites the question of what, which is the opposite of what
+ * someone pressing delete is asking for. The row goes. Replies that quoted it
+ * simply render without a quote — `MessageThread` already handles a missing
+ * parent, because a pruned thread could always produce one.
  */
-export async function softDeleteMessage(
+export async function hardDeleteMessage(
   db: SupabaseClient,
   id: string,
   ownerId: string,
-  deletedBy: string,
-): Promise<CrmMessage> {
+): Promise<{ attachments: MessageAttachment[] }> {
   const { data, error } = await db
     .from('crm_messages')
-    .update({
-      body: '',
-      body_html: null,
-      attachments: [],
-      deleted_at: new Date().toISOString(),
-      deleted_by: deletedBy,
-    })
+    .delete()
     .eq('id', id)
     .eq('owner_id', ownerId)
-    .select()
-    .single()
+    .select('id, attachments')
+    .maybeSingle()
   if (error) throw error
-  return rowToMessage(data)
+  const row = data as { attachments: MessageAttachment[] | null } | null
+  return { attachments: row?.attachments ?? [] }
+}
+
+/**
+ * Empties a whole client thread. Returns the count and every attachment URL on
+ * the removed messages, so the binaries go with them.
+ */
+export async function clearMessages(
+  db: SupabaseClient,
+  contactId: string,
+  ownerId: string,
+): Promise<{ count: number; fileUrls: string[] }> {
+  const { data, error } = await db
+    .from('crm_messages')
+    .delete()
+    .eq('contact_id', contactId)
+    .eq('owner_id', ownerId)
+    .select('id, attachments')
+  if (error) throw error
+  const rows = (data ?? []) as Array<{ id: string; attachments: MessageAttachment[] | null }>
+  return {
+    count: rows.length,
+    fileUrls: rows.flatMap((r) => (r.attachments ?? []).map((a) => a.file_url)).filter(Boolean),
+  }
 }
 
 export async function editMessage(

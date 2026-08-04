@@ -8,9 +8,10 @@ import {
 } from 'lucide-react'
 import { usePortalBase } from '@/hooks/usePortalBase'
 import { usePortalAccent } from '@/hooks/usePortalBranding'
-import { usePortalNotifications } from '@/hooks/usePortalNotifications'
+import { usePortalNotificationFeed } from '@/contexts/PortalNotificationsContext'
 import { FadeIn } from '@/components/ui/motion'
 import { relativeTime } from '@/utils/relativeTime'
+import { portalNotificationHref } from '@/utils/portalNotificationLink'
 import type { PortalNotification } from '@/types/portal-notification'
 
 /**
@@ -33,7 +34,7 @@ export default function PortalNotificationsPage({ params }: { params: Promise<{ 
   const { subdomain } = use(params)
   const base   = usePortalBase(subdomain)
   const accent = usePortalAccent(subdomain)
-  const { notifications, unread, loading, markRead, markAllRead } = usePortalNotifications(subdomain)
+  const { notifications, unread, loading, markRead, markAllRead } = usePortalNotificationFeed()
 
   // Grouped client-side: the feed is capped at 50, so this is cheap and avoids
   // a second endpoint just to bucket by day.
@@ -115,7 +116,7 @@ function Group({
           return (
             <Link
               key={n.id}
-              href={`${base}${n.link ?? '/notifications'}`}
+              href={`${base}${portalNotificationHref(n)}`}
               onClick={() => { if (isUnread) void onOpen(n.id) }}
               className={`flex items-start gap-3 p-4 min-h-[44px] transition-colors hover:bg-gray-50/60 ${i > 0 ? 'border-t border-gray-50' : ''}`}
               style={isUnread ? { backgroundColor: `${accent}08` } : undefined}

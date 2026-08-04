@@ -43,11 +43,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 /** DELETE /api/v1/tasks/:id (soft delete) */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { token, response } = await requireAuth(req.headers.get('authorization'))
+  const { user, token, response } = await requireAuth(req.headers.get('authorization'))
   if (response) return response
   const db = createUserClient(token!)
   try {
-    await deleteTask(db, id)
+    // The deleter is passed through so they aren't notified of their own delete.
+    await deleteTask(db, id, user!.id)
     return NextResponse.json({ ok: true })
   } catch (err) {
     return handleError(err, 'TASK_DELETE_FAILED')

@@ -2,17 +2,21 @@
 
 import { use, useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Paperclip, X, Loader2, Send, MessageSquare, FolderOpen, Download, FileText } from 'lucide-react'
+import { ArrowLeft, Paperclip, X, Loader2, Send, MessageSquare, FolderOpen, Download, FileText, ListTodo, Eraser, CheckCircle2, Circle } from 'lucide-react'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { portalBasePath } from '@/hooks/usePortalBase'
+import { usePortalAccent } from '@/hooks/usePortalBranding'
+import { useConfirm } from '@/contexts/ConfirmContext'
 import { uploadToCloudinary } from '@/utils/cloudinary'
 import { formatDate, formatTime } from '@/utils/formatDate'
 import AttachmentPreview from '@/components/crm/AttachmentPreview'
+import BrandLogo from '@/components/crm/BrandLogo'
 import { composerKeyDown } from '@/utils/composerKeys'
 import type { Project, ProjectMessage, ProjectFile } from '@/types/project'
+import type { Task } from '@/types/work-tasks'
 import type { MessageAttachment } from '@/types/crm'
 
-type Pane = 'chat' | 'files'
+type Pane = 'chat' | 'files' | 'tasks'
 
 function fmtSize(bytes: number | null) {
   if (!bytes) return ''
@@ -24,6 +28,8 @@ function fmtSize(bytes: number | null) {
 export default function PortalProjectDetailPage({ params }: { params: Promise<{ subdomain: string; projectId: string }> }) {
   const { subdomain, projectId } = use(params)
   const router = useRouter()
+  const accent = usePortalAccent(subdomain)
+  const confirm = useConfirm()
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -31,6 +37,7 @@ export default function PortalProjectDetailPage({ params }: { params: Promise<{ 
   const [project, setProject] = useState<Project | null>(null)
   const [messages, setMessages] = useState<ProjectMessage[]>([])
   const [files, setFiles] = useState<ProjectFile[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [pane, setPane] = useState<Pane>('chat')
 
@@ -47,10 +54,11 @@ export default function PortalProjectDetailPage({ params }: { params: Promise<{ 
       setToken(t)
       const res = await fetch(`/api/v1/portal/projects/${projectId}`, { headers: { Authorization: `Bearer ${t}` } })
       if (res.ok) {
-        const d = await res.json() as { project: Project; messages: ProjectMessage[]; files: ProjectFile[] }
+        const d = await res.json() as { project: Project; messages: ProjectMessage[]; files: ProjectFile[]; tasks: Task[] }
         setProject(d.project)
         setMessages(d.messages ?? [])
         setFiles(d.files ?? [])
+        setTasks(d.tasks ?? [])
       }
       setLoading(false)
     })()
@@ -110,6 +118,27 @@ export default function PortalProjectDetailPage({ params }: { params: Promise<{ 
     }
   }, [token, projectId])
 
+  /** Empties this brand's chat for both sides. Confirmed first — it's permanent. */
+  const clearChat = useCallback(async () => {
+    if (!token) return
+    const ok = await confirm({
+      title: 'Clear this chat?',
+      message: 'Every message in this brand is deleted for you and the team, permanently. This can’t be undone.',
+      confirmLabel: 'Clear chat',
+      tone: 'danger',
+    })
+    if (!ok) return
+    const previous = messages
+    setMessages([])
+    const res = await fetch(`/api/v1/portal/projects/${projectId}/messages`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => null)
+    if (!res?.ok) setMessages(previous)
+  }, [token, projectId, messages, confirm])
+
+  const openTaskCount = tasks.filter((t) => !t.done).length
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -124,25 +153,43 @@ export default function PortalProjectDetailPage({ params }: { params: Promise<{ 
           {project && (
             <>
               <span className="text-gray-300">/</span>
+              <BrandLogo
+                name={project.title}
+                logoUrl={project.logo_url}
+                accent={accent}
+                className="w-7 h-7"
+                rounded="rounded-lg"
+                textClassName="text-2xs"
+              />
               <span className="text-sm font-medium text-gray-900 truncate">{project.title}</span>
             </>
           )}
+          {pane === 'chat' && messages.length > 0 && (
+            <button
+              type="button"
+              onClick={() => void clearChat()}
+              className="ml-auto inline-flex items-center gap-1.5 h-11 px-3 -my-2 rounded-xl text-xs font-medium text-gray-400 hover:text-red-500 hover:bg-red-50/60 transition-colors"
+            >
+              <Eraser size={14} /> Clear chat
+            </button>
+          )}
         </div>
-        <div className="flex items-center gap-1 mt-3">
-          <button
-            onClick={() => setPane('chat')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${pane === 'chat' ? 'text-white' : 'bg-gray-100 text-gray-500'}`}
-            style={pane === 'chat' ? { backgroundColor: '#101010' } : {}}
-          >
-            <MessageSquare size={13} /> Chat
-          </button>
-          <button
-            onClick={() => setPane('files')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${pane === 'files' ? 'text-white' : 'bg-gray-100 text-gray-500'}`}
-            style={pane === 'files' ? { backgroundColor: '#101010' } : {}}
-          >
-            <FolderOpen size={13} /> Files
-          </button>
+        <div className="flex items-center gap-1 mt-3 overflow-x-auto">
+          {([
+            ['chat',  'Chat',  MessageSquare, null],
+            ['files', 'Files', FolderOpen,    files.length || null],
+            ['tasks', 'Tasks', ListTodo,      openTaskCount || null],
+          ] as const).map(([key, label, Icon, count]) => (
+            <button
+              key={key}
+              onClick={() => setPane(key)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-full text-xs font-medium flex-shrink-0 ${pane === key ? 'text-white' : 'bg-gray-100 text-gray-500'}`}
+              style={pane === key ? { backgroundColor: accent } : {}}
+            >
+              <Icon size={13} /> {label}
+              {!!count && <span className="opacity-70">· {count}</span>}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -224,6 +271,41 @@ export default function PortalProjectDetailPage({ params }: { params: Promise<{ 
             </div>
           </div>
         </>
+      ) : pane === 'tasks' ? (
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          {/* Read-only on purpose: this is the work on the brand, at a glance.
+              Raising and changing tasks lives in the portal's Tasks section,
+              which is where those rules (and the permissions) already are. */}
+          <p className="text-sm text-gray-400 mb-4">
+            {tasks.length === 0
+              ? 'Nothing assigned to this brand yet.'
+              : `${openTaskCount} open · ${tasks.length - openTaskCount} done`}
+          </p>
+          {tasks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <ListTodo size={28} strokeWidth={1.5} className="text-gray-200 mb-3" />
+              <p className="text-sm font-medium text-gray-500">No tasks on this brand</p>
+              <p className="text-xs text-gray-400 mt-1">Work assigned to it will show up here.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm max-w-2xl">
+              {tasks.map((t) => (
+                <div key={t.id} className="flex items-start gap-3 p-4 border-b border-gray-50 last:border-b-0">
+                  {t.done
+                    ? <CheckCircle2 size={16} className="flex-shrink-0 mt-0.5" style={{ color: accent }} />
+                    : <Circle size={16} className="text-gray-300 flex-shrink-0 mt-0.5" />}
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-sm ${t.done ? 'text-gray-400 line-through' : 'font-medium text-gray-800'}`}>{t.title}</p>
+                    <p className="text-2xs text-gray-400 mt-0.5">
+                      {t.due_date ? `Due ${formatDate(t.due_date)}` : 'No due date'}
+                      {t.assignees.length > 0 && ` · ${t.assignees.map((a) => a.name ?? 'Team').join(', ')}`}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-6">
           <div className="flex items-center justify-between mb-4">

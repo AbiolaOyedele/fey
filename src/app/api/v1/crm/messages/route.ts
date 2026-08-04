@@ -40,3 +40,22 @@ export async function POST(req: NextRequest) {
     return handleError(err, 'CRM_MESSAGE_SEND_FAILED')
   }
 }
+
+/**
+ * DELETE /api/v1/crm/messages?contact_id=...
+ * Clears the whole thread — permanently, for both sides.
+ */
+export async function DELETE(req: NextRequest) {
+  const contactId = req.nextUrl.searchParams.get('contact_id')
+  if (!contactId) {
+    return NextResponse.json({ error: { code: 'CRM_MESSAGES_MISSING_CONTACT', message: 'contact_id is required.' } }, { status: 400 })
+  }
+  const { user, token, response } = await requireAuth(req.headers.get('authorization'))
+  if (response) return response
+  const db = createUserClient(token!)
+  try {
+    return NextResponse.json(await crmService.clearMessages(db, contactId, user!.id))
+  } catch (err) {
+    return handleError(err, 'CRM_MESSAGES_CLEAR_FAILED')
+  }
+}

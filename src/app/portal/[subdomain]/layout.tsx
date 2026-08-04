@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import PortalShell from '@/components/portal/PortalShell'
 import { PortalSessionProvider } from '@/contexts/PortalSessionContext'
+import { PortalNotificationsProvider } from '@/contexts/PortalNotificationsContext'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { portalBasePath } from '@/hooks/usePortalBase'
 import type { PortalOwnerBranding, PortalUser } from '@/types/crm'
@@ -107,13 +108,15 @@ export default function PortalLayout({
         clientName: session.clientName,
       }}
     >
-      <PortalShell
-        subdomain={subdomain}
-        branding={session.branding}
-        clientName={session.clientName}
-      >
-        {children}
-      </PortalShell>
+      <PortalNotificationsProvider subdomain={subdomain}>
+        <PortalShell
+          subdomain={subdomain}
+          branding={session.branding}
+          clientName={session.clientName}
+        >
+          {children}
+        </PortalShell>
+      </PortalNotificationsProvider>
     </PortalSessionProvider>
   )
 }

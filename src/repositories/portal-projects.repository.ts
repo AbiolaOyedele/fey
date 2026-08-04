@@ -115,6 +115,20 @@ export async function createProjectFile(
   return data as ProjectFile
 }
 
+/** Empties a brand's chat. Returns how many messages went. */
+export async function clearProjectMessages(
+  db: SupabaseClient,
+  projectId: string,
+): Promise<number> {
+  const { data, error } = await db
+    .from('project_messages')
+    .delete()
+    .eq('project_id', projectId)
+    .select('id')
+  if (error) throw error
+  return (data ?? []).length
+}
+
 /** Mark the owner's messages in a project as read (client opened the thread). */
 export async function markOwnerProjectMessagesRead(
   db: SupabaseClient,

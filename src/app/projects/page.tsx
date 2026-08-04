@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Loader2, FolderOpen, X, Archive, ArchiveRestore } from 'lucide-react'
+import { Plus, Search, Loader2, FolderOpen, X, Archive, ArchiveRestore, ImagePlus } from 'lucide-react'
+import BrandLogo from '@/components/crm/BrandLogo'
+import { uploadToCloudinary, validateUploadFile } from '@/utils/cloudinary'
 import { useAllProjects } from '@/hooks/useProjects'
 import { useContacts } from '@/hooks/useCrm'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -100,9 +102,17 @@ export default function ProjectsHubPage() {
                     onClick={() => router.push(`/projects/${p.id}`)}
                     className="text-left bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all p-4"
                   >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h4 className="text-sm font-semibold text-gray-900 truncate">{p.title}</h4>
-                      <span className={`flex-shrink-0 text-2xs font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLE[p.status] ?? STATUS_STYLE.active}`}>
+                    <div className="flex items-start gap-2.5 mb-2">
+                      <BrandLogo
+                        name={p.title}
+                        logoUrl={p.logo_url}
+                        accent="var(--accent, #ED64A6)"
+                        className="w-9 h-9"
+                        rounded="rounded-lg"
+                        textClassName="text-sm"
+                      />
+                      <h4 className="flex-1 min-w-0 text-sm font-semibold text-gray-900 truncate self-center">{p.title}</h4>
+                      <span className={`flex-shrink-0 text-2xs font-semibold px-2 py-0.5 rounded-full self-center ${STATUS_STYLE[p.status] ?? STATUS_STYLE.active}`}>
                         {p.status.replace('_', ' ')}
                       </span>
                     </div>
@@ -173,7 +183,13 @@ export default function ProjectsHubPage() {
 
 interface NewProjectModalProps {
   contacts: Array<{ id: string; name: string }>
-  onCreate: (payload: { title: string; description: string | null; contact_id: string | null }) => Promise<void>
+  onCreate: (payload: {
+    title: string
+    description: string | null
+    contact_id: string | null
+    logo_url: string | null
+    logo_public_id: string | null
+  }) => Promise<void>
   onClose: () => void
 }
 
@@ -182,15 +198,42 @@ function NewProjectModal({ contacts, onCreate, onClose }: NewProjectModalProps) 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [contactId, setContactId] = useState<string | null>(null)
+  const [logo, setLogo] = useState<{ url: string; publicId: string } | null>(null)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const logoInput = useRef<HTMLInputElement>(null)
+
+  const pickLogo = async (file: File | undefined) => {
+    if (!file) return
+    const problem = validateUploadFile(file)
+    if (problem) { setError(problem); return }
+    if (!file.type.startsWith('image/')) { setError('A logo needs to be an image.'); return }
+    setUploadingLogo(true)
+    setError('')
+    try {
+      const { url, publicId } = await uploadToCloudinary(file, 'brand-logos').promise
+      setLogo({ url, publicId })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'That logo couldn’t be uploaded.')
+    } finally {
+      setUploadingLogo(false)
+      if (logoInput.current) logoInput.current.value = ''
+    }
+  }
 
   const submit = async () => {
     if (title.trim().length < 2) { setError('Give the brand a name.'); return }
     setSubmitting(true)
     setError('')
     try {
-      await onCreate({ title: title.trim(), description: description.trim() || null, contact_id: contactId })
+      await onCreate({
+        title: title.trim(),
+        description: description.trim() || null,
+        contact_id: contactId,
+        logo_url: logo?.url ?? null,
+        logo_public_id: logo?.publicId ?? null,
+      })
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create the brand.')
@@ -205,6 +248,45 @@ function NewProjectModal({ contacts, onCreate, onClose }: NewProjectModalProps) 
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-gray-900">New brand</h2>
           <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100"><X size={16} /></button>
+        </div>
+
+        <div className="flex items-center gap-3 mb-3">
+          <BrandLogo
+            name={title || '?'}
+            logoUrl={logo?.url ?? null}
+            accent="var(--accent, #ED64A6)"
+            className="w-14 h-14"
+            rounded="rounded-2xl"
+            textClassName="text-lg"
+          />
+          <div className="min-w-0">
+            <button
+              type="button"
+              onClick={() => logoInput.current?.click()}
+              disabled={uploadingLogo}
+              className="inline-flex items-center gap-1.5 h-11 px-3 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              {uploadingLogo ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+              {logo ? 'Replace logo' : 'Add logo'}
+            </button>
+            {logo && (
+              <button
+                type="button"
+                onClick={() => setLogo(null)}
+                className="ml-1 h-11 px-2 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors"
+              >
+                Remove
+              </button>
+            )}
+            <p className="text-2xs text-gray-400 mt-0.5">PNG or SVG on a transparent background looks best.</p>
+          </div>
+          <input
+            ref={logoInput}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => void pickLogo(e.target.files?.[0])}
+          />
         </div>
 
         <input

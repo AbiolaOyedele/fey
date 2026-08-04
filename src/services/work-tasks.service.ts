@@ -13,9 +13,84 @@ import { ensureDefaultWorkflow } from '@/services/workflows.service'
 import { notify } from '@/services/notifications.service'
 import { announceToClient } from '@/services/portal-notifications.service'
 
+/** The bits of a task an announcement needs to reach the right people. */
+interface TaskCore {
+  id: string
+  owner_id: string
+  workspace_id: string | null
+  contact_id: string | null
+}
+
+/**
+ * Tells everyone attached to a task what just happened to it.
+ *
+ * Every task event goes through here, so the two audiences can't drift: the
+ * people on the task inside the app (its creator plus every assignee — a change
+ * usually matters most to whoever is NOT the one who made it), and the client in
+ * their portal when the task is theirs.
+ *
+ * `recipients` is passed in rather than looked up here because a delete has to
+ * collect them before the row goes. Never throws: an announcement failing must
+ * not fail the change that triggered it.
+ */
+async function announceTaskEvent(args: {
+  core: TaskCore
+  recipients: string[]
+  actorId: string
+  /** What happened, e.g. 'Task updated'. */
+  headline: string
+  /** Usually the task title, with a note of what changed. */
+  detail: string | null
+  /** A deleted task has nothing left to open, so the link stays on the board. */
+  gone?: boolean
+}): Promise<void> {
+  const { core, actorId, headline, detail, gone } = args
+  const link = gone ? '/tasks' : `/tasks?taskId=${core.id}`
+  try {
+    const recipients = args.recipients.filter((id) => id !== actorId)
+    if (recipients.length > 0) {
+      await notify({
+        db: createServiceClient(),
+        recipientIds: recipients,
+        workspaceId: core.workspace_id,
+        actorId,
+        type: gone ? 'task_deleted' : 'task_updated',
+        title: headline,
+        body: detail,
+        link,
+        entityType: 'task',
+        entityId: core.id,
+      })
+    }
+    if (core.contact_id) {
+      announceToClient({
+        contactId:  core.contact_id,
+        ownerId:    core.owner_id,
+        type:       'task',
+        title:      headline,
+        body:       detail,
+        link,
+        // A deleted task must not resolve to a deep link that 404s, so it
+        // carries no entity and falls back to the board.
+        entityType: gone ? null : 'task',
+        entityId:   gone ? null : core.id,
+      })
+    }
+  } catch { /* best-effort */ }
+}
+
+/** Everyone on the task right now: its creator plus every assignee. */
+async function participantsOf(taskId: string): Promise<string[]> {
+  try {
+    return await repo.getTaskParticipants(createServiceClient(), taskId)
+  } catch {
+    return []
+  }
+}
+
 /** Notify newly-added assignees (best-effort; never blocks the task write). */
 async function notifyAssigned(
-  core: { id: string; owner_id: string; workspace_id: string | null; contact_id: string | null },
+  core: TaskCore,
   addedIds: string[],
   title: string,
   actorId: string,
@@ -31,62 +106,45 @@ async function notifyAssigned(
       type: 'task_assigned',
       title: 'New task assigned to you',
       body: title,
-      link: core.contact_id ? `/clients/${core.contact_id}/tasks` : '/tasks',
+      link: `/tasks?taskId=${core.id}`,
       entityType: 'task',
       entityId: core.id,
     })
   } catch { /* best-effort */ }
 }
 
+/** Fields worth telling people about, and how to name them. */
+const FIELD_LABELS = {
+  title:             'title',
+  description:       'description',
+  priority:          'priority',
+  start_date:        'start date',
+  due_date:          'due date',
+  estimated_minutes: 'estimate',
+} as const
+
+type WatchedField = keyof typeof FIELD_LABELS
+
 /**
- * Tells everyone attached to a task that it moved column.
+ * Which of the watched fields the update actually changes.
  *
- * The bug this fixes: moving a task to "Review" notified nobody, so the person
- * meant to review it only found out by looking at the board. Recipients are the
- * creator AND every assignee — a stage change is exactly the moment the next
- * person needs to know, and that person is often not the one who was assigned
- * the work.
- *
- * Also reaches the client's portal when the task is theirs, so "your thing is
- * in review" arrives without anyone remembering to send it.
+ * Compared against the stored row rather than trusting the payload: the drawer
+ * saves the whole form, and boards re-send `sort_order` on every drag, so
+ * "field present in the request" would fire a notification for nothing.
  */
-async function notifyStageMoved(
-  core: { id: string; owner_id: string; workspace_id: string | null; contact_id: string | null },
-  taskTitle: string,
-  stageName: string,
-  actorId: string,
-): Promise<void> {
-  try {
-    const db = createServiceClient()
-    const participants = await repo.getTaskParticipants(db, core.id)
-    const recipients = participants.filter((id) => id !== actorId)
-    if (recipients.length > 0) {
-      await notify({
-        db,
-        recipientIds: recipients,
-        workspaceId: core.workspace_id,
-        actorId,
-        type: 'task_assigned',
-        title: `Moved to ${stageName}`,
-        body: taskTitle,
-        link: `/tasks?taskId=${core.id}`,
-        entityType: 'task',
-        entityId: core.id,
-      })
-    }
-    if (core.contact_id) {
-      announceToClient({
-        contactId: core.contact_id,
-        ownerId:   core.owner_id,
-        type:      'task',
-        title:     `Moved to ${stageName}`,
-        body:      taskTitle,
-        link:      '/tasks',
-        entityType: 'task',
-        entityId:   core.id,
-      })
-    }
-  } catch { /* best-effort — never blocks the move */ }
+function changedFields(
+  before: Record<string, unknown>,
+  patch: Record<string, unknown>,
+): WatchedField[] {
+  return (Object.keys(FIELD_LABELS) as WatchedField[])
+    .filter((k) => patch[k] !== undefined && (patch[k] ?? null) !== (before[k] ?? null))
+}
+
+/** "title and due date" — a change list a person can read. */
+function describeChanges(fields: WatchedField[]): string {
+  const names = fields.map((f) => FIELD_LABELS[f])
+  if (names.length === 1) return names[0]!
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }
 
 interface Ctx {
@@ -234,7 +292,7 @@ export async function createTask(db: SupabaseClient, ctx: Ctx, input: unknown): 
       type:      'task',
       title:     'New task added',
       body:      d.title,
-      link:      '/tasks',
+      link:      `/tasks?taskId=${id}`,
       entityType: 'task',
       entityId:   id,
     })
@@ -279,39 +337,40 @@ export async function updateTask(db: SupabaseClient, ctx: Ctx, id: string, input
   await repo.updateTaskRow(db, id, updates)
   if (d.description !== undefined) await cleanupRemovedDescriptionImages(id, existing.description, d.description)
 
-  // A real column change — not a re-save of the same stage — is what everyone
-  // on the task needs to hear about.
-  if (d.stage_id !== undefined && d.stage_id && d.stage_id !== existing.stage_id) {
-    const stageName = await repo.getStageName(db, d.stage_id)
-    if (stageName) {
-      await notifyStageMoved(
-        {
-          id,
-          owner_id: existing.owner_id,
-          workspace_id: existing.workspace_id,
-          contact_id: (updates.contact_id as string | null | undefined) ?? existing.contact_id,
-        },
-        d.title ?? existing.title,
-        stageName,
-        ctx.userId,
-      )
-    }
+  const core: TaskCore = {
+    id,
+    owner_id:     existing.owner_id,
+    workspace_id: existing.workspace_id,
+    contact_id:   (updates.contact_id as string | null | undefined) ?? existing.contact_id,
   }
+  const taskTitle = d.title ?? existing.title
 
-  // Only completion is announced. A client doesn't need a notification every
-  // time someone nudges a due date or drags a card between board columns —
-  // "it's done" is the one change that's actually theirs to know about.
-  const contactId = (updates.contact_id as string | null | undefined) ?? existing.contact_id
-  if (contactId && d.done === true && !existing.done) {
-    announceToClient({
-      contactId,
-      ownerId:   existing.owner_id,
-      type:      'task',
-      title:     'Task completed',
-      body:      d.title ?? null,
-      link:      '/tasks',
-      entityType: 'task',
-      entityId:   id,
+  // Every change on a task reaches everyone on it. The three are separated
+  // because they read differently to the person receiving them: a stage move
+  // says where the work is now, completion says it's finished, and an edit says
+  // the brief moved under your feet. One event fires per save — a save that
+  // both moves the stage and edits the title announces the move, since that's
+  // the larger fact.
+  const recipients = await participantsOf(id)
+  const movedStage = d.stage_id !== undefined && d.stage_id && d.stage_id !== existing.stage_id
+  const completed  = d.done === true && !existing.done
+  const reopened   = d.done === false && existing.done
+  const edits      = changedFields(existing as unknown as Record<string, unknown>, d as Record<string, unknown>)
+
+  if (movedStage) {
+    const stageName = await repo.getStageName(db, d.stage_id!)
+    if (stageName) {
+      await announceTaskEvent({ core, recipients, actorId: ctx.userId, headline: `Moved to ${stageName}`, detail: taskTitle })
+    }
+  } else if (completed) {
+    await announceTaskEvent({ core, recipients, actorId: ctx.userId, headline: 'Task completed', detail: taskTitle })
+  } else if (reopened) {
+    await announceTaskEvent({ core, recipients, actorId: ctx.userId, headline: 'Task reopened', detail: taskTitle })
+  } else if (edits.length > 0) {
+    await announceTaskEvent({
+      core, recipients, actorId: ctx.userId,
+      headline: 'Task updated',
+      detail: `${taskTitle} — ${describeChanges(edits)} changed`,
     })
   }
 
@@ -342,10 +401,27 @@ async function cleanupRemovedDescriptionImages(
   }
 }
 
-export async function deleteTask(db: SupabaseClient, id: string): Promise<void> {
+/**
+ * Removes a task and tells everyone who was on it.
+ *
+ * Participants are collected BEFORE the delete: afterwards the assignee rows
+ * are still there, but reading them post-hoc would be luck rather than intent.
+ * `actorId` is optional so older callers keep working — without it the deleter
+ * is notified too, which is worse than a missing name but not wrong.
+ */
+export async function deleteTask(db: SupabaseClient, id: string, actorId?: string): Promise<void> {
   const existing = await repo.getTaskCore(db, id)
   if (!existing) throw new AppError(404, 'That task could not be found.', 'TASK_NOT_FOUND')
+  const recipients = await participantsOf(id)
   await repo.softDeleteTask(db, id)
+  await announceTaskEvent({
+    core: { id, owner_id: existing.owner_id, workspace_id: existing.workspace_id, contact_id: existing.contact_id },
+    recipients,
+    actorId: actorId ?? '',
+    headline: 'Task deleted',
+    detail: existing.title,
+    gone: true,
+  })
 }
 
 export async function setAssignees(db: SupabaseClient, taskId: string, userIds: string[], actorId: string): Promise<Task> {
@@ -353,10 +429,22 @@ export async function setAssignees(db: SupabaseClient, taskId: string, userIds: 
   if (!existing) throw new AppError(404, 'That task could not be found.', 'TASK_NOT_FOUND')
   const prev = await repo.getAssigneeIds(db, taskId)
   await repo.setAssignees(db, taskId, userIds)
-  const added = userIds.filter((id) => !prev.includes(id))
+  const added   = userIds.filter((id) => !prev.includes(id))
+  const removed = prev.filter((id) => !userIds.includes(id))
   if (added.length) {
     const task = await repo.getTaskById(db, taskId)
     await notifyAssigned(existing, added, task?.title ?? 'A task', actorId)
+  }
+  // Everyone still on the task hears that the line-up changed — including the
+  // people taken off it, who otherwise find out by the task quietly vanishing.
+  if (added.length || removed.length) {
+    await announceTaskEvent({
+      core: existing,
+      recipients: [...new Set([...prev, ...userIds])].filter((id) => !added.includes(id)),
+      actorId,
+      headline: 'Task assignees changed',
+      detail: existing.title,
+    })
   }
   return getTask(db, taskId)
 }

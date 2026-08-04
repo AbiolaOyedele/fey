@@ -211,6 +211,23 @@ export function useProject(projectId: string | null) {
     setMessages((prev) => [...prev, data as ProjectMessage])
   }, [projectId])
 
+  /** Deletes one brand-chat message for everyone, permanently. */
+  const deleteMessage = useCallback(async (messageId: string) => {
+    const previous = messages
+    setMessages((prev) => prev.filter((m) => m.id !== messageId))
+    const { error: err } = await supabase.from('project_messages').delete().eq('id', messageId)
+    if (err) { setMessages(previous); throw err }
+  }, [messages])
+
+  /** Empties the brand's chat. Permanent — the UI confirms first. */
+  const clearMessages = useCallback(async () => {
+    if (!projectId) return
+    const previous = messages
+    setMessages([])
+    const { error: err } = await supabase.from('project_messages').delete().eq('project_id', projectId)
+    if (err) { setMessages(previous); throw err }
+  }, [projectId, messages])
+
   const addFile = useCallback(async (file: { file_name: string; file_url: string; public_id?: string | null; file_size?: number | null; file_type?: string | null }) => {
     if (!projectId) return
     const { data, error: err } = await supabase
@@ -238,5 +255,5 @@ export function useProject(projectId: string | null) {
     setFiles((prev) => prev.filter((f) => f.id !== fileId))
   }, [])
 
-  return { project, messages, files, loading, reload: load, sendMessage, addFile, removeFile }
+  return { project, messages, files, loading, reload: load, sendMessage, deleteMessage, clearMessages, addFile, removeFile }
 }

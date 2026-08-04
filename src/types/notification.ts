@@ -4,6 +4,10 @@ export type NotificationType =
   | 'client_message'
   | 'client_signup'
   | 'task_assigned'
+  // Anything else that happens to a task someone is on: edited, moved, done,
+  // reopened, reassigned. Deletes are separate so they can read differently.
+  | 'task_updated'
+  | 'task_deleted'
   | 'project_message'
   | 'project_file'
   | 'invoice_paid'

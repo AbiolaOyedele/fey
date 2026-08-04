@@ -59,14 +59,17 @@ export async function DELETE(req: NextRequest) {
   const { payload, response } = await requirePortalAuth(req.headers.get('authorization'))
   if (response) return response
 
+  // No id means "clear the room" — the service checks that the caller may.
   const id = req.nextUrl.searchParams.get('id')
-  if (!id) return errorResponse('PORTAL_CHAT_INVALID', 'No message was specified.', 400)
 
   const db = createServiceClient()
   try {
     const me = await actor(db, payload!.portal_user_id)
     if (!me) return errorResponse('PORTAL_USER_NOT_FOUND', 'Portal access not found.', 403)
 
+    if (!id) {
+      return NextResponse.json(await chat.clearMessages(db, { contactId: payload!.contact_id }, { role: me.role }))
+    }
     await chat.deleteMessage(db, { contactId: payload!.contact_id }, { id: me.id, role: me.role }, id)
     return NextResponse.json({ success: true })
   } catch (err) {

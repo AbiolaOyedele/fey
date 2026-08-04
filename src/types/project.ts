@@ -10,6 +10,10 @@ export interface Project {
   contact_id: string | null
   title: string
   description: string | null
+  /** Cloudinary URL of the brand's logo. Null falls back to its initial. */
+  logo_url: string | null
+  /** Cloudinary public_id for `logo_url`, so a replaced logo can be destroyed. */
+  logo_public_id: string | null
   status: ProjectStatus
   start_date: string | null
   due_date: string | null
@@ -22,6 +26,8 @@ export interface CreateProjectPayload {
   contact_id: string | null
   title: string
   description?: string | null
+  logo_url?: string | null
+  logo_public_id?: string | null
   status?: ProjectStatus
   start_date?: string | null
   due_date?: string | null
@@ -30,6 +36,8 @@ export interface CreateProjectPayload {
 export interface UpdateProjectPayload {
   title?: string
   description?: string | null
+  logo_url?: string | null
+  logo_public_id?: string | null
   status?: ProjectStatus
   start_date?: string | null
   due_date?: string | null

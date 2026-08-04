@@ -34,6 +34,8 @@ const TYPE_META: Record<string, { category?: Category; icon: ReactNode }> = {
   contract_signed: { category: 'clients', icon: <FileSignature size={15} /> },
   invoice_paid: { category: 'clients', icon: <CreditCard size={15} /> },
   task_assigned: { category: 'tasks', icon: <ListTodo size={15} /> },
+  task_updated: { category: 'tasks', icon: <ListTodo size={15} /> },
+  task_deleted: { category: 'tasks', icon: <ListTodo size={15} /> },
   project_file: { category: 'tasks', icon: <Paperclip size={15} /> },
   // Image Pipeline credit events — no filter category (they surface under "All").
   image_credit_request: { icon: <Sparkles size={15} /> },

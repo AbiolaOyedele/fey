@@ -67,6 +67,12 @@ export interface Task {
   contact_id: string | null
   stage_id: string | null
   created_by: string
+  /**
+   * Set when a client raised this task from their portal. Portal users aren't
+   * auth users, so `created_by` is the workspace owner — this is the real
+   * requester, and the only tasks a client may edit or remove themselves.
+   */
+  requested_by_portal_user: string | null
   visibility: TaskVisibility
   title: string
   description: string | null

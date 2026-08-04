@@ -1,6 +1,7 @@
 'use client'
 
-import { use, useCallback, useEffect, useMemo, useState } from 'react'
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { CheckSquare2, Plus, Search, Loader2 } from 'lucide-react'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { usePortalAccent } from '@/hooks/usePortalBranding'
@@ -30,6 +31,8 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
   const { subdomain } = use(params)
   const accent  = usePortalAccent(subdomain)
   const session = usePortalSession()
+  // A notification names one task, so it links to that task — ?taskId=<id>.
+  const deepLinkTaskId = useSearchParams().get('taskId')
   // Viewers are read-only by definition, so they never see the compose button.
   const canWrite = session ? session.session.portalUser.role !== 'viewer' : false
 
@@ -58,6 +61,21 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadTeam()
   }, [loadTeam])
+
+  // Opens the linked task once the list has loaded. A ref (not state) records
+  // that it's been consumed, so closing the drawer doesn't reopen it on the next
+  // refetch. A completed task is found here too — the tab still says "Open", but
+  // the task the client was told about is the one that opens.
+  const consumedDeepLink = useRef<string | null>(null)
+  useEffect(() => {
+    if (!deepLinkTaskId || deepLinkTaskId === consumedDeepLink.current || t.loading) return
+    const found = t.tasks.find((x) => x.id === deepLinkTaskId)
+    if (!found) return
+    consumedDeepLink.current = deepLinkTaskId
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelected(found)
+    if (found.done) setTab('done')
+  }, [deepLinkTaskId, t.loading, t.tasks])
 
   const pickableMembers = useMemo(
     () => team.map((m) => ({ user_id: m.user_id, name: m.name, email: null })),
@@ -155,7 +173,9 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
           stages={t.stages}
           members={pickableMembers}
           hideComments
-          hideDelete
+          // A client may withdraw work they raised; agency-created tasks aren't
+          // theirs to remove, so the control simply isn't there for those.
+          hideDelete={!canWrite || !liveSelected.requested_by_portal_user}
           onPatch={t.patchTask}
           onSetAssignees={t.setAssignees}
           onAddSubtask={t.addSubtask}
@@ -165,7 +185,7 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
           onAddFile={t.addFile}
           onRemoveFile={t.removeFile}
           onToggleDone={(id) => { void t.toggleDone(id); setSelected(null) }}
-          onDelete={async () => { /* clients don't delete tasks */ }}
+          onDelete={async (id) => { await t.deleteTask(id); setSelected(null) }}
           onClose={() => setSelected(null)}
         />
       )}

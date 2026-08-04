@@ -270,27 +270,45 @@ export function useMessages(contactId: string | null) {
           const msg = rowToMessage(payload.new as Record<string, unknown>)
           setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)))
         })
+      .on('postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'crm_messages' },
+        (payload) => {
+          // Deletes are permanent now, so the row has to leave the thread on
+          // every open device — not just the one that pressed it. No filter:
+          // a DELETE payload carries only the primary key, so `contact_id=eq.`
+          // would never match and the message would linger until a refresh.
+          const deletedId = (payload.old as { id?: string }).id
+          if (deletedId) setMessages((prev) => prev.filter((m) => m.id !== deletedId))
+        })
       .subscribe()
     channelRef.current = channel
     return () => { if (channelRef.current) void supabase.removeChannel(channelRef.current) }
   }, [contactId, fetchMessages])
 
-  /** Unsend for everyone. The row survives as a tombstone — see the service. */
+  /** Delete for everyone, permanently — the row goes, nothing is left in its place. */
   const deleteMessage = useCallback(async (messageId: string) => {
     const previous = messages
-    setMessages((prev) => prev.map((m) => (
-      m.id === messageId
-        ? { ...m, body: '', body_html: null, attachments: [], deleted_at: new Date().toISOString() }
-        : m
-    )))
+    setMessages((prev) => prev.filter((m) => m.id !== messageId))
     try {
-      const d = await apiFetch<{ message: CrmMessage }>(`/api/v1/crm/messages/${messageId}`, { method: 'DELETE' })
-      setMessages((prev) => prev.map((m) => (m.id === d.message.id ? d.message : m)))
+      await apiFetch(`/api/v1/crm/messages/${messageId}`, { method: 'DELETE' })
     } catch (e) {
       setMessages(previous)
       throw e
     }
   }, [messages])
+
+  /** Empties the thread for both sides. Not reversible — the UI confirms first. */
+  const clearMessages = useCallback(async () => {
+    if (!contactId) return
+    const previous = messages
+    setMessages([])
+    try {
+      await apiFetch(`/api/v1/crm/messages?contact_id=${encodeURIComponent(contactId)}`, { method: 'DELETE' })
+    } catch (e) {
+      setMessages(previous)
+      throw e
+    }
+  }, [contactId, messages])
 
   const editMessage = useCallback(async (messageId: string, body: string, bodyHtml: string | null) => {
     const d = await apiFetch<{ message: CrmMessage }>(`/api/v1/crm/messages/${messageId}`, {
@@ -347,7 +365,7 @@ export function useMessages(contactId: string | null) {
     return msg
   }, [contactId])
 
-  return { messages, loading, sendMessage, deleteMessage, editMessage, refetch: fetchMessages }
+  return { messages, loading, sendMessage, deleteMessage, clearMessages, editMessage, refetch: fetchMessages }
 }
 
 // ── useCrmFiles ───────────────────────────────────────────────────────────────

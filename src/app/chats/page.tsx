@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Hash, Send, MessagesSquare, Plus, Paperclip, X, Loader2, Ban } from 'lucide-react'
+import { Hash, Send, MessagesSquare, Plus, Paperclip, X, Loader2, Eraser } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -15,7 +15,7 @@ import AttachmentPreview from '@/components/crm/AttachmentPreview'
 import EmojiPicker from '@/components/crm/EmojiPicker'
 import { uploadToCloudinary, formatFileSize } from '@/utils/cloudinary'
 import type { MessageAttachment } from '@/types/crm'
-import { canDeleteForEveryone, canEdit, DELETED_MESSAGE_PLACEHOLDER } from '@/types/chat'
+import { canDeleteForEveryone, canEdit } from '@/types/chat'
 import { useMessageReactions } from '@/hooks/useMessageReactions'
 import MessageReactions from '@/components/chat/MessageReactions'
 import ReplyPreview from '@/components/chat/ReplyPreview'
@@ -47,9 +47,14 @@ export default function ChatsPage() {
   const { members } = useTeam(workspace?.id ?? null)
   const {
     channels, activeChannelId, setActiveChannel,
-    messages, loadingMessages, sending, send, editMessage, deleteMessage, hideMessage, createChannel,
+    messages: allMessages, loadingMessages, sending, send, editMessage, deleteMessage, clearChannel, hideMessage, createChannel,
   } = useInternalChat(workspace?.id ?? null)
   const confirm = useConfirm()
+
+  // Deletes are permanent now. Rows tombstoned by the previous behaviour are
+  // dropped rather than migrated — a channel full of "This message was deleted"
+  // markers is what the change was meant to remove.
+  const messages = useMemo(() => allMessages.filter((m) => !m.deleted_at), [allMessages])
 
   const searchParams = useSearchParams()
   const deepLinkChannel = searchParams.get('channel')
@@ -186,7 +191,7 @@ export default function ChatsPage() {
   const menuTarget = menuState ? messages.find((m) => m.id === menuState.messageId) ?? null : null
   const menuActions = useMemo<MessageAction[]>(() => {
     const target = menuTarget
-    if (!target || target.deleted_at) return []
+    if (!target) return []
     const actions: MessageAction[] = [
       { key: 'reply', label: 'Reply', icon: 'reply',
         onSelect: () => setReplyTo(target) },
@@ -207,7 +212,7 @@ export default function ChatsPage() {
         key: 'delete', label: 'Delete for everyone', icon: 'delete', destructive: true,
         onSelect: () => void confirm({
           title: 'Delete for everyone?',
-          message: 'It will be replaced with \u201CThis message was deleted\u201D for the whole channel.',
+          message: 'It goes from the channel permanently. Nothing is left in its place.',
           confirmLabel: 'Delete',
         }).then((ok) => { if (ok) void deleteMessage(target.id) }),
       })
@@ -222,6 +227,15 @@ export default function ChatsPage() {
     })
     return actions
   }, [menuTarget, user, isAdmin, confirm, deleteMessage, hideMessage])
+
+  const handleClearChannel = useCallback(async () => {
+    const ok = await confirm({
+      title: `Clear #${activeChannel?.name ?? 'this channel'}?`,
+      message: `All ${messages.length} message${messages.length === 1 ? '' : 's'} go for the whole team, permanently. This can’t be undone.`,
+      confirmLabel: 'Clear chat',
+    })
+    if (ok) await clearChannel()
+  }, [confirm, activeChannel, messages.length, clearChannel])
 
   // Focus the composer whenever a reply is started, from wherever.
   useEffect(() => { if (replyTo) composerRef.current?.focus() }, [replyTo])
@@ -285,6 +299,16 @@ export default function ChatsPage() {
           <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-1.5 flex-shrink-0">
             <Hash size={15} className="text-gray-400" />
             <span className="font-semibold text-gray-800 text-sm">{activeChannel?.name ?? 'general'}</span>
+            {/* Emptying a shared channel is an owner/admin call, not a member's. */}
+            {isAdmin && messages.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void handleClearChannel()}
+                className="ml-auto inline-flex items-center gap-1.5 h-11 px-3 -my-2 rounded-xl text-xs font-medium text-gray-400 hover:text-red-500 hover:bg-red-50/60 transition-colors"
+              >
+                <Eraser size={14} /> Clear chat
+              </button>
+            )}
           </div>
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
@@ -317,8 +341,8 @@ export default function ChatsPage() {
                   <div
                     key={m.id}
                     ref={(el) => { if (el) messageRefs.current.set(m.id, el); else messageRefs.current.delete(m.id) }}
-                    onContextMenu={(e) => { if (!m.deleted_at) { e.preventDefault(); openMenu(m.id, e.clientX, e.clientY) } }}
-                    onTouchStart={handleTouchStart(m.id, !m.deleted_at)}
+                    onContextMenu={(e) => { e.preventDefault(); openMenu(m.id, e.clientX, e.clientY) }}
+                    onTouchStart={handleTouchStart(m.id, true)}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
                     className={`flex gap-3 rounded-xl transition-colors duration-500 ${isMine ? 'flex-row-reverse' : ''} ${highlightId === m.id ? 'bg-amber-50' : ''}`}
@@ -333,16 +357,15 @@ export default function ChatsPage() {
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-xs font-semibold text-gray-700">{senderName}</span>
                         <span className="text-3xs text-gray-400">
-                          {timeLabel(m.created_at)}{m.edited_at && !m.deleted_at && ' · edited'}
+                          {timeLabel(m.created_at)}{m.edited_at && ' · edited'}
                         </span>
                       </div>
-                      {parent && !m.deleted_at && (
+                      {parent && (
                         <div className={`w-full max-w-full ${isMine ? 'flex justify-end' : ''}`}>
                           <div className="max-w-[280px]">
                             <ReplyPreview
                               senderName={parent.sender_id === user?.id ? 'You' : (nameById.get(parent.sender_id) ?? 'Teammate')}
                               body={parent.body}
-                              deleted={!!parent.deleted_at}
                               accent={accent}
                               onJump={() => jumpToMessage(parent.id)}
                             />
@@ -364,18 +387,6 @@ export default function ChatsPage() {
                           />
                           <p className="text-3xs text-gray-400 mt-1">Enter to save · Esc to cancel</p>
                         </div>
-                      ) : m.deleted_at ? (
-                        // The row survives deletion on purpose: a thread that
-                        // silently closes up leaves nobody able to tell a
-                        // message was removed rather than never sent.
-                        <div
-                          className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm italic text-gray-400 border border-dashed border-gray-200 ${
-                            isMine ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm'
-                          }`}
-                        >
-                          <Ban size={12} />
-                          {DELETED_MESSAGE_PLACEHOLDER}
-                        </div>
                       ) : m.body.trim() ? (
                         <div
                           className={`px-3 py-2 text-sm break-words ${isMine ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm'}`}
@@ -384,12 +395,12 @@ export default function ChatsPage() {
                           {renderMentions(m.body)}
                         </div>
                       ) : null}
-                      {!m.deleted_at && atts.length > 0 && <AttachmentPreview attachments={atts} />}
+                      {atts.length > 0 && <AttachmentPreview attachments={atts} />}
 
                       <MessageReactions
                         summaries={reactions.get(m.id) ?? []}
                         accent={accent}
-                        canReact={!m.deleted_at}
+                        canReact
                         align={isMine ? 'end' : 'start'}
                         onToggle={(emoji) => void toggleReaction(m.id, emoji)}
                       />
@@ -400,7 +411,7 @@ export default function ChatsPage() {
             )}
           </div>
 
-          {menuState && menuTarget && !menuTarget.deleted_at && (
+          {menuState && menuTarget && (
             <MessageContextMenu
               x={menuState.x}
               y={menuState.y}
@@ -417,7 +428,6 @@ export default function ChatsPage() {
               <ReplyPreview
                 senderName={replyTo.sender_id === user?.id ? 'You' : (nameById.get(replyTo.sender_id) ?? 'Teammate')}
                 body={replyTo.body}
-                deleted={!!replyTo.deleted_at}
                 accent={accent}
                 onCancel={() => setReplyTo(null)}
               />

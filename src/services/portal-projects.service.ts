@@ -3,7 +3,9 @@ import { z } from 'zod'
 import { AppError } from '@/lib/errors'
 import type { PortalTokenPayload } from '@/lib/portal-jwt'
 import * as repo from '@/repositories/portal-projects.repository'
+import * as taskRepo from '@/repositories/work-tasks.repository'
 import type { Project, ProjectMessage, ProjectFile } from '@/types/project'
+import type { Task } from '@/types/work-tasks'
 import type { MessageAttachment } from '@/types/crm'
 
 const attachmentSchema = z.object({
@@ -32,21 +34,43 @@ export function listProjects(db: SupabaseClient, p: PortalTokenPayload): Promise
   return repo.listProjectsForContact(db, p.contact_id, p.owner_id)
 }
 
-/** Loads one project + its messages + files, after an ownership check. */
+/** Loads one project + its messages, files and tasks, after an ownership check. */
 export async function getProjectDetail(
   db: SupabaseClient,
   p: PortalTokenPayload,
   projectId: string,
-): Promise<{ project: Project; messages: ProjectMessage[]; files: ProjectFile[] }> {
+): Promise<{ project: Project; messages: ProjectMessage[]; files: ProjectFile[]; tasks: Task[] }> {
   const project = await repo.getProjectForPortal(db, projectId, p.contact_id, p.owner_id)
   if (!project) throw new AppError(404, 'Project not found.', 'PORTAL_PROJECT_NOT_FOUND')
   // Opening the thread marks the owner's messages read (so the owner sees receipts).
   await repo.markOwnerProjectMessagesRead(db, projectId).catch(() => { /* best-effort */ })
-  const [messages, files] = await Promise.all([
+  const [messages, files, tasks] = await Promise.all([
     repo.listProjectMessages(db, projectId),
     repo.listProjectFiles(db, projectId),
+    // The brand's tasks, so a client opening a brand sees the work on it rather
+    // than only the conversation about it. Read-only here — creating and editing
+    // still goes through the portal Tasks section, which owns those rules.
+    taskRepo.listTasks(db, { ownerId: p.owner_id, scope: 'project', projectId }),
   ])
-  return { project, messages, files }
+  return { project, messages, files, tasks }
+}
+
+/**
+ * Empties a brand's chat, for both sides.
+ *
+ * The ownership check is the same one every read here makes: the project must
+ * belong to this client. Without it a valid token from another client could
+ * clear a thread by guessing a project id.
+ */
+export async function clearMessages(
+  db: SupabaseClient,
+  p: PortalTokenPayload,
+  projectId: string,
+): Promise<{ cleared: number }> {
+  const project = await repo.getProjectForPortal(db, projectId, p.contact_id, p.owner_id)
+  if (!project) throw new AppError(404, 'Project not found.', 'PORTAL_PROJECT_NOT_FOUND')
+  const cleared = await repo.clearProjectMessages(db, projectId)
+  return { cleared }
 }
 
 export async function sendMessage(

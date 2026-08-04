@@ -15,7 +15,7 @@ export default function MessagesTab({ params }: { params: Promise<{ id: string }
   const { workspace } = useWorkspace()
   const { contacts } = useContacts()
   const contact = contacts.find((c) => c.id === id)
-  const { messages, loading, sendMessage, deleteMessage, editMessage } = useMessages(id)
+  const { messages, loading, sendMessage, deleteMessage, clearMessages, editMessage } = useMessages(id)
   const { settings } = useSettings()
   const searchParams = useSearchParams()
   const highlightMessageId = searchParams.get('message')
@@ -36,6 +36,7 @@ export default function MessagesTab({ params }: { params: Promise<{ id: string }
         loading={loading}
         highlightMessageId={highlightMessageId}
         onDelete={deleteMessage}
+        onClearChat={clearMessages}
         onEdit={(messageId, body) => editMessage(messageId, body, null)}
         accent={settings.accent_color || '#ED64A6'}
         viewer={user ? { id: user.id, name: 'You' } : null}

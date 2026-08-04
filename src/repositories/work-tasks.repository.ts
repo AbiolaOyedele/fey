@@ -9,6 +9,7 @@ import type { Task, Subtask, TaskAssignee, TaskFileRow, TaskScope } from '@/type
 
 const SELECT = `
   id, owner_id, workspace_id, project_id, contact_id, stage_id, created_by, visibility,
+  requested_by_portal_user,
   title, description, priority, start_date, due_date, estimated_minutes,
   logged_minutes, sort_order, done, completed_at, created_at, updated_at,
   work_task_assignees ( user_id ),
@@ -27,6 +28,7 @@ interface RawTask {
   contact_id: string | null
   stage_id: string | null
   created_by: string
+  requested_by_portal_user: string | null
   visibility: Task['visibility']
   title: string
   description: string | null
@@ -69,6 +71,7 @@ function mapTask(row: RawTask, members: Map<string, MemberInfo>): Task {
     contact_id: row.contact_id,
     stage_id: row.stage_id,
     created_by: row.created_by,
+    requested_by_portal_user: row.requested_by_portal_user ?? null,
     visibility: row.visibility ?? 'personal',
     title: row.title,
     description: row.description,
@@ -166,15 +169,20 @@ export async function getTaskById(db: SupabaseClient, id: string): Promise<Task 
   return mapTask(row, members)
 }
 
-/** Lightweight fetch (no joins) — used for ownership re-checks in the service. */
+/**
+ * Lightweight fetch (no joins) — used for ownership re-checks in the service,
+ * and as the "before" side of an update so a change notification can name what
+ * actually changed rather than firing on every re-save.
+ */
 export async function getTaskCore(db: SupabaseClient, id: string): Promise<{
   id: string; owner_id: string; workspace_id: string | null; project_id: string | null
   contact_id: string | null; created_by: string; done: boolean; description: string | null
-  stage_id: string | null; title: string
+  stage_id: string | null; title: string; priority: string
+  start_date: string | null; due_date: string | null; estimated_minutes: number | null
 } | null> {
   const { data, error } = await db
     .from('work_tasks')
-    .select('id, owner_id, workspace_id, project_id, contact_id, created_by, done, description, stage_id, title')
+    .select('id, owner_id, workspace_id, project_id, contact_id, created_by, done, description, stage_id, title, priority, start_date, due_date, estimated_minutes')
     .eq('id', id)
     .is('deleted_at', null)
     .maybeSingle()

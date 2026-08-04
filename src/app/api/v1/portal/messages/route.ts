@@ -53,3 +53,26 @@ export async function POST(req: NextRequest) {
     return handleError(err, 'PORTAL_MESSAGE_SEND_FAILED')
   }
 }
+
+/**
+ * DELETE /api/v1/portal/messages          — clear the whole thread
+ * DELETE /api/v1/portal/messages?id=<uuid> — delete one of the client's own messages
+ *
+ * Both are permanent, and both are refused for view-only members.
+ */
+export async function DELETE(req: NextRequest) {
+  const { payload, response } = await requirePortalAuth(req.headers.get('authorization'))
+  if (response) return response
+  const messageId = req.nextUrl.searchParams.get('id')
+  const db = createServiceClient()
+  try {
+    const portalUser = await requireCapability(db, payload!.portal_user_id, 'write')
+    if (messageId) {
+      await portalService.deletePortalMessage(db, portalUser, messageId)
+      return NextResponse.json({ ok: true })
+    }
+    return NextResponse.json(await portalService.clearPortalMessages(db, portalUser))
+  } catch (err) {
+    return handleError(err, 'PORTAL_MESSAGE_DELETE_FAILED')
+  }
+}

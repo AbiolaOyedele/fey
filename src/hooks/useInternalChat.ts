@@ -20,6 +20,8 @@ interface InternalChatState {
   send:            (body: string, attachments?: MessageAttachment[], replyToId?: string | null) => Promise<void>
   editMessage:     (messageId: string, body: string) => Promise<void>
   deleteMessage:   (messageId: string) => Promise<void>
+  /** Empties the active channel for everyone. Permanent. */
+  clearChannel:    () => Promise<void>
   /** Hide for yourself only — everyone else keeps seeing it. */
   hideMessage:     (messageId: string) => Promise<void>
   createChannel:   (name: string) => Promise<void>
@@ -208,38 +210,44 @@ export function useInternalChat(workspaceId: string | null): InternalChatState {
   }, [workspaceId, activeChannelId, channels])
 
   /**
-   * Unsend for everyone — a soft delete, the way WhatsApp does it.
+   * Delete for everyone — permanently.
    *
-   * This used to hard-DELETE the row, which is the one thing WhatsApp doesn't
-   * do: the message vanished and the thread silently closed up, so nobody could
-   * tell a message had been removed rather than never sent, and any reply
-   * quoting it lost its parent. The row now stays as a tombstone and renders as
-   * "This message was deleted".
+   * This briefly tombstoned instead, leaving "This message was deleted" in the
+   * thread. That marker is the thing people are trying to get rid of when they
+   * delete something: it advertises that a message existed and invites the
+   * question of what it said. The row goes; a reply that quoted it renders
+   * without its quote, which `ReplyPreview` already handles.
    */
   const deleteMessage = useCallback(async (messageId: string) => {
     if (!user) return
-    const deletedAt = new Date().toISOString()
     const previous = messages
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId
-          ? { ...m, body: '', attachments: [], deleted_at: deletedAt, deleted_by: user.id }
-          : m,
-      ),
-    )
+    setMessages((prev) => prev.filter((m) => m.id !== messageId))
     try {
-      const { error: err } = await supabase
-        .from('internal_messages')
-        // The body is cleared as well as tombstoned: leaving the text in the row
-        // would keep it readable to anyone who can query the table.
-        .update({ body: '', attachments: [], deleted_at: deletedAt, deleted_by: user.id })
-        .eq('id', messageId)
+      const { error: err } = await supabase.from('internal_messages').delete().eq('id', messageId)
       if (err) throw err
     } catch (e) {
       setMessages(previous)
       setError(e instanceof Error ? e.message : 'Failed to delete message')
     }
   }, [user, messages])
+
+  /**
+   * Empties the active channel. RLS decides whether the caller may — a member
+   * who can't delete other people's messages gets a failed write and the thread
+   * comes back, rather than a half-cleared channel.
+   */
+  const clearChannel = useCallback(async () => {
+    if (!activeChannelId) return
+    const previous = messages
+    setMessages([])
+    try {
+      const { error: err } = await supabase.from('internal_messages').delete().eq('channel_id', activeChannelId)
+      if (err) throw err
+    } catch (e) {
+      setMessages(previous)
+      setError(e instanceof Error ? e.message : 'Failed to clear the chat')
+    }
+  }, [activeChannelId, messages])
 
   /** Hide a message for yourself only — everyone else still sees it. */
   const hideMessage = useCallback(async (messageId: string) => {
@@ -276,6 +284,6 @@ export function useInternalChat(workspaceId: string | null): InternalChatState {
 
   return {
     channels, activeChannelId, setActiveChannel: setActiveChannelId,
-    messages, loadingChannels, loadingMessages, sending, error, send, editMessage, deleteMessage, hideMessage, createChannel,
+    messages, loadingChannels, loadingMessages, sending, error, send, editMessage, deleteMessage, clearChannel, hideMessage, createChannel,
   }
 }

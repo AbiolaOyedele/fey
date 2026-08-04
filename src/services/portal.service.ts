@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { AppError } from '@/lib/errors'
 import * as portalRepo from '@/repositories/portal.repository'
 import * as crmRepo    from '@/repositories/crm.repository'
+import { destroyCloudinaryAsset } from '@/lib/cloudinary-server'
 import type {
   CrmContact,
   CrmMessage,
@@ -149,6 +150,44 @@ export async function sendPortalMessage(
     null,
     (parsed.data.attachments ?? []) as MessageAttachment[],
   )
+}
+
+/**
+ * Deletes one of the client's own messages, permanently.
+ *
+ * A client gets the same delete the agency has, limited to their own words —
+ * removing the agency's messages would be editing someone else's record.
+ */
+export async function deletePortalMessage(
+  db: SupabaseClient,
+  portalUser: PortalUser,
+  messageId: string,
+): Promise<void> {
+  const { deleted, attachments } = await portalRepo.deletePortalMessage(
+    db, messageId, portalUser.contact_id, portalUser.id,
+  )
+  if (!deleted) {
+    throw new AppError(404, 'That message isn’t one you sent, so it can’t be deleted.', 'PORTAL_MESSAGE_NOT_YOURS')
+  }
+  for (const a of attachments) {
+    if (a.file_url) await destroyCloudinaryAsset(a.file_url)
+  }
+}
+
+/**
+ * Clears the client's whole thread with the agency.
+ *
+ * This removes the agency's messages too, because a half-cleared conversation
+ * isn't cleared. Both sides can do it and both sides lose it — that symmetry is
+ * the point of "clear chat", and the confirmation dialog says so before it runs.
+ */
+export async function clearPortalMessages(
+  db: SupabaseClient,
+  portalUser: PortalUser,
+): Promise<{ cleared: number }> {
+  const { count, fileUrls } = await portalRepo.clearPortalMessages(db, portalUser.contact_id)
+  for (const url of fileUrls) await destroyCloudinaryAsset(url)
+  return { cleared: count }
 }
 
 // ── Portal files ──────────────────────────────────────────────────────────────

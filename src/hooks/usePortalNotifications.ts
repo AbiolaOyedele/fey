@@ -16,7 +16,7 @@ import type { ListPortalNotificationsResponse, PortalNotification } from '@/type
 
 const POLL_MS = 60_000
 
-interface State {
+export interface PortalNotificationsState {
   notifications: PortalNotification[]
   unread: number
   loading: boolean
@@ -25,7 +25,12 @@ interface State {
   markAllRead: () => Promise<void>
 }
 
-export function usePortalNotifications(subdomain: string): State {
+/**
+ * Call this ONCE per portal session, from `PortalNotificationsProvider`. Pages
+ * and the shell read the shared feed through `usePortalNotificationFeed` — two
+ * callers of this hook would hold two counters that disagree.
+ */
+export function usePortalNotifications(subdomain: string): PortalNotificationsState {
   const [notifications, setNotifications] = useState<PortalNotification[]>([])
   const [unread, setUnread] = useState(0)
   const [loading, setLoading] = useState(true)

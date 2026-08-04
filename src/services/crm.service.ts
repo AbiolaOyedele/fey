@@ -467,24 +467,49 @@ const editMessageSchema = z.object({
 })
 
 /**
- * Unsends a message for everyone.
+ * Deletes a message for everyone, permanently.
  *
  * The owner may remove anyone's message in their own thread — including the
- * client's — which is the same authority a group admin has in WhatsApp, and the
- * reason this doesn't check sender_id. What it does check is the 48h window for
- * the owner's own messages... deliberately NOT applied here: an agency needs to
- * be able to pull a wrong invoice link or a misdirected message at any point,
- * and the client already saw it either way. The tombstone is the honest record.
+ * client's — the same authority a group admin has in WhatsApp, and the reason
+ * this doesn't check sender_id. There's no 48-hour window either: an agency
+ * needs to be able to pull a wrong invoice link at any point, and the client
+ * already saw it either way.
+ *
+ * What changed is that nothing is left behind. Attachments go with the message;
+ * Cloudinary cleanup is best-effort, because a file that outlives its row is a
+ * tidiness problem, while a failed delete that the user thinks succeeded is a
+ * trust problem.
  */
 export async function deleteMessage(
   db: SupabaseClient,
   id: string,
   ownerId: string,
-): Promise<CrmMessage> {
+): Promise<void> {
   const existing = await repo.getMessage(db, id, ownerId)
   if (!existing) throw new AppError(404, 'That message could not be found.', 'CRM_MESSAGE_NOT_FOUND')
-  if (existing.deleted_at) return existing
-  return repo.softDeleteMessage(db, id, ownerId, ownerId)
+  const { attachments } = await repo.hardDeleteMessage(db, id, ownerId)
+  for (const a of attachments) {
+    if (a.file_url) await destroyCloudinaryAsset(a.file_url)
+  }
+}
+
+/**
+ * Empties a client thread.
+ *
+ * Deliberately not reversible and deliberately not a tombstone: "clear chat"
+ * means the conversation is gone for both sides, which is what it means
+ * everywhere else people use the phrase. The confirmation lives in the UI, and
+ * the count comes back so the caller can say what it did.
+ */
+export async function clearMessages(
+  db: SupabaseClient,
+  contactId: string,
+  ownerId: string,
+): Promise<{ cleared: number }> {
+  await getContactById(db, contactId, ownerId) // ownership, via RLS on the caller's client
+  const { count, fileUrls } = await repo.clearMessages(db, contactId, ownerId)
+  for (const url of fileUrls) await destroyCloudinaryAsset(url)
+  return { cleared: count }
 }
 
 /** Edits one of the owner's own messages. A client's words are not theirs to rewrite. */

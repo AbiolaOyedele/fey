@@ -21,6 +21,8 @@ export interface PortalTasksState {
   refetch: () => Promise<void>
   createTask: (payload: Record<string, unknown>) => Promise<Task>
   patchTask: (id: string, updates: UpdateTaskPayload) => Promise<Task | void>
+  /** Only tasks the client raised; the API rejects anything else. */
+  deleteTask: (id: string) => Promise<void>
   toggleDone: (id: string) => Promise<void>
   setAssignees: (id: string, ids: string[]) => Promise<void>
   addSubtask: (taskId: string, title: string) => Promise<void>
@@ -98,6 +100,19 @@ export function usePortalTasks(subdomain: string): PortalTasksState {
     return d.task
   }, [send, applyTask])
 
+  const deleteTask = useCallback(async (id: string) => {
+    const previous = tasks
+    // Removed from the list first: the drawer closes onto whatever is behind it,
+    // and a row that lingers for a round-trip reads as a failed delete.
+    setTasks((prev) => prev.filter((t) => t.id !== id))
+    try {
+      await send(`/api/v1/portal/tasks/${id}`, { method: 'DELETE' })
+    } catch (e) {
+      setTasks(previous)
+      throw e
+    }
+  }, [send, tasks])
+
   const toggleDone = useCallback(async (id: string) => {
     const current = tasks.find((t) => t.id === id)
     if (!current) return
@@ -146,7 +161,7 @@ export function usePortalTasks(subdomain: string): PortalTasksState {
 
   return {
     tasks, stages, loading, error, refetch,
-    createTask, patchTask, toggleDone, setAssignees,
+    createTask, patchTask, deleteTask, toggleDone, setAssignees,
     addSubtask, toggleSubtask, renameSubtask, deleteSubtask, addFile, removeFile,
   }
 }

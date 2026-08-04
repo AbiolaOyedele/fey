@@ -117,11 +117,14 @@ export async function sendMessage(
 }
 
 /**
- * Unsend for everyone in the room.
+ * Delete for everyone in the room — permanently.
  *
  * Same 48h window as the rest of the app, with the client's own admin able to
- * remove anyone's message — there is no agency moderator here by design, so
+ * remove anyone's message: there is no agency moderator here by design, so
  * without that a room could be left with something nobody can take down.
+ *
+ * Nothing is left behind. The tombstone this used to write advertised that a
+ * message had existed, which is the thing people are trying to undo.
  */
 export async function deleteMessage(
   db: SupabaseClient,
@@ -143,12 +146,33 @@ export async function deleteMessage(
     throw new AppError(403, 'You can’t delete that message.', 'PORTAL_CHAT_DELETE_FORBIDDEN')
   }
 
-  // Body cleared as well as tombstoned — leaving the text in the row keeps it
-  // readable to anything that can query the table.
   const { error: delError } = await db
     .from('portal_team_messages')
-    .update({ body: '', attachments: [], deleted_at: new Date().toISOString(), deleted_by: actor.id })
+    .delete()
     .eq('id', messageId)
     .eq('contact_id', scope.contactId)
   if (delError) throw delError
+}
+
+/**
+ * Empties the client's private room.
+ *
+ * Only their own admin may do it: this room has no agency moderator, so the
+ * person who can remove anyone's message is the same person who can clear it.
+ */
+export async function clearMessages(
+  db: SupabaseClient,
+  scope: { contactId: string },
+  actor: Pick<PortalUser, 'role'>,
+): Promise<{ cleared: number }> {
+  if (actor.role !== 'client_admin') {
+    throw new AppError(403, 'Only an account admin can clear this chat.', 'PORTAL_CHAT_CLEAR_FORBIDDEN')
+  }
+  const { data, error } = await db
+    .from('portal_team_messages')
+    .delete()
+    .eq('contact_id', scope.contactId)
+    .select('id')
+  if (error) throw error
+  return { cleared: (data ?? []).length }
 }

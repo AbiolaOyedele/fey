@@ -11,7 +11,7 @@ import UpdateBanner from '@/components/ui/UpdateBanner'
 import { useUpdatePrompt } from '@/hooks/useUpdatePrompt'
 import { useChunkErrorReload } from '@/hooks/useChunkErrorReload'
 import { usePortalBase } from '@/hooks/usePortalBase'
-import { usePortalNotifications } from '@/hooks/usePortalNotifications'
+import { usePortalNotificationFeed } from '@/contexts/PortalNotificationsContext'
 import type { PortalOwnerBranding } from '@/types/crm'
 
 interface PortalShellProps {
@@ -33,7 +33,7 @@ export default function PortalShell({ subdomain, branding, clientName, children 
   const base   = usePortalBase(subdomain)   // for link hrefs (/client or /portal/<slug>)
   const accent = branding.accent_color || '#ED64A6'
   const updateAvailable = useUpdatePrompt()
-  const { unread } = usePortalNotifications(subdomain)
+  const { unread } = usePortalNotificationFeed()
   useChunkErrorReload()
 
   // Active-state is derived from the section, stripping whichever base form the

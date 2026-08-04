@@ -1,13 +1,15 @@
 'use client'
 
-import { use, useState, useCallback } from 'react'
+import { use, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Plus, X, Loader2 } from 'lucide-react'
+import { Sparkles, Plus, X, Loader2, ImagePlus } from 'lucide-react'
 import { useProjects } from '@/hooks/useProjects'
 import DateField from '@/components/ui/DateField'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useSettings } from '@/contexts/SettingsContext'
 import BrandCard from '@/components/crm/BrandCard'
+import BrandLogo from '@/components/crm/BrandLogo'
+import { uploadToCloudinary, validateUploadFile } from '@/utils/cloudinary'
 
 export default function ProjectsTab({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -21,8 +23,29 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const [logo, setLogo] = useState<{ url: string; publicId: string } | null>(null)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const logoInput = useRef<HTMLInputElement>(null)
+
+  const pickLogo = useCallback(async (file: File | undefined) => {
+    if (!file) return
+    const problem = validateUploadFile(file)
+    if (problem) { setError(problem); return }
+    if (!file.type.startsWith('image/')) { setError('A logo needs to be an image.'); return }
+    setUploadingLogo(true)
+    setError('')
+    try {
+      const { url, publicId } = await uploadToCloudinary(file, 'brand-logos').promise
+      setLogo({ url, publicId })
+    } catch {
+      setError('That logo couldn’t be uploaded. Please try again.')
+    } finally {
+      setUploadingLogo(false)
+      if (logoInput.current) logoInput.current.value = ''
+    }
+  }, [])
 
   const visible = projects.filter((p) => !p.archived_at)
 
@@ -36,16 +59,18 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
         title: title.trim(),
         description: description.trim() || null,
         due_date: dueDate || null,
+        logo_url: logo?.url ?? null,
+        logo_public_id: logo?.publicId ?? null,
       })
       setShowForm(false)
-      setTitle(''); setDescription(''); setDueDate('')
+      setTitle(''); setDescription(''); setDueDate(''); setLogo(null)
       router.push(`/projects/${project.id}`)
     } catch {
       setError('Couldn’t create the brand. Please try again.')
     } finally {
       setSaving(false)
     }
-  }, [title, description, dueDate, id, createProject, router])
+  }, [title, description, dueDate, logo, id, createProject, router])
 
   return (
     <div className="p-4 lg:p-8">
@@ -68,6 +93,44 @@ export default function ProjectsTab({ params }: { params: Promise<{ id: string }
 
       {showForm && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-5">
+          <div className="flex items-center gap-3 mb-3">
+            <BrandLogo
+              name={title || '?'}
+              logoUrl={logo?.url ?? null}
+              accent={accent}
+              className="w-14 h-14"
+              rounded="rounded-2xl"
+              textClassName="text-lg"
+            />
+            <div className="min-w-0">
+              <button
+                type="button"
+                onClick={() => logoInput.current?.click()}
+                disabled={uploadingLogo}
+                className="inline-flex items-center gap-1.5 h-11 px-3 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                {uploadingLogo ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+                {logo ? 'Replace logo' : 'Add logo'}
+              </button>
+              {logo && (
+                <button
+                  type="button"
+                  onClick={() => setLogo(null)}
+                  className="ml-1 h-11 px-2 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  Remove
+                </button>
+              )}
+              <p className="text-2xs text-gray-400 mt-0.5">PNG or SVG on a transparent background looks best.</p>
+            </div>
+            <input
+              ref={logoInput}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => void pickLogo(e.target.files?.[0])}
+            />
+          </div>
           <input
             value={title}
             onChange={(e) => { setTitle(e.target.value); setError('') }}

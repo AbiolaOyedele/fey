@@ -32,3 +32,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ projectId:
     return handleError(err, 'PORTAL_PROJECT_MSG_SEND_FAILED')
   }
 }
+
+/**
+ * DELETE /api/v1/portal/projects/[projectId]/messages
+ * Clears the brand's chat — permanently, for both sides.
+ */
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ projectId: string }> }) {
+  const { payload, response } = await requirePortalAuth(req.headers.get('authorization'))
+  if (response) return response
+  const { projectId } = await ctx.params
+  try {
+    return NextResponse.json(await svc.clearMessages(createServiceClient(), payload!, projectId))
+  } catch (err) {
+    return handleError(err, 'PORTAL_PROJECT_MSG_CLEAR_FAILED')
+  }
+}

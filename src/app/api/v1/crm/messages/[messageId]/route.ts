@@ -5,7 +5,7 @@ import * as crmService from '@/services/crm.service'
 
 /**
  * PATCH  /api/v1/crm/messages/[messageId] — edit the owner's own message.
- * DELETE /api/v1/crm/messages/[messageId] — unsend for everyone (soft delete).
+ * DELETE /api/v1/crm/messages/[messageId] — delete for everyone, permanently.
  *
  * Both run on a USER-scoped client, so RLS is what proves the message belongs to
  * the caller's workspace. The service adds the rules RLS can't express: you may
@@ -42,8 +42,8 @@ export async function DELETE(
   if (response) return response
 
   try {
-    const message = await crmService.deleteMessage(createUserClient(token!), messageId, user!.id)
-    return NextResponse.json({ message })
+    await crmService.deleteMessage(createUserClient(token!), messageId, user!.id)
+    return NextResponse.json({ ok: true })
   } catch (err) {
     return handleError(err, 'CRM_MESSAGE_DELETE_FAILED')
   }

@@ -7,17 +7,23 @@ import { notifyOwnerAdmins } from '@/services/notifications.service'
 
 /**
  * GET /api/v1/portal/messages
- * Returns all messages for the authenticated portal user's contact.
+ * Returns the thread, plus `unread` — how many of the agency's messages the
+ * client hasn't opened.
+ *
+ * `?peek=1` reads without marking anything read. The dashboard uses it: it only
+ * wants the count, and a screen the client never scrolled must not report their
+ * messages as read back to the agency.
  */
 export async function GET(req: NextRequest) {
   const { payload, response } = await requirePortalAuth(req.headers.get('authorization'))
   if (response) return response
+  const peek = req.nextUrl.searchParams.get('peek') === '1'
   const db = createServiceClient()
   try {
-    const { messages, read_receipts } = await portalService.getPortalMessageView(
-      db, payload!.contact_id, payload!.owner_id,
+    const { messages, read_receipts, unread } = await portalService.getPortalMessageView(
+      db, payload!.contact_id, payload!.owner_id, { markRead: !peek },
     )
-    return NextResponse.json({ messages, read_receipts })
+    return NextResponse.json({ messages, read_receipts, unread })
   } catch (err) {
     return handleError(err, 'PORTAL_MESSAGES_GET_FAILED')
   }

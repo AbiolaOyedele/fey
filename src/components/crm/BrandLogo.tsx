@@ -54,7 +54,12 @@ export default function BrandLogo({
     <span
       aria-hidden
       className={`${className} ${rounded} flex items-center justify-center font-semibold flex-shrink-0 ${textClassName}`}
-      style={{ backgroundColor: `${accent}15`, color: accent }}
+      // `color-mix` rather than the `${accent}15` hex-append used elsewhere:
+      // callers pass either a hex from settings or `var(--accent, …)`, and
+      // appending to a var produces `var(--accent, #ED64A6)15`, which is not a
+      // colour — the browser drops the declaration and the tile renders with no
+      // background at all. That's exactly what happened on the Brands grid.
+      style={{ backgroundColor: `color-mix(in srgb, ${accent} 12%, transparent)`, color: accent }}
     >
       {initial}
     </span>

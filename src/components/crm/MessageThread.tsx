@@ -18,7 +18,14 @@ interface MessageThreadProps {
   ownerId: string
   workspaceId?: string | null
   contactName?: string
-  onSend: (text: string, html: string, attachments: MessageAttachment[]) => Promise<void>
+  /**
+   * `replyToId` is the message being replied to, or null. Surfaces whose table
+   * has no reply column ignore it — and should also pass `canReply={false}`, so
+   * the action isn't offered where it can't be honoured.
+   */
+  onSend: (text: string, html: string, attachments: MessageAttachment[], replyToId: string | null) => Promise<void>
+  /** Whether this surface can store a reply. Brand chat can't. */
+  canReply?: boolean
   showWelcomeBanner?: boolean
   loading?: boolean
   /** Scrolls to and briefly highlights this message on mount (e.g. from a mention notification link). */
@@ -69,7 +76,8 @@ function groupByDate(messages: CrmMessage[]): Array<{ date: string; messages: Cr
 export default function MessageThread({
   messages: allMessages, ownerId, workspaceId = null, contactName = 'Client', onSend,
   showWelcomeBanner = false, loading = false, highlightMessageId = null,
-  onDelete, onClearChat, onEdit, viewer = null, accent = 'var(--accent, #ED64A6)',
+  onDelete, onClearChat, onEdit, viewer = null, canReply = true,
+  accent = 'var(--accent, #ED64A6)',
 }: MessageThreadProps) {
   // Deletes are permanent now. Rows tombstoned by the previous behaviour are
   // dropped here rather than migrated: a thread of "This message was deleted"
@@ -284,9 +292,10 @@ export default function MessageThread({
         const target = messages.find((m) => m.id === menu.menu!.id)
         if (!target) return null
         const isOwner = target.sender_id === ownerId
-        const actions: MessageAction[] = [
-          { key: 'reply', label: 'Reply', icon: 'reply', onSelect: () => setReplyTo(target) },
-        ]
+        const actions: MessageAction[] = []
+        if (canReply) {
+          actions.push({ key: 'reply', label: 'Reply', icon: 'reply', onSelect: () => setReplyTo(target) })
+        }
         if (target.body.trim()) {
           actions.push({
             key: 'copy', label: 'Copy', icon: 'copy',
@@ -337,7 +346,18 @@ export default function MessageThread({
             onCancel={() => setReplyTo(null)}
           />
         )}
-        <RichTextComposer onSend={(text, html, attachments) => void onSend(text, html, attachments)} workspaceId={workspaceId} />
+        {/* The reply is threaded through and the bar cleared on send. Both used
+            to be missing: picking Reply showed the quote, then the message
+            posted as an ordinary one and the bar stayed up, quoting a message
+            the next send would silently ignore too. */}
+        <RichTextComposer
+          onSend={(text, html, attachments) => {
+            const parentId = replyTo?.id ?? null
+            setReplyTo(null)
+            void onSend(text, html, attachments, parentId)
+          }}
+          workspaceId={workspaceId}
+        />
       </div>
     </div>
   )

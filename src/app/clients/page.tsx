@@ -106,8 +106,11 @@ export default function CrmContactsPage() {
             />
           </div>
 
-          {/* Status filters */}
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+          {/* Status filters — wrapped, not scrolled. The row used to be
+              `overflow-x-auto scrollbar-none`, which in a 270px column cut
+              "Archived" in half with no scrollbar to say it was scrollable, so
+              it read as clipped text rather than hidden content. */}
+          <div className="flex flex-wrap items-center gap-1">
             {STATUS_FILTERS.map((f) => (
               <button
                 key={f.value}

@@ -49,7 +49,9 @@ export default function PortalHome({ params }: { params: Promise<{ subdomain: st
       const headers = { Authorization: `Bearer ${token}` }
 
       const [msgsRes, contractsRes, formsRes, tasksRes, sessionRes] = await Promise.all([
-        fetch('/api/v1/portal/messages',     { headers }),
+        // peek: the dashboard reads the count without claiming the client has
+        // opened the thread.
+        fetch('/api/v1/portal/messages?peek=1', { headers }),
         fetch('/api/v1/portal/contracts',    { headers }),
         fetch('/api/v1/portal/forms',        { headers }),
         fetch('/api/v1/portal/tasks',        { headers }),
@@ -57,8 +59,11 @@ export default function PortalHome({ params }: { params: Promise<{ subdomain: st
       ])
 
       if (msgsRes.ok) {
-        const d = await msgsRes.json() as { messages: Array<{ read_at: string | null }> }
-        setUnreadMessages(d.messages.filter((m) => !m.read_at).length)
+        // The count comes from the server, which knows that `read_at` on a
+        // message the CLIENT sent means "the agency read it". Counting every
+        // null here made the client's own outbox look like unread mail.
+        const d = await msgsRes.json() as { unread?: number }
+        setUnreadMessages(d.unread ?? 0)
       }
       if (contractsRes.ok) {
         const d = await contractsRes.json() as { contracts: Array<{ status: string }> }

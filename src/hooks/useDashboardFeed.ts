@@ -62,6 +62,9 @@ export function useDashboardFeed(workspaceId: string | undefined | null): Dashbo
           .eq('workspace_id', workspaceId)
           .eq('sender_type', 'client')
           .is('read_at', null)
+          // Tombstones left by the old soft-delete would otherwise surface as
+          // an unread message with no body.
+          .is('deleted_at', null)
           .order('created_at', { ascending: false })
           .limit(6),
         supabase

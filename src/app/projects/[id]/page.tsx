@@ -260,6 +260,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             onSend={handleSend}
             loading={loading}
             accent={accent}
+            // project_messages has no reply column, so offering Reply here would
+            // be a control that can't do anything.
+            canReply={false}
             {...(canManage ? { onDelete: deleteMessage, onClearChat: clearMessages } : {})}
           />
         ) : pane === 'files' ? (

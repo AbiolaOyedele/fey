@@ -20,8 +20,13 @@ export default function MessagesTab({ params }: { params: Promise<{ id: string }
   const searchParams = useSearchParams()
   const highlightMessageId = searchParams.get('message')
 
-  const handleSend = async (text: string, html: string, attachments: MessageAttachment[]) => {
-    await sendMessage(text, html, attachments, contact?.name)
+  const handleSend = async (
+    text: string,
+    html: string,
+    attachments: MessageAttachment[],
+    replyToId: string | null,
+  ) => {
+    await sendMessage(text, html, attachments, contact?.name, replyToId)
   }
 
   return (

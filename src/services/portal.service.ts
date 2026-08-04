@@ -113,20 +113,45 @@ export async function getPortalMessages(
 }
 
 /**
- * Portal message view for the client: marks the owner's messages read (so the
- * owner sees read receipts), returns the thread, and whether the owner allows
- * the client to see read receipts on their own sent messages.
+ * Portal message view for the client.
+ *
+ * `unread` counts only what the AGENCY sent and the client hasn't opened. That
+ * distinction is the whole point: `read_at` means "seen by the recipient", so on
+ * a message the client sent it stays null until the agency reads it. Counting
+ * every null therefore counts the client's own outbox, which is how the portal
+ * dashboard came to announce "1 unread message" to someone with nothing waiting.
+ *
+ * It's also counted BEFORE the marking below, so the number describes the thread
+ * as the client found it rather than as this call left it.
+ *
+ * `markRead` is opt-in for the same reason. Marking on every read meant merely
+ * loading the dashboard told the agency the client had read their messages —
+ * turning the owner's "Sent → Read" receipt into a lie. Only opening the thread
+ * counts as reading it.
  */
 export async function getPortalMessageView(
   db: SupabaseClient,
   contactId: string,
   ownerId: string,
-): Promise<{ messages: CrmMessage[]; read_receipts: boolean }> {
+  opts: { markRead: boolean } = { markRead: true },
+): Promise<{ messages: CrmMessage[]; read_receipts: boolean; unread: number }> {
+  const before = await portalRepo.listPortalMessages(db, contactId)
+  const unread = before.filter((m) => m.sender_type === 'owner' && !m.read_at && !m.deleted_at).length
+
+  if (!opts.markRead) {
+    const settings = await portalRepo.getOwnerSettings(db, ownerId)
+    return {
+      messages: before,
+      read_receipts: String(settings?.portal_read_receipts ?? 'true') !== 'false',
+      unread,
+    }
+  }
+
   await portalRepo.markOwnerMessagesRead(db, contactId)
   const messages = await portalRepo.listPortalMessages(db, contactId)
   const settings = await portalRepo.getOwnerSettings(db, ownerId)
   const read_receipts = String(settings?.portal_read_receipts ?? 'true') !== 'false'
-  return { messages, read_receipts }
+  return { messages, read_receipts, unread }
 }
 
 export async function sendPortalMessage(

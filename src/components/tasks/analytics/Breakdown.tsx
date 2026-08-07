@@ -10,8 +10,15 @@ interface BreakdownProps {
   clients: SegmentStat[]
   people: SegmentStat[]
   priorities: SegmentStat[]
-  filter: AnalyticsFilter | null
-  onFilter: (next: AnalyticsFilter | null) => void
+  /**
+   * Which dimensions may be offered, in order. Defaults to all four; the client
+   * portal passes a subset, since per-teammate figures are internal and a
+   * per-client split says nothing in a portal holding one client.
+   */
+  dimensions?: SegmentKind[]
+  filter?: AnalyticsFilter | null
+  /** Omit to render rows as plain readouts — no drill-down. */
+  onFilter?: (next: AnalyticsFilter | null) => void
 }
 
 const TAB_LABEL: Record<SegmentKind, string> = {
@@ -32,7 +39,11 @@ const COLLAPSED_ROWS = 6
  * with 40 completed tasks and a wall of overdue ones can't hide behind its
  * total. Tapping a row narrows every other panel to it.
  */
-export default function Breakdown({ brands, clients, people, priorities, filter, onFilter }: BreakdownProps) {
+export default function Breakdown({
+  brands, clients, people, priorities,
+  dimensions = ['brand', 'client', 'person', 'priority'],
+  filter = null, onFilter,
+}: BreakdownProps) {
   const [kind, setKind] = useState<SegmentKind>('brand')
   const [expanded, setExpanded] = useState(false)
 
@@ -44,13 +55,13 @@ export default function Breakdown({ brands, clients, people, priorities, filter,
   // Only offer a dimension that has something to say. A solo user with no
   // teammates shouldn't be given an empty People tab.
   const tabs = useMemo(
-    () => (Object.keys(TAB_LABEL) as SegmentKind[]).filter((k) => {
+    () => dimensions.filter((k) => {
       const list = lists[k]
       if (list.length === 0) return false
       // A single catch-all row ("Unassigned", "No brand") isn't a breakdown.
       return !(list.length === 1 && list[0].id === '')
     }),
-    [lists],
+    [lists, dimensions],
   )
 
   const activeKind = tabs.includes(kind) ? kind : (tabs[0] ?? 'brand')
@@ -67,7 +78,7 @@ export default function Breakdown({ brands, clients, people, priorities, filter,
     <InsightCard
       title="Breakdown"
       icon={<Layers size={14} className="text-gray-400" />}
-      hint="Tap a row to narrow everything above to it"
+      hint={onFilter ? 'Tap a row to narrow everything above to it' : 'Completed, still open, and how much of it is late'}
     >
       {/* Dimension switch — scrolls rather than wraps on narrow screens. */}
       <div className="-mx-1 px-1 mb-4 overflow-x-auto scrollbar-none">
@@ -138,13 +149,16 @@ interface RowProps {
   kind: SegmentKind
   scale: number
   filter: AnalyticsFilter | null
-  onFilter: (next: AnalyticsFilter | null) => void
+  // Explicitly `| undefined` — exactOptionalPropertyTypes is on, so an omitted
+  // handler has to be spelled out rather than merely marked optional.
+  onFilter: ((next: AnalyticsFilter | null) => void) | undefined
 }
 
 function BreakdownRow({ row, kind, scale, filter, onFilter }: RowProps) {
-  // Priority has no drill-down (there's nothing to scope a period to), and the
-  // catch-all rows have no id to filter by.
-  const filterable = kind !== 'priority' && row.id !== ''
+  // Priority has no drill-down (there's nothing to scope a period to), the
+  // catch-all rows have no id to filter by, and a caller that passes no handler
+  // wants plain readouts.
+  const filterable = !!onFilter && kind !== 'priority' && row.id !== ''
   const selected = filterable && filter?.kind === kind && filter.id === row.id
   const steady = Math.max(0, row.open - row.overdue)
   const width = (value: number) => `${(value / scale) * 100}%`
@@ -181,7 +195,7 @@ function BreakdownRow({ row, kind, scale, filter, onFilter }: RowProps) {
       <button
         type="button"
         aria-pressed={selected}
-        onClick={() => onFilter(selected ? null : { kind: kind as AnalyticsFilter['kind'], id: row.id, label: row.label })}
+        onClick={() => onFilter?.(selected ? null : { kind: kind as AnalyticsFilter['kind'], id: row.id, label: row.label })}
         className={`w-full text-left min-h-11 py-2 px-2 -mx-2 rounded-xl transition-colors ${
           selected ? 'bg-gray-50 ring-1 ring-gray-200' : 'hover:bg-gray-50'
         }`}

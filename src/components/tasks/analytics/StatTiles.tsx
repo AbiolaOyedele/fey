@@ -5,10 +5,21 @@ import { Delta, DeltaIcon, DeltaValue } from '@/components/delta'
 import { formatDuration, formatPercent, percentChange } from '@/utils/taskInsights'
 import type { AnalyticsRange, PreviousTotals, RangeTotals } from '@/types/task-analytics'
 
+/** Which headline numbers to show, in order. */
+export type TileKey = 'completed' | 'completionRate' | 'onTime' | 'turnaround'
+
+const ALL_TILES: TileKey[] = ['completed', 'completionRate', 'onTime', 'turnaround']
+
 interface StatTilesProps {
   totals: RangeTotals
   previous: PreviousTotals
   range: AnalyticsRange
+  /**
+   * Defaults to all four. The client portal passes a subset — what a client is
+   * shown about delivery is the owner's call, so the choice lives with the
+   * caller rather than being baked in here.
+   */
+  tiles?: TileKey[]
 }
 
 const RANGE_WORD: Record<AnalyticsRange, string> = {
@@ -18,6 +29,7 @@ const RANGE_WORD: Record<AnalyticsRange, string> = {
 }
 
 interface Tile {
+  key: TileKey
   label: string
   value: string
   hint: string
@@ -41,7 +53,7 @@ function pointChange(current: number | null, previous: number | null): number | 
  * got done, how much of what came in got finished, whether it landed on time,
  * and how long it took.
  */
-export default function StatTiles({ totals, previous, range }: StatTilesProps) {
+export default function StatTiles({ totals, previous, range, tiles: show = ALL_TILES }: StatTilesProps) {
   const word = RANGE_WORD[range]
 
   const completedChange = percentChange(totals.completed, previous.completed)
@@ -50,8 +62,9 @@ export default function StatTiles({ totals, previous, range }: StatTilesProps) {
     ? percentChange(totals.medianCycleHours, previous.medianCycleHours)
     : null
 
-  const tiles: Tile[] = [
+  const all: Tile[] = [
     {
+      key: 'completed',
       label: 'Tasks completed',
       value: String(totals.completed),
       hint: `${totals.created} added in ${word}`,
@@ -59,6 +72,7 @@ export default function StatTiles({ totals, previous, range }: StatTilesProps) {
       change: completedChange === null ? null : { value: completedChange, suffix: '%' },
     },
     {
+      key: 'completionRate',
       label: 'Completion rate',
       value: formatPercent(totals.completionRate),
       hint: 'of new tasks, now done',
@@ -66,6 +80,7 @@ export default function StatTiles({ totals, previous, range }: StatTilesProps) {
       change: null,
     },
     {
+      key: 'onTime',
       label: 'Finished on time',
       value: formatPercent(totals.onTimeRate),
       hint: 'of those with a due date',
@@ -73,6 +88,7 @@ export default function StatTiles({ totals, previous, range }: StatTilesProps) {
       change: onTimeChange === null ? null : { value: onTimeChange, suffix: ' pts' },
     },
     {
+      key: 'turnaround',
       label: 'Typical turnaround',
       value: formatDuration(totals.medianCycleHours),
       hint: 'from added to done',
@@ -82,8 +98,11 @@ export default function StatTiles({ totals, previous, range }: StatTilesProps) {
     },
   ]
 
+  // Ordered by the caller's list, not the declaration order above.
+  const tiles = show.map((k) => all.find((t) => t.key === k)).filter((t): t is Tile => !!t)
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className={`grid gap-3 ${tiles.length === 3 ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4'}`}>
       {tiles.map((t) => {
         const Icon = t.icon
         return (

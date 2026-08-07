@@ -8,6 +8,7 @@ import { usePortalAccent } from '@/hooks/usePortalBranding'
 import { usePortalSession } from '@/contexts/PortalSessionContext'
 import { usePortalTasks } from '@/hooks/usePortalTasks'
 import { FadeIn } from '@/components/ui/motion'
+import PortalTaskInsights from '@/components/portal/PortalTaskInsights'
 import TaskListView from '@/components/tasks/TaskListView'
 import TaskDetailDrawer from '@/components/tasks/TaskDetailDrawer'
 import NewTaskModal from '@/components/tasks/NewTaskModal'
@@ -25,7 +26,7 @@ import type { ClientTeamMember } from '@/types/crm'
  * and read everything else. That rule is enforced in the API, not here — this
  * only hides controls that would fail.
  */
-type Tab = 'open' | 'done'
+type Tab = 'open' | 'done' | 'progress'
 
 export default function PortalTasksPage({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
@@ -97,6 +98,18 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
   // Keep the open drawer's task in step with the latest data.
   const liveSelected = selected ? (t.tasks.find((x) => x.id === selected.id) ?? selected) : null
 
+  // Progress only appears when the owner has switched it on for this client —
+  // resolved with the session, so there's no tab that opens onto a refusal.
+  const showProgress = session?.session.insightsEnabled === true
+  const tabs = useMemo(() => {
+    const list: Array<[Tab, string]> = [
+      ['open', `Open${openCount ? ` · ${openCount}` : ''}`],
+      ['done', `Done${doneCount ? ` · ${doneCount}` : ''}`],
+    ]
+    if (showProgress) list.push(['progress', 'Progress'])
+    return list
+  }, [openCount, doneCount, showProgress])
+
   return (
     <div className="p-4 md:p-6 lg:p-8 page-enter">
       <FadeIn>
@@ -111,31 +124,31 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="flex bg-gray-100 rounded-lg p-0.5">
-          {([['open', `Open${openCount ? ` · ${openCount}` : ''}`], ['done', `Done${doneCount ? ` · ${doneCount}` : ''}`]] as const).map(
-            ([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setTab(key)}
-                className={`px-3 py-2 min-h-[36px] rounded-md text-xs font-medium transition-colors ${
-                  tab === key ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500'
-                }`}
-              >
-                {label}
-              </button>
-            ),
-          )}
+          {tabs.map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`px-3 py-2 min-h-[36px] rounded-md text-xs font-medium transition-colors ${
+                tab === key ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        <div className="relative flex-1 min-w-[140px] max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tasks…"
-            aria-label="Search tasks"
-            className="w-full pl-8 pr-3 py-2 min-h-[40px] rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
-          />
-        </div>
+        {tab !== 'progress' && (
+          <div className="relative flex-1 min-w-[140px] max-w-xs">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search tasks…"
+              aria-label="Search tasks"
+              className="w-full pl-8 pr-3 py-2 min-h-[40px] rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
+            />
+          </div>
+        )}
 
         {canWrite && (
           <button
@@ -148,7 +161,9 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
         )}
       </div>
 
-      {t.loading ? (
+      {tab === 'progress' ? (
+        <PortalTaskInsights subdomain={subdomain} />
+      ) : t.loading ? (
         <div className="flex justify-center py-20"><Loader2 className="animate-spin text-gray-300" /></div>
       ) : t.error ? (
         <div className="flex flex-col items-center py-20 text-center">

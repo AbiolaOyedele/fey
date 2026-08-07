@@ -16,6 +16,7 @@ interface PortalSessionData {
   clientName: string
   branding:   PortalOwnerBranding
   portalUser: PortalUser
+  insightsEnabled: boolean
 }
 
 const PUBLIC_PATHS = ['/login', '/signup', '/join']
@@ -85,8 +86,18 @@ export default function PortalLayout({
         return
       }
 
-      const data = await res.json() as { name: string; branding: PortalOwnerBranding; portalUser: PortalUser }
-      setSession({ clientName: data.name, branding: data.branding, portalUser: data.portalUser })
+      const data = await res.json() as {
+        name: string
+        branding: PortalOwnerBranding
+        portalUser: PortalUser
+        contact?: { portal_insights_enabled?: boolean | null }
+      }
+      setSession({
+        clientName: data.name,
+        branding: data.branding,
+        portalUser: data.portalUser,
+        insightsEnabled: data.contact?.portal_insights_enabled === true,
+      })
       setLoading(false)
     })()
   }, [subdomain, isPublic, router])
@@ -103,9 +114,10 @@ export default function PortalLayout({
   return (
     <PortalSessionProvider
       session={{
-        portalUser: session.portalUser,
-        branding:   session.branding,
-        clientName: session.clientName,
+        portalUser:      session.portalUser,
+        branding:        session.branding,
+        clientName:      session.clientName,
+        insightsEnabled: session.insightsEnabled,
       }}
     >
       <PortalNotificationsProvider subdomain={subdomain}>

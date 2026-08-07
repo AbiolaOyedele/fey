@@ -39,6 +39,7 @@ const updateContactSchema = z.object({
   company:                 z.string().max(200).optional().nullable(),
   status:                  z.enum(['active', 'idle', 'completed']).optional(),
   portal_enabled:          z.boolean().optional(),
+  portal_insights_enabled: z.boolean().optional(),
   portal_welcome_message:  z.string().max(2000).optional().nullable(),
 })
 

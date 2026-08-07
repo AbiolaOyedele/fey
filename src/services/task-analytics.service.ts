@@ -118,9 +118,13 @@ function toFact(row: AnalyticsTaskRow, tzOffset: number, today: string): Fact {
  * Narrows a member's view the same way the task list does: they keep every
  * unlinked task RLS already gave them, but only the client/brand tasks they
  * created or are assigned to. Only ever removes rows.
+ *
+ * Omitting `viewer` skips the narrowing entirely — for portal reads, which have
+ * no auth user and are already fenced to one contact by the caller. Same
+ * contract as `viewer` on the task repository's list query.
  */
-function scopeToViewer(rows: AnalyticsTaskRow[], viewer: { id: string; isAdmin: boolean }): AnalyticsTaskRow[] {
-  if (viewer.isAdmin) return rows
+function scopeToViewer(rows: AnalyticsTaskRow[], viewer?: { id: string; isAdmin: boolean }): AnalyticsTaskRow[] {
+  if (!viewer || viewer.isAdmin) return rows
   return rows.filter((r) => {
     const linked = r.project_id !== null || r.contact_id !== null
     if (!linked) return true
@@ -201,7 +205,8 @@ export async function getTaskAnalytics(
   db: SupabaseClient,
   ownerId: string,
   input: unknown,
-  viewer: { id: string; isAdmin: boolean },
+  /** Omit for portal/service reads that are already scoped by the caller. */
+  viewer?: { id: string; isAdmin: boolean },
 ): Promise<TaskAnalytics> {
   const parsed = querySchema.safeParse(input)
   if (!parsed.success) {

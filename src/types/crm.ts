@@ -14,6 +14,12 @@ export interface CrmContact {
   avatar_url: string | null
   status: ContactStatus
   portal_enabled: boolean
+  /**
+   * Whether this client sees the Progress panel in their portal. Off by
+   * default — what a client is shown about your delivery is an explicit
+   * decision, not something a deploy makes for you.
+   */
+  portal_insights_enabled: boolean
   portal_welcome_message: string | null
   /** Short 8-char alphanumeric invite code. Used in join links. */
   invite_code: string | null
@@ -261,6 +267,7 @@ export interface UpdateContactPayload {
   company?: string | null
   status?: ContactStatus
   portal_enabled?: boolean
+  portal_insights_enabled?: boolean
   portal_welcome_message?: string | null
 }
 

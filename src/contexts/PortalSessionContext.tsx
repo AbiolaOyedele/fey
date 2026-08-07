@@ -18,6 +18,12 @@ export interface PortalSession {
   portalUser: PortalUser
   branding:   PortalOwnerBranding
   clientName: string
+  /**
+   * Whether the owner has switched the Progress panel on for this client.
+   * Resolved once with the session so the Tasks page can decide whether the
+   * tab exists at all, rather than showing one that fetches a 403.
+   */
+  insightsEnabled: boolean
 }
 
 interface SessionValue {

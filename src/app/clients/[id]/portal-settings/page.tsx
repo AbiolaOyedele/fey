@@ -16,6 +16,7 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
   const contact = contacts.find((c) => c.id === id)
 
   const [portalEnabled, setPortalEnabled] = useState(contact?.portal_enabled ?? false)
+  const [insightsOn,    setInsightsOn]    = useState(contact?.portal_insights_enabled ?? false)
   const [welcomeMsg,    setWelcomeMsg]    = useState(contact?.portal_welcome_message ?? '')
   const [saving,        setSaving]        = useState(false)
 
@@ -30,6 +31,7 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
   if (contact && contact.id !== syncedContactId) {
     setSyncedContactId(contact.id)
     setPortalEnabled(contact.portal_enabled ?? false)
+    setInsightsOn(contact.portal_insights_enabled ?? false)
     setWelcomeMsg(contact.portal_welcome_message ?? '')
   }
   const [copied,        setCopied]        = useState(false)
@@ -124,6 +126,13 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
     if (next) void loadInvite()
   }
 
+  const toggleInsights = async () => {
+    if (!contact) return
+    const next = !insightsOn
+    setInsightsOn(next)
+    await updateContact(id, { portal_insights_enabled: next })
+  }
+
   const saveWelcome = async () => {
     if (!contact) return
     setSaving(true)
@@ -169,6 +178,36 @@ export default function PortalSettingsTab({ params }: { params: Promise<{ id: st
           </button>
         </div>
       </div>
+
+      {/* Progress panel — off by default, and only offered once the portal is on */}
+      {portalEnabled && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-800">Show progress</p>
+              <p className="text-xs2 text-gray-400 mt-0.5">
+                {insightsOn
+                  ? 'This client sees a Progress tab in their tasks: how much was completed, how much landed on time, typical turnaround, and what’s still open.'
+                  : 'Let this client see how their work is going — completed, on time, turnaround, and what’s still open.'}
+              </p>
+              <p className="text-3xs text-gray-400 mt-2">
+                Never shows figures for individual team members.
+              </p>
+            </div>
+            <button
+              onClick={() => void toggleInsights()}
+              aria-pressed={insightsOn}
+              aria-label="Show progress to this client"
+              className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors mt-0.5"
+            >
+              {insightsOn
+                ? <ToggleRight size={28} style={{ color: 'var(--accent, #ED64A6)' }} />
+                : <ToggleLeft  size={28} />
+              }
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Invite link */}
       {!workspaceSlug && (

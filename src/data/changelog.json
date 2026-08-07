@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.23.0",
+    "date": "7 August 2026",
+    "title": "Review tab, Insights & loading states",
+    "features": [
+      "Tasks have a Review tab — upload the finished work, and it's kept as a version history you and your client can rule on",
+      "Upload first, send second: files sit as a draft you can check and tidy before anyone sees them, then go out with Send for review",
+      "Three versions are kept per task — the oldest is removed automatically once a fourth arrives, so nothing piles up",
+      "Upload several files at once as a single version, and play videos and images straight from the tab",
+      "Clients can review from their portal too — approve, request changes, or leave a note",
+      "New Insights tab on Tasks — how much you're completing, how fast, which brands and clients it's going to, and what's still open",
+      "Insights on the dashboard as well, so the picture is there the moment you land",
+      "Share Insights with a client in their portal — off by default, switched on per client from their portal settings"
+    ],
+    "improvements": [
+      "Everyone on a task is told when a version is uploaded or a decision is made, the client included",
+      "Loading states now show the shape of what's coming instead of a blank screen — tasks, projects, brands, messages and the portal",
+      "Status colours are set in one place now, so your brand colour carries further and Approved, Overdue and Pending stay easy to tell apart"
+    ],
+    "fixes": [
+      "Fixed a completed task snapping back to Completed when you moved it to another stage",
+      "Fixed black text on the Approve button — it follows the design system again"
+    ]
+  },
+  {
     "version": "1.22.0",
     "date": "31 July 2026",
     "title": "Image Pipeline upgrades & a smarter background remover",

@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const db = createUserClient(token!)
   try {
-    const versions = await listReviews(db, id)
+    const versions = await listReviews(db, id, 'team')
     return NextResponse.json({ versions })
   } catch (err) {
     return handleError(err, 'TASK_REVIEWS_LIST_FAILED')

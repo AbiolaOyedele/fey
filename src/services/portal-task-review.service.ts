@@ -68,7 +68,49 @@ export async function listReviews(
   taskId: string,
 ): Promise<ReviewVersion[]> {
   await assertTaskForContact(db, scope, taskId)
-  return reviewService.listReviews(db, taskId)
+  return reviewService.listReviews(db, taskId, 'client')
+}
+
+/** Sends the client's own draft for review. */
+export async function submitVersion(
+  db: SupabaseClient,
+  scope: PortalReviewScope,
+  taskId: string,
+  reviewId: string,
+  actor: PortalReviewActor,
+): Promise<{ version: ReviewVersion; pruned: number[] }> {
+  await assertTaskForContact(db, scope, taskId)
+  assertCanWrite(actor)
+  return reviewService.submitVersion(db, taskId, reviewId, {
+    portalUserId: actor.portalUserId,
+    name: actor.name,
+    type: 'client',
+  })
+}
+
+export async function deleteVersion(
+  db: SupabaseClient,
+  scope: PortalReviewScope,
+  taskId: string,
+  reviewId: string,
+  actor: PortalReviewActor,
+): Promise<void> {
+  await assertTaskForContact(db, scope, taskId)
+  assertCanWrite(actor)
+  return reviewService.deleteVersion(db, taskId, reviewId)
+}
+
+export async function deleteVersionFile(
+  db: SupabaseClient,
+  scope: PortalReviewScope,
+  taskId: string,
+  reviewId: string,
+  fileId: string,
+  actor: PortalReviewActor,
+): Promise<void> {
+  await assertTaskForContact(db, scope, taskId)
+  assertCanWrite(actor)
+  return reviewService.deleteVersionFile(db, taskId, reviewId, fileId)
 }
 
 /** A client can supply the deliverable too — a signed-off asset, a brief, a revision. */

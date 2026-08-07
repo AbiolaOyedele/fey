@@ -126,16 +126,29 @@ async function announceReviewEvent(args: {
   } catch { /* best-effort */ }
 }
 
-export async function listReviews(db: SupabaseClient, taskId: string): Promise<ReviewVersion[]> {
-  return repo.listReviews(db, taskId)
+/**
+ * Version history as one side sees it.
+ *
+ * Submitted versions are shared. Drafts are not: the team shouldn't watch a
+ * client assemble an upload, and a client shouldn't see work before it's been
+ * sent to them. Each side sees only its own unsent draft.
+ */
+export async function listReviews(
+  db: SupabaseClient,
+  taskId: string,
+  viewerSide: ReviewAuthorType,
+): Promise<ReviewVersion[]> {
+  const all = await repo.listReviews(db, taskId)
+  return all.filter((v) => v.submitted_at !== null || v.uploader_type === viewerSide)
 }
 
 /**
- * Records a new version of the deliverable.
+ * Stages files into a draft. Nothing is superseded, pruned or announced here —
+ * a draft isn't the deliverable yet, it's what you're about to send.
  *
- * Pruning happens after the insert, never before: if cleanup fails we would
- * rather keep an extra file than have dropped the old one and then failed to
- * store the new one.
+ * Uploading again appends to the same draft rather than starting a rival one,
+ * so "upload, spot the wrong file, remove it, upload the right one, send" works
+ * without leaving half-built versions lying around.
  */
 export async function addVersion(
   db: SupabaseClient,
@@ -163,34 +176,74 @@ export async function addVersion(
     }
   }
 
-  // Version numbers never rewind, even after pruning, so "v4" stays "v4".
-  const nextVersion = (await repo.highestVersion(db, taskId)) + 1
+  const existing = await repo.findOpenDraft(db, taskId, !!actor.portalUserId)
 
-  const { id } = await repo.insertReview(db, {
-    task_id: taskId,
-    owner_id: task.owner_id,
-    version: nextVersion,
-    uploaded_by: actor.userId ?? null,
-    uploaded_by_portal_user: actor.portalUserId ?? null,
-    uploader_name: actor.name,
-  })
+  let reviewId: string
+  let startOrder = 0
+  if (existing) {
+    reviewId = existing.id
+    const draft = await repo.getReview(db, existing.id)
+    startOrder = draft?.files.length ?? 0
+    if (startOrder + files.length > MAX_FILES_PER_VERSION) {
+      throw new AppError(422, `A version can hold up to ${MAX_FILES_PER_VERSION} files.`, 'REVIEW_VERSION_TOO_MANY_FILES')
+    }
+  } else {
+    // Version numbers never rewind, even after pruning, so "v4" stays "v4".
+    const nextVersion = (await repo.highestVersion(db, taskId)) + 1
+    const created = await repo.insertReview(db, {
+      task_id: taskId,
+      owner_id: task.owner_id,
+      version: nextVersion,
+      uploaded_by: actor.userId ?? null,
+      uploaded_by_portal_user: actor.portalUserId ?? null,
+      uploader_name: actor.name,
+    })
+    reviewId = created.id
+  }
 
   await repo.insertReviewFiles(db, files.map((f, i) => ({
-    review_id: id,
+    review_id: reviewId,
     task_id: taskId,
     file_name: f.file_name,
     file_url: f.file_url,
     public_id: f.public_id,
     file_size: f.file_size ?? null,
     file_type: f.file_type ?? null,
-    sort_order: i,
+    sort_order: startOrder + i,
   })))
 
-  await repo.supersedeEarlier(db, taskId, nextVersion)
-  const pruned = await pruneOldVersions(db, taskId)
+  const draft = await repo.getReview(db, reviewId)
+  if (!draft) throw new AppError(500, 'That version could not be saved.', 'REVIEW_VERSION_MISSING')
+  return { version: draft, pruned: [] }
+}
 
-  const created = await repo.getReview(db, id)
-  if (!created) throw new AppError(500, 'That version could not be saved.', 'REVIEW_VERSION_MISSING')
+/**
+ * Sends a draft for review. This is where it actually becomes the deliverable:
+ * it supersedes what came before, prunes past the cap, and tells everyone.
+ */
+export async function submitVersion(
+  db: SupabaseClient,
+  taskId: string,
+  reviewId: string,
+  actor: ReviewActor,
+): Promise<{ version: ReviewVersion; pruned: number[] }> {
+  const task = await taskRepo.getTaskCore(db, taskId)
+  if (!task) throw new AppError(404, 'That task could not be found.', 'TASK_NOT_FOUND')
+
+  const draft = await repo.getReview(db, reviewId)
+  if (!draft || draft.task_id !== taskId) {
+    throw new AppError(404, 'That version could not be found.', 'REVIEW_VERSION_NOT_FOUND')
+  }
+  if (draft.submitted_at) {
+    throw new AppError(409, 'That version has already been sent for review.', 'REVIEW_ALREADY_SUBMITTED')
+  }
+  if (draft.files.length === 0) {
+    throw new AppError(422, 'Add a file before sending it for review.', 'REVIEW_VERSION_EMPTY')
+  }
+
+  await repo.markSubmitted(db, reviewId)
+  await repo.supersedeEarlier(db, taskId, draft.version)
+  const pruned = await pruneOldVersions(db, taskId)
 
   await announceReviewEvent({
     taskId,
@@ -199,11 +252,89 @@ export async function addVersion(
     contactId: task.contact_id,
     actor,
     type: 'task_review_uploaded',
-    headline: nextVersion === 1 ? 'Work ready for review' : 'A new version is ready for review',
-    detail: `${task.title} — v${nextVersion}, ${files.length} file${files.length === 1 ? '' : 's'} from ${actor.name ?? 'someone'}`,
+    headline: draft.version === 1 ? 'Work ready for review' : 'A new version is ready for review',
+    detail: `${task.title} — v${draft.version}, ${draft.files.length} file${draft.files.length === 1 ? '' : 's'} from ${actor.name ?? 'someone'}`,
   })
 
-  return { version: created, pruned }
+  const submitted = await repo.getReview(db, reviewId)
+  if (!submitted) throw new AppError(500, 'That version could not be sent.', 'REVIEW_VERSION_MISSING')
+  return { version: submitted, pruned }
+}
+
+/**
+ * Removes a version.
+ *
+ * A draft is yours to throw away. Something already sent for review is part of
+ * the record and stays put — unless a newer version has replaced it, at which
+ * point it's history rather than the deliverable and can go.
+ */
+export async function deleteVersion(
+  db: SupabaseClient,
+  taskId: string,
+  reviewId: string,
+): Promise<void> {
+  const version = await repo.getReview(db, reviewId)
+  if (!version || version.task_id !== taskId) {
+    throw new AppError(404, 'That version could not be found.', 'REVIEW_VERSION_NOT_FOUND')
+  }
+  if (version.submitted_at && !version.superseded_at) {
+    throw new AppError(
+      409,
+      'This has been sent for review. Upload a replacement version first, then you can remove this one.',
+      'REVIEW_VERSION_LOCKED',
+    )
+  }
+
+  const files = version.files
+  await repo.deleteReviewRow(db, reviewId)
+  await destroyFiles(files.map((f) => ({ public_id: f.public_id, file_url: f.file_url })), taskId)
+}
+
+/**
+ * Removes one file from a draft.
+ *
+ * Drafts only — once a version is sent, its contents are what people reviewed,
+ * and quietly pulling a file out from under them would rewrite that.
+ */
+export async function deleteVersionFile(
+  db: SupabaseClient,
+  taskId: string,
+  reviewId: string,
+  fileId: string,
+): Promise<void> {
+  const version = await repo.getReview(db, reviewId)
+  if (!version || version.task_id !== taskId) {
+    throw new AppError(404, 'That version could not be found.', 'REVIEW_VERSION_NOT_FOUND')
+  }
+  if (version.submitted_at) {
+    throw new AppError(409, 'That version has been sent for review, so its files can’t be changed.', 'REVIEW_VERSION_LOCKED')
+  }
+
+  const file = await repo.getReviewFile(db, fileId)
+  if (!file || file.review_id !== reviewId) {
+    throw new AppError(404, 'That file could not be found.', 'REVIEW_FILE_NOT_FOUND')
+  }
+
+  await repo.deleteReviewFileRow(db, fileId)
+  await destroyFiles([{ public_id: file.public_id, file_url: file.file_url }], taskId)
+
+  // An empty draft is just clutter — clear it so the panel goes back to its
+  // "upload the finished work" state rather than showing a version with nothing in it.
+  if (version.files.length <= 1) await repo.deleteReviewRow(db, reviewId)
+}
+
+/** Frees Cloudinary assets. Never throws — the rows are already gone. */
+async function destroyFiles(
+  files: Array<{ public_id: string; file_url: string }>,
+  taskId: string,
+): Promise<void> {
+  for (const f of files) {
+    const resourceType = parseCloudinaryUrl(f.file_url)?.resourceType ?? 'image'
+    const cleaned = await destroyCloudinaryAssetById(f.public_id, resourceType)
+    if (!cleaned) {
+      console.warn('[taskReview] Cloudinary cleanup failed', { taskId, publicId: f.public_id })
+    }
+  }
 }
 
 /**
@@ -269,6 +400,9 @@ export async function addComment(
   }
   const d = parsed.data
 
+  if (!review.submitted_at) {
+    throw new AppError(409, 'That version hasn’t been sent for review yet.', 'REVIEW_VERSION_NOT_SUBMITTED')
+  }
   // Reviewing a version that has already been replaced would rule on the wrong
   // file — the point of superseding is that there's one current deliverable.
   if (d.decision && review.superseded_at) {

@@ -41,6 +41,12 @@ export interface ReviewVersion {
   uploader_name: string | null
   uploader_type: ReviewAuthorType
   status: ReviewStatus
+  /**
+   * When this version was sent for review. Null means it's still a draft:
+   * only its own side sees it, nobody can rule on it, and it can be edited or
+   * thrown away freely.
+   */
+  submitted_at: string | null
   /** Set once a newer version replaced this one. */
   superseded_at: string | null
   created_at: string

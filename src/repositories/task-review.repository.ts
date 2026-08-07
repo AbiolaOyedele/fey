@@ -13,7 +13,8 @@ import type {
 
 const SELECT = `
   id, task_id, version,
-  uploaded_by, uploaded_by_portal_user, uploader_name, status, superseded_at, created_at,
+  uploaded_by, uploaded_by_portal_user, uploader_name, status,
+  submitted_at, superseded_at, created_at,
   work_task_review_files (
     id, file_name, file_url, public_id, file_size, file_type, sort_order
   ),
@@ -30,6 +31,7 @@ interface RawReview {
   uploaded_by_portal_user: string | null
   uploader_name: string | null
   status: ReviewStatus
+  submitted_at: string | null
   superseded_at: string | null
   created_at: string
   work_task_review_files: ReviewFile[] | null
@@ -44,6 +46,7 @@ function mapReview(row: RawReview): ReviewVersion {
     uploader_name: row.uploader_name,
     uploader_type: row.uploaded_by_portal_user ? 'client' : 'team',
     status: row.status,
+    submitted_at: row.submitted_at,
     superseded_at: row.superseded_at,
     created_at: row.created_at,
     files: (row.work_task_review_files ?? []).slice().sort((a, b) => a.sort_order - b.sort_order),
@@ -82,6 +85,57 @@ export async function highestVersion(db: SupabaseClient, taskId: string): Promis
   return (data as Array<{ version: number }> | null)?.[0]?.version ?? 0
 }
 
+/**
+ * The task's open draft for one side, if there is one. At most one exists:
+ * uploading again appends to it rather than starting a rival draft.
+ */
+export async function findOpenDraft(
+  db: SupabaseClient,
+  taskId: string,
+  byPortalUser: boolean,
+): Promise<{ id: string; version: number } | null> {
+  let q = db
+    .from('work_task_reviews')
+    .select('id, version')
+    .eq('task_id', taskId)
+    .is('submitted_at', null)
+  q = byPortalUser
+    ? q.not('uploaded_by_portal_user', 'is', null)
+    : q.is('uploaded_by_portal_user', null)
+  const { data, error } = await q.order('version', { ascending: false }).limit(1)
+  if (error) throw error
+  return (data as Array<{ id: string; version: number }> | null)?.[0] ?? null
+}
+
+/** Marks a draft as sent for review. */
+export async function markSubmitted(db: SupabaseClient, reviewId: string): Promise<void> {
+  const now = new Date().toISOString()
+  const { error } = await db
+    .from('work_task_reviews')
+    .update({ submitted_at: now, updated_at: now })
+    .eq('id', reviewId)
+  if (error) throw error
+}
+
+/** One file, for the delete path. */
+export async function getReviewFile(
+  db: SupabaseClient,
+  fileId: string,
+): Promise<{ id: string; review_id: string; public_id: string; file_url: string } | null> {
+  const { data, error } = await db
+    .from('work_task_review_files')
+    .select('id, review_id, public_id, file_url')
+    .eq('id', fileId)
+    .maybeSingle()
+  if (error) throw error
+  return (data as never) ?? null
+}
+
+export async function deleteReviewFileRow(db: SupabaseClient, fileId: string): Promise<void> {
+  const { error } = await db.from('work_task_review_files').delete().eq('id', fileId)
+  if (error) throw error
+}
+
 /** Version rows oldest-first — used to work out what to prune. */
 export interface PrunableVersion {
   id: string
@@ -90,11 +144,16 @@ export interface PrunableVersion {
   work_task_review_files: Array<{ public_id: string; file_url: string }> | null
 }
 
+/**
+ * Submitted versions only — a draft isn't part of the history yet, so it must
+ * never push a real version over the cap.
+ */
 export async function listVersionsAsc(db: SupabaseClient, taskId: string): Promise<PrunableVersion[]> {
   const { data, error } = await db
     .from('work_task_reviews')
     .select('id, version, work_task_review_files ( public_id, file_url )')
     .eq('task_id', taskId)
+    .not('submitted_at', 'is', null)
     .order('version', { ascending: true })
   if (error) throw error
   return (data ?? []) as PrunableVersion[]
@@ -146,6 +205,7 @@ export async function supersedeEarlier(
     .update({ superseded_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('task_id', taskId)
     .lt('version', belowVersion)
+    .not('submitted_at', 'is', null)
     .is('superseded_at', null)
   if (error) throw error
 }

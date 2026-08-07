@@ -20,7 +20,12 @@ export interface TaskReviewState {
   loading: boolean
   error: string | null
   refetch: () => Promise<void>
+  /** Stages files into the open draft, creating one if needed. */
   addVersion: (payload: CreateReviewVersionPayload) => Promise<void>
+  /** Sends the draft — the point it becomes the deliverable. */
+  submitVersion: (reviewId: string) => Promise<void>
+  deleteVersion: (reviewId: string) => Promise<void>
+  deleteFile: (reviewId: string, fileId: string) => Promise<void>
   addComment: (reviewId: string, payload: CreateReviewCommentPayload) => Promise<void>
   /** Versions removed by the three-version cap on the last upload, if any. */
   lastPruned: number[]
@@ -79,13 +84,27 @@ export function useTaskReview({ taskId, subdomain, enabled = true }: UseTaskRevi
   }, [refetch, enabled])
 
   const addVersion = useCallback(async (payload: CreateReviewVersionPayload) => {
-    const { pruned } = await call<{ version: ReviewVersion; pruned: number[] }>(base, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    })
+    await call<{ version: ReviewVersion }>(base, { method: 'POST', body: JSON.stringify(payload) })
+    await refetch()
+  }, [base, call, refetch])
+
+  const submitVersion = useCallback(async (reviewId: string) => {
+    const { pruned } = await call<{ version: ReviewVersion; pruned: number[] }>(
+      `${base}/${reviewId}/submit`, { method: 'POST', body: JSON.stringify({}) },
+    )
     setLastPruned(pruned)
-    // Refetched rather than pushed: the upload supersedes earlier versions and
+    // Refetched rather than patched: submitting supersedes earlier versions and
     // may prune one, so the whole list changed, not just its head.
+    await refetch()
+  }, [base, call, refetch])
+
+  const deleteVersion = useCallback(async (reviewId: string) => {
+    await call(`${base}/${reviewId}`, { method: 'DELETE' })
+    await refetch()
+  }, [base, call, refetch])
+
+  const deleteFile = useCallback(async (reviewId: string, fileId: string) => {
+    await call(`${base}/${reviewId}/files/${fileId}`, { method: 'DELETE' })
     await refetch()
   }, [base, call, refetch])
 
@@ -107,5 +126,9 @@ export function useTaskReview({ taskId, subdomain, enabled = true }: UseTaskRevi
     )))
   }, [base, call])
 
-  return { versions, loading, error, refetch, addVersion, addComment, lastPruned }
+  return {
+    versions, loading, error, refetch,
+    addVersion, submitVersion, deleteVersion, deleteFile, addComment,
+    lastPruned,
+  }
 }

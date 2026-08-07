@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import {
-  Upload, Loader2, Download, Check, RotateCcw, MessageSquare, History,
+  Upload, Loader2, Download, Check, RotateCcw, MessageSquare, History, Trash2, Send, X,
   FileText, FileSpreadsheet, FileArchive, File as FileIcon,
 } from 'lucide-react'
 import { useTaskReview } from '@/hooks/useTaskReview'
@@ -95,7 +95,10 @@ export default function TaskReviewPanel({ taskId, subdomain, readOnly = false }:
     }
   }, [taskId, review])
 
-  const current = review.versions[0] ?? null
+  // The draft is what you're preparing; "current" is the deliverable people
+  // are actually reviewing, so it's the newest SUBMITTED version.
+  const draft = review.versions.find((v) => !v.submitted_at) ?? null
+  const current = review.versions.find((v) => v.submitted_at) ?? null
 
   return (
     <div className="space-y-4">
@@ -122,11 +125,12 @@ export default function TaskReviewPanel({ taskId, subdomain, readOnly = false }:
                   <span className="truncate max-w-[14rem]">{uploading.name}</span> · {uploading.pct}%
                 </>
               )
-              : <><Upload size={15} /> {current ? 'Upload a new version' : 'Upload the finished work'}</>}
+              : <><Upload size={15} /> {draft ? 'Add another file' : current ? 'Upload a new version' : 'Upload the finished work'}</>}
           </button>
           <p className="text-3xs text-gray-400 mt-1.5 text-center">
-            Pick several files to keep them together as one version. A new upload
-            replaces the current one; the last {MAX_REVIEW_VERSIONS} are kept.
+            {draft
+              ? 'Check it over, then send it for review. Nothing is shared until you do.'
+              : `Pick several files to keep them together as one version. Sending replaces the current one; the last ${MAX_REVIEW_VERSIONS} are kept.`}
           </p>
           {review.lastPruned.length > 0 && (
             <p className="text-3xs text-gray-400 mt-1 text-center">
@@ -173,6 +177,9 @@ export default function TaskReviewPanel({ taskId, subdomain, readOnly = false }:
               isCurrent={v.id === current?.id}
               readOnly={readOnly}
               onComment={(payload) => review.addComment(v.id, payload)}
+              onSubmit={() => review.submitVersion(v.id)}
+              onDelete={() => review.deleteVersion(v.id)}
+              onDeleteFile={(fileId) => review.deleteFile(v.id, fileId)}
             />
           ))}
         </div>
@@ -188,15 +195,34 @@ interface VersionCardProps {
   isCurrent: boolean
   readOnly: boolean
   onComment: (payload: { body: string; decision?: ReviewDecision | null }) => Promise<void>
+  onSubmit: () => Promise<void>
+  onDelete: () => Promise<void>
+  onDeleteFile: (fileId: string) => Promise<void>
 }
 
-function VersionCard({ version, isCurrent, readOnly, onComment }: VersionCardProps) {
+function VersionCard({
+  version, isCurrent, readOnly, onComment, onSubmit, onDelete, onDeleteFile,
+}: VersionCardProps) {
+  const isDraft = !version.submitted_at
   const [open, setOpen] = useState(isCurrent)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   const status = REVIEW_STATUS_META[version.status]
+  // Sent work is part of the record. It only becomes removable once a newer
+  // version has replaced it, at which point it's history rather than the
+  // deliverable.
+  const canDelete = !readOnly && (isDraft || !!version.superseded_at)
+
+  const run = useCallback(async (fn: () => Promise<void>, failure: string) => {
+    setBusy(true)
+    setErr(null)
+    try { await fn() } catch (e) {
+      setErr(e instanceof Error ? e.message : failure)
+      setBusy(false)
+    }
+  }, [])
 
   const send = useCallback(async (decision: ReviewDecision | null) => {
     const body = note.trim()
@@ -223,11 +249,13 @@ function VersionCard({ version, isCurrent, readOnly, onComment }: VersionCardPro
       <div className="flex items-center gap-3 p-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs2 font-medium text-gray-800">Version {version.version}</span>
+            <span className="text-xs2 font-medium text-gray-800">
+              {isDraft ? 'Not sent yet' : `Version ${version.version}`}
+            </span>
             <span className="text-3xs text-gray-400 flex-shrink-0">
               {version.files.length} file{version.files.length === 1 ? '' : 's'}
             </span>
-            {!isCurrent && <span className="text-3xs text-gray-400 flex-shrink-0">· replaced</span>}
+            {!isDraft && !isCurrent && <span className="text-3xs text-gray-400 flex-shrink-0">· replaced</span>}
           </div>
           <p className="text-3xs text-gray-400 truncate">
             {version.uploader_name ?? 'Someone'}
@@ -235,20 +263,66 @@ function VersionCard({ version, isCurrent, readOnly, onComment }: VersionCardPro
             {' · '}{relativeTime(version.created_at)}
           </p>
         </div>
-        <span
-          className="text-3xs font-medium px-2 py-0.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: status.bg, color: status.fg }}
-        >
-          {status.label}
-        </span>
+        {isDraft ? (
+          <span className="text-3xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 bg-gray-100 text-gray-500">
+            Draft
+          </span>
+        ) : (
+          <span
+            className="text-3xs font-medium px-2 py-0.5 rounded-full flex-shrink-0"
+            style={{ backgroundColor: status.bg, color: status.fg }}
+          >
+            {status.label}
+          </span>
+        )}
+        {canDelete && (
+          <button
+            onClick={() => void run(onDelete, isDraft ? 'That draft couldn’t be discarded.' : 'That version couldn’t be removed.')}
+            disabled={busy}
+            title={isDraft ? 'Discard this draft' : 'Remove this version'}
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-red-500 flex-shrink-0 disabled:opacity-50"
+          >
+            <Trash2 size={15} />
+          </button>
+        )}
       </div>
 
       {/* Files in this version */}
       <div className="px-3 pb-1 space-y-2">
-        {version.files.map((f) => <ReviewFileRow key={f.id} file={f} />)}
+        {version.files.map((f) => (
+          <ReviewFileRow
+            key={f.id}
+            file={f}
+            // Only a draft's files can be pulled — once sent, the contents are
+            // what people reviewed.
+            {...(isDraft && !readOnly
+              ? { onRemove: () => run(() => onDeleteFile(f.id), 'That file couldn’t be removed.') }
+              : {})}
+          />
+        ))}
       </div>
 
-      {/* Notes */}
+      {/* Send for review — the draft's only real action */}
+      {isDraft && !readOnly && (
+        <div className="px-3 pb-3 pt-1">
+          {err && <p className="text-3xs text-red-500 mb-2">{err}</p>}
+          <button
+            onClick={() => void run(onSubmit, 'That couldn’t be sent for review.')}
+            disabled={busy || version.files.length === 0}
+            className="w-full min-h-11 flex items-center justify-center gap-1.5 rounded-lg text-xs2 font-semibold text-white disabled:opacity-60"
+            style={{ backgroundColor: 'var(--accent)' }}
+          >
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            Send for review
+          </button>
+          <p className="text-3xs text-gray-400 mt-1.5 text-center">
+            Nobody is notified until you send it.
+          </p>
+        </div>
+      )}
+
+      {/* Notes — a draft has nothing to discuss yet */}
+      {!isDraft && (
       <div className="px-3 pb-3">
         <button
           onClick={() => setOpen((v) => !v)}
@@ -303,8 +377,8 @@ function VersionCard({ version, isCurrent, readOnly, onComment }: VersionCardPro
                   <button
                     onClick={() => void send('approved')}
                     disabled={busy}
-                    className="min-h-9 flex items-center gap-1.5 px-3 rounded-lg text-3xs font-semibold disabled:opacity-60"
-                    style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-on, #fff)' }}
+                    className="min-h-9 flex items-center gap-1.5 px-3 rounded-lg text-3xs font-semibold text-white disabled:opacity-60"
+                    style={{ backgroundColor: 'var(--accent)' }}
                   >
                     <Check size={13} /> Approve
                   </button>
@@ -328,6 +402,7 @@ function VersionCard({ version, isCurrent, readOnly, onComment }: VersionCardPro
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }
@@ -339,8 +414,19 @@ function VersionCard({ version, isCurrent, readOnly, onComment }: VersionCardPro
  * you can judge it isn't really reviewable. Everything else gets a row with a
  * download link.
  */
-function ReviewFileRow({ file }: { file: ReviewFile }) {
+function ReviewFileRow({ file, onRemove }: { file: ReviewFile; onRemove?: (() => void) | undefined }) {
   const type = (file.file_type as FileType) ?? getFileType(file.file_name)
+  const remove = onRemove
+    ? (
+      <button
+        onClick={onRemove}
+        title="Remove this file"
+        className="w-9 h-9 -my-1 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-red-500 flex-shrink-0"
+      >
+        <X size={14} />
+      </button>
+    )
+    : null
 
   if (type === 'video') {
     return (
@@ -357,6 +443,7 @@ function ReviewFileRow({ file }: { file: ReviewFile }) {
             <span className="text-4xs text-gray-400 flex-shrink-0">{formatSize(file.file_size)}</span>
           )}
           <DownloadLink url={file.file_url} />
+          {remove}
         </div>
       </div>
     )
@@ -373,6 +460,7 @@ function ReviewFileRow({ file }: { file: ReviewFile }) {
             <span className="text-4xs text-gray-400 flex-shrink-0">{formatSize(file.file_size)}</span>
           )}
           <DownloadLink url={file.file_url} />
+          {remove}
         </div>
       </div>
     )
@@ -388,6 +476,7 @@ function ReviewFileRow({ file }: { file: ReviewFile }) {
         <span className="text-4xs text-gray-400 flex-shrink-0">{formatSize(file.file_size)}</span>
       )}
       <DownloadLink url={file.file_url} />
+      {remove}
     </div>
   )
 }

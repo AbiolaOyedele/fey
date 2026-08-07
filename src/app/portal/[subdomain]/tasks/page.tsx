@@ -192,6 +192,10 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
           // A client may withdraw work they raised; agency-created tasks aren't
           // theirs to remove, so the control simply isn't there for those.
           hideDelete={!canWrite || !liveSelected.requested_by_portal_user}
+          // Review runs against the portal endpoints, and viewers read it
+          // without being able to upload or rule on anything.
+          portalSubdomain={subdomain}
+          reviewReadOnly={!canWrite}
           onPatch={t.patchTask}
           onSetAssignees={t.setAssignees}
           onAddSubtask={t.addSubtask}

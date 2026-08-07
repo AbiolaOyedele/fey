@@ -8,6 +8,7 @@ import AssigneePicker from './AssigneePicker'
 import DateField from '@/components/ui/DateField'
 import TaskAttachments from './TaskAttachments'
 import TaskComments from './TaskComments'
+import TaskReviewPanel from './TaskReviewPanel'
 import { useConfirm } from '@/contexts/ConfirmContext'
 import { useScrollLock } from '@/hooks/useScrollLock'
 import { PRIORITY_META, formatMinutes, parseEstimate } from './TaskBits'
@@ -68,16 +69,26 @@ interface TaskDetailDrawerProps {
   hideComments?: boolean
   /** Hides delete — clients don't remove tasks, they just stop tracking them. */
   hideDelete?: boolean
+  /**
+   * Set when rendered inside a client portal — the Review tab points its
+   * requests at the portal endpoints instead of the app's.
+   */
+  portalSubdomain?: string | undefined
+  /** Viewers read the review history but can't upload or rule on it. */
+  reviewReadOnly?: boolean
 }
+
+type DrawerTab = 'details' | 'review'
 
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 /** Sentinel for the synthetic "Completed" stage option — not a real stage_id. */
 const COMPLETED_STAGE = '__completed__'
 
 export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
-  const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onRenameSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose, members, hideComments, hideDelete } = props
+  const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onRenameSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose, members, hideComments, hideDelete, portalSubdomain, reviewReadOnly } = props
   const confirm = useConfirm()
   useScrollLock()
+  const [tab, setTab] = useState<DrawerTab>('details')
 
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description ?? '')
@@ -182,8 +193,10 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
         className="relative w-full max-w-xl max-h-[85dvh] bg-white rounded-2xl shadow-2xl overflow-y-auto overscroll-contain animate-slideUp"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">
+        {/* Header + tabs stick together as one block, so the tab bar doesn't
+            need to know how tall the header is. */}
+        <div className="sticky top-0 z-10 bg-white rounded-t-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2 text-xs2 text-gray-400 min-w-0">
             {task.project_title ? <span className="truncate">{task.project_title}</span>
               : task.contact_name ? <span className="truncate">{task.contact_name}</span>
@@ -194,6 +207,32 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
           </button>
         </div>
 
+        <div className="flex items-center gap-1 px-5 border-b border-gray-100">
+          {([['details', 'Details'], ['review', 'Review']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              aria-pressed={tab === key}
+              className={`px-3 min-h-11 text-xs2 font-medium border-b-2 -mb-px transition-colors ${
+                tab === key ? 'border-current' : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+              style={tab === key ? { color: 'var(--accent, #ED64A6)' } : {}}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        </div>
+
+        {tab === 'review' ? (
+          <div className="p-5">
+            <TaskReviewPanel
+              taskId={task.id}
+              subdomain={portalSubdomain}
+              readOnly={reviewReadOnly ?? false}
+            />
+          </div>
+        ) : (
         <div className="p-5 space-y-5">
           {/* Title + done */}
           <div className="flex items-start gap-3">
@@ -406,9 +445,12 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
           </div>
           )}
         </div>
+        )}
 
         {/* Save — everything here autosaves, but an explicit save gives a clear
-         *  "it's stored" moment and flushes a field that's still being edited. */}
+         *  "it's stored" moment and flushes a field that's still being edited.
+         *  Review has nothing pending to flush, so the bar is details-only. */}
+        {tab === 'details' && (
         <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 px-5 py-3 bg-white/95 backdrop-blur border-t border-gray-100 rounded-b-2xl">
           <span className="text-xs2 text-gray-400 min-w-0 truncate" aria-live="polite">
             {saveState === 'saved' ? 'All changes saved' : 'Changes save automatically'}
@@ -423,6 +465,7 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
             {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved' : 'Save'}
           </button>
         </div>
+        )}
       </div>
 
       {preview && (

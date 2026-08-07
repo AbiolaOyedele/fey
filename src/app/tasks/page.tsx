@@ -14,10 +14,11 @@ import TaskTableView from '@/components/tasks/TaskTableView'
 import TaskDetailDrawer from '@/components/tasks/TaskDetailDrawer'
 import NewTaskModal from '@/components/tasks/NewTaskModal'
 import WorkflowEditorModal from '@/components/tasks/WorkflowEditorModal'
+import InsightsPanel from '@/components/tasks/analytics/InsightsPanel'
 import { SlidersHorizontal } from 'lucide-react'
 import type { Task } from '@/types/work-tasks'
 
-type View = 'board' | 'table' | 'list' | 'completed'
+type View = 'board' | 'table' | 'list' | 'completed' | 'insights'
 type SubTab = 'personal' | 'all'
 
 const VIEWS: Array<{ key: View; label: string }> = [
@@ -25,17 +26,25 @@ const VIEWS: Array<{ key: View; label: string }> = [
   { key: 'table', label: 'Table' },
   { key: 'list', label: 'List' },
   { key: 'completed', label: 'Completed' },
+  { key: 'insights', label: 'Insights' },
 ]
+
+/** Views that read the task list. Insights has its own aggregated source. */
+function isListView(view: View): boolean {
+  return view !== 'insights'
+}
 
 export default function TasksPage() {
   const { user } = useAuth()
-  const { showToast } = useSettings()
+  const { settings, showToast } = useSettings()
   const { workspace } = useWorkspace()
   const wsId = workspace?.id ?? null
   const searchParams = useSearchParams()
   const deepLinkTaskId = searchParams.get('taskId')
+  // The dashboard links straight to the insights tab.
+  const deepLinkView = searchParams.get('view')
 
-  const [view, setView] = useState<View>('list')
+  const [view, setView] = useState<View>(deepLinkView === 'insights' ? 'insights' : 'list')
   const [subTab, setSubTab] = useState<SubTab>('all')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Task | null>(null)
@@ -121,13 +130,13 @@ export default function TasksPage() {
         <h1 className="font-display text-2xl font-semibold text-gray-900">Tasks</h1>
       </div>
 
-      {/* View tabs */}
-      <div className="flex items-center gap-1 border-b border-gray-100 mb-4">
+      {/* View tabs — scroll rather than wrap once they outgrow a phone. */}
+      <div className="flex items-center gap-1 border-b border-gray-100 mb-4 overflow-x-auto scrollbar-none">
         {VIEWS.map((v) => (
           <button
             key={v.key}
             onClick={() => setView(v.key)}
-            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors flex-shrink-0 ${
               view === v.key ? 'border-current' : 'border-transparent text-gray-400 hover:text-gray-600'
             }`}
             style={view === v.key ? { color: 'var(--accent, #ED64A6)' } : {}}
@@ -137,30 +146,35 @@ export default function TasksPage() {
         ))}
       </div>
 
-      {/* Toolbar */}
+      {/* Toolbar. Insights reads its own aggregated data, so the list filters
+          (personal/all, search) don't apply there. */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
-        {/* Sub-tabs */}
-        <div className="flex bg-gray-100 rounded-lg p-0.5">
-          {(['personal', 'all'] as SubTab[]).map((s) => (
-            <button
-              key={s}
-              onClick={() => setSubTab(s)}
-              className={`px-3 py-1.5 rounded-md text-xs2 font-medium transition-colors ${subTab === s ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
-            >
-              {s === 'personal' ? 'Personal' : 'All'}
-            </button>
-          ))}
-        </div>
+        {isListView(view) && (
+          <>
+            {/* Sub-tabs */}
+            <div className="flex bg-gray-100 rounded-lg p-0.5">
+              {(['personal', 'all'] as SubTab[]).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSubTab(s)}
+                  className={`px-3 py-1.5 rounded-md text-xs2 font-medium transition-colors ${subTab === s ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
+                >
+                  {s === 'personal' ? 'Personal' : 'All'}
+                </button>
+              ))}
+            </div>
 
-        <div className="relative flex-1 min-w-[140px] max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tasks…"
-            className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
-          />
-        </div>
+            <div className="relative flex-1 min-w-[140px] max-w-xs">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search tasks…"
+                className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
+              />
+            </div>
+          </>
+        )}
 
         {view === 'board' && defaultWorkflow && (
           <button
@@ -182,7 +196,9 @@ export default function TasksPage() {
       </div>
 
       {/* Content */}
-      {source.loading ? (
+      {view === 'insights' ? (
+        <InsightsPanel workspaceId={wsId} accent={settings.accent_color ?? '#ED64A6'} />
+      ) : source.loading ? (
         <div className="flex justify-center py-20"><Loader2 className="animate-spin text-gray-300" /></div>
       ) : source.error ? (
         <div className="flex flex-col items-center py-20 text-center">

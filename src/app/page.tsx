@@ -6,6 +6,7 @@ import {
   FileText, FileImage, FileSpreadsheet, File as FileIcon,
 } from 'lucide-react'
 import DashboardWork from '@/components/dashboard/DashboardWork'
+import DashboardInsights from '@/components/dashboard/DashboardInsights'
 import ErrorBoundary from '@/components/ui/ErrorBoundary'
 import WorkspaceSwitcher from '@/components/layout/WorkspaceSwitcher'
 import { Stagger, StaggerItem } from '@/components/ui/motion'
@@ -111,6 +112,13 @@ export default function DashboardPage() {
               unreadMessages={unreadMessages}
               pendingCount={totalPending}
             />
+          </ErrorBoundary>
+        </StaggerItem>
+
+        {/* ── How the work is actually going ── */}
+        <StaggerItem>
+          <ErrorBoundary label="DashboardInsights" fallbackTitle="Couldn’t load your task insights">
+            <DashboardInsights workspaceId={workspace?.id} />
           </ErrorBoundary>
         </StaggerItem>
 

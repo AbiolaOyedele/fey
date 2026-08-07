@@ -2,13 +2,14 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { CheckSquare2, Plus, Search, Loader2 } from 'lucide-react'
+import { CheckSquare2, Plus, Search } from 'lucide-react'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { usePortalAccent } from '@/hooks/usePortalBranding'
 import { usePortalSession } from '@/contexts/PortalSessionContext'
 import { usePortalTasks } from '@/hooks/usePortalTasks'
 import { FadeIn } from '@/components/ui/motion'
 import PortalTaskInsights from '@/components/portal/PortalTaskInsights'
+import { TaskRowsSkeleton } from '@/components/ui/skeletons'
 import TaskListView from '@/components/tasks/TaskListView'
 import TaskDetailDrawer from '@/components/tasks/TaskDetailDrawer'
 import NewTaskModal from '@/components/tasks/NewTaskModal'
@@ -164,7 +165,7 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
       {tab === 'progress' ? (
         <PortalTaskInsights subdomain={subdomain} />
       ) : t.loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="animate-spin text-gray-300" /></div>
+        <TaskRowsSkeleton />
       ) : t.error ? (
         <div className="flex flex-col items-center py-20 text-center">
           <p className="text-sm text-gray-500 mb-3">{t.error}</p>

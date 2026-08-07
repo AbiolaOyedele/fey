@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Plus, Search, Loader2 } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -15,6 +15,7 @@ import TaskDetailDrawer from '@/components/tasks/TaskDetailDrawer'
 import NewTaskModal from '@/components/tasks/NewTaskModal'
 import WorkflowEditorModal from '@/components/tasks/WorkflowEditorModal'
 import InsightsPanel from '@/components/tasks/analytics/InsightsPanel'
+import { TaskBoardSkeleton, TaskRowsSkeleton, TaskTableSkeleton } from '@/components/ui/skeletons'
 import { SlidersHorizontal } from 'lucide-react'
 import type { Task } from '@/types/work-tasks'
 
@@ -199,7 +200,10 @@ export default function TasksPage() {
       {view === 'insights' ? (
         <InsightsPanel workspaceId={wsId} accent={settings.accent_color ?? '#ED64A6'} />
       ) : source.loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="animate-spin text-gray-300" /></div>
+        // Shaped to the view being opened, so the page doesn't reflow on swap.
+        view === 'board' ? <TaskBoardSkeleton />
+          : view === 'table' ? <TaskTableSkeleton />
+            : <TaskRowsSkeleton />
       ) : source.error ? (
         <div className="flex flex-col items-center py-20 text-center">
           <p className="text-sm text-gray-500 mb-3">{source.error}</p>

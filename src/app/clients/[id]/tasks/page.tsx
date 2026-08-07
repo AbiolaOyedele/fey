@@ -2,7 +2,8 @@
 
 import { use, useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Plus, Loader2 } from 'lucide-react'
+import { Plus } from 'lucide-react'
+import { TaskRowsSkeleton } from '@/components/ui/skeletons'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useTasks } from '@/hooks/useTasks'
 import { useWorkflows } from '@/hooks/useWorkflows'
@@ -72,7 +73,7 @@ export default function ClientTasksTab({ params }: { params: Promise<{ id: strin
       </div>
 
       {tasks.loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="animate-spin text-gray-300" /></div>
+        <TaskRowsSkeleton rows={5} />
       ) : tasks.error ? (
         <div className="flex flex-col items-center py-16 text-center">
           <p className="text-sm text-gray-500 mb-2">{tasks.error}</p>

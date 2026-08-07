@@ -4,6 +4,7 @@ import { useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Search, Loader2, FolderOpen, X, Archive, ArchiveRestore, ImagePlus } from 'lucide-react'
 import BrandLogo from '@/components/crm/BrandLogo'
+import { BrandCardsSkeleton } from '@/components/ui/skeletons'
 import { uploadToCloudinary, validateUploadFile } from '@/utils/cloudinary'
 import { useAllProjects } from '@/hooks/useProjects'
 import { useContacts } from '@/hooks/useCrm'
@@ -76,7 +77,7 @@ export default function ProjectsHubPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="animate-spin text-gray-300" /></div>
+        <BrandCardsSkeleton />
       ) : error ? (
         <div className="flex flex-col items-center py-20 text-center">
           <p className="text-sm text-gray-500">{error}</p>

@@ -1,6 +1,7 @@
 'use client'
 
-import { Trash2, ArchiveRestore, Loader2, FolderKanban, CheckSquare, Users } from 'lucide-react'
+import { Trash2, ArchiveRestore, FolderKanban, CheckSquare, Users } from 'lucide-react'
+import { StackedRowsSkeleton } from '@/components/ui/skeletons'
 import { useTrash, type TrashKind } from '@/hooks/useTrash'
 import { useConfirm } from '@/contexts/ConfirmContext'
 
@@ -39,7 +40,7 @@ export default function TrashPage() {
       <p className="text-xs2 text-gray-400 mb-6">Deleted projects, tasks and clients. Restore them, or remove them for good.</p>
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="animate-spin text-gray-300" /></div>
+        <StackedRowsSkeleton />
       ) : error ? (
         <p className="text-sm text-gray-500 py-10 text-center">{error}</p>
       ) : entries.length === 0 ? (

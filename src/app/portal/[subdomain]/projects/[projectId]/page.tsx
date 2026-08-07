@@ -10,6 +10,7 @@ import { useConfirm } from '@/contexts/ConfirmContext'
 import { uploadToCloudinary } from '@/utils/cloudinary'
 import { formatDate, formatTime } from '@/utils/formatDate'
 import AttachmentPreview from '@/components/crm/AttachmentPreview'
+import { MessageThreadSkeleton, TaskRowsSkeleton } from '@/components/ui/skeletons'
 import BrandLogo from '@/components/crm/BrandLogo'
 import { composerKeyDown } from '@/utils/composerKeys'
 import type { Project, ProjectMessage, ProjectFile } from '@/types/project'
@@ -195,7 +196,9 @@ export default function PortalProjectDetailPage({ params }: { params: Promise<{ 
 
       {/* Body */}
       {loading ? (
-        <div className="flex-1 flex items-center justify-center"><Loader2 className="animate-spin text-gray-300" /></div>
+        // Shaped to the pane that's open, so switching panes mid-load doesn't
+        // swap one placeholder for a differently-sized one.
+        pane === 'tasks' ? <div className="p-6"><TaskRowsSkeleton rows={5} /></div> : <MessageThreadSkeleton />
       ) : pane === 'chat' ? (
         <>
           <div className="flex-1 overflow-y-auto p-6 space-y-3">

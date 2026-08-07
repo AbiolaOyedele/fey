@@ -74,6 +74,46 @@ export default function PortalMembersTab({ params }: { params: Promise<{ id: str
     }
   }
 
+  const setAccess = async (portalUserId: string, revoked: boolean) => {
+    const h = await authHeaders()
+    if (!h) return
+    setError('')
+    try {
+      const res = await fetch('/api/v1/crm/portal-members', {
+        method: 'PATCH',
+        headers: h,
+        body: JSON.stringify({ contact_id: id, portal_user_id: portalUserId, revoked }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => null) as { error?: { message?: string } } | null
+        throw new Error(d?.error?.message ?? 'That change couldn’t be saved.')
+      }
+      const d = await res.json() as { member: PortalUser }
+      setMembers((prev) => prev.map((m) => (m.id === d.member.id ? d.member : m)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'That change couldn’t be saved.')
+    }
+  }
+
+  const remove = async (portalUserId: string) => {
+    const h = await authHeaders()
+    if (!h) return
+    setError('')
+    try {
+      const res = await fetch(
+        `/api/v1/crm/portal-members?contact_id=${encodeURIComponent(id)}&id=${encodeURIComponent(portalUserId)}`,
+        { method: 'DELETE', headers: h },
+      )
+      if (!res.ok) {
+        const d = await res.json().catch(() => null) as { error?: { message?: string } } | null
+        throw new Error(d?.error?.message ?? 'They couldn’t be removed.')
+      }
+      setMembers((prev) => prev.filter((m) => m.id !== portalUserId))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'They couldn’t be removed.')
+    }
+  }
+
   return (
     <div className="p-4 md:p-6 lg:p-8 page-enter">
       <div className="mb-6">
@@ -91,6 +131,8 @@ export default function PortalMembersTab({ params }: { params: Promise<{ id: str
           loading={loading}
           error={error}
           onChange={change}
+          onSetAccess={setAccess}
+          onRemove={remove}
         />
       </div>
     </div>

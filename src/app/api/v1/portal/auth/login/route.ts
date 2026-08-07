@@ -55,6 +55,17 @@ export async function POST(req: NextRequest) {
       return errorResponse('PORTAL_LOGIN_INVALID', 'Invalid email or password.', 401)
     }
 
+    // Told apart from a bad password on purpose. The credentials were right, so
+    // there is nothing left to enumerate, and "invalid email or password" would
+    // send someone round in circles resetting a password that works fine.
+    if (portalUser.revoked_at) {
+      return errorResponse(
+        'PORTAL_LOGIN_REVOKED',
+        'Your access to this portal has been turned off. Please contact your team.',
+        403,
+      )
+    }
+
     // Issue a custom JWT — 30-day expiry
     const token = await signPortalToken({
       portal_user_id: portalUser.id,

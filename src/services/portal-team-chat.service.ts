@@ -23,7 +23,8 @@ import type { PortalUser } from '@/types/crm'
 export interface PortalTeamMessage {
   id: string
   contact_id: string
-  sender_id: string
+  /** Null once that person has been deleted — the message itself is kept. */
+  sender_id: string | null
   sender_name: string
   body: string
   attachments: unknown[]
@@ -52,18 +53,24 @@ async function withNames(
   const nameById = new Map(
     ((people ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name]),
   )
-  return rows.map((r) => ({
-    id:          r.id as string,
-    contact_id:  r.contact_id as string,
-    sender_id:   r.sender_id as string,
-    sender_name: nameById.get(r.sender_id as string) ?? 'Teammate',
-    body:        (r.body as string) ?? '',
-    attachments: (r.attachments as unknown[]) ?? [],
-    reply_to_id: (r.reply_to_id as string | null) ?? null,
-    edited_at:   (r.edited_at as string | null) ?? null,
-    deleted_at:  (r.deleted_at as string | null) ?? null,
-    created_at:  r.created_at as string,
-  }))
+  return rows.map((r) => {
+    // Null sender means the author was deleted from the portal. The message
+    // stays — the rest of the room still needs the conversation to read
+    // straight — but it's attributed to nobody.
+    const senderId = (r.sender_id as string | null) ?? null
+    return {
+      id:          r.id as string,
+      contact_id:  r.contact_id as string,
+      sender_id:   senderId,
+      sender_name: senderId === null ? 'Removed member' : nameById.get(senderId) ?? 'Teammate',
+      body:        (r.body as string) ?? '',
+      attachments: (r.attachments as unknown[]) ?? [],
+      reply_to_id: (r.reply_to_id as string | null) ?? null,
+      edited_at:   (r.edited_at as string | null) ?? null,
+      deleted_at:  (r.deleted_at as string | null) ?? null,
+      created_at:  r.created_at as string,
+    }
+  })
 }
 
 export async function listMessages(

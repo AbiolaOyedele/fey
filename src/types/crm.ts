@@ -77,6 +77,14 @@ export interface PortalUser {
    * server, so the flag is computed there.
    */
   pending:        boolean
+  /**
+   * When their access was cut off, or null while they're active. A revoked
+   * member keeps their history and can be let back in; they simply can't reach
+   * anything in the meantime.
+   */
+  revoked_at:     string | null
+  /** Display label for who revoked them — an admin's name, or the agency. */
+  revoked_by:     string | null
 }
 
 /** What a client_admin supplies when adding someone from their own side. */
@@ -89,6 +97,11 @@ export interface InvitePortalMemberRequest {
 /** Only a client_admin may change their own side's roles. */
 export function canManagePortalMembers(role: PortalRole): boolean {
   return role === 'client_admin'
+}
+
+/** Whether this person's access is currently cut off. */
+export function isRevoked(user: Pick<PortalUser, 'revoked_at'>): boolean {
+  return user.revoked_at !== null
 }
 
 /** PATCH body for changing a member's role/capabilities (owner or client_admin). */

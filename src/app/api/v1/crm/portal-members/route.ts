@@ -43,11 +43,17 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** PATCH /api/v1/crm/portal-members — the owner may set any member's role. */
+/**
+ * PATCH /api/v1/crm/portal-members
+ *
+ * Two shapes, told apart by whether `revoked` is present:
+ *   { contact_id, portal_user_id, revoked }        — turn access off or back on
+ *   { contact_id, portal_user_id, role?, ... }     — set role and capabilities
+ */
 export async function PATCH(req: NextRequest) {
-  let body: { contact_id?: string } & Record<string, unknown>
+  let body: { contact_id?: string; portal_user_id?: string; revoked?: unknown } & Record<string, unknown>
   try {
-    body = (await req.json()) as { contact_id?: string } & Record<string, unknown>
+    body = (await req.json()) as typeof body
   } catch {
     return NextResponse.json(
       { error: { code: 'CRM_MEMBERS_INVALID', message: 'That request isn’t valid.' } },
@@ -64,8 +70,27 @@ export async function PATCH(req: NextRequest) {
   try {
     const { response, ownerId } = await requireOwnedContact(req, body.contact_id)
     if (response) return response
+    const db = createServiceClient()
+
+    if (typeof body.revoked === 'boolean') {
+      if (!body.portal_user_id) {
+        return NextResponse.json(
+          { error: { code: 'CRM_MEMBERS_INVALID', message: 'No member was specified.' } },
+          { status: 400 },
+        )
+      }
+      const member = await members.setMemberAccess(
+        db,
+        { contactId: body.contact_id },
+        { kind: 'owner' },
+        body.portal_user_id as string,
+        body.revoked,
+      )
+      return NextResponse.json({ member })
+    }
+
     const member = await members.setMemberRole(
-      createServiceClient(),
+      db,
       { contactId: body.contact_id, ownerId: ownerId! },
       { kind: 'owner' },
       body,
@@ -73,5 +98,37 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ member })
   } catch (err) {
     return handleError(err, 'CRM_PORTAL_MEMBERS_UPDATE_FAILED')
+  }
+}
+
+/**
+ * DELETE /api/v1/crm/portal-members?contact_id=...&id=...
+ *
+ * Permanent. The owner is not held to the last-admin rule a client is — they
+ * can always put someone back from here, so there is no way for them to lock
+ * anyone out of a portal they own.
+ */
+export async function DELETE(req: NextRequest) {
+  const contactId = req.nextUrl.searchParams.get('contact_id')
+  const id = req.nextUrl.searchParams.get('id')
+  if (!contactId || !id) {
+    return NextResponse.json(
+      { error: { code: 'CRM_MEMBERS_INVALID', message: 'A client and a member are both required.' } },
+      { status: 400 },
+    )
+  }
+
+  try {
+    const { response } = await requireOwnedContact(req, contactId)
+    if (response) return response
+    await members.removeMember(
+      createServiceClient(),
+      { contactId },
+      { kind: 'owner' },
+      id,
+    )
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    return handleError(err, 'CRM_PORTAL_MEMBERS_REMOVE_FAILED')
   }
 }

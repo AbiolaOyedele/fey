@@ -22,7 +22,7 @@ import { PORTAL_ROLES, canManagePortalMembers, type PortalRole, type PortalUser 
 
 // password_hash is selected only so `pending` can be derived — mapPortalUser
 // strips it before the row leaves this layer.
-const SELECT = 'id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at, password_hash'
+const SELECT = 'id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at, revoked_at, revoked_by, password_hash'
 
 export async function listMembers(db: SupabaseClient, contactId: string): Promise<PortalUser[]> {
   const { data, error } = await db
@@ -154,27 +154,118 @@ async function sendInviteEmail(args: InviteEmailArgs): Promise<void> {
   })
 }
 
-/** Removes someone's access. A client_admin can't remove themselves. */
-export async function removeMember(
+/**
+ * Resolves the target and the caller, and proves the caller is allowed to
+ * administer them. Shared by every write below so the fence can't be forgotten
+ * on one path and remembered on another.
+ *
+ * `verb` only shapes the error message — the rule is identical either way.
+ */
+async function resolveForAdmin(
   db: SupabaseClient,
   scope: { contactId: string },
   actor: Actor,
   portalUserId: string,
-): Promise<void> {
+  verb: string,
+): Promise<{ members: PortalUser[]; target: PortalUser; me: PortalUser | null }> {
   const members = await listMembers(db, scope.contactId)
   const target = members.find((m) => m.id === portalUserId)
   if (!target) {
     throw new AppError(404, 'That member could not be found.', 'PORTAL_MEMBER_NOT_FOUND')
   }
 
+  let me: PortalUser | null = null
   if (actor.kind === 'portal_user') {
-    const me = members.find((m) => m.id === actor.portalUserId)
+    me = members.find((m) => m.id === actor.portalUserId) ?? null
     if (!me || !canManagePortalMembers(me.role)) {
-      throw new AppError(403, 'Only a portal admin can remove people.', 'PORTAL_MEMBER_FORBIDDEN')
+      throw new AppError(403, `Only a portal admin can ${verb} people.`, 'PORTAL_MEMBER_FORBIDDEN')
     }
     if (me.id === target.id) {
-      throw new AppError(409, 'You can’t remove your own access.', 'PORTAL_MEMBER_SELF_REMOVE')
+      throw new AppError(409, 'You can’t change your own access.', 'PORTAL_MEMBER_SELF_REMOVE')
     }
+  }
+  return { members, target, me }
+}
+
+/**
+ * Would this leave the client with nobody who can manage their own access?
+ *
+ * Only asked of client-side callers. The agency can always dig a client out
+ * from the CRM, so it is not blocked from doing this — but a client removing
+ * their last admin would have no way back except asking the agency.
+ */
+function assertNotLastAdmin(members: PortalUser[], target: PortalUser): void {
+  if (target.role !== 'client_admin') return
+  const otherActiveAdmins = members.filter(
+    (m) => m.id !== target.id && m.role === 'client_admin' && !m.revoked_at,
+  )
+  if (otherActiveAdmins.length === 0) {
+    throw new AppError(
+      409,
+      'Make someone else an admin first — this is the only one left.',
+      'PORTAL_MEMBER_LAST_ADMIN',
+    )
+  }
+}
+
+/**
+ * Turns access off, or back on.
+ *
+ * The reversible half of removal, and the one that should be reached for first:
+ * the person stops being able to reach anything the moment this lands, but
+ * their messages, uploads and comments stay attached to a real name and they
+ * can be let back in without being re-invited.
+ *
+ * Enforcement is not here — it's in `requirePortalAuth`, which re-reads this
+ * column on every portal request. Setting it is all that's needed.
+ */
+export async function setMemberAccess(
+  db: SupabaseClient,
+  scope: { contactId: string },
+  actor: Actor,
+  portalUserId: string,
+  revoked: boolean,
+): Promise<PortalUser> {
+  const { members, target, me } = await resolveForAdmin(
+    db, scope, actor, portalUserId, revoked ? 'revoke' : 'restore',
+  )
+
+  if (revoked && actor.kind === 'portal_user') {
+    assertNotLastAdmin(members, target)
+  }
+
+  const patch = revoked
+    ? { revoked_at: new Date().toISOString(), revoked_by: me ? me.name : 'the agency' }
+    : { revoked_at: null, revoked_by: null }
+
+  const { data, error } = await db
+    .from('portal_users')
+    .update(patch)
+    .eq('id', portalUserId)
+    .eq('contact_id', scope.contactId)
+    .select(SELECT)
+    .single()
+  if (error) throw error
+  return mapPortalUser(data as Record<string, unknown>)
+}
+
+/**
+ * Deletes the row outright. A client_admin can't delete themselves.
+ *
+ * Unlike `setMemberAccess` this can't be undone: the person is gone, and their
+ * team-chat messages survive only as "Removed member" (the sender FK is
+ * ON DELETE SET NULL for exactly that reason). Prefer revoking.
+ */
+export async function removeMember(
+  db: SupabaseClient,
+  scope: { contactId: string },
+  actor: Actor,
+  portalUserId: string,
+): Promise<void> {
+  const { members, target } = await resolveForAdmin(db, scope, actor, portalUserId, 'remove')
+
+  if (actor.kind === 'portal_user') {
+    assertNotLastAdmin(members, target)
   }
 
   const { error } = await db
@@ -243,7 +334,9 @@ export async function setMemberRole(
     // Losing the last admin would leave the client unable to manage their own
     // access at all. The agency can still do it from the CRM.
     const isSelfDemotion = me.id === target.id && patch.role !== undefined && patch.role !== 'client_admin'
-    if (isSelfDemotion && members.filter((m) => m.role === 'client_admin').length <= 1) {
+    // Revoked admins don't count — they can't act, so leaving only those behind
+    // is the same as leaving nobody.
+    if (isSelfDemotion && members.filter((m) => m.role === 'client_admin' && !m.revoked_at).length <= 1) {
       throw new AppError(
         409,
         'Make someone else an admin before changing your own role.',
@@ -312,6 +405,13 @@ export async function requireCapability(
     throw new AppError(403, 'Portal access not found.', 'PORTAL_USER_NOT_FOUND')
   }
   const user = mapPortalUser(data as Record<string, unknown>)
+
+  // requirePortalAuth already turns revoked callers away, so reaching here
+  // means something bypassed it. Cheap to re-check, and this is the last gate
+  // before a write.
+  if (user.revoked_at) {
+    throw new AppError(403, 'Your access to this portal has been turned off.', 'PORTAL_ACCESS_REVOKED')
+  }
 
   const allowed =
     capability === 'sign' ? canSign(user)

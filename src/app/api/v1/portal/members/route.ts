@@ -101,14 +101,20 @@ export async function DELETE(req: NextRequest) {
   }
 }
 
-/** PATCH /api/v1/portal/members — client_admin only, enforced in the service. */
+/**
+ * PATCH /api/v1/portal/members — client_admin only, enforced in the service.
+ *
+ * Two shapes, told apart by whether `revoked` is present:
+ *   { portal_user_id, revoked }        — turn a colleague's access off or on
+ *   { portal_user_id, role?, ... }     — set role and capabilities
+ */
 export async function PATCH(req: NextRequest) {
   const { payload, response } = await requirePortalAuth(req.headers.get('authorization'))
   if (response) return response
 
-  let body: unknown
+  let body: { portal_user_id?: string; revoked?: unknown } & Record<string, unknown>
   try {
-    body = await req.json()
+    body = (await req.json()) as typeof body
   } catch {
     return NextResponse.json(
       { error: { code: 'PORTAL_MEMBER_INVALID', message: 'That request isn’t valid.' } },
@@ -118,6 +124,23 @@ export async function PATCH(req: NextRequest) {
 
   const db = createServiceClient()
   try {
+    if (typeof body.revoked === 'boolean') {
+      if (!body.portal_user_id) {
+        return NextResponse.json(
+          { error: { code: 'PORTAL_MEMBER_INVALID', message: 'No member was specified.' } },
+          { status: 400 },
+        )
+      }
+      const member = await members.setMemberAccess(
+        db,
+        { contactId: payload!.contact_id },
+        { kind: 'portal_user', portalUserId: payload!.portal_user_id },
+        body.portal_user_id,
+        body.revoked,
+      )
+      return NextResponse.json({ member })
+    }
+
     const member = await members.setMemberRole(
       db,
       { contactId: payload!.contact_id, ownerId: payload!.owner_id },

@@ -79,7 +79,13 @@ export function summariseReactions(
 
 /** A message, in the shape these rules need. */
 export interface DeletableMessage {
-  sender_id: string
+  /**
+   * Null when the sender has been deleted from the portal. Every rule below
+   * compares this against the viewer's id, and null matches nobody — so an
+   * orphaned message is readable but can no longer be edited or unsent by its
+   * author, which is the behaviour we want.
+   */
+  sender_id: string | null
   created_at: string
   deleted_at?: string | null
 }

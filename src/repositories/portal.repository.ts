@@ -59,7 +59,7 @@ export async function getOwnerIdByWorkspaceSlug(
 
 /** Columns that make up a PortalUser, plus the hash `pending` is derived from. */
 const PORTAL_USER_COLS =
-  'id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at, password_hash'
+  'id, contact_id, owner_id, workspace_slug, name, email, avatar_url, role, can_sign, can_pay, created_at, revoked_at, revoked_by, password_hash'
 
 /**
  * Maps a portal_users row to the client-facing shape.
@@ -69,6 +69,27 @@ const PORTAL_USER_COLS =
 export function mapPortalUser(row: Record<string, unknown>): PortalUser {
   const { password_hash, ...rest } = row as Record<string, unknown> & { password_hash?: string | null }
   return { ...(rest as Omit<PortalUser, 'pending'>), pending: !password_hash }
+}
+
+/**
+ * The two facts every authenticated portal request needs about its caller:
+ * do they still exist, and are they still allowed in.
+ *
+ * Deliberately narrow — this runs on every portal request, so it reads two
+ * columns off the primary key and nothing more.
+ */
+export async function getPortalAccessState(
+  db: SupabaseClient,
+  portalUserId: string,
+): Promise<{ exists: boolean; revokedAt: string | null }> {
+  const { data, error } = await db
+    .from('portal_users')
+    .select('id, revoked_at')
+    .eq('id', portalUserId)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return { exists: false, revokedAt: null }
+  return { exists: true, revokedAt: (data as { revoked_at: string | null }).revoked_at }
 }
 
 export async function getPortalUser(

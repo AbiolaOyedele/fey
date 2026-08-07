@@ -102,6 +102,16 @@ export async function POST(req: NextRequest) {
         409,
       )
     }
+    // Revoked and never signed in: the row has no password, so the check above
+    // lets it through and signup would hand back the access that was just taken
+    // away. Re-inviting them is the way back in, not the invite code.
+    if (existing && existing.revoked_at) {
+      return errorResponse(
+        'PORTAL_SIGNUP_REVOKED',
+        'Your access to this portal has been turned off. Please contact your team.',
+        403,
+      )
+    }
     if (existing && existing.contact_id !== contact.id) {
       // The invitation belongs to a different client in the same workspace —
       // claiming it with this invite code would move them between clients.

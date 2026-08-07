@@ -93,6 +93,27 @@ export default function PortalMembersPage({ params }: { params: Promise<{ subdom
     }
   }
 
+  const setAccess = async (portalUserId: string, revoked: boolean) => {
+    const h = headers()
+    if (!h) return
+    setError('')
+    try {
+      const res = await fetch('/api/v1/portal/members', {
+        method: 'PATCH',
+        headers: h,
+        body: JSON.stringify({ portal_user_id: portalUserId, revoked }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => null) as { error?: { message?: string } } | null
+        throw new Error(d?.error?.message ?? 'That change couldn’t be saved.')
+      }
+      const d = await res.json() as { member: PortalUser }
+      setMembers((prev) => prev.map((m) => (m.id === d.member.id ? d.member : m)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'That change couldn’t be saved.')
+    }
+  }
+
   const removeMember = async (portalUserId: string) => {
     const h = headers()
     if (!h) return
@@ -242,6 +263,7 @@ export default function PortalMembersPage({ params }: { params: Promise<{ subdom
           loading={loading}
           error={error}
           onChange={change}
+          onSetAccess={setAccess}
           onRemove={removeMember}
         />
       </div>

@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react'
 import { Loader2, X, BarChart3 } from 'lucide-react'
 import { useTaskAnalytics } from '@/hooks/useTaskAnalytics'
 import { Skeleton } from '@/components/ui/skeleton'
-import { accentAlpha } from '@/utils/taskInsights'
 import StatTiles from './StatTiles'
 import MomentumChart from './MomentumChart'
 import Breakdown from './Breakdown'
@@ -74,7 +73,7 @@ export default function InsightsPanel({ workspaceId, accent }: InsightsPanelProp
           <button
             onClick={() => setFilter(null)}
             className="flex items-center gap-1.5 min-h-9 pl-3 pr-2 rounded-full text-xs2 font-medium max-w-full"
-            style={{ backgroundColor: accentAlpha(accent, 0.1), color: 'var(--accent-text, #ED64A6)' }}
+            style={{ backgroundColor: 'var(--accent-soft)', color: 'var(--accent-text, #ED64A6)' }}
           >
             <span className="truncate">{FILTER_NOUN[filter.kind]} · {filter.label}</span>
             <X size={14} className="flex-shrink-0" />

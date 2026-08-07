@@ -100,7 +100,7 @@ export default function Breakdown({
       <div className="flex items-center gap-3 text-3xs text-gray-400 mb-2">
         <Key color="var(--accent, #ED64A6)" label="Completed" />
         <Key color="#E5E7EB" label="Open" />
-        <Key color="#FC8181" label="Overdue" />
+        <Key color="var(--danger)" label="Overdue" />
       </div>
 
       {rows.length === 0 ? (
@@ -176,7 +176,7 @@ function BreakdownRow({ row, kind, scale, filter, onFilter }: RowProps) {
       <div className="mt-1.5 h-2 rounded-full bg-gray-50 overflow-hidden flex">
         <span className="h-full" style={{ width: width(row.completed), backgroundColor: 'var(--accent, #ED64A6)' }} />
         <span className="h-full bg-gray-200" style={{ width: width(steady) }} />
-        <span className="h-full" style={{ width: width(row.overdue), backgroundColor: '#FC8181' }} />
+        <span className="h-full" style={{ width: width(row.overdue), backgroundColor: 'var(--danger)' }} />
       </div>
 
       <p className="text-3xs text-gray-400 mt-1 tabular-nums">

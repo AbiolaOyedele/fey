@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { CURRENCY_SYMBOLS } from '@/lib/constants'
 import { fontFaceSrc } from '@/utils/fontHelpers'
-import { accessibleTextColor, onAccentTextColor } from '@/utils/color'
+import { accessibleTextColor, hexToRgb, onAccentTextColor } from '@/utils/color'
 import type { Settings, Toast, ToastOptions, TrashItem, Client, RestoreResult } from '@/types'
 
 interface SettingsContextValue {
@@ -308,6 +308,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty('--accent-text', accessibleTextColor(settings.accent_color))
     // What reads on top of a filled accent surface.
     root.style.setProperty('--accent-on', onAccentTextColor(settings.accent_color))
+    // The tinted accent background (pills, chips, selected rows). Derived here
+    // so a brand change carries it too — components must use var(--accent-soft)
+    // instead of hand-mixing `${accent}18`, which silently stops following the
+    // setting the moment someone hardcodes the hex.
+    const rgb = hexToRgb(settings.accent_color)
+    root.style.setProperty(
+      '--accent-soft',
+      rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)` : 'rgba(237, 100, 166, 0.1)',
+    )
   }, [settings.accent_color])
 
   useEffect(() => {

@@ -8,6 +8,9 @@ export type NotificationType =
   // reopened, reassigned. Deletes are separate so they can read differently.
   | 'task_updated'
   | 'task_deleted'
+  // Review tab: a new version of the deliverable, and a ruling on one.
+  | 'task_review_uploaded'
+  | 'task_review_decided'
   | 'project_message'
   | 'project_file'
   | 'invoice_paid'

@@ -281,8 +281,16 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
                 <select
                   value={task.done ? COMPLETED_STAGE : (task.stage_id ?? '')}
                   onChange={(e) => {
-                    if (e.target.value === COMPLETED_STAGE) { if (!task.done) props.onToggleDone(task.id); return }
-                    void onPatch(task.id, { stage_id: e.target.value || null })
+                    const next = e.target.value
+                    if (next === COMPLETED_STAGE) { if (!task.done) props.onToggleDone(task.id); return }
+                    // Moving a completed task back to a real stage has to clear
+                    // `done` too. Without it the row keeps its completed flag,
+                    // the select re-reads as "Completed", and the change looks
+                    // like it silently failed.
+                    void onPatch(task.id, {
+                      stage_id: next || null,
+                      ...(task.done ? { done: false } : {}),
+                    })
                   }}
                   className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
                 >

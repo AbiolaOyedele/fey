@@ -10,7 +10,7 @@ import { uploadToCloudinary, getFileType, validateUploadFile, type FileType } fr
 import { Skeleton } from '@/components/ui/skeleton'
 import { relativeTime } from '@/utils/relativeTime'
 import { MAX_REVIEW_VERSIONS, REVIEW_STATUS_META } from '@/types/task-review'
-import type { ReviewDecision, ReviewVersion } from '@/types/task-review'
+import type { ReviewDecision, ReviewFile, ReviewFileInput, ReviewVersion } from '@/types/task-review'
 
 interface TaskReviewPanelProps {
   taskId: string
@@ -44,33 +44,49 @@ function formatSize(bytes: number | null): string {
  */
 export default function TaskReviewPanel({ taskId, subdomain, readOnly = false }: TaskReviewPanelProps) {
   const review = useTaskReview({ taskId, subdomain })
-  const [uploading, setUploading] = useState<{ name: string; pct: number } | null>(null)
+  const [uploading, setUploading] = useState<
+    { name: string; pct: number; index: number; total: number } | null
+  >(null)
   const [failed, setFailed] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const handleFile = useCallback(async (list: FileList | null) => {
-    const file = list?.[0]
-    if (!file) return
+  /**
+   * Every file picked becomes ONE version, not one version each — they're
+   * parts of a single deliverable, and treating them as separate revisions
+   * would burn through the three-version cap on a single multi-select.
+   */
+  const handleFiles = useCallback(async (list: FileList | null) => {
+    const picked = list ? Array.from(list) : []
+    if (picked.length === 0) return
     setFailed(null)
 
-    const invalid = validateUploadFile(file)
-    if (invalid) { setFailed(invalid); return }
+    // Validate everything up front: a rejected file halfway through would leave
+    // orphaned uploads with no version to attach them to.
+    for (const f of picked) {
+      const invalid = validateUploadFile(f)
+      if (invalid) { setFailed(invalid); return }
+    }
 
-    setUploading({ name: file.name, pct: 0 })
-    const { promise } = uploadToCloudinary(
-      file,
-      `work-tasks/${taskId}/review`,
-      (pct) => setUploading((u) => (u ? { ...u, pct } : u)),
-    )
+    const uploaded: ReviewFileInput[] = []
     try {
-      const { url, publicId, size } = await promise
-      await review.addVersion({
-        file_name: file.name,
-        file_url: url,
-        public_id: publicId,
-        file_size: size || file.size,
-        file_type: getFileType(file.name),
-      })
+      for (let i = 0; i < picked.length; i++) {
+        const file = picked[i]
+        setUploading({ name: file.name, pct: 0, index: i + 1, total: picked.length })
+        const { promise } = uploadToCloudinary(
+          file,
+          `work-tasks/${taskId}/review`,
+          (pct) => setUploading((u) => (u ? { ...u, pct } : u)),
+        )
+        const { url, publicId, size } = await promise
+        uploaded.push({
+          file_name: file.name,
+          file_url: url,
+          public_id: publicId,
+          file_size: size || file.size,
+          file_type: getFileType(file.name),
+        })
+      }
+      await review.addVersion({ files: uploaded })
     } catch (e) {
       setFailed(e instanceof Error ? e.message : 'That upload didn’t finish. Try again.')
     } finally {
@@ -89,8 +105,9 @@ export default function TaskReviewPanel({ taskId, subdomain, readOnly = false }:
           <input
             ref={inputRef}
             type="file"
+            multiple
             className="hidden"
-            onChange={(e) => void handleFile(e.target.files)}
+            onChange={(e) => void handleFiles(e.target.files)}
           />
           <button
             onClick={() => inputRef.current?.click()}
@@ -98,11 +115,18 @@ export default function TaskReviewPanel({ taskId, subdomain, readOnly = false }:
             className="w-full min-h-11 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-xs2 font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-60 transition-colors"
           >
             {uploading
-              ? <><Loader2 size={15} className="animate-spin" /> Uploading {uploading.name} · {uploading.pct}%</>
+              ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  {uploading.total > 1 && `(${uploading.index}/${uploading.total}) `}
+                  <span className="truncate max-w-[14rem]">{uploading.name}</span> · {uploading.pct}%
+                </>
+              )
               : <><Upload size={15} /> {current ? 'Upload a new version' : 'Upload the finished work'}</>}
           </button>
           <p className="text-3xs text-gray-400 mt-1.5 text-center">
-            A new upload replaces the current version. The last {MAX_REVIEW_VERSIONS} are kept.
+            Pick several files to keep them together as one version. A new upload
+            replaces the current one; the last {MAX_REVIEW_VERSIONS} are kept.
           </p>
           {review.lastPruned.length > 0 && (
             <p className="text-3xs text-gray-400 mt-1 text-center">
@@ -173,7 +197,6 @@ function VersionCard({ version, isCurrent, readOnly, onComment }: VersionCardPro
   const [err, setErr] = useState<string | null>(null)
 
   const status = REVIEW_STATUS_META[version.status]
-  const glyph = fileGlyph((version.file_type as FileType) ?? getFileType(version.file_name))
 
   const send = useCallback(async (decision: ReviewDecision | null) => {
     const body = note.trim()
@@ -198,20 +221,18 @@ function VersionCard({ version, isCurrent, readOnly, onComment }: VersionCardPro
     <div className={`rounded-xl border ${isCurrent ? 'border-gray-200' : 'border-gray-100 bg-gray-50/40'}`}>
       {/* Version header */}
       <div className="flex items-center gap-3 p-3">
-        <div className="w-9 h-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0">
-          {glyph}
-        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs2 font-medium text-gray-800 truncate">{version.file_name}</span>
-            <span className="text-3xs text-gray-400 flex-shrink-0">v{version.version}</span>
+            <span className="text-xs2 font-medium text-gray-800">Version {version.version}</span>
+            <span className="text-3xs text-gray-400 flex-shrink-0">
+              {version.files.length} file{version.files.length === 1 ? '' : 's'}
+            </span>
             {!isCurrent && <span className="text-3xs text-gray-400 flex-shrink-0">· replaced</span>}
           </div>
           <p className="text-3xs text-gray-400 truncate">
             {version.uploader_name ?? 'Someone'}
             {version.uploader_type === 'client' ? ' (client)' : ''}
             {' · '}{relativeTime(version.created_at)}
-            {formatSize(version.file_size) && ` · ${formatSize(version.file_size)}`}
           </p>
         </div>
         <span
@@ -220,15 +241,11 @@ function VersionCard({ version, isCurrent, readOnly, onComment }: VersionCardPro
         >
           {status.label}
         </span>
-        <a
-          href={version.file_url}
-          target="_blank"
-          rel="noreferrer"
-          title="Download this version"
-          className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 flex-shrink-0"
-        >
-          <Download size={15} />
-        </a>
+      </div>
+
+      {/* Files in this version */}
+      <div className="px-3 pb-1 space-y-2">
+        {version.files.map((f) => <ReviewFileRow key={f.id} file={f} />)}
       </div>
 
       {/* Notes */}
@@ -280,19 +297,21 @@ function VersionCard({ version, isCurrent, readOnly, onComment }: VersionCardPro
                 />
                 {err && <p className="text-3xs text-red-500">{err}</p>}
                 <div className="flex flex-wrap items-center gap-2">
+                  {/* Approve is the primary action here, so it wears the brand
+                      accent like every other primary in the app. Request
+                      changes is the secondary and stays quiet. */}
                   <button
                     onClick={() => void send('approved')}
                     disabled={busy}
-                    className="min-h-9 flex items-center gap-1.5 px-3 rounded-lg text-3xs font-semibold text-white disabled:opacity-60"
-                    style={{ backgroundColor: '#059669' }}
+                    className="min-h-9 flex items-center gap-1.5 px-3 rounded-lg text-3xs font-semibold disabled:opacity-60"
+                    style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-on, #fff)' }}
                   >
                     <Check size={13} /> Approve
                   </button>
                   <button
                     onClick={() => void send('changes_requested')}
                     disabled={busy}
-                    className="min-h-9 flex items-center gap-1.5 px-3 rounded-lg text-3xs font-semibold disabled:opacity-60"
-                    style={{ backgroundColor: '#FFFAF0', color: '#C05621' }}
+                    className="min-h-9 flex items-center gap-1.5 px-3 rounded-lg text-3xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-60"
                   >
                     <RotateCcw size={13} /> Request changes
                   </button>
@@ -310,5 +329,79 @@ function VersionCard({ version, isCurrent, readOnly, onComment }: VersionCardPro
         )}
       </div>
     </div>
+  )
+}
+
+// ── One file inside a version ─────────────────────────────────────────────────
+
+/**
+ * Video and images are shown inline — a deliverable you have to download before
+ * you can judge it isn't really reviewable. Everything else gets a row with a
+ * download link.
+ */
+function ReviewFileRow({ file }: { file: ReviewFile }) {
+  const type = (file.file_type as FileType) ?? getFileType(file.file_name)
+
+  if (type === 'video') {
+    return (
+      <div className="rounded-lg overflow-hidden border border-gray-100 bg-black/5">
+        <video
+          src={file.file_url}
+          controls
+          preload="metadata"
+          className="w-full max-h-64 bg-black"
+        />
+        <div className="flex items-center gap-2 px-2.5 py-2 bg-white">
+          <span className="text-3xs text-gray-600 truncate flex-1 min-w-0">{file.file_name}</span>
+          {formatSize(file.file_size) && (
+            <span className="text-4xs text-gray-400 flex-shrink-0">{formatSize(file.file_size)}</span>
+          )}
+          <DownloadLink url={file.file_url} />
+        </div>
+      </div>
+    )
+  }
+
+  if (type === 'image') {
+    return (
+      <div className="rounded-lg overflow-hidden border border-gray-100">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={file.file_url} alt={file.file_name} className="w-full max-h-64 object-contain bg-gray-50" loading="lazy" />
+        <div className="flex items-center gap-2 px-2.5 py-2 bg-white">
+          <span className="text-3xs text-gray-600 truncate flex-1 min-w-0">{file.file_name}</span>
+          {formatSize(file.file_size) && (
+            <span className="text-4xs text-gray-400 flex-shrink-0">{formatSize(file.file_size)}</span>
+          )}
+          <DownloadLink url={file.file_url} />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2.5 rounded-lg border border-gray-100 px-2.5 py-2">
+      <div className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0">
+        {fileGlyph(type, 15)}
+      </div>
+      <span className="text-3xs text-gray-600 truncate flex-1 min-w-0">{file.file_name}</span>
+      {formatSize(file.file_size) && (
+        <span className="text-4xs text-gray-400 flex-shrink-0">{formatSize(file.file_size)}</span>
+      )}
+      <DownloadLink url={file.file_url} />
+    </div>
+  )
+}
+
+function DownloadLink({ url }: { url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      title="Download"
+      className="w-9 h-9 -my-1 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 flex-shrink-0"
+    >
+      <Download size={14} />
+    </a>
   )
 }

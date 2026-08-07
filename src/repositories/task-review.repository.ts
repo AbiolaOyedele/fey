@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
-  ReviewAuthorType, ReviewComment, ReviewDecision, ReviewStatus, ReviewVersion,
+  ReviewAuthorType, ReviewComment, ReviewDecision, ReviewFile, ReviewStatus, ReviewVersion,
 } from '@/types/task-review'
 
 /**
@@ -12,8 +12,11 @@ import type {
  */
 
 const SELECT = `
-  id, task_id, version, file_name, file_url, public_id, file_size, file_type,
+  id, task_id, version,
   uploaded_by, uploaded_by_portal_user, uploader_name, status, superseded_at, created_at,
+  work_task_review_files (
+    id, file_name, file_url, public_id, file_size, file_type, sort_order
+  ),
   work_task_review_comments (
     id, review_id, author_name, author_type, body, decision, created_at
   )
@@ -23,17 +26,13 @@ interface RawReview {
   id: string
   task_id: string
   version: number
-  file_name: string
-  file_url: string
-  public_id: string
-  file_size: number | null
-  file_type: string | null
   uploaded_by: string | null
   uploaded_by_portal_user: string | null
   uploader_name: string | null
   status: ReviewStatus
   superseded_at: string | null
   created_at: string
+  work_task_review_files: ReviewFile[] | null
   work_task_review_comments: ReviewComment[] | null
 }
 
@@ -42,16 +41,12 @@ function mapReview(row: RawReview): ReviewVersion {
     id: row.id,
     task_id: row.task_id,
     version: row.version,
-    file_name: row.file_name,
-    file_url: row.file_url,
-    public_id: row.public_id,
-    file_size: row.file_size,
-    file_type: row.file_type,
     uploader_name: row.uploader_name,
     uploader_type: row.uploaded_by_portal_user ? 'client' : 'team',
     status: row.status,
     superseded_at: row.superseded_at,
     created_at: row.created_at,
+    files: (row.work_task_review_files ?? []).slice().sort((a, b) => a.sort_order - b.sort_order),
     comments: (row.work_task_review_comments ?? [])
       .slice()
       .sort((a, b) => a.created_at.localeCompare(b.created_at)),
@@ -88,17 +83,40 @@ export async function highestVersion(db: SupabaseClient, taskId: string): Promis
 }
 
 /** Version rows oldest-first — used to work out what to prune. */
-export async function listVersionsAsc(
-  db: SupabaseClient,
-  taskId: string,
-): Promise<Array<{ id: string; version: number; public_id: string; file_url: string }>> {
+export interface PrunableVersion {
+  id: string
+  version: number
+  /** Every binary this version owns, so pruning can clean all of them up. */
+  work_task_review_files: Array<{ public_id: string; file_url: string }> | null
+}
+
+export async function listVersionsAsc(db: SupabaseClient, taskId: string): Promise<PrunableVersion[]> {
   const { data, error } = await db
     .from('work_task_reviews')
-    .select('id, version, public_id, file_url')
+    .select('id, version, work_task_review_files ( public_id, file_url )')
     .eq('task_id', taskId)
     .order('version', { ascending: true })
   if (error) throw error
-  return (data ?? []) as Array<{ id: string; version: number; public_id: string; file_url: string }>
+  return (data ?? []) as PrunableVersion[]
+}
+
+/** Files belonging to a version, written in one go after the version row. */
+export async function insertReviewFiles(
+  db: SupabaseClient,
+  rows: Array<{
+    review_id: string
+    task_id: string
+    file_name: string
+    file_url: string
+    public_id: string
+    file_size: number | null
+    file_type: string | null
+    sort_order: number
+  }>,
+): Promise<void> {
+  if (rows.length === 0) return
+  const { error } = await db.from('work_task_review_files').insert(rows)
+  if (error) throw error
 }
 
 export async function insertReview(
@@ -107,11 +125,6 @@ export async function insertReview(
     task_id: string
     owner_id: string
     version: number
-    file_name: string
-    file_url: string
-    public_id: string
-    file_size: number | null
-    file_type: string | null
     uploaded_by: string | null
     uploaded_by_portal_user: string | null
     uploader_name: string | null

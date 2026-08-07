@@ -23,15 +23,21 @@ export interface ReviewComment {
   created_at: string
 }
 
-export interface ReviewVersion {
+/** One file inside a version. A version may carry several. */
+export interface ReviewFile {
   id: string
-  task_id: string
-  version: number
   file_name: string
   file_url: string
   public_id: string
   file_size: number | null
   file_type: string | null
+  sort_order: number
+}
+
+export interface ReviewVersion {
+  id: string
+  task_id: string
+  version: number
   uploader_name: string | null
   uploader_type: ReviewAuthorType
   status: ReviewStatus
@@ -39,12 +45,14 @@ export interface ReviewVersion {
   superseded_at: string | null
   created_at: string
   // Joined:
+  files: ReviewFile[]
   comments: ReviewComment[]
 }
 
 // ── API payloads ────────────────────────────────────────────────────────────
 
-export interface CreateReviewVersionPayload {
+/** One uploaded file, as sent when recording a version. */
+export interface ReviewFileInput {
   file_name: string
   file_url: string
   public_id: string
@@ -52,13 +60,24 @@ export interface CreateReviewVersionPayload {
   file_type?: string | null
 }
 
+/** A version is created from one or more files in a single request. */
+export interface CreateReviewVersionPayload {
+  files: ReviewFileInput[]
+}
+
 export interface CreateReviewCommentPayload {
   body: string
   decision?: ReviewDecision | null
 }
 
+/**
+ * Status pairings point at the app's tokens rather than hexes, so changing how
+ * a status reads is a one-line edit in globals.css. These stay distinct from
+ * the brand accent on purpose — "approved" and "changes requested" have to be
+ * tellable apart whatever colour the workspace picks.
+ */
 export const REVIEW_STATUS_META: Record<ReviewStatus, { label: string; bg: string; fg: string }> = {
-  pending:           { label: 'Awaiting review',   bg: '#F3F4F6', fg: '#6B7280' },
-  approved:          { label: 'Approved',          bg: '#ECFDF5', fg: '#059669' },
-  changes_requested: { label: 'Changes requested', bg: '#FFFAF0', fg: '#C05621' },
+  pending:           { label: 'Awaiting review',   bg: 'var(--neutral-soft)', fg: 'var(--neutral)' },
+  approved:          { label: 'Approved',          bg: 'var(--success-soft)', fg: 'var(--success)' },
+  changes_requested: { label: 'Changes requested', bg: 'var(--pending-soft)', fg: 'var(--pending)' },
 }

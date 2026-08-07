@@ -52,8 +52,33 @@
 :root {
   --body-font: 'NoirPro', sans-serif;
   --heading-font: 'NoirPro', sans-serif;
-  /* Fey brand accent — overrides the shadcn neutral default */
+  /* Fey brand accent — overrides the shadcn neutral default.
+     SettingsContext overwrites --accent and its derivatives at runtime from the
+     workspace's chosen colour, so these are only the pre-hydration defaults. */
   --accent: #ED64A6;
+  /* Deep enough to read as text on white (WCAG AA). */
+  --accent-text: #B83280;
+  /* What reads on top of a filled accent surface. */
+  --accent-on: #ffffff;
+  /* The tinted accent background used by pills, chips and selected states —
+     the token form of the old `${accent}18` pattern. */
+  --accent-soft: rgba(237, 100, 166, 0.1);
+
+  /* ── Status ramps ────────────────────────────────────────────────────────
+     Deliberately NOT derived from the accent: "approved" and "overdue" have to
+     stay distinguishable whatever the brand colour is. Centralised here so
+     there is one place to change how each status reads. Components use these
+     rather than raw hexes.
+
+     Pair `-soft` (background) with the base (text/icon) — see DESIGN-SYSTEM.md §2. */
+  --success:      #059669;
+  --success-soft: #ECFDF5;
+  --pending:      #C05621;
+  --pending-soft: #FFFAF0;
+  --danger:       #E24B4A;
+  --danger-soft:  #FDECEC;
+  --neutral:      #6B7280;
+  --neutral-soft: #F3F4F6;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);

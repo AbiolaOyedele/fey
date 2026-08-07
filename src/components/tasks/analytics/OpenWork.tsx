@@ -34,8 +34,8 @@ export default function OpenWork({ due, open }: OpenWorkProps) {
   const [active, setActive] = useState<keyof DueBuckets | null>(null)
 
   const slices = useMemo<Slice[]>(() => ([
-    { key: 'overdue', label: 'Overdue',   hint: 'past their due date', color: '#FC8181', value: due.overdue },
-    { key: 'today',   label: 'Due today', hint: 'landing today',       color: '#F6AD55', value: due.today },
+    { key: 'overdue', label: 'Overdue',   hint: 'past their due date', color: 'var(--danger)', value: due.overdue },
+    { key: 'today',   label: 'Due today', hint: 'landing today',       color: 'var(--pending)', value: due.today },
     { key: 'week',    label: 'This week', hint: 'in the next 7 days',  color: 'var(--accent, #ED64A6)', value: due.week },
     { key: 'later',   label: 'Later',     hint: 'further out',         color: '#CBD5E1', value: due.later },
     { key: 'none',    label: 'No date',   hint: 'no due date set',     color: '#E5E7EB', value: due.none },

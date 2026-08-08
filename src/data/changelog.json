@@ -1,5 +1,28 @@
 [
   {
+    "version": "1.24.0",
+    "date": "8 August 2026",
+    "title": "Agency Vault & portal access control",
+    "features": [
+      "New Vault in Playground — every important document in one place",
+      "Invoices and contracts appear in the Vault on their own, and stay in step with the real thing wherever you change it",
+      "Upload anything else — agreements, insurance, brand guidelines — and file it by category",
+      "Decide who sees each document: your team only, one client, or every client",
+      "Clients get a Vault of their own in the portal, showing their invoices, contracts and anything shared with them",
+      "Turn off a portal member's access without deleting them — they're locked out straight away and can be let back in with one tap",
+      "Delete a portal member for good once their access is off",
+      "You can now remove portal members from your side too, not just the client's"
+    ],
+    "improvements": [
+      "Search and filter the Vault by name, category or type",
+      "A revoked member is signed out everywhere immediately, instead of keeping access until their session ran out",
+      "Removing someone no longer erases their messages from the client's private chat — the conversation stays readable"
+    ],
+    "fixes": [
+      "Fixed removed portal members still being able to open invoices, contracts, files and tasks"
+    ]
+  },
+  {
     "version": "1.23.0",
     "date": "7 August 2026",
     "title": "Review tab, Insights & loading states",

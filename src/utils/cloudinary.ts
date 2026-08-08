@@ -10,6 +10,13 @@ interface UploadResult {
   publicId: string
   size: number
   format: string
+  /**
+   * Which Cloudinary bucket the file landed in. Deleting an asset later
+   * requires the resource type it was uploaded under, and `auto/upload` decides
+   * that server-side — so it has to be captured here rather than guessed from
+   * the extension afterwards.
+   */
+  resourceType: 'image' | 'video' | 'raw'
 }
 
 interface UploadHandle {
@@ -126,8 +133,21 @@ export const uploadToCloudinary = (
 
       xhr.onload = () => {
         if (xhr && xhr.status === 200) {
-          const data = JSON.parse(xhr.responseText) as { secure_url: string; public_id: string; bytes: number; format: string }
-          resolve({ url: data.secure_url, publicId: data.public_id, size: data.bytes, format: data.format })
+          const data = JSON.parse(xhr.responseText) as {
+            secure_url: string; public_id: string; bytes: number; format: string
+            resource_type?: string
+          }
+          resolve({
+            url:       data.secure_url,
+            publicId:  data.public_id,
+            size:      data.bytes,
+            format:    data.format,
+            // `auto/upload` always reports one of the three; 'raw' is the safe
+            // default because it's what documents — the common case here — use.
+            resourceType: data.resource_type === 'image' || data.resource_type === 'video'
+              ? data.resource_type
+              : 'raw',
+          })
         } else {
           let msg = `Upload failed (${xhr?.status ?? 0})`
           try {

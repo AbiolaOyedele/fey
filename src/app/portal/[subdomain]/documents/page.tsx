@@ -89,6 +89,15 @@ export default function PortalDocumentsPage({ params }: { params: Promise<{ subd
       count: counts.invoices,
       countLabel: `${counts.invoices} unpaid`,
     },
+    {
+      key: 'vault',
+      label: 'Vault',
+      description: 'Everything in one list — invoices, contracts and shared documents.',
+      // Deliberately no count. The Vault gathers up what the other cards
+      // already count, so a number here would double what's above it.
+      count: 0,
+      countLabel: 'All your documents',
+    },
   ]
 
   return (

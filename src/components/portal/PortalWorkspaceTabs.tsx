@@ -28,7 +28,7 @@ export const PORTAL_SECTIONS: { label: string; path: string }[] = [
 ]
 
 /** Sub-pages that keep the Documents tab lit while they're open. */
-export const PORTAL_DOCUMENT_PATHS = ['/files', '/contracts', '/forms', '/payments', '/invoices']
+export const PORTAL_DOCUMENT_PATHS = ['/files', '/contracts', '/forms', '/payments', '/invoices', '/vault']
 
 /** Every section path, including the ones folded into Documents — used by the
  *  shell to decide when to show the tab bar at all. */

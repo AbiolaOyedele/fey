@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Folder, FileSignature, ClipboardList, CreditCard, FileText, ArrowRight } from 'lucide-react'
+import { Folder, FileSignature, ClipboardList, CreditCard, FileText, ArrowRight, Vault } from 'lucide-react'
 
 /**
  * The Documents hub — one tab covering what used to be five.
@@ -17,7 +17,7 @@ import { Folder, FileSignature, ClipboardList, CreditCard, FileText, ArrowRight 
  */
 
 export interface DocumentSection {
-  key: 'files' | 'contracts' | 'forms' | 'payments' | 'invoices'
+  key: 'files' | 'contracts' | 'forms' | 'payments' | 'invoices' | 'vault'
   label: string
   description: string
   /** Live count, when the caller has one. `undefined` renders no badge. */
@@ -32,6 +32,7 @@ const ICONS: Record<DocumentSection['key'], React.ElementType> = {
   forms:     ClipboardList,
   payments:  CreditCard,
   invoices:  FileText,
+  vault:     Vault,
 }
 
 interface DocumentsHubProps {

@@ -9,6 +9,7 @@ import AssigneePicker from './AssigneePicker'
 import PersonPicker from './PersonPicker'
 import TaskApprovalBar from './TaskApprovalBar'
 import TaskHandoffTrail from './TaskHandoffTrail'
+import HandoffPrompt from './HandoffPrompt'
 import DateField from '@/components/ui/DateField'
 import TaskAttachments from './TaskAttachments'
 import TaskComments from './TaskComments'
@@ -112,6 +113,8 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
   const [estimate, setEstimate] = useState(task.estimated_minutes != null ? formatMinutes(task.estimated_minutes) : '')
   const [newSubtask, setNewSubtask] = useState('')
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  // A stage change held open while we ask who's picking the work up.
+  const [pendingStage, setPendingStage] = useState<WorkflowStage | null>(null)
   const descriptionRef = useRef<MentionAwareEditorHandle>(null)
   const taskLink = task.contact_id ? `/clients/${task.contact_id}/tasks?taskId=${task.id}` : `/tasks?taskId=${task.id}`
 
@@ -330,6 +333,15 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
                     onChange={(e) => {
                       const next = e.target.value
                       if (next === COMPLETED_STAGE) { if (!task.done) props.onToggleDone(task.id); return }
+                      // A stage that asks who's next has to ask here too. The
+                      // board prompted and this didn't, so changing the stage
+                      // from inside a task moved the work and quietly left the
+                      // baton behind — the rule was set and not applied.
+                      const target = stages.find((s) => s.id === next) ?? null
+                      if (target && target.handoff_mode === 'prompt' && target.id !== task.stage_id) {
+                        setPendingStage(target)
+                        return
+                      }
                       // Moving a completed task back to a real stage has to clear
                       // `done` too. Without it the row keeps its completed flag,
                       // the select re-reads as "Completed", and the change looks
@@ -563,6 +575,27 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
         </div>
         )}
       </div>
+
+      {pendingStage && (
+        <HandoffPrompt
+          taskTitle={task.title}
+          stageName={pendingStage.name}
+          currentHolderId={task.responsible_id}
+          workspaceId={workspaceId}
+          {...(members ? { members } : {})}
+          onChoose={(userId) => {
+            void onPatch(task.id, {
+              stage_id: pendingStage.id,
+              responsible_id: userId,
+              ...(task.done ? { done: false } : {}),
+            })
+            setPendingStage(null)
+          }}
+          // Cancelling leaves the task where it was; the select re-reads from
+          // the task, so it snaps back on its own.
+          onCancel={() => setPendingStage(null)}
+        />
+      )}
 
       {preview && (
         <ImageLightbox url={preview.url} name={preview.name} onClose={() => setPreview(null)} />

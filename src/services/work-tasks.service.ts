@@ -462,9 +462,19 @@ export async function createTask(db: SupabaseClient, ctx: Ctx, input: unknown): 
     estimated_minutes: d.estimated_minutes ?? null,
   })
 
+  const core: TaskCore = { id, owner_id: link.owner_id, workspace_id: link.workspace_id, contact_id: link.contact_id }
+
   if (d.assignee_ids?.length) {
     await repo.setAssignees(db, id, d.assignee_ids)
-    await notifyAssigned({ id, owner_id: link.owner_id, workspace_id: link.workspace_id, contact_id: link.contact_id }, d.assignee_ids, d.title, ctx.userId)
+    await notifyAssigned(core, d.assignee_ids, d.title, ctx.userId)
+  }
+
+  // Raising a task straight onto someone else's desk has to reach them. The
+  // assignee notification above doesn't cover it: the holder needn't be an
+  // assignee at all, and even when they are, "assigned to you" and "it's your
+  // turn" are different messages.
+  if (responsibleId && responsibleId !== ctx.userId && !d.assignee_ids?.includes(responsibleId)) {
+    await notifyBatonPassed(core, responsibleId, d.title, null, ctx.userId)
   }
 
   // Client-linked tasks are visible in the portal, so the client should hear

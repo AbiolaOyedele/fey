@@ -7,7 +7,7 @@ import type { DragEndEvent } from '@dnd-kit/core'
 import type { Task, WorkflowStage } from '@/types/work-tasks'
 import { isStale, daysInStage, needsSignOff, canRule } from '@/types/work-tasks'
 import { AssigneeAvatars, DueChip, PriorityFlag, formatMinutes } from './TaskBits'
-import PersonPicker from './PersonPicker'
+import HandoffPrompt from './HandoffPrompt'
 
 interface TaskBoardViewProps {
   tasks: Task[]
@@ -110,40 +110,19 @@ export default function TaskBoardView({
       </DndContext>
 
       {pending && (
-        <div
-          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/30 p-4 animate-fadeIn"
-          onClick={() => setPending(null)}
-        >
-          <div
-            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-xl animate-slideUp p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-base font-semibold text-gray-900">Who’s taking this on?</h2>
-            <p className="mt-1 text-xs2 text-gray-500 break-words">
-              Moving “{pending.task.title}” to {pending.stage.name}. It comes off your desk and
-              lands on theirs.
-            </p>
-            <div className="mt-4">
-              <PersonPicker
-                workspaceId={workspaceId}
-                selectedId={pending.task.responsible_id}
-                onChange={(id) => {
-                  onMoveStage(pending.task.id, pending.stage.id, id)
-                  setPending(null)
-                }}
-                title={`Who picks it up in ${pending.stage.name}?`}
-                emptyLabel="Choose a person"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => setPending(null)}
-              className="mt-4 w-full min-h-[44px] rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:border-gray-300"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        // Same sheet the drawer uses, so a stage set to ask behaves identically
+        // however the task got moved — and picking someone is one tap, not three.
+        <HandoffPrompt
+          taskTitle={pending.task.title}
+          stageName={pending.stage.name}
+          currentHolderId={pending.task.responsible_id}
+          workspaceId={workspaceId}
+          onChoose={(userId) => {
+            onMoveStage(pending.task.id, pending.stage.id, userId)
+            setPending(null)
+          }}
+          onCancel={() => setPending(null)}
+        />
       )}
     </>
   )

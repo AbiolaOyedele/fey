@@ -1,12 +1,16 @@
 'use client'
 
-import { use } from 'react'
+import { use, useState } from 'react'
 import { Vault as VaultIcon, Search } from 'lucide-react'
 import { usePortalAccent } from '@/hooks/usePortalBranding'
 import { useVault } from '@/hooks/useVault'
 import { FadeIn } from '@/components/ui/motion'
 import VaultList from '@/components/vault/VaultList'
-import { VAULT_CATEGORIES, VAULT_CATEGORY_LABEL, type VaultCategory } from '@/types/vault'
+import VaultNoteReader from '@/components/vault/VaultNoteReader'
+import {
+  VAULT_CATEGORIES, VAULT_CATEGORY_LABEL,
+  type VaultCategory, type VaultEntry,
+} from '@/types/vault'
 
 /**
  * The client's side of the Vault — read-only, and only ever their own things.
@@ -16,12 +20,17 @@ import { VAULT_CATEGORIES, VAULT_CATEGORY_LABEL, type VaultCategory } from '@/ty
  * Vault is the agency's filing cabinet, and this is the drawer they're allowed
  * to open. Files they send the agency still go through Files, where it's clear
  * whose they are.
+ *
+ * A shared note opens here too, but only to be read. The checkboxes render as
+ * they stand and can't be ticked — the list is the agency's, and a client
+ * quietly changing it would be a change nobody on the other side asked for.
  */
 export default function PortalVaultPage({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
   const accent = usePortalAccent(subdomain)
 
   const { visible, entries, loading, error, filter, setFilter } = useVault({ subdomain })
+  const [openNote, setOpenNote] = useState<VaultEntry | null>(null)
 
   return (
     <div className="p-4 md:p-6 lg:p-8 page-enter">
@@ -36,6 +45,15 @@ export default function PortalVaultPage({ params }: { params: Promise<{ subdomai
       </FadeIn>
 
       <div className="max-w-3xl space-y-3">
+        {openNote && (
+          <VaultNoteReader
+            key={openNote.id}
+            entry={openNote}
+            accent={accent}
+            onClose={() => setOpenNote(null)}
+          />
+        )}
+
         <div className="relative">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
           <input
@@ -79,6 +97,7 @@ export default function PortalVaultPage({ params }: { params: Promise<{ subdomai
           loading={loading}
           error={error}
           accent={accent}
+          onOpen={setOpenNote}
           emptyMessage={
             entries.length > 0
               ? 'Nothing matches that. Try a different search.'

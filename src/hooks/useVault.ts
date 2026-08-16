@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '@/lib/api-client'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import type {
-  CreateVaultItemPayload, UpdateVaultItemPayload, VaultEntry, VaultFilter,
+  CreateVaultItemPayload, CreateVaultNotePayload,
+  UpdateVaultItemPayload, UpdateVaultNotePayload, VaultEntry, VaultFilter,
 } from '@/types/vault'
 
 /**
@@ -32,6 +33,9 @@ export interface VaultState {
   addItem: (payload: CreateVaultItemPayload) => Promise<void>
   updateItem: (id: string, patch: UpdateVaultItemPayload) => Promise<void>
   deleteItem: (id: string) => Promise<void>
+  addNote: (payload: CreateVaultNotePayload) => Promise<void>
+  updateNote: (id: string, patch: UpdateVaultNotePayload) => Promise<void>
+  deleteNote: (id: string) => Promise<void>
 }
 
 interface UseVaultArgs {
@@ -47,7 +51,9 @@ function matches(entry: VaultEntry, filter: VaultFilter): boolean {
   if (filter.contact_id && entry.contact_id !== filter.contact_id) return false
   if (filter.search) {
     const q = filter.search.toLowerCase()
-    const haystack = [entry.title, entry.subtitle, entry.file_name, entry.contact_name]
+    // Notes are searched by their whole body, not just the title — the reason
+    // to write something down is being able to find it by a word from inside it.
+    const haystack = [entry.title, entry.subtitle, entry.file_name, entry.contact_name, entry.body]
       .filter(Boolean).join(' ').toLowerCase()
     if (!haystack.includes(q)) return false
   }
@@ -123,7 +129,38 @@ export function useVault({ subdomain, workspaceId }: UseVaultArgs = {}): VaultSt
     setEntries((cur) => cur.filter((e) => !(e.kind === 'file' && e.id === id)))
   }, [base, call, workspaceId])
 
+  // ── Notes ─────────────────────────────────────────────────────────────────
+  // Written here rather than uploaded, so they have their own endpoints. The
+  // list they come back in is the same one.
+
+  const addNote = useCallback(async (payload: CreateVaultNotePayload) => {
+    await call(`${base}/notes`, {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, ...(workspaceId ? { workspace_id: workspaceId } : {}) }),
+    })
+    await refetch()
+  }, [base, call, refetch, workspaceId])
+
+  const updateNote = useCallback(async (id: string, patch: UpdateVaultNotePayload) => {
+    await call(`${base}/notes/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ ...patch, ...(workspaceId ? { workspace_id: workspaceId } : {}) }),
+    })
+    await refetch()
+  }, [base, call, refetch, workspaceId])
+
+  const deleteNote = useCallback(async (id: string) => {
+    const qs = workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : ''
+    await call(`${base}/notes/${id}${qs}`, { method: 'DELETE' })
+    // Dropped locally for the same reason as an item — see above.
+    setEntries((cur) => cur.filter((e) => !(e.kind === 'note' && e.id === id)))
+  }, [base, call, workspaceId])
+
   const visible = useMemo(() => entries.filter((e) => matches(e, filter)), [entries, filter])
 
-  return { entries, visible, loading, error, filter, setFilter, refetch, addItem, updateItem, deleteItem }
+  return {
+    entries, visible, loading, error, filter, setFilter, refetch,
+    addItem, updateItem, deleteItem,
+    addNote, updateNote, deleteNote,
+  }
 }

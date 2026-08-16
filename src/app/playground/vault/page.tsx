@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Vault as VaultIcon, Plus, Search } from 'lucide-react'
+import { Vault as VaultIcon, Plus, Search, PenLine } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
@@ -9,6 +9,8 @@ import { useVault } from '@/hooks/useVault'
 import { FadeIn } from '@/components/ui/motion'
 import VaultList from '@/components/vault/VaultList'
 import VaultUpload from '@/components/vault/VaultUpload'
+import VaultNoteEditor, { type NoteDraft } from '@/components/vault/VaultNoteEditor'
+import VaultNoteReader from '@/components/vault/VaultNoteReader'
 import {
   VAULT_CATEGORIES, VAULT_CATEGORY_LABEL,
   type CreateVaultItemPayload, type VaultCategory, type VaultEntry, type VaultEntryKind,
@@ -19,16 +21,28 @@ import {
  *
  * Invoices and contracts arrive on their own, read live from their own tables
  * rather than copied in, so what's shown here is always what those pages show.
- * Everything else is uploaded, and each upload decides for itself whether a
- * client ever sees it.
+ * Everything else is either uploaded or written here, and each one decides for
+ * itself whether a client ever sees it.
+ *
+ * Only one panel is ever open — writing, reading and uploading are mutually
+ * exclusive, so the page never stacks three cards above the list on a phone.
  */
 
 const KINDS: { key: VaultEntryKind | 'all'; label: string }[] = [
   { key: 'all',      label: 'Everything' },
+  { key: 'note',     label: 'Notes' },
   { key: 'file',     label: 'Uploads' },
   { key: 'invoice',  label: 'Invoices' },
   { key: 'contract', label: 'Contracts' },
 ]
+
+/** Which panel, if any, sits above the list. */
+type Panel =
+  | { mode: 'upload' }
+  | { mode: 'write' }
+  | { mode: 'read';  entry: VaultEntry }
+  | { mode: 'edit';  entry: VaultEntry }
+  | null
 
 export default function VaultPage() {
   const { settings } = useSettings()
@@ -36,10 +50,11 @@ export default function VaultPage() {
   const { workspace } = useWorkspace()
 
   const {
-    visible, entries, loading, error, filter, setFilter, addItem, updateItem, deleteItem,
+    visible, entries, loading, error, filter, setFilter,
+    addItem, updateItem, deleteItem, addNote, updateNote, deleteNote,
   } = useVault({ workspaceId: workspace?.id ?? null })
 
-  const [showAdd, setShowAdd] = useState(false)
+  const [panel, setPanel] = useState<Panel>(null)
   const [clients, setClients] = useState<{ id: string; name: string }[]>([])
   const [resharing, setResharing] = useState<VaultEntry | null>(null)
 
@@ -57,14 +72,42 @@ export default function VaultPage() {
 
   const counts = useMemo(() => ({
     all:      entries.length,
+    note:     entries.filter((e) => e.kind === 'note').length,
     file:     entries.filter((e) => e.kind === 'file').length,
     invoice:  entries.filter((e) => e.kind === 'invoice').length,
     contract: entries.filter((e) => e.kind === 'contract').length,
   }), [entries])
 
-  const save = async (payload: CreateVaultItemPayload) => {
+  // An open note is re-read from the list each render, so a save made in the
+  // editor is reflected the moment the refetch lands.
+  const openNote = panel && (panel.mode === 'read' || panel.mode === 'edit')
+    ? entries.find((e) => e.kind === 'note' && e.id === panel.entry.id) ?? panel.entry
+    : null
+
+  const saveUpload = async (payload: CreateVaultItemPayload) => {
     await addItem(payload)
-    setShowAdd(false)
+    setPanel(null)
+  }
+
+  const saveNote = async (draft: NoteDraft) => {
+    if (panel?.mode === 'edit') {
+      await updateNote(panel.entry.id, draft)
+      // Straight back to reading it, rather than closing what they were in.
+      setPanel({ mode: 'read', entry: panel.entry })
+      return
+    }
+    await addNote(draft)
+    setPanel(null)
+  }
+
+  /** Deleting dispatches on kind — a note has no stored file to clean up. */
+  const remove = async (entry: VaultEntry) => {
+    if (entry.kind === 'note') {
+      await deleteNote(entry.id)
+      if (openNote?.id === entry.id) setPanel(null)
+      return
+    }
+    await deleteItem(entry.id)
   }
 
   return (
@@ -75,28 +118,77 @@ export default function VaultPage() {
             <VaultIcon size={18} style={{ color: accent }} />
             <h1 className="font-display text-xl font-normal text-gray-800">Vault</h1>
           </div>
-          {!showAdd && (
-            <button
-              onClick={() => setShowAdd(true)}
-              className="press inline-flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-full text-white text-sm font-semibold hover:opacity-90"
-              style={{ backgroundColor: accent }}
-            >
-              <Plus size={15} /> Add a document
-            </button>
+          {!panel && (
+            // Two actions, both full tap targets. Writing sits first because
+            // it's the one with nothing to prepare — the thought is already
+            // there, and the note should be one tap from it.
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPanel({ mode: 'write' })}
+                className="press inline-flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-full text-white text-sm font-semibold hover:opacity-90"
+                style={{ backgroundColor: accent }}
+              >
+                <PenLine size={15} /> Write a note
+              </button>
+              <button
+                onClick={() => setPanel({ mode: 'upload' })}
+                className="press inline-flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-full border border-gray-200 text-gray-600 text-sm font-medium hover:border-gray-300 hover:text-gray-800 transition-colors"
+              >
+                <Plus size={15} /> Upload
+              </button>
+            </div>
           )}
         </div>
         <p className="text-xs text-gray-400 mb-5">
-          Every important document in one place. Invoices and contracts show up on their own.
+          Every important document in one place. Write notes and checklists, upload files, and
+          invoices and contracts show up on their own.
         </p>
       </FadeIn>
 
       <div className="max-w-3xl space-y-3">
-        {showAdd && (
+        {panel?.mode === 'upload' && (
           <VaultUpload
             accent={accent}
             clients={clients}
-            onSave={save}
-            onCancel={() => setShowAdd(false)}
+            onSave={saveUpload}
+            onCancel={() => setPanel(null)}
+          />
+        )}
+
+        {panel?.mode === 'write' && (
+          <VaultNoteEditor
+            accent={accent}
+            clients={clients}
+            onSave={saveNote}
+            onCancel={() => setPanel(null)}
+          />
+        )}
+
+        {panel?.mode === 'edit' && openNote && (
+          <VaultNoteEditor
+            accent={accent}
+            clients={clients}
+            initial={{
+              title:      openNote.title,
+              body:       openNote.body ?? '',
+              category:   openNote.category,
+              visibility: openNote.visibility ?? 'private',
+              contact_id: openNote.contact_id,
+            }}
+            onSave={saveNote}
+            onCancel={() => setPanel({ mode: 'read', entry: openNote })}
+          />
+        )}
+
+        {panel?.mode === 'read' && openNote && (
+          <VaultNoteReader
+            key={openNote.id}
+            entry={openNote}
+            accent={accent}
+            canManage
+            onSaveBody={(body) => updateNote(openNote.id, { body })}
+            onEdit={() => setPanel({ mode: 'edit', entry: openNote })}
+            onClose={() => setPanel(null)}
           />
         )}
 
@@ -168,7 +260,10 @@ export default function VaultPage() {
             clients={clients}
             onDone={() => setResharing(null)}
             onSave={async (patch) => {
-              await updateItem(resharing.id, patch)
+              // Same decision, two tables — a note reshares through its own
+              // endpoint because that's where its row lives.
+              if (resharing.kind === 'note') await updateNote(resharing.id, patch)
+              else await updateItem(resharing.id, patch)
               setResharing(null)
             }}
           />
@@ -180,8 +275,9 @@ export default function VaultPage() {
           error={error}
           accent={accent}
           canManage
-          onDelete={deleteItem}
+          onDelete={remove}
           onReshare={setResharing}
+          onOpen={(entry) => setPanel({ mode: 'read', entry })}
           emptyMessage={
             entries.length > 0
               ? 'Nothing matches that. Try a different search or filter.'

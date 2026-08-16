@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import {
   FileText, Receipt, FileSignature, Image as ImageIcon, Film, Download,
-  Trash2, Loader2, Users, Lock, Building2, ExternalLink,
+  Trash2, Loader2, Users, Lock, Building2, ExternalLink, StickyNote,
 } from 'lucide-react'
 import { formatFileSize } from '@/utils/cloudinary'
+import { taskProgress } from '@/utils/note-markdown'
 import {
   VAULT_CATEGORY_LABEL, isEditable,
   type VaultEntry, type VaultVisibility,
@@ -30,8 +31,10 @@ interface VaultListProps {
   accent: string
   /** Agency side. Enables the per-file controls. */
   canManage?: boolean
-  onDelete?: (id: string) => Promise<void>
+  onDelete?: (entry: VaultEntry) => Promise<void>
   onReshare?: (entry: VaultEntry) => void
+  /** Opens a note in place. Notes have nothing to link to. */
+  onOpen?: ((entry: VaultEntry) => void) | undefined
   /** Shown when nothing matches, or nothing exists yet. */
   emptyMessage?: string | undefined
 }
@@ -39,6 +42,7 @@ interface VaultListProps {
 function iconFor(entry: VaultEntry) {
   if (entry.kind === 'invoice') return Receipt
   if (entry.kind === 'contract') return FileSignature
+  if (entry.kind === 'note') return StickyNote
   if (entry.resource_type === 'image') return ImageIcon
   if (entry.resource_type === 'video') return Film
   return FileText
@@ -57,16 +61,16 @@ const VISIBILITY_SHORT: Record<VaultVisibility, string> = {
 }
 
 export default function VaultList({
-  entries, loading, error, accent, canManage = false, onDelete, onReshare, emptyMessage,
+  entries, loading, error, accent, canManage = false, onDelete, onReshare, onOpen, emptyMessage,
 }: VaultListProps) {
   const [busyId, setBusyId]     = useState<string | null>(null)
   const [confirmId, setConfirm] = useState<string | null>(null)
 
-  const remove = async (id: string) => {
+  const remove = async (entry: VaultEntry) => {
     if (!onDelete) return
-    setBusyId(id)
+    setBusyId(entry.id)
     try {
-      await onDelete(id)
+      await onDelete(entry)
       setConfirm(null)
     } finally {
       setBusyId(null)
@@ -99,7 +103,7 @@ export default function VaultList({
         </div>
         <p className="text-sm font-medium text-gray-700 mb-1">Nothing here yet</p>
         <p className="text-xs text-gray-400 leading-relaxed max-w-xs mx-auto">
-          {emptyMessage ?? 'Invoices and contracts appear here on their own. Anything else you upload will sit alongside them.'}
+          {emptyMessage ?? 'Invoices and contracts appear here on their own. Notes you write and files you upload sit alongside them.'}
         </p>
       </div>
     )
@@ -112,6 +116,9 @@ export default function VaultList({
         const busy = busyId === entry.id
         const editable = canManage && isEditable(entry)
         const VisibilityIcon = entry.visibility ? VISIBILITY_ICON[entry.visibility] : null
+        // A note has no URL — the whole title block opens it in place instead.
+        const openable = entry.kind === 'note' && !!onOpen
+        const tasks = entry.kind === 'note' && entry.body ? taskProgress(entry.body) : null
 
         return (
           <div
@@ -128,24 +135,43 @@ export default function VaultList({
               <Icon size={16} />
             </span>
 
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-medium text-gray-800 truncate">{entry.title}</span>
-              </div>
-              {/* Everything secondary on one wrapping line, so a long client
-                  name pushes down rather than clipping. */}
-              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-2xs text-gray-400">
-                <span>{VAULT_CATEGORY_LABEL[entry.category]}</span>
-                {entry.contact_name && <span className="truncate max-w-[140px]">· {entry.contact_name}</span>}
-                {entry.subtitle && <span className="truncate max-w-[200px]">· {entry.subtitle}</span>}
-                {entry.file_size != null && <span>· {formatFileSize(entry.file_size)}</span>}
-                {canManage && VisibilityIcon && entry.visibility && (
-                  <span className="inline-flex items-center gap-1 text-gray-400">
-                    · <VisibilityIcon size={10} /> {VISIBILITY_SHORT[entry.visibility]}
+            {/* A button only when there's something to open in place, so a
+                plain row keeps its normal text selection and cursor. */}
+            {(() => {
+              const meta = (
+                <>
+                  <span className="block text-sm font-medium text-gray-800 truncate group-hover:text-gray-950 transition-colors">
+                    {entry.title}
                   </span>
-                )}
-              </div>
-            </div>
+                  {/* Everything secondary on one wrapping line, so a long client
+                      name pushes down rather than clipping. */}
+                  <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-2xs text-gray-400">
+                    <span>{VAULT_CATEGORY_LABEL[entry.category]}</span>
+                    {entry.contact_name && <span className="truncate max-w-[140px]">· {entry.contact_name}</span>}
+                    {tasks && tasks.total > 0 && <span>· {tasks.done}/{tasks.total} done</span>}
+                    {entry.subtitle && <span className="truncate max-w-[200px]">· {entry.subtitle}</span>}
+                    {entry.file_size != null && <span>· {formatFileSize(entry.file_size)}</span>}
+                    {canManage && VisibilityIcon && entry.visibility && (
+                      <span className="inline-flex items-center gap-1 text-gray-400">
+                        · <VisibilityIcon size={10} /> {VISIBILITY_SHORT[entry.visibility]}
+                      </span>
+                    )}
+                  </span>
+                </>
+              )
+
+              return openable ? (
+                <button
+                  onClick={() => onOpen(entry)}
+                  aria-label={`Open ${entry.title}`}
+                  className="group min-w-0 flex-1 text-left py-1 -my-1 rounded-lg"
+                >
+                  {meta}
+                </button>
+              ) : (
+                <div className="min-w-0 flex-1">{meta}</div>
+              )
+            })()}
 
             <div className="flex items-center gap-0.5 flex-shrink-0">
               {entry.href && (
@@ -184,7 +210,9 @@ export default function VaultList({
             {confirmId === entry.id && (
               <div className="w-full basis-full flex flex-wrap items-center gap-2 pt-2 mt-2 border-t border-gray-50">
                 <span className="text-2xs text-gray-500 flex-1 min-w-[160px]">
-                  Delete “{entry.title}”? The file is removed too, and this can’t be undone.
+                  {entry.kind === 'note'
+                    ? `Delete “${entry.title}”? This can’t be undone.`
+                    : `Delete “${entry.title}”? The file is removed too, and this can’t be undone.`}
                 </span>
                 <button
                   onClick={() => setConfirm(null)}
@@ -193,7 +221,7 @@ export default function VaultList({
                   Cancel
                 </button>
                 <button
-                  onClick={() => void remove(entry.id)}
+                  onClick={() => void remove(entry)}
                   disabled={busy}
                   className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-full text-2xs font-semibold text-white disabled:opacity-40"
                   style={{ backgroundColor: 'var(--danger)' }}

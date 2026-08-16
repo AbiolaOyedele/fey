@@ -1,15 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
-  CreateVaultItemPayload, UpdateVaultItemPayload, VaultItem,
+  CreateVaultItemPayload, CreateVaultNotePayload,
+  UpdateVaultItemPayload, UpdateVaultNotePayload, VaultItem, VaultNote,
 } from '@/types/vault'
 
 /**
  * Every query the Vault makes.
  *
- * Three sources, kept apart on purpose: `vault_items` holds what was uploaded,
- * while invoices and contracts are read from their own tables and never
- * copied. The shaping into one list happens in the service — this layer only
- * fetches.
+ * Four sources, kept apart on purpose: `vault_items` holds what was uploaded
+ * and `vault_notes` what was written here, while invoices and contracts are
+ * read from their own tables and never copied. The shaping into one list
+ * happens in the service — this layer only fetches.
  *
  * Which client is passed in matters. The app passes a USER-scoped client so
  * existing RLS decides what a given teammate may see — that is how the Vault
@@ -112,6 +113,90 @@ export async function updateItem(
 
 export async function deleteItem(db: SupabaseClient, id: string): Promise<void> {
   const { error } = await db.from('vault_items').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ── Notes ───────────────────────────────────────────────────────────────────
+
+const NOTE_COLS =
+  'id, owner_id, created_by, title, body, category, visibility, contact_id, created_at, updated_at'
+
+export async function listNotes(db: SupabaseClient, ownerId: string): Promise<VaultNote[]> {
+  const { data, error } = await db
+    .from('vault_notes')
+    .select(NOTE_COLS)
+    .eq('owner_id', ownerId)
+    .order('updated_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as unknown as VaultNote[]
+}
+
+/** Same visibility fence as uploaded items — see `listItemsForContact`. */
+export async function listNotesForContact(
+  db: SupabaseClient,
+  ownerId: string,
+  contactId: string,
+): Promise<VaultNote[]> {
+  const { data, error } = await db
+    .from('vault_notes')
+    .select(NOTE_COLS)
+    .eq('owner_id', ownerId)
+    .or(`and(visibility.eq.client,contact_id.eq.${contactId}),visibility.eq.all_clients`)
+    .order('updated_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as unknown as VaultNote[]
+}
+
+export async function getNote(db: SupabaseClient, id: string): Promise<VaultNote | null> {
+  const { data, error } = await db
+    .from('vault_notes')
+    .select(NOTE_COLS)
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw error
+  return (data as unknown as VaultNote | null) ?? null
+}
+
+export async function insertNote(
+  db: SupabaseClient,
+  ownerId: string,
+  createdBy: string,
+  payload: CreateVaultNotePayload,
+): Promise<VaultNote> {
+  const { data, error } = await db
+    .from('vault_notes')
+    .insert({
+      owner_id:   ownerId,
+      created_by: createdBy,
+      title:      payload.title,
+      body:       payload.body,
+      category:   payload.category,
+      visibility: payload.visibility,
+      contact_id: payload.contact_id ?? null,
+    })
+    .select(NOTE_COLS)
+    .single()
+  if (error) throw error
+  return data as unknown as VaultNote
+}
+
+export async function updateNote(
+  db: SupabaseClient,
+  id: string,
+  patch: UpdateVaultNotePayload,
+): Promise<VaultNote> {
+  const { data, error } = await db
+    .from('vault_notes')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select(NOTE_COLS)
+    .single()
+  if (error) throw error
+  return data as unknown as VaultNote
+}
+
+export async function deleteNote(db: SupabaseClient, id: string): Promise<void> {
+  const { error } = await db.from('vault_notes').delete().eq('id', id)
   if (error) throw error
 }
 

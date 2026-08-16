@@ -4,18 +4,19 @@ import { AppError } from '@/lib/errors'
 import { destroyCloudinaryAssetById } from '@/lib/cloudinary-server'
 import * as vaultRepo from '@/repositories/vault.repository'
 import {
-  VAULT_CATEGORIES, VAULT_VISIBILITIES,
-  type VaultEntry, type VaultFilter, type VaultItem,
+  VAULT_CATEGORIES, VAULT_VISIBILITIES, noteExcerpt,
+  type VaultEntry, type VaultFilter, type VaultItem, type VaultNote,
 } from '@/types/vault'
 
 /**
  * The Agency Vault.
  *
- * Its whole job is to make three different things look like one list without
- * merging them in the database. An uploaded file is a `vault_items` row; an
- * invoice and a contract are read from their own tables and shaped into the
- * same envelope on the way out. Nothing is copied, so nothing can drift, and
- * an invoice marked paid elsewhere reads as paid here immediately.
+ * Its whole job is to make four different things look like one list without
+ * merging them in the database. An uploaded file is a `vault_items` row and a
+ * written note is a `vault_notes` row; an invoice and a contract are read from
+ * their own tables and shaped into the same envelope on the way out. Nothing is
+ * copied, so nothing can drift, and an invoice marked paid elsewhere reads as
+ * paid here immediately.
  *
  * The trade is that invoices and contracts are read-only from here. That's the
  * honest behaviour — their real home is the invoice builder and the contracts
@@ -42,6 +43,39 @@ function fromItem(item: VaultItem, names: Map<string, string>): VaultEntry {
     resource_type: item.resource_type,
     visibility:    item.visibility,
     description:   item.description,
+    body:          null,
+    updated_at:    item.updated_at,
+  }
+}
+
+/**
+ * A note carries its whole body into the list.
+ *
+ * That's the one place the Vault holds real content rather than a pointer, and
+ * it's why the body is capped in the database: opening a note should be
+ * instant, and a second round trip for something already fetched would be a
+ * spinner over text the browser could have shown immediately.
+ */
+function fromNote(note: VaultNote, names: Map<string, string>): VaultEntry {
+  return {
+    kind:          'note',
+    id:            note.id,
+    title:         note.title,
+    subtitle:      noteExcerpt(note.body),
+    category:      note.category,
+    created_at:    note.created_at,
+    // Nothing to link to — a note opens in place, in the Vault itself.
+    href:          null,
+    contact_id:    note.contact_id,
+    contact_name:  note.contact_id ? names.get(note.contact_id) ?? null : null,
+    file_name:     null,
+    file_size:     null,
+    file_type:     null,
+    resource_type: null,
+    visibility:    note.visibility,
+    description:   null,
+    body:          note.body,
+    updated_at:    note.updated_at,
   }
 }
 
@@ -77,6 +111,8 @@ function fromInvoice(row: vaultRepo.VaultInvoiceRow, names: Map<string, string>)
     resource_type: null,
     visibility:    null,
     description:   null,
+    body:          null,
+    updated_at:    null,
   }
 }
 
@@ -97,6 +133,8 @@ function fromContract(row: vaultRepo.VaultContractRow, names: Map<string, string
     resource_type: null,
     visibility:    null,
     description:   null,
+    body:          null,
+    updated_at:    null,
   }
 }
 
@@ -106,7 +144,9 @@ function matches(entry: VaultEntry, filter: VaultFilter): boolean {
   if (filter.contact_id && entry.contact_id !== filter.contact_id) return false
   if (filter.search) {
     const q = filter.search.toLowerCase()
-    const haystack = [entry.title, entry.subtitle, entry.file_name, entry.contact_name]
+    // A note's body is searched too — the point of writing something down is
+    // being able to find it again by a word from the middle of it.
+    const haystack = [entry.title, entry.subtitle, entry.file_name, entry.contact_name, entry.body]
       .filter(Boolean).join(' ').toLowerCase()
     if (!haystack.includes(q)) return false
   }
@@ -127,8 +167,9 @@ export async function listVault(
   ownerId: string,
   filter: VaultFilter = {},
 ): Promise<VaultEntry[]> {
-  const [items, invoices, contracts, names] = await Promise.all([
+  const [items, notes, invoices, contracts, names] = await Promise.all([
     vaultRepo.listItems(db, ownerId),
+    vaultRepo.listNotes(db, ownerId),
     vaultRepo.listInvoices(db, ownerId),
     vaultRepo.listContracts(db, ownerId),
     vaultRepo.contactNames(db, ownerId),
@@ -136,6 +177,7 @@ export async function listVault(
 
   return [
     ...items.map((i) => fromItem(i, names)),
+    ...notes.map((n) => fromNote(n, names)),
     ...invoices.map((i) => fromInvoice(i, names)),
     ...contracts.map((c) => fromContract(c, names)),
   ]
@@ -158,8 +200,9 @@ export async function listVaultForContact(
   contactId: string,
   filter: VaultFilter = {},
 ): Promise<VaultEntry[]> {
-  const [items, invoices, contracts, names] = await Promise.all([
+  const [items, notes, invoices, contracts, names] = await Promise.all([
     vaultRepo.listItemsForContact(db, ownerId, contactId),
+    vaultRepo.listNotesForContact(db, ownerId, contactId),
     vaultRepo.listInvoices(db, ownerId, contactId),
     vaultRepo.listContracts(db, ownerId, contactId),
     vaultRepo.contactNames(db, ownerId),
@@ -167,6 +210,7 @@ export async function listVaultForContact(
 
   return [
     ...items.map((i) => fromItem(i, names)),
+    ...notes.map((n) => fromNote(n, names)),
     ...invoices.map((i) => fromInvoice(i, names)),
     ...contracts.map((c) => fromContract(c, names)),
   ]
@@ -279,6 +323,98 @@ export async function editItem(
     throw new AppError(400, 'Nothing to change.', 'VAULT_ITEM_INVALID')
   }
   return vaultRepo.updateItem(db, id, patch)
+}
+
+// ── Notes ───────────────────────────────────────────────────────────────────
+
+const noteCreateSchema = z.object({
+  title:      z.string().min(1, 'Give this note a name.').max(200).trim(),
+  // An empty body is allowed: someone titles a note, saves it, and comes back
+  // to write it. Refusing that would lose the title they already typed.
+  body:       z.string().max(20000, 'That note is too long to save.').default(''),
+  category:   z.enum(VAULT_CATEGORIES),
+  visibility: z.enum(VAULT_VISIBILITIES),
+  contact_id: z.string().uuid().nullish(),
+})
+
+export async function addNote(
+  db: SupabaseClient,
+  ownerId: string,
+  userId: string,
+  input: unknown,
+): Promise<VaultNote> {
+  const parsed = noteCreateSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new AppError(400, parsed.error.issues[0]?.message ?? 'Those details aren’t valid.', 'VAULT_NOTE_INVALID')
+  }
+  const payload = parsed.data
+
+  return vaultRepo.insertNote(db, ownerId, userId, {
+    title:      payload.title,
+    body:       payload.body,
+    category:   payload.category,
+    visibility: payload.visibility,
+    contact_id: normaliseVisibility(payload.visibility, payload.contact_id),
+  })
+}
+
+const noteUpdateSchema = z.object({
+  title:      z.string().min(1, 'Give this note a name.').max(200).trim().optional(),
+  body:       z.string().max(20000, 'That note is too long to save.').optional(),
+  category:   z.enum(VAULT_CATEGORIES).optional(),
+  visibility: z.enum(VAULT_VISIBILITIES).optional(),
+  contact_id: z.string().uuid().nullish(),
+})
+
+export async function editNote(
+  db: SupabaseClient,
+  ownerId: string,
+  id: string,
+  input: unknown,
+): Promise<VaultNote> {
+  const parsed = noteUpdateSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new AppError(400, parsed.error.issues[0]?.message ?? 'That change isn’t valid.', 'VAULT_NOTE_INVALID')
+  }
+
+  const existing = await vaultRepo.getNote(db, id)
+  if (!existing || existing.owner_id !== ownerId) {
+    throw new AppError(404, 'That note could not be found.', 'VAULT_NOTE_NOT_FOUND')
+  }
+
+  const patch: Record<string, unknown> = {}
+  if (parsed.data.title !== undefined)    patch.title = parsed.data.title
+  if (parsed.data.body !== undefined)     patch.body = parsed.data.body
+  if (parsed.data.category !== undefined) patch.category = parsed.data.category
+
+  // Visibility and contact move together, exactly as they do for uploads.
+  if (parsed.data.visibility !== undefined) {
+    patch.visibility = parsed.data.visibility
+    patch.contact_id = normaliseVisibility(
+      parsed.data.visibility,
+      parsed.data.contact_id ?? existing.contact_id,
+    )
+  } else if (parsed.data.contact_id !== undefined && existing.visibility === 'client') {
+    patch.contact_id = normaliseVisibility('client', parsed.data.contact_id)
+  }
+
+  if (Object.keys(patch).length === 0) {
+    throw new AppError(400, 'Nothing to change.', 'VAULT_NOTE_INVALID')
+  }
+  return vaultRepo.updateNote(db, id, patch)
+}
+
+/** No stored asset to clean up — a note is only ever the row. */
+export async function removeNote(
+  db: SupabaseClient,
+  ownerId: string,
+  id: string,
+): Promise<void> {
+  const existing = await vaultRepo.getNote(db, id)
+  if (!existing || existing.owner_id !== ownerId) {
+    throw new AppError(404, 'That note could not be found.', 'VAULT_NOTE_NOT_FOUND')
+  }
+  await vaultRepo.deleteNote(db, id)
 }
 
 /**

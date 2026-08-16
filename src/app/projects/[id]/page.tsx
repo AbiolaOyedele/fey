@@ -316,7 +316,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <TaskListView
                 tasks={brandTasks.tasks}
                 grouped={false}
-                onToggleDone={(taskId) => void brandTasks.toggleDone(taskId)}
+                onToggleDone={(taskId) => { brandTasks.toggleDone(taskId).catch((e: unknown) => showToast(e instanceof Error ? e.message : 'Couldn’t update that task.')) }}
                 onOpen={setSelectedTask}
               />
             )}
@@ -337,9 +337,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           onDeleteSubtask={brandTasks.deleteSubtask}
           onAddFile={brandTasks.addFile}
           onRemoveFile={brandTasks.removeFile}
-          onToggleDone={(taskId) => { void brandTasks.toggleDone(taskId); setSelectedTask(null) }}
+          onToggleDone={(taskId) => { brandTasks.toggleDone(taskId).catch((e: unknown) => showToast(e instanceof Error ? e.message : 'Couldn’t update that task.')); setSelectedTask(null) }}
           onDelete={async (taskId) => { await brandTasks.deleteTask(taskId); setSelectedTask(null) }}
           onClose={() => setSelectedTask(null)}
+          currentUserId={user?.id ?? null}
+          canManage={canManage}
+          onSetResponsible={brandTasks.setResponsible}
+          onRule={brandTasks.ruleOnTask}
         />
       )}
 

@@ -1,5 +1,22 @@
 [
   {
+    "version": "1.25.0",
+    "date": "16 August 2026",
+    "title": "Tasks hand over properly",
+    "features": [
+      "Every task now sits with one person at a time — move it on and it leaves your desk and lands on theirs",
+      "Tasks split into My desk, Involved and All, so what you're answerable for today is separate from what you're waiting on",
+      "Set what each stage does: keep the work with whoever has it, always hand it to a set person, or ask who's taking it on",
+      "Give a stage a day target — work that sits too long shows as stalled, counted from when it arrived, not against a deadline the whole chain shares",
+      "Require sign-off on a stage and work stops there until it's approved or sent back",
+      "Sending work back returns it to whoever handed it over, so rework lands with the person who did it",
+      "Whoever picks up a task gets told it's their turn",
+      "Every task keeps a history of who held it, for how long, and what was said",
+      "Your daily email and the Insights numbers now count a task against whoever is holding it — a delay downstream no longer lands on the person who already finished their part",
+      "Save on a task now saves and closes"
+    ]
+  },
+  {
     "version": "1.24.0",
     "date": "8 August 2026",
     "title": "Agency Vault & portal access control",

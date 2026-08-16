@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { apiFetch } from '@/lib/api-client'
 import { supabase } from '@/lib/supabase'
-import type { Task, CreateTaskPayload, UpdateTaskPayload, TaskScope, Subtask, TaskFileRow } from '@/types/work-tasks'
+import type {
+  Task, CreateTaskPayload, UpdateTaskPayload, TaskScope, Subtask, TaskFileRow, RuleOnTaskPayload,
+} from '@/types/work-tasks'
 
 interface UseTasksArgs {
   scope: TaskScope
@@ -98,6 +100,11 @@ export function useTasks({ scope, workspaceId, projectId, contactId, done }: Use
     }
   }, [tasks, workspaceId])
 
+  /**
+   * Flips a task's done-ness. Rethrows after restoring the list: completing is
+   * one of the moves an approval gate refuses, and a checkbox that ticks, then
+   * silently un-ticks, reads as a bug rather than as a rule.
+   */
   const toggleDone = useCallback(async (id: string) => {
     const task = tasks.find((t) => t.id === id)
     if (!task) return
@@ -106,8 +113,9 @@ export function useTasks({ scope, workspaceId, projectId, contactId, done }: Use
     setTasks((cur) => cur.filter((t) => t.id !== id))
     try {
       await apiFetch(`/api/v1/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ done: nextDone, workspace_id: workspaceId }) })
-    } catch {
+    } catch (e) {
       await refetch()
+      throw e
     }
   }, [tasks, workspaceId, refetch])
 
@@ -122,15 +130,61 @@ export function useTasks({ scope, workspaceId, projectId, contactId, done }: Use
     }
   }, [tasks])
 
-  const moveToStage = useCallback(async (id: string, stageId: string) => {
+  /**
+   * Moves a task to a stage, optionally naming who picks it up.
+   *
+   * The server decides the real holder (the stage's own rule may override, and a
+   * gated stage sends it to its approver), so the optimistic row only moves the
+   * column — responsibility is reconciled from the response rather than guessed.
+   * Rethrows so the caller can surface a refused move: a gated stage rejects
+   * this, and a drag that silently snaps back is worse than an error.
+   */
+  const moveToStage = useCallback(async (id: string, stageId: string, responsibleId?: string | null) => {
     const prev = tasks
     setTasks((cur) => cur.map((t) => (t.id === id ? { ...t, stage_id: stageId } : t)))
     try {
-      await apiFetch(`/api/v1/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ stage_id: stageId, workspace_id: workspaceId }) })
-    } catch {
+      const { task } = await apiFetch<{ task: Task }>(`/api/v1/tasks/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          stage_id: stageId,
+          ...(responsibleId !== undefined ? { responsible_id: responsibleId } : {}),
+          workspace_id: workspaceId,
+        }),
+      })
+      setTasks((cur) => cur.map((t) => (t.id === id ? task : t)))
+      return task
+    } catch (e) {
       setTasks(prev)
+      throw e
     }
   }, [tasks, workspaceId])
+
+  /** Hands the baton on without moving the task. */
+  const setResponsible = useCallback(async (id: string, userId: string | null) => {
+    const { task } = await apiFetch<{ task: Task }>(`/api/v1/tasks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ responsible_id: userId, workspace_id: workspaceId }),
+    })
+    setTasks((cur) => cur.map((t) => (t.id === id ? task : t)))
+    return task
+  }, [workspaceId])
+
+  /**
+   * Approves a gated task or sends it back. Approving the final stage completes
+   * the task, which takes it out of the active list entirely.
+   */
+  const ruleOnTask = useCallback(async (id: string, payload: RuleOnTaskPayload) => {
+    const { task } = await apiFetch<{ task: Task }>(`/api/v1/tasks/${id}/approval`, {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, workspace_id: workspaceId }),
+    })
+    setTasks((cur) => (
+      (done ?? false) === task.done
+        ? cur.map((t) => (t.id === id ? task : t))
+        : cur.filter((t) => t.id !== id)
+    ))
+    return task
+  }, [workspaceId, done])
 
   const setAssignees = useCallback(async (id: string, userIds: string[]) => {
     const { task } = await apiFetch<{ task: Task }>(`/api/v1/tasks/${id}/assignees`, {
@@ -206,6 +260,7 @@ export function useTasks({ scope, workspaceId, projectId, contactId, done }: Use
   return {
     tasks, loading, error, refetch,
     createTask, patchTask, toggleDone, deleteTask, moveToStage, setAssignees,
+    setResponsible, ruleOnTask,
     addSubtask, toggleSubtask, renameSubtask, deleteSubtask,
     addFile, removeFile,
   }

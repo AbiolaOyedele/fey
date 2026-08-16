@@ -4,12 +4,20 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Sparkles, RefreshCw, Download, RotateCcw, AlertCircle, Maximize2, Clock } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
-import { CREDIT_COST, RETENTION_WEEK_OPTIONS, DEFAULT_RETENTION_WEEKS, DEFAULT_PROMPT_PRESET_KEY } from '@/types/image-pipeline'
+import {
+  CREDIT_COST,
+  RETENTION_WEEK_OPTIONS,
+  DEFAULT_RETENTION_WEEKS,
+  DEFAULT_PROMPT_PRESET_KEY,
+  DEFAULT_IMAGE_MODEL,
+  runFinalSizeLabel,
+} from '@/types/image-pipeline'
 import type { GenerationChannel, GenerationStatus, RetentionWeeks } from '@/types/image-pipeline'
 import { useImagePipeline } from '@/hooks/useImagePipeline'
 import { useImagePipelineContext } from '@/hooks/useImagePipelineContext'
 import ReferenceUploader, { type ReferenceAsset } from '@/components/features/image-pipeline/ReferenceUploader'
 import PresetPicker from '@/components/features/image-pipeline/PresetPicker'
+import ModelPicker from '@/components/features/image-pipeline/ModelPicker'
 import ChannelSelector from '@/components/features/image-pipeline/ChannelSelector'
 import PromptGate from '@/components/features/image-pipeline/PromptGate'
 import PreviewStage from '@/components/features/image-pipeline/PreviewStage'
@@ -26,7 +34,7 @@ import { creditsLabel, fmtCredits } from '@/components/features/image-pipeline/f
 export default function ImagePipelineGeneratePage() {
   const { settings, showToast } = useSettings()
   const accent = settings.accent_color || '#ED64A6'
-  const { context, channels, refresh, updateRetention } = useImagePipelineContext()
+  const { context, channels, refresh, updateRetention, updateDefaultModel } = useImagePipelineContext()
   const { generation, busy, error, start, confirm, edit, approve, reject, retry, reset } = useImagePipeline(refresh)
 
   const [assets, setAssets] = useState<ReferenceAsset[]>([])
@@ -35,30 +43,39 @@ export default function ImagePipelineGeneratePage() {
   const [preset, setPreset] = useState<string>(DEFAULT_PROMPT_PRESET_KEY)
   const [channel, setChannel] = useState<GenerationChannel>('api')
   const [retention, setRetention] = useState<RetentionWeeks>(DEFAULT_RETENTION_WEEKS)
-  const [retentionSynced, setRetentionSynced] = useState(false)
+  const [model, setModel] = useState<string>(DEFAULT_IMAGE_MODEL)
+  const [prefsSynced, setPrefsSynced] = useState(false)
   const [finalLightbox, setFinalLightbox] = useState(false)
   const [finalBusy, setFinalBusy] = useState(false)
 
-  // Sync the retention control to the user's saved preference once, on load.
-  if (context && !retentionSynced) {
-    setRetentionSynced(true)
+  // Sync the controls to the user's saved preferences once, on load. The model
+  // comes back already validated against their tier and what's configured, so
+  // it can be trusted as the selection.
+  if (context && !prefsSynced) {
+    setPrefsSynced(true)
     setRetention(context.retention_weeks)
+    setModel(context.default_image_model)
   }
 
   // Toast on async status transitions (stands in for Realtime notifications).
   const prevStatus = useRef<GenerationStatus | null>(null)
   useEffect(() => {
-    const s = generation?.status
-    if (!s || s === prevStatus.current) return
+    if (!generation) return
+    const s = generation.status
+    if (s === prevStatus.current) return
     if (s === 'preview_ready') showToast('Preview ready to review')
-    else if (s === 'complete') showToast('Your 2K image is ready')
+    else if (s === 'complete') showToast(`Your ${runFinalSizeLabel(generation)} image is ready`)
     else if (s === 'failed') showToast('That generation failed. Please try again.')
     prevStatus.current = s
-  }, [generation?.status, showToast])
+  }, [generation, showToast])
 
   const balance = context?.balance ?? 0
   const canAfford = balance >= CREDIT_COST.preview
   const status = generation?.status
+  // What this run's final actually renders at — only some engines produce 2K.
+  const finalSize = generation ? runFinalSizeLabel(generation) : '2K'
+  // No configured engine means nothing can render; the picker explains why.
+  const noModels = !!context && context.models.length === 0
   const readyImages = assets.filter((a) => a.status === 'done' && a.url && a.public_id)
   const uploadingImages = assets.some((a) => a.status === 'uploading')
   const hasInput = readyImages.length > 0 || prompt.trim().length > 0
@@ -70,6 +87,13 @@ export default function ImagePipelineGeneratePage() {
   // re-uploading — reset() only clears the local generation, and the abandoned
   // row stays in the gallery.
   const backToInputs = () => { reset(); prevStatus.current = null }
+
+  // Persisted immediately so the choice survives a reload, but the local state
+  // leads — the picker must not wait on a round trip to look selected.
+  const chooseModel = (id: string) => {
+    setModel(id)
+    void updateDefaultModel(id)
+  }
 
   const chooseRetention = (weeks: RetentionWeeks) => {
     setRetention(weeks)
@@ -91,6 +115,7 @@ export default function ImagePipelineGeneratePage() {
         : {}),
       ...(prompt.trim() ? { user_prompt: prompt.trim() } : {}),
       prompt_preset: preset,
+      image_model: model,
     }
     const r = await start(args)
     showToast(r.ok ? 'Generation started — writing your prompt…' : r.message ?? 'Couldn’t start the generation.')
@@ -155,6 +180,8 @@ export default function ImagePipelineGeneratePage() {
           <p className="text-2xs text-gray-400 mt-1.5">Claude refines your prompt before generating. Reference images are optional — a prompt alone works.</p>
         </div>
 
+        <ModelPicker models={context?.models ?? []} value={model} onChange={chooseModel} accent={accent} />
+
         <PresetPicker value={preset} onChange={setPreset} accent={accent} />
 
         <RetentionChooser value={retention} onChange={chooseRetention} accent={accent} />
@@ -168,7 +195,7 @@ export default function ImagePipelineGeneratePage() {
           <button
             type="button"
             onClick={beginGeneration}
-            disabled={!hasInput || busy || !canAfford || uploadingImages}
+            disabled={!hasInput || busy || !canAfford || uploadingImages || noModels}
             className="inline-flex items-center gap-2 rounded-xl px-5 h-12 text-sm font-medium text-white transition-all active:scale-[0.98] disabled:opacity-50"
             style={{ backgroundColor: accent }}
           >
@@ -218,7 +245,7 @@ export default function ImagePipelineGeneratePage() {
             aria-label="View final larger"
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- Cloudinary/mock final asset */}
-            <img src={generation.final_url} alt="Final 2K image" className="w-full h-auto" />
+            <img src={generation.final_url} alt={`Final ${finalSize} image`} className="w-full h-auto" />
             <span className="absolute bottom-2 right-2 w-8 h-8 rounded-lg bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <Maximize2 size={14} />
             </span>
@@ -231,7 +258,7 @@ export default function ImagePipelineGeneratePage() {
               className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-12 text-sm font-medium text-white transition-all active:scale-[0.98] disabled:opacity-60"
               style={{ backgroundColor: accent }}
             >
-              <Download size={16} /> {finalBusy ? 'Saving…' : 'Download 2K'}
+              <Download size={16} /> {finalBusy ? 'Saving…' : `Download ${finalSize}`}
             </button>
             <Link
               href="/playground/image-pipeline/gallery"
@@ -321,7 +348,7 @@ export default function ImagePipelineGeneratePage() {
  * Chooses what the image model actually receives.
  *
  * Claude reads the references either way — that's how the prompt gets written.
- * This decides whether Gemini sees them too. Left on, the render stays close to
+ * This decides whether the image model sees them too. Left on, the render stays close to
  * the reference but can also drag along things the prompt never asked for
  * (text baked into the image, a watermark, background clutter). Turned off, the
  * prompt is the only instruction, so the output contains what was described and

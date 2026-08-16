@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { apiFetch } from '@/lib/api-client'
-import type { Workflow } from '@/types/work-tasks'
+import type { Workflow, UpdateStagePayload } from '@/types/work-tasks'
 
 /**
  * Loads the workspace's workflows (creating the default on first use, server-side).
@@ -45,7 +45,7 @@ export function useWorkflows(workspaceId: string | null | undefined) {
     await refetch()
   }, [refetch])
 
-  const updateStage = useCallback(async (id: string, updates: { name?: string; color?: string; sort_order?: number }) => {
+  const updateStage = useCallback(async (id: string, updates: UpdateStagePayload) => {
     await apiFetch(`/api/v1/workflow-stages/${id}`, { method: 'PATCH', body: JSON.stringify(updates) })
     await refetch()
   }, [refetch])

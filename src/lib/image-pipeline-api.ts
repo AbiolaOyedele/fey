@@ -9,6 +9,7 @@ import type {
   ChannelAvailability,
   CreditsSummaryResponse,
   GenerationChannel,
+  ImageModelMeta,
   ImagePipelineAdminContext,
   ImageTier,
   IpCreditRequest,
@@ -43,6 +44,10 @@ export interface PipelineContext {
   retention_weeks: RetentionWeeks
   balance: number
   channels: ChannelAvailability[]
+  /** Render engines this account may pick, already filtered by tier and setup. */
+  models: ImageModelMeta[]
+  /** Pre-selected model: the saved preference, else the app default. */
+  default_image_model: string
   /** Whatever run the user left in progress — used to resume, not restart. */
   active_generation: IpGeneration | null
 }
@@ -77,6 +82,11 @@ export async function setRetentionWeeks(weeks: RetentionWeeks): Promise<void> {
   await apiFetch(`${BASE}/context`, { method: 'PATCH', body: JSON.stringify({ retention_weeks: weeks }) })
 }
 
+/** Saves the model to pre-select next time. null clears the preference. */
+export async function setDefaultImageModel(model: string | null): Promise<void> {
+  await apiFetch(`${BASE}/context`, { method: 'PATCH', body: JSON.stringify({ default_image_model: model }) })
+}
+
 export async function setSkipPromptReview(skip: boolean): Promise<void> {
   await apiFetch(`${BASE}/context`, { method: 'PATCH', body: JSON.stringify({ skip_prompt_review: skip }) })
 }
@@ -91,6 +101,8 @@ export interface StartGenerationInput {
   user_prompt?: string
   user_notes?: string
   prompt_preset?: string
+  /** Render engine for this run; server falls back to the saved default. */
+  image_model?: string
   channel?: GenerationChannel
   retention_weeks?: RetentionWeeks
 }

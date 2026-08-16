@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Check, X, RefreshCw, Pencil, Maximize2 } from 'lucide-react'
 import type { IpGeneration } from '@/types/image-pipeline'
-import { CREDIT_COST } from '@/types/image-pipeline'
+import { CREDIT_COST, runFinalSizeLabel } from '@/types/image-pipeline'
 import StatusPill from './StatusPill'
 import ImageLightbox from './ImageLightbox'
 import { assetFilename } from './download'
@@ -25,6 +25,8 @@ interface PreviewStageProps {
  */
 export default function PreviewStage({ generation, busy, onApprove, onReject, onEdit, accent }: PreviewStageProps) {
   const rendering = generation.status === 'generating_final' || generation.status === 'generating_preview'
+  // Not every engine renders the final at 2K — say what this run will produce.
+  const finalSize = runFinalSizeLabel(generation)
   const promptText = generation.final_prompt ?? generation.generated_prompt ?? ''
   const [lightbox, setLightbox] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -65,7 +67,7 @@ export default function PreviewStage({ generation, busy, onApprove, onReject, on
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-400">
             <RefreshCw size={22} className="animate-spin" style={{ color: accent }} />
-            <span className="text-2xs">{generation.status === 'generating_final' ? 'Rendering 2K final…' : 'Rendering preview…'}</span>
+            <span className="text-2xs">{generation.status === 'generating_final' ? `Rendering ${finalSize} final…` : 'Rendering preview…'}</span>
           </div>
         )}
         <span className="absolute top-2 left-2 text-3xs font-semibold uppercase tracking-wide text-white bg-black/50 px-1.5 py-0.5 rounded pointer-events-none">1K preview</span>
@@ -119,7 +121,7 @@ export default function PreviewStage({ generation, busy, onApprove, onReject, on
           className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-12 text-sm font-medium text-white transition-all active:scale-[0.98] disabled:opacity-50"
           style={{ backgroundColor: accent }}
         >
-          <Check size={16} /> Approve · render 2K ({fmtCredits(CREDIT_COST.final)})
+          <Check size={16} /> Approve · render {finalSize} ({fmtCredits(CREDIT_COST.final)})
         </button>
         <button
           type="button"

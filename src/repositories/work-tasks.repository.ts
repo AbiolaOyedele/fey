@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Task, Subtask, TaskAssignee, TaskFileRow, TaskScope } from '@/types/work-tasks'
+import type {
+  Task, Subtask, TaskAssignee, TaskFileRow, TaskScope, TaskHandoff, HandoffKind, TaskApprovalState,
+} from '@/types/work-tasks'
 
 /**
  * All task queries (work_tasks + assignees + subtasks). Callers pass a
@@ -9,7 +11,7 @@ import type { Task, Subtask, TaskAssignee, TaskFileRow, TaskScope } from '@/type
 
 const SELECT = `
   id, owner_id, workspace_id, project_id, contact_id, stage_id, created_by, visibility,
-  requested_by_portal_user,
+  requested_by_portal_user, responsible_id, stage_entered_at, approval_state,
   title, description, priority, start_date, due_date, estimated_minutes,
   logged_minutes, sort_order, done, completed_at, created_at, updated_at,
   work_task_assignees ( user_id ),
@@ -30,6 +32,9 @@ interface RawTask {
   created_by: string
   requested_by_portal_user: string | null
   visibility: Task['visibility']
+  responsible_id: string | null
+  stage_entered_at: string | null
+  approval_state: TaskApprovalState | null
   title: string
   description: string | null
   priority: Task['priority']
@@ -57,6 +62,13 @@ function one<T>(v: T | T[] | null): T | null {
   return Array.isArray(v) ? (v[0] ?? null) : v
 }
 
+/** Resolves a user id to a displayable person, for the baton holder. */
+function person(userId: string | null, members: Map<string, MemberInfo>): TaskAssignee | null {
+  if (!userId) return null
+  const m = members.get(userId)
+  return { user_id: userId, name: m?.name ?? null, email: m?.email ?? null }
+}
+
 function mapTask(row: RawTask, members: Map<string, MemberInfo>): Task {
   const assignees: TaskAssignee[] = (row.work_task_assignees ?? []).map((a) => ({
     user_id: a.user_id,
@@ -73,6 +85,11 @@ function mapTask(row: RawTask, members: Map<string, MemberInfo>): Task {
     created_by: row.created_by,
     requested_by_portal_user: row.requested_by_portal_user ?? null,
     visibility: row.visibility ?? 'personal',
+    responsible_id: row.responsible_id ?? null,
+    // Rows written before the stage clock existed fall back to creation, which
+    // reads as "has been here a long time" — true, and better than "just now".
+    stage_entered_at: row.stage_entered_at ?? row.created_at,
+    approval_state: row.approval_state ?? 'none',
     title: row.title,
     description: row.description,
     priority: row.priority,
@@ -86,6 +103,7 @@ function mapTask(row: RawTask, members: Map<string, MemberInfo>): Task {
     created_at: row.created_at,
     updated_at: row.updated_at,
     assignees,
+    responsible: person(row.responsible_id ?? null, members),
     subtasks: (row.work_subtasks ?? []).sort((a, b) => a.sort_order - b.sort_order),
     files: (row.work_task_files ?? []).sort((a, b) => b.created_at.localeCompare(a.created_at)),
     project_title: one(row.projects)?.title ?? null,
@@ -153,7 +171,9 @@ export async function listTasks(db: SupabaseClient, args: ListArgs): Promise<Tas
     tasks = tasks.filter((t) => {
       const linked = t.project_id !== null || t.contact_id !== null
       if (!linked) return true
-      return t.created_by === uid || t.assignees.some((a) => a.user_id === uid)
+      // Holding the baton counts as being on the task even without an assignee
+      // row — a stage that hands work to its standing owner does exactly that.
+      return t.created_by === uid || t.responsible_id === uid || t.assignees.some((a) => a.user_id === uid)
     })
   }
 
@@ -174,15 +194,18 @@ export async function getTaskById(db: SupabaseClient, id: string): Promise<Task 
  * and as the "before" side of an update so a change notification can name what
  * actually changed rather than firing on every re-save.
  */
-export async function getTaskCore(db: SupabaseClient, id: string): Promise<{
+export interface TaskCore {
   id: string; owner_id: string; workspace_id: string | null; project_id: string | null
   contact_id: string | null; created_by: string; done: boolean; description: string | null
   stage_id: string | null; title: string; priority: string
   start_date: string | null; due_date: string | null; estimated_minutes: number | null
-} | null> {
+  responsible_id: string | null; stage_entered_at: string | null; approval_state: TaskApprovalState
+}
+
+export async function getTaskCore(db: SupabaseClient, id: string): Promise<TaskCore | null> {
   const { data, error } = await db
     .from('work_tasks')
-    .select('id, owner_id, workspace_id, project_id, contact_id, created_by, done, description, stage_id, title, priority, start_date, due_date, estimated_minutes')
+    .select('id, owner_id, workspace_id, project_id, contact_id, created_by, done, description, stage_id, title, priority, start_date, due_date, estimated_minutes, responsible_id, stage_entered_at, approval_state')
     .eq('id', id)
     .is('deleted_at', null)
     .maybeSingle()
@@ -195,15 +218,166 @@ export async function getStageName(db: SupabaseClient, stageId: string): Promise
   return (data as { name?: string } | null)?.name ?? null
 }
 
-/** Everyone attached to a task: its creator plus every assignee, de-duplicated. */
+// ── Stage rules + handoff log ─────────────────────────────────────────────────
+
+/** A stage's workflow position and its handoff/approval rules. */
+export interface StageRules {
+  id: string
+  workflow_id: string
+  name: string
+  sort_order: number
+  handoff_mode: 'keep' | 'fixed' | 'prompt'
+  handoff_user_id: string | null
+  requires_approval: boolean
+  approver_id: string | null
+  target_days: number | null
+}
+
+const STAGE_RULES_SELECT = 'id, workflow_id, name, sort_order, handoff_mode, handoff_user_id, requires_approval, approver_id, target_days'
+
+export async function getStageRules(db: SupabaseClient, stageId: string): Promise<StageRules | null> {
+  const { data, error } = await db.from('workflow_stages').select(STAGE_RULES_SELECT).eq('id', stageId).maybeSingle()
+  if (error) throw error
+  return (data as StageRules | null) ?? null
+}
+
+/**
+ * The stage immediately after (`+1`) or before (`-1`) this one in its workflow.
+ * Used to advance a task on approval and to send it back on changes requested.
+ * Returns null at either end of the board.
+ */
+export async function getAdjacentStage(
+  db: SupabaseClient,
+  stage: StageRules,
+  direction: 1 | -1,
+): Promise<StageRules | null> {
+  const q = db.from('workflow_stages').select(STAGE_RULES_SELECT).eq('workflow_id', stage.workflow_id)
+  const { data, error } = direction === 1
+    ? await q.gt('sort_order', stage.sort_order).order('sort_order', { ascending: true }).limit(1)
+    : await q.lt('sort_order', stage.sort_order).order('sort_order', { ascending: false }).limit(1)
+  if (error) throw error
+  return ((data ?? []) as StageRules[])[0] ?? null
+}
+
+export async function insertHandoff(
+  db: SupabaseClient,
+  row: {
+    task_id: string
+    owner_id: string
+    from_stage_id: string | null
+    to_stage_id: string | null
+    from_user_id: string | null
+    to_user_id: string | null
+    actor_id: string | null
+    kind: HandoffKind
+    note: string | null
+    held_seconds: number | null
+  },
+): Promise<void> {
+  const { error } = await db.from('work_task_handoffs').insert(row)
+  if (error) throw error
+}
+
+/**
+ * The most recent pass of the baton for a task.
+ *
+ * Its `from_user_id` is who handed the work over, which is exactly who a
+ * "changes requested" has to go back to — sending it to the stage's standing
+ * owner instead would hand the rework to someone who never did the work.
+ */
+export async function getLastHandoff(
+  db: SupabaseClient,
+  taskId: string,
+): Promise<{ from_stage_id: string | null; from_user_id: string | null } | null> {
+  const { data, error } = await db
+    .from('work_task_handoffs')
+    .select('from_stage_id, from_user_id')
+    .eq('task_id', taskId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (error) throw error
+  return ((data ?? []) as Array<{ from_stage_id: string | null; from_user_id: string | null }>)[0] ?? null
+}
+
+interface RawHandoff {
+  id: string
+  task_id: string
+  from_stage_id: string | null
+  to_stage_id: string | null
+  from_user_id: string | null
+  to_user_id: string | null
+  actor_id: string | null
+  kind: HandoffKind
+  note: string | null
+  held_seconds: number | null
+  created_at: string
+  from_stage: { name: string } | { name: string }[] | null
+  to_stage: { name: string } | { name: string }[] | null
+}
+
+/**
+ * The full chain for one task, newest first.
+ *
+ * Stage names are joined but user names come from the members map: a teammate
+ * who has left the workspace still has to be nameable in the history, and the
+ * FK is set to NULL when their account goes rather than deleting the row.
+ */
+export async function listHandoffs(db: SupabaseClient, taskId: string, ownerId: string): Promise<TaskHandoff[]> {
+  const { data, error } = await db
+    .from('work_task_handoffs')
+    .select(`
+      id, task_id, from_stage_id, to_stage_id, from_user_id, to_user_id, actor_id,
+      kind, note, held_seconds, created_at,
+      from_stage:from_stage_id ( name ),
+      to_stage:to_stage_id ( name )
+    `)
+    .eq('task_id', taskId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+
+  const members = await getMembersMap(db, ownerId)
+  const nameOf = (id: string | null): string | null => {
+    if (!id) return null
+    const m = members.get(id)
+    return m?.name ?? m?.email ?? 'Former teammate'
+  }
+
+  return ((data ?? []) as RawHandoff[]).map((r) => ({
+    id: r.id,
+    task_id: r.task_id,
+    from_stage_id: r.from_stage_id,
+    to_stage_id: r.to_stage_id,
+    from_user_id: r.from_user_id,
+    to_user_id: r.to_user_id,
+    actor_id: r.actor_id,
+    kind: r.kind,
+    note: r.note,
+    held_seconds: r.held_seconds,
+    created_at: r.created_at,
+    from_stage_name: one(r.from_stage)?.name ?? null,
+    to_stage_name: one(r.to_stage)?.name ?? null,
+    from_user_name: nameOf(r.from_user_id),
+    to_user_name: nameOf(r.to_user_id),
+    actor_name: nameOf(r.actor_id),
+  }))
+}
+
+/**
+ * Everyone attached to a task: creator, current holder, and every assignee.
+ *
+ * Deliberately wider than "who is answerable" — this is the notification
+ * audience, and someone who handed work on still wants to hear what became of
+ * it. Narrowing to the baton holder happens in the digest, not here.
+ */
 export async function getTaskParticipants(db: SupabaseClient, taskId: string): Promise<string[]> {
   const [{ data: task }, { data: assignees }] = await Promise.all([
-    db.from('work_tasks').select('created_by').eq('id', taskId).maybeSingle(),
+    db.from('work_tasks').select('created_by, responsible_id').eq('id', taskId).maybeSingle(),
     db.from('work_task_assignees').select('user_id').eq('task_id', taskId),
   ])
   const ids = new Set<string>()
-  const createdBy = (task as { created_by?: string } | null)?.created_by
-  if (createdBy) ids.add(createdBy)
+  const row = task as { created_by?: string; responsible_id?: string | null } | null
+  if (row?.created_by) ids.add(row.created_by)
+  if (row?.responsible_id) ids.add(row.responsible_id)
   for (const a of (assignees ?? []) as { user_id: string }[]) ids.add(a.user_id)
   return [...ids]
 }

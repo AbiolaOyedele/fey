@@ -15,6 +15,8 @@ export interface AnalyticsTaskRow {
   project_id: string | null
   contact_id: string | null
   created_by: string
+  /** Who holds the task right now. Open/overdue counts attribute here. */
+  responsible_id: string | null
   priority: TaskPriority
   due_date: string | null
   done: boolean
@@ -31,6 +33,7 @@ interface RawRow {
   project_id: string | null
   contact_id: string | null
   created_by: string
+  responsible_id: string | null
   priority: TaskPriority
   due_date: string | null
   done: boolean
@@ -43,7 +46,7 @@ interface RawRow {
 }
 
 const SELECT = `
-  id, project_id, contact_id, created_by, priority, due_date, done,
+  id, project_id, contact_id, created_by, responsible_id, priority, due_date, done,
   completed_at, created_at, updated_at,
   work_task_assignees ( user_id ),
   projects:project_id ( title ),
@@ -71,12 +74,6 @@ export interface AnalyticsQuery {
   assigneeId?: string | null
 }
 
-/** task_ids `userId` is assigned to, so a person filter can narrow by id. */
-async function assignedTaskIds(db: SupabaseClient, userId: string): Promise<string[]> {
-  const { data, error } = await db.from('work_task_assignees').select('task_id').eq('user_id', userId)
-  if (error) throw error
-  return ((data ?? []) as Array<{ task_id: string }>).map((r) => r.task_id)
-}
 
 /**
  * Every task that either moved inside the window or is still open.
@@ -98,11 +95,10 @@ export async function listTasksForAnalytics(
 
   if (args.projectId) q = q.eq('project_id', args.projectId)
   if (args.contactId) q = q.eq('contact_id', args.contactId)
-  if (args.assigneeId) {
-    const ids = await assignedTaskIds(db, args.assigneeId)
-    if (ids.length === 0) return []
-    q = q.in('id', ids)
-  }
+  // Narrowing to a person means the work sitting with them, matching what the
+  // people breakdown counts — otherwise clicking a row showing "3 open" would
+  // open a list of every task they've ever been assigned to.
+  if (args.assigneeId) q = q.eq('responsible_id', args.assigneeId)
 
   const { data, error } = await q.order('created_at', { ascending: false }).limit(MAX_ROWS)
   if (error) throw error
@@ -112,6 +108,7 @@ export async function listTasksForAnalytics(
     project_id: r.project_id,
     contact_id: r.contact_id,
     created_by: r.created_by,
+    responsible_id: r.responsible_id ?? null,
     priority: r.priority,
     due_date: r.due_date,
     done: r.done,

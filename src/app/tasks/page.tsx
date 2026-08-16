@@ -20,7 +20,22 @@ import { SlidersHorizontal } from 'lucide-react'
 import type { Task } from '@/types/work-tasks'
 
 type View = 'board' | 'table' | 'list' | 'completed' | 'insights'
-type SubTab = 'personal' | 'all'
+
+/**
+ * How the list is narrowed.
+ *
+ * `desk` and `involved` are the two halves of what used to be one "Personal"
+ * tab. Splitting them is the point of the whole handoff model: work you're
+ * answerable for today has to be separable from work you're merely attached to,
+ * or handing a task on would either keep nagging you or make it vanish.
+ */
+type SubTab = 'desk' | 'involved' | 'all'
+
+const SUB_TABS: Array<{ key: SubTab; label: string }> = [
+  { key: 'desk',     label: 'My desk' },
+  { key: 'involved', label: 'Involved' },
+  { key: 'all',      label: 'All' },
+]
 
 const VIEWS: Array<{ key: View; label: string }> = [
   { key: 'board', label: 'Board' },
@@ -38,7 +53,7 @@ function isListView(view: View): boolean {
 export default function TasksPage() {
   const { user } = useAuth()
   const { settings, showToast } = useSettings()
-  const { workspace } = useWorkspace()
+  const { workspace, canManage } = useWorkspace()
   const wsId = workspace?.id ?? null
   const searchParams = useSearchParams()
   const deepLinkTaskId = searchParams.get('taskId')
@@ -46,7 +61,9 @@ export default function TasksPage() {
   const deepLinkView = searchParams.get('view')
 
   const [view, setView] = useState<View>(deepLinkView === 'insights' ? 'insights' : 'list')
-  const [subTab, setSubTab] = useState<SubTab>('all')
+  // Opens on the user's own desk: the first question on arriving is "what's
+  // mine right now", and that's exactly the list the baton makes possible.
+  const [subTab, setSubTab] = useState<SubTab>('desk')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Task | null>(null)
   const [showNew, setShowNew] = useState(false)
@@ -76,9 +93,20 @@ export default function TasksPage() {
   const source = view === 'completed' ? completed : active
   const filtered = useMemo(() => {
     let list = source.tasks
-    // Personal: only tasks the current user created or is assigned to.
-    if (subTab === 'personal' && user) {
-      list = list.filter((t) => t.created_by === user.id || t.assignees.some((a) => a.user_id === user.id))
+    if (user) {
+      // My desk: work sitting with me right now — the list I'm answerable for.
+      if (subTab === 'desk') {
+        list = list.filter((t) => t.responsible_id === user.id)
+      }
+      // Involved: work I'm attached to that somebody else is holding. Handing a
+      // task on takes it off my desk without hiding it — I still need to see
+      // what I'm waiting on.
+      if (subTab === 'involved') {
+        list = list.filter((t) => (
+          t.responsible_id !== user.id
+          && (t.created_by === user.id || t.assignees.some((a) => a.user_id === user.id))
+        ))
+      }
     }
     if (search.trim()) {
       const q = search.toLowerCase()
@@ -86,6 +114,19 @@ export default function TasksPage() {
     }
     return list
   }, [source.tasks, subTab, search, user])
+
+  /** Counts on the tabs, so a handoff is visible without switching to look. */
+  const tabCounts = useMemo(() => {
+    if (!user) return { desk: 0, involved: 0, all: source.tasks.length }
+    return {
+      desk: source.tasks.filter((t) => t.responsible_id === user.id).length,
+      involved: source.tasks.filter((t) => (
+        t.responsible_id !== user.id
+        && (t.created_by === user.id || t.assignees.some((a) => a.user_id === user.id))
+      )).length,
+      all: source.tasks.length,
+    }
+  }, [source.tasks, user])
 
   // Keep the open drawer's task in sync with the latest data.
   const liveSelected = selected ? (active.tasks.find((t) => t.id === selected.id) ?? completed.tasks.find((t) => t.id === selected.id) ?? selected) : null
@@ -97,21 +138,52 @@ export default function TasksPage() {
     return task
   }, [active, showToast])
 
-  const handleMoveStage = useCallback((id: string, stageId: string) => {
-    void active.moveToStage(id, stageId)
-    const name = defaultStages.find((s) => s.id === stageId)?.name
-    showToast(name ? `Moved to ${name}` : 'Task moved')
-  }, [active, defaultStages, showToast])
+  const handleMoveStage = useCallback((id: string, stageId: string, responsibleId?: string | null) => {
+    const stage = defaultStages.find((s) => s.id === stageId)
+    active.moveToStage(id, stageId, responsibleId)
+      .then((task) => {
+        // The toast reports what actually happened, including who ended up with
+        // it — the stage rule may have chosen someone other than the mover.
+        const holder = task.responsible?.name ?? task.responsible?.email ?? null
+        if (stage?.requires_approval) showToast(`Sent to ${stage.name} for sign-off`)
+        else if (holder && task.responsible_id !== user?.id) showToast(`Moved to ${stage?.name ?? 'a new stage'} — now with ${holder}`)
+        else showToast(stage ? `Moved to ${stage.name}` : 'Task moved')
+      })
+      .catch((e: unknown) => showToast(e instanceof Error ? e.message : 'That move didn’t go through.'))
+  }, [active, defaultStages, showToast, user])
 
+  const handleSetResponsible = useCallback(async (id: string, userId: string | null) => {
+    const task = await active.setResponsible(id, userId)
+    const holder = task.responsible?.name ?? task.responsible?.email ?? null
+    showToast(holder ? `Now with ${holder}` : 'Taken off everyone’s desk')
+    return task
+  }, [active, showToast])
+
+  const handleRule = useCallback(async (id: string, payload: Parameters<typeof active.ruleOnTask>[1]) => {
+    const task = await active.ruleOnTask(id, payload)
+    showToast(payload.decision === 'approved'
+      ? (task.done ? 'Approved — task complete' : 'Approved and moved on')
+      : 'Sent back for changes')
+    // Approving the last stage finishes the task, which drops it out of the
+    // active list — leaving the drawer open would show a row that no longer
+    // refreshes. Everything else stays open so the trail can be read.
+    if (task.done) setSelected(null)
+    return task
+  }, [active, showToast])
+
+  // Completing is a way of leaving a stage, so a gate can refuse it. The toast
+  // only claims success once the write has actually landed.
   const handleComplete = useCallback((id: string) => {
-    void active.toggleDone(id)
-    showToast('Task completed', { action: { label: 'Undo', onClick: () => void completed.toggleDone(id) } })
+    active.toggleDone(id)
+      .then(() => showToast('Task completed', { action: { label: 'Undo', onClick: () => void completed.toggleDone(id) } }))
+      .catch((e: unknown) => showToast(e instanceof Error ? e.message : 'Couldn’t complete that task.'))
   }, [active, completed, showToast])
 
   const handleToggleDone = useCallback((id: string) => {
     const wasDone = source.tasks.find((t) => t.id === id)?.done ?? false
-    void source.toggleDone(id)
-    showToast(wasDone ? 'Marked as not done' : 'Task completed')
+    source.toggleDone(id)
+      .then(() => showToast(wasDone ? 'Marked as not done' : 'Task completed'))
+      .catch((e: unknown) => showToast(e instanceof Error ? e.message : 'Couldn’t update that task.'))
   }, [source, showToast])
 
   const handleDelete = useCallback(async (id: string) => {
@@ -154,13 +226,15 @@ export default function TasksPage() {
           <>
             {/* Sub-tabs */}
             <div className="flex bg-gray-100 rounded-lg p-0.5">
-              {(['personal', 'all'] as SubTab[]).map((s) => (
+              {SUB_TABS.map((s) => (
                 <button
-                  key={s}
-                  onClick={() => setSubTab(s)}
-                  className={`px-3 py-1.5 rounded-md text-xs2 font-medium transition-colors ${subTab === s ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
+                  key={s.key}
+                  onClick={() => setSubTab(s.key)}
+                  aria-pressed={subTab === s.key}
+                  className={`px-3 min-h-[36px] rounded-md text-xs2 font-medium transition-colors whitespace-nowrap ${subTab === s.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
                 >
-                  {s === 'personal' ? 'Personal' : 'All'}
+                  {s.label}
+                  <span className={`ml-1.5 ${subTab === s.key ? 'text-gray-400' : 'text-gray-400'}`}>{tabCounts[s.key]}</span>
                 </button>
               ))}
             </div>
@@ -177,13 +251,17 @@ export default function TasksPage() {
           </>
         )}
 
-        {view === 'board' && defaultWorkflow && (
+        {/* Not board-only: stages now carry the handoff and sign-off rules, which
+            matter just as much from the list. Hiding this behind the Board tab
+            put the one screen that configures the workflow somewhere most
+            people never look. */}
+        {isListView(view) && defaultWorkflow && (
           <button
             onClick={() => setShowWorkflow(true)}
-            title="Customize board stages"
-            className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-gray-200 text-xs2 font-medium text-gray-500 hover:border-gray-300"
+            title="Set who picks work up at each stage, and what needs signing off"
+            className="flex items-center gap-1.5 px-2.5 min-h-[36px] rounded-lg border border-gray-200 text-xs2 font-medium text-gray-500 hover:border-gray-300 flex-shrink-0"
           >
-            <SlidersHorizontal size={14} /> Stages
+            <SlidersHorizontal size={14} /> Stages &amp; rules
           </button>
         )}
 
@@ -210,7 +288,17 @@ export default function TasksPage() {
           <button onClick={() => void source.refetch()} className="text-sm font-semibold" style={{ color: 'var(--accent, #ED64A6)' }}>Try again</button>
         </div>
       ) : view === 'board' ? (
-        <TaskBoardView tasks={filtered} stages={defaultStages} onMoveStage={handleMoveStage} onComplete={handleComplete} onOpen={setSelected} />
+        <TaskBoardView
+          tasks={filtered}
+          stages={defaultStages}
+          onMoveStage={handleMoveStage}
+          onComplete={handleComplete}
+          onOpen={setSelected}
+          workspaceId={wsId}
+          currentUserId={user?.id ?? null}
+          canManage={canManage}
+          onBlocked={(message) => showToast(message)}
+        />
       ) : view === 'table' ? (
         <TaskTableView tasks={filtered} onToggleDone={handleToggleDone} onOpen={setSelected} />
       ) : (
@@ -234,6 +322,10 @@ export default function TasksPage() {
           onToggleDone={(id) => { handleToggleDone(id); setSelected(null) }}
           onDelete={handleDelete}
           onClose={() => setSelected(null)}
+          currentUserId={user?.id ?? null}
+          canManage={canManage}
+          onSetResponsible={handleSetResponsible}
+          onRule={handleRule}
         />
       )}
 
@@ -257,6 +349,7 @@ export default function TasksPage() {
       {showWorkflow && defaultWorkflow && (
         <WorkflowEditorModal
           workflow={defaultWorkflow}
+          workspaceId={wsId}
           onAddStage={addStage}
           onUpdateStage={updateStage}
           onDeleteStage={deleteStage}

@@ -28,6 +28,110 @@
 export const IMAGE_TIERS = ['standard', 'pro'] as const
 export type ImageTier = (typeof IMAGE_TIERS)[number]
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Image models
+ *
+ * The render engine is a per-run choice, not something implied by the tier.
+ * This catalogue is the ONE list: the picker renders from it, and the service
+ * validates the incoming `image_model` against it, so the client can never ask
+ * for a model the server doesn't know (or one its tier isn't entitled to).
+ *
+ * Model ids are the provider's own, and are stored verbatim on the generation
+ * row — keep them stable.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export const IMAGE_PROVIDERS = ['openai', 'gemini'] as const
+export type ImageProvider = (typeof IMAGE_PROVIDERS)[number]
+
+export interface ImageModelMeta {
+  /** Provider model id — stored on the generation row. */
+  id: string
+  provider: ImageProvider
+  label: string
+  description: string
+  /** Tiers permitted to pick it. A pro-only model is refused on standard. */
+  tiers: readonly ImageTier[]
+  /** Whether reference images can be forwarded to this model. */
+  supports_references: boolean
+  /**
+   * What the approved final actually comes back at. Only Gemini's pro model
+   * honours an explicit 2K request; everything else renders at its native 1K,
+   * so this is shown in the UI rather than promising "2K" across the board.
+   */
+  final_size_label: '1K' | '2K'
+}
+
+export const IMAGE_MODELS: readonly ImageModelMeta[] = [
+  {
+    id: 'gpt-image-1',
+    provider: 'openai',
+    label: 'ChatGPT Image',
+    description: 'OpenAI gpt-image-1. Follows long prompts closely and renders legible text. The final is a higher-quality render at the same size.',
+    tiers: ['standard', 'pro'],
+    supports_references: true,
+    final_size_label: '1K',
+  },
+  {
+    id: 'gpt-image-1-mini',
+    provider: 'openai',
+    label: 'ChatGPT Image Mini',
+    description: 'Quicker and cheaper than the full model, with less fine detail.',
+    tiers: ['standard', 'pro'],
+    supports_references: true,
+    final_size_label: '1K',
+  },
+  {
+    id: 'gemini-2.5-flash-image',
+    provider: 'gemini',
+    label: 'Nano Banana',
+    description: 'Google gemini-2.5-flash-image. Fast, with a natural photographic look.',
+    tiers: ['standard', 'pro'],
+    supports_references: true,
+    final_size_label: '1K',
+  },
+  {
+    id: 'gemini-3-pro-image',
+    provider: 'gemini',
+    label: 'Nano Banana Pro',
+    description: 'Google gemini-3-pro-image. The most detailed, and the only one that renders the final at 2K.',
+    tiers: ['pro'],
+    supports_references: true,
+    final_size_label: '2K',
+  },
+] as const
+
+/** Pre-selected when the user has no saved preference. */
+export const DEFAULT_IMAGE_MODEL = 'gpt-image-1'
+
+export function findImageModel(id: string | null | undefined): ImageModelMeta | null {
+  if (!id) return null
+  return IMAGE_MODELS.find((m) => m.id === id) ?? null
+}
+
+/** The models a given tier may select. */
+export function imageModelsForTier(tier: ImageTier): ImageModelMeta[] {
+  return IMAGE_MODELS.filter((m) => m.tiers.includes(tier))
+}
+
+/**
+ * The engine a run predating model choice would have used, derived from its
+ * tier. Used to resolve `image_model IS NULL` so retrying an old run renders on
+ * the engine that produced it rather than silently switching provider.
+ */
+export function legacyModelForTier(tier: ImageTier): string {
+  return tier === 'pro' ? 'gemini-3-pro-image' : 'gemini-2.5-flash-image'
+}
+
+/**
+ * The size a given run's approved final actually renders at — '2K' only where
+ * the engine really produces it. The UI labels its Approve and Download buttons
+ * from this rather than saying "2K" for every model.
+ */
+export function runFinalSizeLabel(generation: Pick<IpGeneration, 'image_model' | 'tier'>): string {
+  const id = generation.image_model ?? legacyModelForTier(generation.tier)
+  return findImageModel(id)?.final_size_label ?? '2K'
+}
+
 export const GENERATION_CHANNELS = ['api', 'flow'] as const
 export type GenerationChannel = (typeof GENERATION_CHANNELS)[number]
 
@@ -112,7 +216,7 @@ export const RETENTION_WEEK_OPTIONS = [1, 2] as const
 export type RetentionWeeks = (typeof RETENTION_WEEK_OPTIONS)[number]
 export const DEFAULT_RETENTION_WEEKS: RetentionWeeks = 2
 
-/** Max reference images a single run may carry (both Claude and Gemini accept several). */
+/** Max reference images a single run may carry (Claude and every render engine accept several). */
 export const MAX_REFERENCE_IMAGES = 4
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -206,6 +310,12 @@ export interface IpGeneration {
   owner_id: string
   channel: GenerationChannel
   tier: ImageTier
+  /**
+   * The engine that renders this run, chosen when it was started. NULL on runs
+   * that predate model choice — resolve with `legacyModelForTier(tier)` so a
+   * retry stays on the engine the run began on.
+   */
+  image_model: string | null
   status: GenerationStatus
   /**
    * Reference images are optional — a run can be prompt-only. Up to
@@ -220,6 +330,9 @@ export interface IpGeneration {
    * Gemini receives the prompt alone, so nothing that exists only in the
    * reference (baked-in text, watermarks, stray background objects) can leak
    * into the render. Defaults to true — the original behaviour.
+   *
+   * "Gemini" here is whichever engine `image_model` names; the choice applies
+   * the same way to every provider.
    */
   send_reference_to_image_model: boolean
   /** The user's own prompt when they supply one (Claude then improves it). */
@@ -302,6 +415,8 @@ export interface IpUserSettings {
   image_tier_override: ImageTier | null
   /** When true, the prompt gate is skipped (prompt still shown + editable). */
   skip_prompt_review: boolean
+  /** Preferred render engine, pre-selected on Generate. null = app default. */
+  default_image_model: string | null
   /** How many weeks generated images are kept before auto-deletion (1 or 2). */
   retention_weeks: RetentionWeeks
   updated_at: string
@@ -394,6 +509,12 @@ export interface CreateGenerationRequest {
   user_notes?: string
   /** Preset key driving the prompt step (built-in key or custom UUID); defaults to 'default'. */
   prompt_preset?: string
+  /**
+   * Render engine for this run. Defaults to the user's saved preference, then
+   * to DEFAULT_IMAGE_MODEL. Validated server-side against IMAGE_MODELS and
+   * against the caller's tier — a pro-only model is refused, not downgraded.
+   */
+  image_model?: string
   /** 'api' (default) or 'flow'; server rejects 'flow' unless a worker is online. */
   channel?: GenerationChannel
   /** Weeks to keep the images (1 or 2); defaults to the user's saved preference. */
@@ -558,6 +679,7 @@ export interface GenerationRepository {
     input: {
       channel: GenerationChannel
       tier: ImageTier
+      image_model: string
       source_image_public_ids: string[]
       source_image_urls: string[]
       send_reference_to_image_model: boolean
@@ -625,6 +747,8 @@ export interface UserSettingsRepository {
   setTierOverride(db: SupabaseClient, scope: OwnerScope, override: ImageTier | null): Promise<IpUserSettings>
   setSkipPromptReview(db: SupabaseClient, scope: OwnerScope, skip: boolean): Promise<IpUserSettings>
   setRetentionWeeks(db: SupabaseClient, scope: OwnerScope, weeks: RetentionWeeks): Promise<IpUserSettings>
+  /** null clears the preference, falling back to DEFAULT_IMAGE_MODEL. */
+  setDefaultImageModel(db: SupabaseClient, scope: OwnerScope, model: string | null): Promise<IpUserSettings>
 }
 
 export interface FlowRepository {

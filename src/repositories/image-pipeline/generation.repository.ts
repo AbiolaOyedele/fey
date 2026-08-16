@@ -12,7 +12,7 @@ import {
  */
 
 const SELECT = `
-  id, user_id, owner_id, channel, tier, status,
+  id, user_id, owner_id, channel, tier, image_model, status,
   source_image_public_ids, source_image_urls, send_reference_to_image_model,
   user_prompt, user_notes, prompt_preset,
   generated_prompt, final_prompt,
@@ -32,6 +32,7 @@ export const generationRepository: GenerationRepository = {
         owner_id: scope.owner_id,
         channel: input.channel,
         tier: input.tier,
+        image_model: input.image_model,
         status: 'prompting',
         source_image_public_ids: input.source_image_public_ids,
         source_image_urls: input.source_image_urls,

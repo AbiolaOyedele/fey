@@ -2,9 +2,16 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Queries for the daily task-digest email (src/services/task-digest.service.ts).
- * Assignee/creator-centric: a user's digest covers tasks assigned to them (any
- * workspace) plus their own personal (unlinked) tasks — not everything in every
- * workspace they belong to.
+ *
+ * The "what's due" section is responsibility-centric, not assignee-centric: it
+ * covers the tasks the user actually holds right now (work_tasks.responsible_id),
+ * across every workspace they belong to. This is the whole point of the baton —
+ * a task stuck in a teammate's stage is that teammate's overdue task, and
+ * nagging everyone who ever touched it trained people to ignore the email.
+ *
+ * The other two sections stay assignee/creator-wide on purpose. "Recently
+ * assigned" is about being brought onto work, and "completed yesterday" is a
+ * record of what the team shipped — neither is a demand on the reader.
  */
 
 export interface DigestRecipient {
@@ -71,24 +78,25 @@ async function getAssignedTaskIdsSince(db: SupabaseClient, userId: string, since
   return ((data ?? []) as Array<{ task_id: string }>).map((r) => r.task_id)
 }
 
-/** Tasks assigned to or created personally by userId, not done, due today or earlier. */
+/**
+ * Tasks the user is holding right now that are due today or already past due.
+ *
+ * Only `responsible_id` — a task the user handed on last week is no longer
+ * theirs to answer for, however long they were assigned to it. Tasks the user
+ * created but handed away are excluded for the same reason; they'll still hear
+ * about the task through notifications, just not as a personal overdue item.
+ */
 export async function getDueOrOverdueTasksForUser(db: SupabaseClient, userId: string, todayISO: string): Promise<DigestTaskRow[]> {
-  const assignedIds = await getAssignedTaskIds(db, userId)
-
-  const queries = [
-    db.from('work_tasks').select(TASK_SELECT).eq('created_by', userId)
-      .is('deleted_at', null).eq('done', false).not('due_date', 'is', null).lte('due_date', todayISO),
-  ]
-  if (assignedIds.length > 0) {
-    queries.push(
-      db.from('work_tasks').select(TASK_SELECT).in('id', assignedIds)
-        .is('deleted_at', null).eq('done', false).not('due_date', 'is', null).lte('due_date', todayISO),
-    )
-  }
-
-  const results = await Promise.all(queries)
-  for (const r of results) if (r.error) throw r.error
-  return dedupeById(results.flatMap((r) => (r.data ?? []) as DigestTaskRow[]))
+  const { data, error } = await db
+    .from('work_tasks')
+    .select(TASK_SELECT)
+    .eq('responsible_id', userId)
+    .is('deleted_at', null)
+    .eq('done', false)
+    .not('due_date', 'is', null)
+    .lte('due_date', todayISO)
+  if (error) throw error
+  return dedupeById((data ?? []) as DigestTaskRow[])
 }
 
 /** Open tasks assigned to userId in the last `sinceISO`..now window. Done tasks

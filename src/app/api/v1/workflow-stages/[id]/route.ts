@@ -18,14 +18,19 @@ async function guard(db: ReturnType<typeof createServiceClient>, stageId: string
   return { ok: true as const }
 }
 
-/** PATCH /api/v1/workflow-stages/:id  Body: { name?, color?, sort_order? } */
+/**
+ * PATCH /api/v1/workflow-stages/:id
+ * Body: { name?, color?, sort_order?, handoff_mode?, handoff_user_id?,
+ *         requires_approval?, approver_id?, target_days? }
+ * Validated in the service; only workspace managers may configure a board.
+ */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const { user, response } = await requireAuth(req.headers.get('authorization'))
   if (response) return response
 
-  let body: { name?: string; color?: string; sort_order?: number }
-  try { body = (await req.json()) as { name?: string; color?: string; sort_order?: number } } catch {
+  let body: unknown
+  try { body = await req.json() } catch {
     return errorResponse('STAGE_INVALID_BODY', 'Invalid request body.', 400)
   }
 

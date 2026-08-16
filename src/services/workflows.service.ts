@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { AppError } from '@/lib/errors'
-import type { Workflow, WorkflowStage } from '@/types/work-tasks'
+import type { Workflow, WorkflowStage, UpdateStagePayload } from '@/types/work-tasks'
 import * as repo from '@/repositories/workflows.repository'
 
 /** Seeded on first use. Order matters — the first stage is the default column. */
@@ -73,7 +73,61 @@ export async function addStage(db: SupabaseClient, workflowId: string, name: str
   return repo.insertStage(db, { workflow_id: workflowId, name: name.trim().slice(0, 50), color, sort_order: sortOrder })
 }
 
-export async function updateStage(db: SupabaseClient, id: string, updates: { name?: string; color?: string; sort_order?: number }): Promise<void> {
+const stageUpdateSchema = z.object({
+  name: z.string().trim().min(1, 'Give the stage a name.').max(50).optional(),
+  color: z.string().trim().min(1).max(20).optional(),
+  sort_order: z.number().int().min(0).optional(),
+  handoff_mode: z.enum(['keep', 'fixed', 'prompt']).optional(),
+  handoff_user_id: z.string().uuid().nullable().optional(),
+  requires_approval: z.boolean().optional(),
+  approver_id: z.string().uuid().nullable().optional(),
+  target_days: z.number().int().min(1, 'A stage target must be at least a day.').max(365).nullable().optional(),
+})
+
+/**
+ * Saves a stage's presentation and its workflow rules.
+ *
+ * The two rule pairs are normalized rather than rejected when they half-arrive:
+ * a stage set to hand work to a specific person, with nobody chosen, would
+ * otherwise silently keep the baton where it is and look broken. Clearing the
+ * mode clears the person with it, so the board never shows a rule it isn't
+ * actually applying.
+ */
+export async function updateStage(db: SupabaseClient, id: string, input: unknown): Promise<void> {
+  const parsed = stageUpdateSchema.safeParse(input)
+  if (!parsed.success) throw new AppError(400, parsed.error.issues[0]?.message ?? 'Invalid stage.', 'STAGE_INVALID')
+  const d = parsed.data
+
+  // Built key by key rather than spread: under exactOptionalPropertyTypes an
+  // absent field and one explicitly set to undefined are different things, and
+  // only the absent ones should be left alone by the update.
+  const updates: UpdateStagePayload = {}
+  if (d.name !== undefined) updates.name = d.name
+  if (d.color !== undefined) updates.color = d.color
+  if (d.sort_order !== undefined) updates.sort_order = d.sort_order
+  if (d.requires_approval !== undefined) updates.requires_approval = d.requires_approval
+  if (d.target_days !== undefined) updates.target_days = d.target_days
+  if (d.approver_id !== undefined) updates.approver_id = d.approver_id
+
+  if (d.handoff_mode !== undefined) {
+    updates.handoff_mode = d.handoff_mode
+    if (d.handoff_mode === 'fixed') {
+      if (d.handoff_user_id === undefined) {
+        throw new AppError(400, 'Choose who this stage hands work to.', 'STAGE_HANDOFF_USER_REQUIRED')
+      }
+      updates.handoff_user_id = d.handoff_user_id
+    } else {
+      // A stage that no longer hands work to a set person must not keep one on
+      // file — the board would show a rule it isn't applying.
+      updates.handoff_user_id = null
+    }
+  } else if (d.handoff_user_id !== undefined) {
+    updates.handoff_user_id = d.handoff_user_id
+  }
+
+  // Same for a gate that's been switched off: no dangling approver.
+  if (d.requires_approval === false) updates.approver_id = null
+
   await repo.updateStage(db, id, updates)
 }
 

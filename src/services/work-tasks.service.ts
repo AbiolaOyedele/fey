@@ -12,7 +12,7 @@ import type { StageRules, TaskCore as TaskRow } from '@/repositories/work-tasks.
 import * as wfRepo from '@/repositories/workflows.repository'
 import { ensureDefaultWorkflow } from '@/services/workflows.service'
 import { isWorkspaceAdmin } from '@/lib/owner-context'
-import { notify } from '@/services/notifications.service'
+import { notify, notifyOwnerAdmins } from '@/services/notifications.service'
 import { announceToClient } from '@/services/portal-notifications.service'
 
 /** The bits of a task an announcement needs to reach the right people. */
@@ -138,6 +138,36 @@ async function notifyAssigned(
       actorId,
       type: 'task_assigned',
       title: 'New task assigned to you',
+      body: title,
+      link: `/tasks?taskId=${core.id}`,
+      entityType: 'task',
+      entityId: core.id,
+    })
+  } catch { /* best-effort */ }
+}
+
+/**
+ * Says out loud that a team task was created with nobody on it.
+ *
+ * Only for team tasks. A personal task with no assignee is just a note to
+ * yourself and needs no announcement — but a task put in front of the whole
+ * workspace with no name against it is work everyone assumes someone else
+ * picked up, which is exactly how it sits untouched for a week.
+ *
+ * The creator isn't notified: they were there when it happened, and `notify`
+ * drops the actor from the recipients anyway.
+ */
+async function notifyUnassignedTeamTask(
+  core: TaskCore,
+  title: string,
+  actorId: string,
+): Promise<void> {
+  try {
+    await notifyOwnerAdmins(createServiceClient(), core.owner_id, {
+      workspaceId: core.workspace_id,
+      actorId,
+      type: 'task_unassigned',
+      title: 'Team task with nobody assigned',
       body: title,
       link: `/tasks?taskId=${core.id}`,
       entityType: 'task',
@@ -467,6 +497,11 @@ export async function createTask(db: SupabaseClient, ctx: Ctx, input: unknown): 
   if (d.assignee_ids?.length) {
     await repo.setAssignees(db, id, d.assignee_ids)
     await notifyAssigned(core, d.assignee_ids, d.title, ctx.userId)
+  } else if (visibility === 'team' && responsibleId === ctx.userId) {
+    // Team-visible, nobody assigned, and not handed to anyone either — the
+    // holder defaulted back to whoever typed it. Handing it over deliberately
+    // sends the baton message below instead, so this can't double up.
+    await notifyUnassignedTeamTask(core, d.title, ctx.userId)
   }
 
   // Raising a task straight onto someone else's desk has to reach them. The

@@ -14,6 +14,7 @@ import {
   FileSignature,
   CreditCard,
   ListTodo,
+  UserRoundX,
   Paperclip, FileCheck,
   Inbox,
   Sparkles,
@@ -34,6 +35,8 @@ const TYPE_META: Record<string, { category?: Category; icon: ReactNode }> = {
   contract_signed: { category: 'clients', icon: <FileSignature size={15} /> },
   invoice_paid: { category: 'clients', icon: <CreditCard size={15} /> },
   task_assigned: { category: 'tasks', icon: <ListTodo size={15} /> },
+  // A distinct icon: the point of this one is that there's no name against it.
+  task_unassigned: { category: 'tasks', icon: <UserRoundX size={15} /> },
   task_updated: { category: 'tasks', icon: <ListTodo size={15} /> },
   task_deleted: { category: 'tasks', icon: <ListTodo size={15} /> },
   task_review_uploaded: { category: 'tasks', icon: <FileCheck size={15} /> },

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
 import { useContacts } from '@/hooks/useCrm'
 import { useProjects } from '@/hooks/useProjects'
@@ -27,12 +27,21 @@ interface NewTaskModalProps {
    */
   members?: { user_id: string; name: string | null; email: string | null }[]
   hideLinks?: boolean
+  /**
+   * Fixes visibility and states it instead of offering a choice.
+   *
+   * The client portal sets this to 'team'. A task raised by a client is always
+   * workspace-visible — a private client task is a contradiction, and the
+   * portal's create endpoint hardcodes it — so a togglable control there was
+   * only ever describing a choice the server would ignore.
+   */
+  lockedVisibility?: TaskVisibility
   onClose: () => void
 }
 
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 
-export default function NewTaskModal({ workspaceId, fixedContactId, fixedProjectId, stages = [], onCreate, onClose, members, hideLinks }: NewTaskModalProps) {
+export default function NewTaskModal({ workspaceId, fixedContactId, fixedProjectId, stages = [], onCreate, onClose, members, hideLinks, lockedVisibility }: NewTaskModalProps) {
   useScrollLock()
   const linkLocked = fixedContactId != null || fixedProjectId != null
   const { contacts } = useContacts()
@@ -41,19 +50,18 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
   const [projectId, setProjectId] = useState<string | null>(fixedProjectId ?? null)
 
   const [title, setTitle] = useState('')
-  const [visibility, setVisibility] = useState<TaskVisibility>('personal')
+  const [visibility, setVisibility] = useState<TaskVisibility>(lockedVisibility ?? 'personal')
   const [priority, setPriority] = useState<TaskPriority>('medium')
   const [dueDate, setDueDate] = useState('')
-  const [stageId, setStageId] = useState<string | null>(stages[0]?.id ?? null)
+  // Null means "not chosen", not "no stage". Stages can still be loading when
+  // the modal opens, so the first column is derived rather than copied into
+  // state — copying it needs an effect to correct itself once they arrive, and
+  // that effect is a render pass that can land after a submit.
+  const [stageId, setStageId] = useState<string | null>(null)
+  const effectiveStageId = stageId ?? stages[0]?.id ?? null
   const [assigneeIds, setAssigneeIds] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-
-  // Stages can still be loading when the modal first opens — pick a default
-  // once they arrive if the user hasn't already touched the field.
-  useEffect(() => {
-    if (stageId === null && stages[0]) setStageId(stages[0].id)
-  }, [stages, stageId])
 
   const submit = async () => {
     if (!title.trim()) { setError('Add a task title.'); return }
@@ -67,7 +75,7 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
         contact_id: projectId ? null : contactId,
         project_id: projectId,
         visibility,
-        stage_id: stageId,
+        stage_id: effectiveStageId,
         assignee_ids: assigneeIds,
       })
       onClose()
@@ -123,14 +131,26 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
           </div>
         )}
 
+        {/* Fixed by the caller → say what it is rather than offer a choice. */}
+        {lockedVisibility && (
+          <div className="mb-4">
+            <p className="text-2xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Visibility</p>
+            <p className="text-xs2 text-gray-500">
+              {lockedVisibility === 'team'
+                ? 'Everyone on the team can see this task.'
+                : 'Only you and anyone you assign can see this task.'}
+            </p>
+          </div>
+        )}
+
         {/* No client → choose who can see it */}
-        {!linkLocked && !contactId && !projectId && (
+        {!lockedVisibility && !linkLocked && !contactId && !projectId && (
           <div className="mb-4">
             <p className="text-2xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Visibility</p>
             <div className="flex gap-1.5">
               {([
-                { v: 'personal' as const, label: 'Personal', hint: 'Only you & assignees' },
                 { v: 'team' as const, label: 'Team', hint: 'Everyone in the workspace' },
+                { v: 'personal' as const, label: 'Personal', hint: 'Only you & assignees' },
               ]).map((o) => (
                 <button
                   key={o.v}
@@ -165,7 +185,7 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
           <DateField value={dueDate || null} onChange={(v) => setDueDate(v ?? '')} placeholder="Due date" clearable />
           {stages.length > 0 && (
             <select
-              value={stageId ?? ''}
+              value={effectiveStageId ?? ''}
               onChange={(e) => setStageId(e.target.value || null)}
               className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
             >

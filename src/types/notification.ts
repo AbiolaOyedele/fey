@@ -4,6 +4,9 @@ export type NotificationType =
   | 'client_message'
   | 'client_signup'
   | 'task_assigned'
+  // A team-visible task created with nobody on it. Its own type, not a quieter
+  // 'task_assigned', because the thing being reported is the absence of one.
+  | 'task_unassigned'
   // Anything else that happens to a task someone is on: edited, moved, done,
   // reopened, reassigned. Deletes are separate so they can read differently.
   | 'task_updated'

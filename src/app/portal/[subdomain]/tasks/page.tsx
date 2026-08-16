@@ -216,6 +216,9 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
           stages={t.stages}
           members={pickableMembers}
           hideLinks
+          // Everything a client raises goes to the team — the endpoint enforces
+          // it, so the modal states it instead of pretending otherwise.
+          lockedVisibility="team"
           onCreate={async (payload) => {
             const task = await t.createTask(payload as unknown as Record<string, unknown>)
             // Open it straight away so details, steps and files can be added in

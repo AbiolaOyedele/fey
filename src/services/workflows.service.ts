@@ -37,6 +37,33 @@ export async function ensureDefaultWorkflow(
   return winner
 }
 
+/**
+ * The board a caller should be looking at when it can't be sure of the
+ * workspace — the client portal, specifically.
+ *
+ * A portal token carries an owner and a contact, so the workspace has to be
+ * inferred, and `ensureDefaultWorkflow` treats a miss as "no board yet" and
+ * seeds one. That's how a client ends up choosing between Backlog, In Progress,
+ * Review and Done while the agency's real board says something else entirely —
+ * and it leaves a second workflow behind in the owner's account.
+ *
+ * So: try the workspace we think it is, then settle for the owner's default
+ * whatever workspace it sits in, and only seed when they genuinely have none.
+ */
+export async function resolveOwnerWorkflow(
+  db: SupabaseClient,
+  ownerId: string,
+  workspaceId: string | null,
+): Promise<Workflow> {
+  if (workspaceId) {
+    const exact = await repo.getDefaultWorkflow(db, ownerId, workspaceId)
+    if (exact) return exact
+  }
+  const any = await repo.getAnyDefaultWorkflow(db, ownerId)
+  if (any) return any
+  return ensureDefaultWorkflow(db, ownerId, workspaceId)
+}
+
 export async function listWorkflows(db: SupabaseClient, ownerId: string, workspaceId: string | null): Promise<Workflow[]> {
   await ensureDefaultWorkflow(db, ownerId, workspaceId)
   return repo.listWorkflows(db, ownerId)

@@ -81,6 +81,32 @@ export async function getDefaultWorkflow(
   return data ? mapWorkflow(data as RawWorkflow) : null
 }
 
+/**
+ * The owner's default workflow, whichever workspace it was filed under.
+ *
+ * `getDefaultWorkflow` matches an exact workspace_id, which is right when the
+ * caller knows the scope. The portal doesn't: a portal token carries an owner
+ * and a contact, not a workspace, so a guess that misses would look like "this
+ * owner has no board" and seed a second one full of stock stages beside the
+ * real one. Oldest first, so the answer is stable across calls.
+ */
+export async function getAnyDefaultWorkflow(
+  db: SupabaseClient,
+  ownerId: string,
+): Promise<Workflow | null> {
+  const { data, error } = await db
+    .from('workflows')
+    .select('id, owner_id, workspace_id, name, is_default, workflow_stages ( id, workflow_id, name, color, sort_order, handoff_mode, handoff_user_id, requires_approval, approver_id, target_days )')
+    .eq('owner_id', ownerId)
+    .eq('is_default', true)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true })
+    .limit(1)
+  if (error) throw error
+  const row = (data ?? [])[0]
+  return row ? mapWorkflow(row as RawWorkflow) : null
+}
+
 export async function insertWorkflow(
   db: SupabaseClient,
   row: { owner_id: string; workspace_id: string | null; name: string; is_default: boolean },

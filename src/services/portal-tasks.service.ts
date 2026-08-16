@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { AppError } from '@/lib/errors'
 import { notify, notifyOwnerAdmins } from '@/services/notifications.service'
-import { ensureDefaultWorkflow } from '@/services/workflows.service'
+import { resolveOwnerWorkflow } from '@/services/workflows.service'
 import * as access from '@/repositories/client-team-access.repository'
 import * as portalRepo from '@/repositories/portal.repository'
 import { isReadOnly } from '@/services/portal-members.service'
@@ -47,11 +47,40 @@ export async function listTasks(db: SupabaseClient, scope: Scope): Promise<Task[
   }))
 }
 
-/** The board columns, so the portal can show and change status like the app. */
+/**
+ * The board columns, so the portal can show and change status like the app.
+ *
+ * The agency's own stages, not a stock set — see `resolveOwnerWorkflow`. If
+ * they renamed their columns to Briefed / Drafting / With client, that's what
+ * the client picks from, and a task the client raises lands in a column the
+ * agency actually uses.
+ */
 export async function listStages(db: SupabaseClient, scope: Scope) {
   const workspaceId = await portalRepo.getOwnerWorkspaceId(db, scope.ownerId)
-  const workflow = await ensureDefaultWorkflow(db, scope.ownerId, workspaceId)
+  const workflow = await resolveOwnerWorkflow(db, scope.ownerId, workspaceId)
   return workflow.stages
+}
+
+/** The agency's board, resolved the same way for reads and writes. */
+async function ownerWorkflow(db: SupabaseClient, scope: Scope) {
+  const workspaceId = await portalRepo.getOwnerWorkspaceId(db, scope.ownerId)
+  return resolveOwnerWorkflow(db, scope.ownerId, workspaceId)
+}
+
+/**
+ * A stage id only if it names a column on the agency's own board.
+ *
+ * Stage ids arrive from a browser, and this runs service-role with no RLS
+ * underneath it. Writing an unchecked one would let a client file their task
+ * into a stage belonging to an entirely different agency — visible on nobody's
+ * board and counted in somebody else's. Null means "not one of ours".
+ */
+function ownStageId(
+  workflow: { stages: { id: string }[] },
+  stageId: string | null | undefined,
+): string | null {
+  if (!stageId) return null
+  return workflow.stages.some((s) => s.id === stageId) ? stageId : null
 }
 
 /** Only tasks the client raised are theirs to edit. Every write goes through this. */
@@ -83,6 +112,9 @@ const createSchema = z.object({
   due_date:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a valid date.').nullish(),
   priority:    z.enum(['low', 'medium', 'high']).optional(),
   assignee_ids: z.array(z.string().uuid()).max(10).optional(),
+  // Accepted, then checked against the agency's own board below. A client
+  // picking a column is fine; a client naming someone else's column is not.
+  stage_id:    z.string().uuid().nullish(),
 })
 
 /**
@@ -122,11 +154,12 @@ export async function createTask(
     }
   }
 
+  const workflow = await ownerWorkflow(db, scope)
+  // The client's choice, but only if it names a column on the agency's own
+  // board. Falling back to the first column means the task still lands
+  // somewhere people look rather than in an unstaged limbo.
+  const stageId = ownStageId(workflow, d.stage_id) ?? workflow.stages[0]?.id ?? null
   const workspaceId = await portalRepo.getOwnerWorkspaceId(db, scope.ownerId)
-  // Land it in the first board column so it shows up on the agency's board
-  // rather than sitting in an unstaged limbo nobody looks at.
-  const workflow = await ensureDefaultWorkflow(db, scope.ownerId, workspaceId)
-  const stageId = workflow.stages[0]?.id ?? null
 
   const taskId = await portalRepo.insertPortalTask(db, {
     ownerId:      scope.ownerId,
@@ -154,11 +187,13 @@ export async function createTask(
       entityId:   taskId,
     })
   } else {
-    // Nobody was picked, so it would otherwise land silently. Tell the people
-    // who can act on it that a client is waiting.
+    // Nobody was picked, so it would otherwise land silently. Client tasks are
+    // always team-visible, and team-visible with nobody on it is precisely the
+    // state that needs saying out loud — the same rule the app applies to its
+    // own unassigned team tasks.
     await notifyOwnerAdmins(db, scope.ownerId, {
-      type:  'task_assigned',
-      title: `${actor.name} raised a task`,
+      type:  'task_unassigned',
+      title: `${actor.name} raised a task — nobody assigned`,
       body:  d.title,
       link:  `/tasks?taskId=${taskId}`,
       entityType: 'task',
@@ -213,7 +248,16 @@ export async function patchTask(
   if (d.description !== undefined) updates.description = d.description
   if (d.priority !== undefined)    updates.priority = d.priority
   if (d.due_date !== undefined)    updates.due_date = d.due_date
-  if (d.stage_id !== undefined)    updates.stage_id = d.stage_id
+  if (d.stage_id !== undefined) {
+    // Same check as on create: a client may move their task between the
+    // agency's columns, and nowhere else. An id that isn't on this board is
+    // rejected rather than quietly written.
+    const stageId = ownStageId(await ownerWorkflow(db, scope), d.stage_id)
+    if (d.stage_id !== null && !stageId) {
+      throw new AppError(400, 'That status isn’t one of your team’s.', 'PORTAL_TASK_STAGE_INVALID')
+    }
+    updates.stage_id = stageId
+  }
   if (d.done !== undefined) {
     updates.done = d.done
     updates.completed_at = d.done ? new Date().toISOString() : null

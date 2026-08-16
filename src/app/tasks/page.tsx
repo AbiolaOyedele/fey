@@ -251,13 +251,17 @@ export default function TasksPage() {
           </>
         )}
 
-        {view === 'board' && defaultWorkflow && (
+        {/* Not board-only: stages now carry the handoff and sign-off rules, which
+            matter just as much from the list. Hiding this behind the Board tab
+            put the one screen that configures the workflow somewhere most
+            people never look. */}
+        {isListView(view) && defaultWorkflow && (
           <button
             onClick={() => setShowWorkflow(true)}
-            title="Customize board stages"
-            className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-gray-200 text-xs2 font-medium text-gray-500 hover:border-gray-300"
+            title="Set who picks work up at each stage, and what needs signing off"
+            className="flex items-center gap-1.5 px-2.5 min-h-[36px] rounded-lg border border-gray-200 text-xs2 font-medium text-gray-500 hover:border-gray-300 flex-shrink-0"
           >
-            <SlidersHorizontal size={14} /> Stages
+            <SlidersHorizontal size={14} /> Stages &amp; rules
           </button>
         )}
 

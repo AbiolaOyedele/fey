@@ -96,7 +96,10 @@ export default function WorkflowEditorModal({
             <X size={16} />
           </button>
         </div>
-        <p className="text-xs2 text-gray-400 mb-4">{workflow.name} workflow · drag to reorder, tap a stage to set who picks work up</p>
+        <p className="text-xs2 text-gray-400 mb-4">
+          {workflow.name} workflow · drag to reorder. Tap <span className="font-semibold text-gray-500">Rules</span> on a
+          stage to set who picks work up there, whether it needs signing off, and how long it should take.
+        </p>
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={order.map((s) => s.id)} strategy={verticalListSortingStrategy}>
@@ -156,11 +159,15 @@ function StageRow({ stage, workspaceId, canDelete, isOpen, onToggleOpen, onUpdat
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: stage.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
 
-  /** One-line summary of the rules, so a collapsed row still tells the truth. */
+  /**
+   * One-line summary of the rules, always rendered — including the defaults.
+   * An unconfigured stage used to show nothing at all, which made the editor
+   * look identical to the old one and left the whole feature undiscoverable.
+   */
   const summary = [
     stage.handoff_mode === 'fixed' && stage.handoff_user_id ? 'Hands to a set person'
       : stage.handoff_mode === 'prompt' ? 'Asks who’s next'
-      : null,
+      : 'Stays with whoever has it',
     stage.requires_approval ? 'Needs sign-off' : null,
     stage.target_days ? `${stage.target_days}d target` : null,
   ].filter(Boolean).join(' · ')
@@ -191,10 +198,11 @@ function StageRow({ stage, workspaceId, canDelete, isOpen, onToggleOpen, onUpdat
         <button
           onClick={onToggleOpen}
           aria-expanded={isOpen}
-          aria-label={isOpen ? 'Hide stage rules' : 'Show stage rules'}
-          className="w-11 h-11 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 flex-shrink-0"
+          aria-label={isOpen ? `Hide rules for ${stage.name}` : `Set rules for ${stage.name}`}
+          className="min-h-[44px] px-2.5 rounded-lg flex items-center gap-1 text-2xs font-medium text-gray-500 hover:bg-gray-100 flex-shrink-0"
         >
-          <ChevronDown size={15} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          Rules
+          <ChevronDown size={13} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
         <button
           onClick={() => void onDelete(stage.id)}
@@ -206,11 +214,14 @@ function StageRow({ stage, workspaceId, canDelete, isOpen, onToggleOpen, onUpdat
         </button>
       </div>
 
-      {!isOpen && summary && (
-        <p className="px-3 pb-2 -mt-1 text-2xs text-gray-400 flex items-center gap-1 flex-wrap">
+      {!isOpen && (
+        <button
+          onClick={onToggleOpen}
+          className="w-full text-left px-3 pb-2 -mt-1 text-2xs text-gray-400 flex items-center gap-1 flex-wrap hover:text-gray-600"
+        >
           {stage.requires_approval && <ShieldCheck size={11} className="text-amber-500 flex-shrink-0" />}
           {summary}
-        </p>
+        </button>
       )}
 
       {isOpen && (

@@ -82,6 +82,10 @@ export default function PersonPicker({
         <div
           className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/30 p-4 animate-fadeIn"
           onClick={() => setOpen(false)}
+          // Hosts that close themselves on a backdrop mousedown (the task
+          // drawer does) would otherwise tear this sheet down mid-press and
+          // swallow the choice. Stopped here so the sheet is safe anywhere.
+          onMouseDown={(e) => e.stopPropagation()}
         >
           <div
             className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-xl animate-slideUp max-h-[80dvh] flex flex-col"

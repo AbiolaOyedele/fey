@@ -112,7 +112,9 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
   const [preview, setPreview] = useState<{ url: string; name: string } | null>(null)
   const [estimate, setEstimate] = useState(task.estimated_minutes != null ? formatMinutes(task.estimated_minutes) : '')
   const [newSubtask, setNewSubtask] = useState('')
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  // No 'saved' state: a successful save closes the drawer, so there's nothing
+  // left on screen to confirm it on.
+  const [saveState, setSaveState] = useState<'idle' | 'saving'>('idle')
   // A stage change held open while we ask who's picking the work up.
   const [pendingStage, setPendingStage] = useState<WorkflowStage | null>(null)
   const descriptionRef = useRef<MentionAwareEditorHandle>(null)
@@ -182,17 +184,16 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
 
     try {
       if (Object.keys(updates).length > 0) await onPatch(task.id, updates)
-      setSaveState('saved')
+      // Save means "I'm done here" — it closes. Leaving the drawer open after
+      // an explicit save made the button look like it hadn't worked, since
+      // every field had already written itself on blur and nothing visibly
+      // changed. Only on success: a failed save has to stay put so the edit
+      // isn't lost behind a closed drawer.
+      onClose()
     } catch {
       setSaveState('idle')
     }
-  }, [isEditingDescription, title, estimate, task.id, task.title, task.estimated_minutes, onPatch])
-
-  useEffect(() => {
-    if (saveState !== 'saved') return
-    const t = setTimeout(() => setSaveState('idle'), 2000)
-    return () => clearTimeout(t)
-  }, [saveState])
+  }, [isEditingDescription, title, estimate, task.id, task.title, task.estimated_minutes, onPatch, onClose])
 
   const addSub = useCallback(async () => {
     const t = newSubtask.trim()
@@ -555,13 +556,13 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
         </div>
         )}
 
-        {/* Save — everything here autosaves, but an explicit save gives a clear
-         *  "it's stored" moment and flushes a field that's still being edited.
-         *  Review has nothing pending to flush, so the bar is details-only. */}
+        {/* Save — everything here autosaves, so this flushes whatever field is
+         *  still being edited and then gets out of the way. Review has nothing
+         *  pending to flush, so the bar is details-only. */}
         {tab === 'details' && (
         <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 px-5 py-3 bg-white/95 backdrop-blur border-t border-gray-100 rounded-b-2xl">
           <span className="text-xs2 text-gray-400 min-w-0 truncate" aria-live="polite">
-            {saveState === 'saved' ? 'All changes saved' : 'Changes save automatically'}
+            Changes save automatically
           </span>
           <button
             type="button"
@@ -570,7 +571,7 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
             className="min-h-[44px] px-5 rounded-xl text-sm font-medium text-white flex-shrink-0 disabled:opacity-60 transition-opacity"
             style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
           >
-            {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved' : 'Save'}
+            {saveState === 'saving' ? 'Saving…' : 'Save & close'}
           </button>
         </div>
         )}

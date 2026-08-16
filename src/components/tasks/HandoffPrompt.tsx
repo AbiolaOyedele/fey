@@ -46,6 +46,16 @@ export default function HandoffPrompt({
     <div
       className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/30 p-0 sm:p-4 animate-fadeIn"
       onClick={onCancel}
+      /**
+       * Mousedown stops here, at the sheet's own root.
+       *
+       * The task drawer closes itself on mousedown against its backdrop, and
+       * this sheet mounts inside it — so pressing a name tore the drawer down
+       * mid-press and the click never landed. The task appeared to do nothing.
+       * Stopping it here keeps the sheet safe wherever it's mounted, rather
+       * than relying on each host to guard it.
+       */
+      onMouseDown={(e) => e.stopPropagation()}
     >
       <div
         className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-xl animate-slideUp max-h-[85dvh] flex flex-col"

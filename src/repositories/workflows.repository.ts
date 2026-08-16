@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Workflow, WorkflowStage } from '@/types/work-tasks'
+import type { Workflow, WorkflowStage, UpdateStagePayload } from '@/types/work-tasks'
 
 /**
  * Workflow + stage queries. All queries for the task-workflow domain live here.
@@ -15,6 +15,22 @@ interface RawWorkflow {
   workflow_stages: WorkflowStage[] | null
 }
 
+/** Fills in the handoff/approval defaults for rows written before they existed. */
+function mapStage(s: Partial<WorkflowStage> & { id: string; workflow_id: string; name: string; color: string; sort_order: number }): WorkflowStage {
+  return {
+    id: s.id,
+    workflow_id: s.workflow_id,
+    name: s.name,
+    color: s.color,
+    sort_order: s.sort_order,
+    handoff_mode: s.handoff_mode ?? 'keep',
+    handoff_user_id: s.handoff_user_id ?? null,
+    requires_approval: s.requires_approval ?? false,
+    approver_id: s.approver_id ?? null,
+    target_days: s.target_days ?? null,
+  }
+}
+
 function mapWorkflow(row: RawWorkflow): Workflow {
   return {
     id: row.id,
@@ -22,14 +38,14 @@ function mapWorkflow(row: RawWorkflow): Workflow {
     workspace_id: row.workspace_id,
     name: row.name,
     is_default: row.is_default,
-    stages: (row.workflow_stages ?? []).sort((a, b) => a.sort_order - b.sort_order),
+    stages: (row.workflow_stages ?? []).map(mapStage).sort((a, b) => a.sort_order - b.sort_order),
   }
 }
 
 export async function listWorkflows(db: SupabaseClient, ownerId: string): Promise<Workflow[]> {
   const { data, error } = await db
     .from('workflows')
-    .select('id, owner_id, workspace_id, name, is_default, workflow_stages ( id, workflow_id, name, color, sort_order )')
+    .select('id, owner_id, workspace_id, name, is_default, workflow_stages ( id, workflow_id, name, color, sort_order, handoff_mode, handoff_user_id, requires_approval, approver_id, target_days )')
     .eq('owner_id', ownerId)
     .is('deleted_at', null)
     .order('created_at', { ascending: true })
@@ -40,7 +56,7 @@ export async function listWorkflows(db: SupabaseClient, ownerId: string): Promis
 export async function getWorkflowById(db: SupabaseClient, id: string): Promise<Workflow | null> {
   const { data, error } = await db
     .from('workflows')
-    .select('id, owner_id, workspace_id, name, is_default, workflow_stages ( id, workflow_id, name, color, sort_order )')
+    .select('id, owner_id, workspace_id, name, is_default, workflow_stages ( id, workflow_id, name, color, sort_order, handoff_mode, handoff_user_id, requires_approval, approver_id, target_days )')
     .eq('id', id)
     .is('deleted_at', null)
     .maybeSingle()
@@ -55,7 +71,7 @@ export async function getDefaultWorkflow(
 ): Promise<Workflow | null> {
   let q = db
     .from('workflows')
-    .select('id, owner_id, workspace_id, name, is_default, workflow_stages ( id, workflow_id, name, color, sort_order )')
+    .select('id, owner_id, workspace_id, name, is_default, workflow_stages ( id, workflow_id, name, color, sort_order, handoff_mode, handoff_user_id, requires_approval, approver_id, target_days )')
     .eq('owner_id', ownerId)
     .eq('is_default', true)
     .is('deleted_at', null)
@@ -101,13 +117,13 @@ export async function insertStage(
 ): Promise<WorkflowStage> {
   const { data, error } = await db.from('workflow_stages').insert(row).select('*').single()
   if (error) throw error
-  return data as WorkflowStage
+  return mapStage(data as WorkflowStage)
 }
 
 export async function updateStage(
   db: SupabaseClient,
   id: string,
-  updates: { name?: string; color?: string; sort_order?: number },
+  updates: UpdateStagePayload,
 ): Promise<void> {
   const { error } = await db.from('workflow_stages').update(updates).eq('id', id)
   if (error) throw error

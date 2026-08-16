@@ -37,7 +37,12 @@ const envSchema = z.object({
   // sent to the browser. While unset, the pipeline's generate endpoints return
   // a plain-English "not set up" error instead of failing at the provider.
   ANTHROPIC_API_KEY:                  z.string().min(1).optional(),
+  // Image render engines. Either may be absent: the model picker only offers
+  // the providers that are actually configured, and asking for a model whose
+  // provider has no key is refused with a plain-English error rather than a
+  // failure at the provider.
   GEMINI_API_KEY:                     z.string().min(1).optional(),
+  OPENAI_API_KEY:                     z.string().min(1).optional(),
   // Dedicated long-lived key for the optional Flow desktop worker (Step 14).
   // While unset, the worker endpoints are disabled entirely (503).
   FLOW_WORKER_API_KEY:                z.string().min(32).optional(),
@@ -80,6 +85,7 @@ const parsed = envSchema.safeParse({
   ADMIN_API_SERVICE_KEY:              process.env.ADMIN_API_SERVICE_KEY,
   ANTHROPIC_API_KEY:                  process.env.ANTHROPIC_API_KEY,
   GEMINI_API_KEY:                     process.env.GEMINI_API_KEY,
+  OPENAI_API_KEY:                     process.env.OPENAI_API_KEY,
   FLOW_WORKER_API_KEY:                process.env.FLOW_WORKER_API_KEY,
   NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME:  process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_API_KEY:                 process.env.CLOUDINARY_API_KEY,
@@ -121,6 +127,7 @@ export const env = parsed.success
       ADMIN_API_SERVICE_KEY:           process.env.ADMIN_API_SERVICE_KEY,
       ANTHROPIC_API_KEY:               process.env.ANTHROPIC_API_KEY,
       GEMINI_API_KEY:                  process.env.GEMINI_API_KEY,
+      OPENAI_API_KEY:                  process.env.OPENAI_API_KEY,
       FLOW_WORKER_API_KEY:             process.env.FLOW_WORKER_API_KEY,
       NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
       NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,

@@ -3,12 +3,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { AppError } from '@/lib/errors'
 import { generateImagePrompt } from '@/lib/anthropic'
-import { renderImage, type RenderSize } from '@/lib/gemini'
+import { isProviderConfigured, renderImage, type RenderSize } from '@/lib/image-render'
 import { destroyCloudinaryAssetById, uploadCloudinaryAsset } from '@/lib/cloudinary-server'
 import { generationRepository as generations } from '@/repositories/image-pipeline/generation.repository'
 import { flowRepository as flow, userSettingsRepository as settingsRepo } from '@/repositories/image-pipeline/settings.repository'
 import {
   CREDIT_COST,
+  DEFAULT_IMAGE_MODEL,
   DEFAULT_PROMPT_PRESET_KEY,
   DEFAULT_RETENTION_WEEKS,
   GENERATION_CHANNELS,
@@ -16,6 +17,8 @@ import {
   MAX_IN_FLIGHT_PER_USER,
   MAX_REFERENCE_IMAGES,
   RETENTION_WEEK_OPTIONS,
+  findImageModel,
+  legacyModelForTier,
   type ChannelAvailability,
   type ImageTier,
   type IpGeneration,
@@ -63,6 +66,7 @@ const createSchema = z.object({
   user_prompt: z.string().trim().max(4000).optional(),
   user_notes: z.string().trim().max(2000).optional(),
   prompt_preset: z.string().trim().max(64).optional(),
+  image_model: z.string().trim().max(64).optional(),
   channel: z.enum(GENERATION_CHANNELS).optional(),
   retention_weeks: z.union([z.literal(1), z.literal(2)]).optional(),
   workspace_id: z.string().uuid().optional(),
@@ -178,6 +182,37 @@ export async function getGeneration(db: SupabaseClient, ctx: PipelineCtx, id: st
 
 const notFound = () => new AppError(404, 'That generation could not be found.', 'IP_GENERATION_NOT_FOUND')
 
+/**
+ * Decides which engine a new run renders on: the model asked for, else the
+ * user's saved default, else the app default.
+ *
+ * Three things are checked, and none of them are silently corrected — a run
+ * that renders on an engine the user didn't pick is worse than one that
+ * refuses to start:
+ *   • the model exists in the catalogue,
+ *   • the caller's tier is entitled to it (pro-only models stay pro-only, which
+ *     is what stops the picker being a way around the tier gate), and
+ *   • its provider actually has an API key configured.
+ */
+function resolveImageModel(requested: string | undefined, savedDefault: string | null, tier: ImageTier): string {
+  const id = requested?.trim() || savedDefault || DEFAULT_IMAGE_MODEL
+  const meta = findImageModel(id)
+  if (!meta) {
+    throw new AppError(400, 'That image model isn’t available. Pick one from the list.', 'IP_MODEL_UNKNOWN')
+  }
+  if (!meta.tiers.includes(tier)) {
+    throw new AppError(403, `${meta.label} is only available on the pro tier.`, 'IP_MODEL_TIER_FORBIDDEN')
+  }
+  if (!isProviderConfigured(meta.provider)) {
+    throw new AppError(503, `${meta.label} isn’t set up yet. Pick another model.`, 'IP_MODEL_NOT_CONFIGURED')
+  }
+  return meta.id
+}
+
+/** The engine a stored run renders on, resolving pre-model-choice rows. */
+const modelForRun = (generation: IpGeneration): string =>
+  generation.image_model ?? legacyModelForTier(generation.tier as ImageTier)
+
 function assertStatus(generation: IpGeneration, allowed: IpGeneration['status'][]): void {
   if (!allowed.includes(generation.status)) {
     throw new AppError(409, 'That generation has already moved on. Refresh and try again.', 'IP_GENERATION_WRONG_STATE')
@@ -242,6 +277,9 @@ export async function startGeneration(
 
   const { tier } = await resolveTier(db, ctx)
   const settings = await settingsRepo.getForUser(db, ctx.userId)
+  // Resolved before the row is created: an unusable model should refuse the run
+  // outright, not fail it after the preview has already been charged.
+  const imageModel = resolveImageModel(d.image_model, settings?.default_image_model ?? null, tier)
   const retention: RetentionWeeks = d.retention_weeks ?? settings?.retention_weeks ?? DEFAULT_RETENTION_WEEKS
   if (!(RETENTION_WEEK_OPTIONS as readonly number[]).includes(retention)) {
     throw new AppError(400, 'Pick a retention period of 1 or 2 weeks.', 'IP_GENERATION_INVALID')
@@ -253,6 +291,7 @@ export async function startGeneration(
     {
       channel,
       tier,
+      image_model: imageModel,
       source_image_public_ids: imagePublicIds,
       source_image_urls: imageUrls,
       // Defaults to true — the behaviour every run had before this was a choice.
@@ -494,7 +533,9 @@ async function renderAndStore(
   const references = generation.send_reference_to_image_model ? generation.source_image_urls : []
 
   const rendered = await renderImage({
-    tier: generation.tier as ImageTier,
+    // Read off the row, so a retry renders on the engine the run started on
+    // rather than whatever the user has since switched their default to.
+    model: modelForRun(generation),
     prompt,
     sourceImageUrls: references,
     size,

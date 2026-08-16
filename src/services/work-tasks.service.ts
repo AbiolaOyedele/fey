@@ -6,10 +6,12 @@ import { destroyCloudinaryAssetById, parseCloudinaryUrl } from '@/lib/cloudinary
 import { MAX_UPLOAD_BYTES, ALLOWED_UPLOAD_EXTENSIONS, taskDescriptionUploadFolder } from '@/lib/constants'
 import { UPLOAD_ROOT_FOLDER } from '@/services/upload.service'
 import { extractImageUrls } from '@/utils/imageTokens'
-import type { Task, TaskFileRow, TaskScope } from '@/types/work-tasks'
+import type { Task, TaskFileRow, TaskScope, TaskHandoff, TaskApprovalState, HandoffKind } from '@/types/work-tasks'
 import * as repo from '@/repositories/work-tasks.repository'
+import type { StageRules, TaskCore as TaskRow } from '@/repositories/work-tasks.repository'
 import * as wfRepo from '@/repositories/workflows.repository'
 import { ensureDefaultWorkflow } from '@/services/workflows.service'
+import { isWorkspaceAdmin } from '@/lib/owner-context'
 import { notify } from '@/services/notifications.service'
 import { announceToClient } from '@/services/portal-notifications.service'
 
@@ -86,6 +88,37 @@ async function participantsOf(taskId: string): Promise<string[]> {
   } catch {
     return []
   }
+}
+
+/**
+ * Tells someone the task is now theirs.
+ *
+ * Kept separate from the general task announcement because it's the one message
+ * that asks for action rather than reporting news — it has to read as "you're
+ * up", not as another change notification the recipient can skim past.
+ */
+async function notifyBatonPassed(
+  core: TaskCore,
+  toUserId: string | null,
+  taskTitle: string,
+  stageName: string | null,
+  actorId: string,
+): Promise<void> {
+  if (!toUserId || toUserId === actorId) return
+  try {
+    await notify({
+      db: createServiceClient(),
+      recipientIds: [toUserId],
+      workspaceId: core.workspace_id,
+      actorId,
+      type: 'task_assigned',
+      title: stageName ? `Over to you — ${stageName}` : 'Over to you',
+      body: taskTitle,
+      link: `/tasks?taskId=${core.id}`,
+      entityType: 'task',
+      entityId: core.id,
+    })
+  } catch { /* best-effort */ }
 }
 
 /** Notify newly-added assignees (best-effort; never blocks the task write). */
@@ -168,6 +201,7 @@ const createSchema = z.object({
   due_date: dateSchema,
   estimated_minutes: z.number().int().min(0).nullable().optional(),
   assignee_ids: z.array(z.string().uuid()).optional(),
+  responsible_id: z.string().uuid().nullable().optional(),
 })
 
 const updateSchema = z.object({
@@ -184,7 +218,148 @@ const updateSchema = z.object({
   logged_minutes: z.number().int().min(0).optional(),
   done: z.boolean().optional(),
   sort_order: z.number().int().optional(),
+  responsible_id: z.string().uuid().nullable().optional(),
 })
+
+const ruleSchema = z.object({
+  decision: z.enum(['approved', 'changes_requested']),
+  note: z.string().trim().max(2000).nullable().optional(),
+})
+
+// ── Responsibility: the baton ────────────────────────────────────────────────
+//
+// A task sits with exactly one person at a time. Everything below exists so
+// that a delay in someone else's stage stops landing on the person who already
+// finished their part — the baton moves with the work, and the log records
+// every pass so "why was this late" has a real answer.
+
+/** Seconds a task has sat in its current stage, for the handoff log. */
+function heldSeconds(enteredAt: string | null): number | null {
+  if (!enteredAt) return null
+  const ms = Date.now() - new Date(enteredAt).getTime()
+  return Number.isFinite(ms) ? Math.max(0, Math.round(ms / 1000)) : null
+}
+
+/**
+ * Who may rule on a gated stage: its named approver, or — when the stage has
+ * none, or that person has since left the workspace — anyone who can manage the
+ * workspace. The fallback matters: without it a gate could strand a task in a
+ * column nobody alive is allowed to open.
+ */
+async function canRuleOnStage(
+  db: SupabaseClient,
+  stage: StageRules,
+  userId: string,
+  ownerId: string,
+): Promise<boolean> {
+  if (stage.approver_id) return stage.approver_id === userId || await isWorkspaceAdmin(db, userId, ownerId)
+  return isWorkspaceAdmin(db, userId, ownerId)
+}
+
+/**
+ * Refuses to let work leave a gated stage that hasn't been signed off.
+ *
+ * Enforced here rather than in RLS: expressing "only this stage's approver may
+ * change stage_id" as a policy would need a trigger with its own copy of the
+ * rules, and two places to keep in step. Every write path into a task goes
+ * through this service, so this is the single gate.
+ */
+async function assertMayLeaveStage(
+  db: SupabaseClient,
+  existing: TaskRow,
+  actorId: string,
+): Promise<void> {
+  if (!existing.stage_id) return
+  const stage = await repo.getStageRules(db, existing.stage_id)
+  if (!stage?.requires_approval) return
+  // Driven off the stage rather than off `approval_state === 'pending'`: a gate
+  // switched on after the fact has to catch the tasks already sitting in that
+  // stage, which would otherwise be the only ones able to walk past it.
+  if (existing.approval_state === 'approved') return
+  if (await canRuleOnStage(db, stage, actorId, existing.owner_id)) return
+  throw new AppError(
+    403,
+    `This task is waiting for sign-off in ${stage.name}. Ask whoever reviews that stage to approve it or send it back.`,
+    'TASK_STAGE_AWAITING_APPROVAL',
+  )
+}
+
+/** The outcome of working out where a task and its baton land after a move. */
+interface StagePlan {
+  toStage: StageRules | null
+  responsibleId: string | null
+  approvalState: TaskApprovalState
+}
+
+/**
+ * Works out who holds the task after it lands in `toStageId`.
+ *
+ * Precedence is deliberate: an explicit choice by the person moving the task
+ * always wins, because they're looking at the work and the rule isn't. Only
+ * then does the stage's own rule apply, and a rule that can't be honoured
+ * (a `fixed` stage whose owner has left) falls back to leaving the baton where
+ * it is rather than dropping it — an unheld task is one nobody is answerable for.
+ */
+async function planStageMove(
+  db: SupabaseClient,
+  existing: TaskRow,
+  toStageId: string | null,
+  explicitResponsible: string | null | undefined,
+): Promise<StagePlan> {
+  const toStage = toStageId ? await repo.getStageRules(db, toStageId) : null
+  const current = existing.responsible_id
+
+  let responsibleId: string | null
+  if (explicitResponsible !== undefined) {
+    responsibleId = explicitResponsible
+  } else if (toStage?.handoff_mode === 'fixed' && toStage.handoff_user_id) {
+    responsibleId = toStage.handoff_user_id
+  } else {
+    // 'keep', 'prompt' with nothing chosen, or a 'fixed' stage with no owner.
+    responsibleId = current
+  }
+
+  // A gated stage is answered by its approver, so the baton goes to them —
+  // otherwise the task would sit "with" someone who isn't allowed to move it.
+  if (toStage?.requires_approval && toStage.approver_id && explicitResponsible === undefined) {
+    responsibleId = toStage.approver_id
+  }
+
+  return {
+    toStage,
+    responsibleId,
+    approvalState: toStage?.requires_approval ? 'pending' : 'none',
+  }
+}
+
+/** Appends to the chain. Never throws — history must not fail a real move. */
+async function recordHandoff(args: {
+  db: SupabaseClient
+  existing: TaskRow
+  toStageId: string | null
+  toUserId: string | null
+  actorId: string
+  kind: HandoffKind
+  note?: string | null
+}): Promise<void> {
+  const { db, existing, toStageId, toUserId, actorId, kind, note } = args
+  try {
+    await repo.insertHandoff(db, {
+      task_id: existing.id,
+      owner_id: existing.owner_id,
+      from_stage_id: existing.stage_id,
+      to_stage_id: toStageId,
+      from_user_id: existing.responsible_id,
+      to_user_id: toUserId,
+      actor_id: actorId,
+      kind,
+      note: note ?? null,
+      held_seconds: heldSeconds(existing.stage_entered_at),
+    })
+  } catch (err) {
+    console.warn('[work-tasks] handoff not recorded (task change saved)', { taskId: existing.id, err })
+  }
+}
 
 /**
  * Resolves who a task belongs to. project_id wins — a project already implies a
@@ -262,6 +437,14 @@ export async function createTask(db: SupabaseClient, ctx: Ctx, input: unknown): 
   // tasks the caller picks personal vs team.
   const visibility = (link.project_id || link.contact_id) ? 'team' : (d.visibility ?? 'personal')
 
+  // A task starts on someone's desk from the moment it exists: whoever was named,
+  // else the first assignee, else the person who raised it. Never nobody —
+  // an unheld task is one no one is answerable for, and that's the state this
+  // whole feature exists to prevent.
+  const responsibleId = d.responsible_id !== undefined
+    ? d.responsible_id
+    : (d.assignee_ids?.[0] ?? ctx.userId)
+
   const { id } = await repo.insertTask(db, {
     owner_id: link.owner_id,
     workspace_id: link.workspace_id,
@@ -269,6 +452,7 @@ export async function createTask(db: SupabaseClient, ctx: Ctx, input: unknown): 
     contact_id: link.contact_id,
     visibility,
     stage_id: stageId,
+    responsible_id: responsibleId,
     created_by: ctx.userId,
     title: d.title,
     description: d.description ?? null,
@@ -325,6 +509,24 @@ export async function updateTask(db: SupabaseClient, ctx: Ctx, id: string, input
     updates.completed_at = d.done ? new Date().toISOString() : null
   }
 
+  // ── The baton ──────────────────────────────────────────────────────────────
+  // Two ways responsibility changes: the task moves stage (the common case), or
+  // someone reassigns it where it stands. Completing a task is also a way of
+  // leaving a stage, so it's gated the same way — otherwise "mark done" would be
+  // a one-click bypass of every approval in the workflow.
+  const movingStage = d.stage_id !== undefined && d.stage_id !== existing.stage_id
+  const completing = d.done === true && !existing.done
+  if (movingStage || completing) await assertMayLeaveStage(db, existing, ctx.userId)
+
+  let plan: StagePlan | null = null
+  if (movingStage) {
+    plan = await planStageMove(db, existing, d.stage_id ?? null, d.responsible_id)
+    updates.responsible_id = plan.responsibleId
+    updates.approval_state = plan.approvalState
+  } else if (d.responsible_id !== undefined && d.responsible_id !== existing.responsible_id) {
+    updates.responsible_id = d.responsible_id
+  }
+
   // Re-linking a task re-derives owner/workspace/contact from the new target.
   if (d.project_id !== undefined || d.contact_id !== undefined) {
     const link = await resolveLink(db, ctx, d.project_id ?? existing.project_id, d.contact_id ?? existing.contact_id)
@@ -351,17 +553,41 @@ export async function updateTask(db: SupabaseClient, ctx: Ctx, id: string, input
   // the brief moved under your feet. One event fires per save — a save that
   // both moves the stage and edits the title announces the move, since that's
   // the larger fact.
+  // Recipients are collected AFTER the write so the person who just picked up
+  // the baton is included — they're the one who most needs to hear about it.
   const recipients = await participantsOf(id)
-  const movedStage = d.stage_id !== undefined && d.stage_id && d.stage_id !== existing.stage_id
   const completed  = d.done === true && !existing.done
   const reopened   = d.done === false && existing.done
   const edits      = changedFields(existing as unknown as Record<string, unknown>, d as Record<string, unknown>)
 
-  if (movedStage) {
-    const stageName = await repo.getStageName(db, d.stage_id!)
+  if (movingStage && plan) {
+    const handedOver = plan.responsibleId !== existing.responsible_id
+    await recordHandoff({
+      db, existing,
+      toStageId: d.stage_id ?? null,
+      toUserId: plan.responsibleId,
+      actorId: ctx.userId,
+      kind: 'moved',
+    })
+    const stageName = plan.toStage?.name ?? null
+    if (handedOver) await notifyBatonPassed(core, plan.responsibleId, taskTitle, stageName, ctx.userId)
     if (stageName) {
-      await announceTaskEvent({ core, recipients, actorId: ctx.userId, headline: `Moved to ${stageName}`, detail: taskTitle })
+      // A gated stage says so plainly — "moved to Review" and "waiting on
+      // Review" are different facts to everyone watching the task.
+      const headline = plan.approvalState === 'pending'
+        ? `Waiting for sign-off in ${stageName}`
+        : `Moved to ${stageName}`
+      await announceTaskEvent({ core, recipients, actorId: ctx.userId, headline, detail: taskTitle })
     }
+  } else if (updates.responsible_id !== undefined) {
+    await recordHandoff({
+      db, existing,
+      toStageId: existing.stage_id,
+      toUserId: (updates.responsible_id as string | null),
+      actorId: ctx.userId,
+      kind: 'reassigned',
+    })
+    await notifyBatonPassed(core, updates.responsible_id as string | null, taskTitle, null, ctx.userId)
   } else if (completed) {
     await announceTaskEvent({ core, recipients, actorId: ctx.userId, headline: 'Task completed', detail: taskTitle })
   } else if (reopened) {
@@ -431,6 +657,14 @@ export async function setAssignees(db: SupabaseClient, taskId: string, userIds: 
   await repo.setAssignees(db, taskId, userIds)
   const added   = userIds.filter((id) => !prev.includes(id))
   const removed = prev.filter((id) => !userIds.includes(id))
+
+  // Keep the baton on a real person. Two ways it comes loose: the holder was
+  // just taken off the task, or the task never had one. Either way the first
+  // assignee picks it up, so the task can't drift into being nobody's job.
+  const holderRemoved = existing.responsible_id !== null && !userIds.includes(existing.responsible_id) && removed.includes(existing.responsible_id)
+  if ((holderRemoved || existing.responsible_id === null) && userIds.length > 0) {
+    await repo.updateTaskRow(db, taskId, { responsible_id: userIds[0] })
+  }
   if (added.length) {
     const task = await repo.getTaskById(db, taskId)
     await notifyAssigned(existing, added, task?.title ?? 'A task', actorId)
@@ -447,6 +681,119 @@ export async function setAssignees(db: SupabaseClient, taskId: string, userIds: 
     })
   }
   return getTask(db, taskId)
+}
+
+// ── Approval gates ────────────────────────────────────────────────────────────
+
+/**
+ * Rules on a task sitting in a gated stage.
+ *
+ * Approving advances it to the next stage — or completes it, if the gate is the
+ * last stage on the board. Requesting changes sends it back to where it came
+ * from AND returns the baton to whoever handed it over, which is the part that
+ * makes the chain run both ways: without it, rework would land on the reviewer
+ * or on the stage's standing owner rather than on the person who did the work.
+ */
+export async function ruleOnTask(
+  db: SupabaseClient,
+  ctx: Ctx,
+  id: string,
+  input: unknown,
+): Promise<Task> {
+  const existing = await repo.getTaskCore(db, id)
+  if (!existing) throw new AppError(404, 'That task could not be found.', 'TASK_NOT_FOUND')
+
+  const parsed = ruleSchema.safeParse(input)
+  if (!parsed.success) throw new AppError(400, parsed.error.issues[0]?.message ?? 'Invalid decision.', 'TASK_RULING_INVALID')
+  const { decision, note } = parsed.data
+
+  const stage = existing.stage_id ? await repo.getStageRules(db, existing.stage_id) : null
+  if (!stage?.requires_approval) {
+    throw new AppError(409, 'This task isn’t waiting for approval.', 'TASK_RULING_NOT_GATED')
+  }
+  if (existing.approval_state === 'approved') {
+    throw new AppError(409, 'This task has already been approved.', 'TASK_RULING_ALREADY_DECIDED')
+  }
+  if (existing.done) {
+    throw new AppError(409, 'This task is already complete.', 'TASK_RULING_ALREADY_DONE')
+  }
+  if (!(await canRuleOnStage(db, stage, ctx.userId, existing.owner_id))) {
+    throw new AppError(403, `Only the person who reviews ${stage.name} can approve this or send it back.`, 'TASK_RULING_FORBIDDEN')
+  }
+
+  // Who handed the work into this gate. They own the outcome either way: they
+  // pick it back up on rework, and they carry it onward when it's approved —
+  // the approver was only ever holding it long enough to rule.
+  const last = await repo.getLastHandoff(db, id)
+  const submitter = last?.from_user_id ?? existing.created_by
+
+  const updates: Record<string, unknown> = { approval_state: decision }
+  let toStage: StageRules | null = null
+  let toUser: string | null = submitter
+  let headline: string
+
+  if (decision === 'approved') {
+    toStage = await repo.getAdjacentStage(db, stage, 1)
+    if (toStage) {
+      updates.stage_id = toStage.id
+      if (toStage.handoff_mode === 'fixed' && toStage.handoff_user_id) toUser = toStage.handoff_user_id
+      if (toStage.requires_approval) {
+        // Straight into the next gate — one approval shouldn't clear two.
+        updates.approval_state = 'pending'
+        if (toStage.approver_id) toUser = toStage.approver_id
+      }
+      headline = `Approved — moved to ${toStage.name}`
+    } else {
+      // Approving the last stage on the board is what finishing looks like.
+      updates.done = true
+      updates.completed_at = new Date().toISOString()
+      headline = 'Approved and completed'
+    }
+  } else {
+    // Back to where it came from. The recorded origin beats "one stage left":
+    // a task dragged in from three columns over should go back to those three
+    // columns over, not shuffle back one.
+    const backTo = last?.from_stage_id
+      ? await repo.getStageRules(db, last.from_stage_id)
+      : await repo.getAdjacentStage(db, stage, -1)
+    if (backTo) {
+      toStage = backTo
+      updates.stage_id = backTo.id
+    }
+    headline = toStage ? `Changes requested — back to ${toStage.name}` : 'Changes requested'
+  }
+
+  updates.responsible_id = toUser
+  await repo.updateTaskRow(db, id, updates)
+
+  await recordHandoff({
+    db, existing,
+    toStageId: (updates.stage_id as string | undefined) ?? existing.stage_id,
+    toUserId: toUser,
+    actorId: ctx.userId,
+    kind: decision,
+    note: note ?? null,
+  })
+
+  const core: TaskCore = {
+    id, owner_id: existing.owner_id, workspace_id: existing.workspace_id, contact_id: existing.contact_id,
+  }
+  const recipients = await participantsOf(id)
+  await announceTaskEvent({
+    core, recipients, actorId: ctx.userId,
+    headline,
+    detail: note ? `${existing.title} — ${note}` : existing.title,
+  })
+  await notifyBatonPassed(core, toUser, existing.title, toStage?.name ?? null, ctx.userId)
+
+  return getTask(db, id)
+}
+
+/** The full chain of hands a task has passed through, newest first. */
+export async function listTaskHandoffs(db: SupabaseClient, taskId: string): Promise<TaskHandoff[]> {
+  const existing = await repo.getTaskCore(db, taskId)
+  if (!existing) throw new AppError(404, 'That task could not be found.', 'TASK_NOT_FOUND')
+  return repo.listHandoffs(db, taskId, existing.owner_id)
 }
 
 // ── Files ─────────────────────────────────────────────────────────────────────

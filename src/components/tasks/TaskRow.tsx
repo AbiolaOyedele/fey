@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { Check, Paperclip, CalendarDays } from 'lucide-react'
+import { Check, Paperclip, CalendarDays, Lock } from 'lucide-react'
 import type { Task } from '@/types/work-tasks'
 import { AssigneeAvatars, DueChip, PriorityFlag, formatMinutes } from './TaskBits'
+import HoverTip from '@/components/ui/HoverTip'
 import { getFileType, isImageType, thumbUrl, type FileType } from '@/utils/cloudinary'
 
 /** Up to 3 tiny image thumbnails + a count for the rest — quiet row-level hint
@@ -53,11 +54,20 @@ export default function TaskRow({ task, onToggleDone, onOpen }: TaskRowProps) {
         <p className={`text-sm truncate ${task.done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
           {task.title}
         </p>
-        {task.subtasks.length > 0 && (
-          <p className="text-2xs text-gray-400 mt-0.5">
-            {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length} subtasks
-          </p>
-        )}
+        <div className="flex items-center gap-2 mt-0.5">
+          {/* `pending` is only ever set inside a gated stage, so this badge
+              doesn't need the stage rules to be loaded on a list row. */}
+          {task.approval_state === 'pending' && !task.done && (
+            <span className="inline-flex items-center gap-1 text-2xs font-medium text-amber-700">
+              <Lock size={9} /> Awaiting sign-off
+            </span>
+          )}
+          {task.subtasks.length > 0 && (
+            <span className="text-2xs text-gray-400">
+              {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length} subtasks
+            </span>
+          )}
+        </div>
       </button>
 
       <div className="flex items-center gap-3 flex-shrink-0">
@@ -72,7 +82,10 @@ export default function TaskRow({ task, onToggleDone, onOpen }: TaskRowProps) {
           </Link>
         )}
         <FileThumbs task={task} />
-        <AssigneeAvatars assignees={task.assignees} />
+        {/* Whose desk it's on, not everyone who's ever been on it. */}
+        <HoverTip label={task.responsible ? `With ${task.responsible.name ?? task.responsible.email ?? 'a teammate'}` : 'On nobody’s desk'}>
+          <AssigneeAvatars assignees={task.responsible ? [task.responsible] : []} />
+        </HoverTip>
         <div className="hidden sm:block w-20 text-right"><DueChip due={task.due_date} done={task.done} /></div>
         {task.estimated_minutes != null && (
           <span className="hidden md:inline text-2xs text-gray-400 w-12 text-right">{formatMinutes(task.estimated_minutes)}</span>

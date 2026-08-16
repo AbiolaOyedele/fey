@@ -18,7 +18,8 @@ import {
  * decided in the service layer.
  */
 
-const SETTINGS_SELECT = 'user_id, owner_id, image_tier_override, skip_prompt_review, retention_weeks, updated_at'
+const SETTINGS_SELECT =
+  'user_id, owner_id, image_tier_override, skip_prompt_review, retention_weeks, default_image_model, updated_at'
 const RATE_SELECT = 'key, value, note, updated_at'
 const FLOW_JOB_SELECT = 'id, generation_id, status, attempts, claimed_at, error_message, created_at, updated_at'
 
@@ -54,6 +55,7 @@ export const userSettingsRepository: UserSettingsRepository = {
   setTierOverride: (db, scope, override) => upsertSettings(db, scope, { image_tier_override: override }),
   setSkipPromptReview: (db, scope, skip) => upsertSettings(db, scope, { skip_prompt_review: skip }),
   setRetentionWeeks: (db, scope, weeks) => upsertSettings(db, scope, { retention_weeks: weeks }),
+  setDefaultImageModel: (db, scope, model) => upsertSettings(db, scope, { default_image_model: model }),
 }
 
 /** Settings rows for a set of users in one round trip (admin user list). */
@@ -71,7 +73,11 @@ export async function settingsFor(db: SupabaseClient, userIds: string[]): Promis
 
 function toSettings(row: unknown): IpUserSettings {
   const r = row as IpUserSettings & { retention_weeks: number }
-  return { ...r, retention_weeks: (r.retention_weeks === 1 ? 1 : 2) as RetentionWeeks }
+  return {
+    ...r,
+    retention_weeks: (r.retention_weeks === 1 ? 1 : 2) as RetentionWeeks,
+    default_image_model: r.default_image_model ?? null,
+  }
 }
 
 export const ratesRepository = {

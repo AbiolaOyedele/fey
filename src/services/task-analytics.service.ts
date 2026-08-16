@@ -128,7 +128,7 @@ function scopeToViewer(rows: AnalyticsTaskRow[], viewer?: { id: string; isAdmin:
   return rows.filter((r) => {
     const linked = r.project_id !== null || r.contact_id !== null
     if (!linked) return true
-    return r.created_by === viewer.id || r.assignee_ids.includes(viewer.id)
+    return r.created_by === viewer.id || r.responsible_id === viewer.id || r.assignee_ids.includes(viewer.id)
   })
 }
 
@@ -306,14 +306,17 @@ export async function getTaskAnalytics(
     sub: null,
   }], completedInRange)
 
-  const people = collect(facts, (f) => (
-    f.row.assignee_ids.length === 0
-      ? [{ id: '', label: 'Unassigned', sub: null }]
-      : f.row.assignee_ids.map((uid) => {
-        const m = members.get(uid)
-        return { id: uid, label: m?.name ?? m?.email ?? 'Teammate', sub: null }
-      })
-  ), completedInRange)
+  // People are counted by who HOLDS each task, not by everyone attached to it.
+  // The old assignee-fan-out charged one stalled task to three people's overdue
+  // column, so a designer who finished on time still read as behind while the
+  // task sat in someone else's stage. One task, one holder — which also means
+  // these rows now sum to the task total instead of over-counting it.
+  const people = collect(facts, (f) => {
+    const uid = f.row.responsible_id
+    if (!uid) return [{ id: '', label: 'On nobody’s desk', sub: null }]
+    const m = members.get(uid)
+    return [{ id: uid, label: m?.name ?? m?.email ?? 'Teammate', sub: null }]
+  }, completedInRange)
 
   // Priority is the one breakdown with a natural order — high always reads
   // first, however little of it there is.

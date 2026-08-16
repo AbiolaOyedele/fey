@@ -4,6 +4,8 @@ import { use, useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { TaskRowsSkeleton } from '@/components/ui/skeletons'
+import { useAuth } from '@/contexts/AuthContext'
+import { useSettings } from '@/contexts/SettingsContext'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { useTasks } from '@/hooks/useTasks'
 import { useWorkflows } from '@/hooks/useWorkflows'
@@ -18,7 +20,9 @@ import type { Task } from '@/types/work-tasks'
  */
 export default function ClientTasksTab({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const { workspace } = useWorkspace()
+  const { user } = useAuth()
+  const { showToast } = useSettings()
+  const { workspace, canManage } = useWorkspace()
   const wsId = workspace?.id ?? null
   const searchParams = useSearchParams()
   const deepLinkTaskId = searchParams.get('taskId')
@@ -44,6 +48,14 @@ export default function ClientTasksTab({ params }: { params: Promise<{ id: strin
     else if (!showDone) setShowDone(true)
     else consumedDeepLink.current = deepLinkTaskId // widened and still not found — stop retrying
   }, [deepLinkTaskId, tasks.loading, tasks.tasks, showDone])
+  // An approval gate can refuse a completion, so the failure has to be said out
+  // loud — a checkbox that ticks and then quietly un-ticks reads as a bug.
+  const handleToggleDone = (taskId: string) => {
+    tasks.toggleDone(taskId).catch((e: unknown) => (
+      showToast(e instanceof Error ? e.message : 'Couldn’t update that task.')
+    ))
+  }
+
   const done = tasks.tasks.filter((t) => t.done).length
   const pending = tasks.tasks.length - done
 
@@ -80,7 +92,7 @@ export default function ClientTasksTab({ params }: { params: Promise<{ id: strin
           <button onClick={() => void tasks.refetch()} className="text-sm font-semibold" style={{ color: 'var(--accent, #ED64A6)' }}>Try again</button>
         </div>
       ) : (
-        <TaskListView tasks={tasks.tasks} grouped onToggleDone={tasks.toggleDone} onOpen={setSelected} />
+        <TaskListView tasks={tasks.tasks} grouped onToggleDone={handleToggleDone} onOpen={setSelected} />
       )}
 
       {live && (
@@ -96,9 +108,13 @@ export default function ClientTasksTab({ params }: { params: Promise<{ id: strin
           onDeleteSubtask={tasks.deleteSubtask}
           onAddFile={tasks.addFile}
           onRemoveFile={tasks.removeFile}
-          onToggleDone={(tid) => { tasks.toggleDone(tid); setSelected(null) }}
+          onToggleDone={(tid) => { handleToggleDone(tid); setSelected(null) }}
           onDelete={tasks.deleteTask}
           onClose={() => setSelected(null)}
+          currentUserId={user?.id ?? null}
+          canManage={canManage}
+          onSetResponsible={tasks.setResponsible}
+          onRule={tasks.ruleOnTask}
         />
       )}
 

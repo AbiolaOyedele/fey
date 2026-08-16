@@ -1,10 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { X, Trash2, Plus, Check } from 'lucide-react'
-import type { Task, TaskPriority, Subtask, UpdateTaskPayload, WorkflowStage } from '@/types/work-tasks'
+import { X, Trash2, Plus, Check, Lock } from 'lucide-react'
+import type { Task, TaskPriority, Subtask, UpdateTaskPayload, WorkflowStage, RuleOnTaskPayload } from '@/types/work-tasks'
+import { isStale, daysInStage, needsSignOff, canRule } from '@/types/work-tasks'
 import type { MentionEntityType } from '@/types/mention'
 import AssigneePicker from './AssigneePicker'
+import PersonPicker from './PersonPicker'
+import TaskApprovalBar from './TaskApprovalBar'
+import TaskHandoffTrail from './TaskHandoffTrail'
 import DateField from '@/components/ui/DateField'
 import TaskAttachments from './TaskAttachments'
 import TaskComments from './TaskComments'
@@ -76,6 +80,16 @@ interface TaskDetailDrawerProps {
   portalSubdomain?: string | undefined
   /** Viewers read the review history but can't upload or rule on it. */
   reviewReadOnly?: boolean
+  /**
+   * The responsibility controls — the baton picker, the approval panel and the
+   * handoff trail. All optional together: the client portal has no auth user to
+   * hand work to, so it simply doesn't pass them and the section stays hidden.
+   */
+  currentUserId?: string | null
+  /** Whether the viewer can manage the workspace (the fallback approver). */
+  canManage?: boolean
+  onSetResponsible?: (id: string, userId: string | null) => Promise<unknown>
+  onRule?: (id: string, payload: RuleOnTaskPayload) => Promise<unknown>
 }
 
 type DrawerTab = 'details' | 'review'
@@ -85,7 +99,7 @@ const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 const COMPLETED_STAGE = '__completed__'
 
 export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
-  const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onRenameSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose, members, hideComments, hideDelete, portalSubdomain, reviewReadOnly } = props
+  const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onRenameSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose, members, hideComments, hideDelete, portalSubdomain, reviewReadOnly, currentUserId, canManage, onSetResponsible, onRule } = props
   const confirm = useConfirm()
   useScrollLock()
   const [tab, setTab] = useState<DrawerTab>('details')
@@ -186,6 +200,16 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
 
   const doneSubs = task.subtasks.filter((s) => s.done).length
 
+  // Responsibility only exists where there's a workspace to hand work to, so
+  // the whole block is driven off the callers that supply the handlers.
+  const stage = stages.find((s) => s.id === task.stage_id) ?? null
+  const showResponsibility = Boolean(onSetResponsible)
+  const gatedAndPending = needsSignOff(task, stage)
+  const stalled = isStale(task, stage)
+  // Mirrors the server's rule so the UI locks what the API would refuse — a
+  // disabled control with a reason beats a save that bounces back unexplained.
+  const stageLocked = gatedAndPending && !canRule(stage, currentUserId ?? null, canManage ?? false)
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" onMouseDown={onClose}>
       <div className="absolute inset-0 bg-black/30 animate-fadeIn" />
@@ -252,6 +276,27 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
             />
           </div>
 
+          {/* Sign-off. Sits above everything else because when a task is gated,
+              nothing else on this screen can move until it's answered. */}
+          {onRule && (
+            <TaskApprovalBar
+              task={task}
+              stage={stage}
+              currentUserId={currentUserId ?? null}
+              canManage={canManage ?? false}
+              onRule={(payload) => onRule(task.id, payload).then(() => undefined)}
+            />
+          )}
+
+          {/* Stalled here — the fair version of "late": measured from when the
+              task arrived in this stage, not against a deadline the whole chain
+              shares. */}
+          {stalled && !gatedAndPending && stage?.target_days && (
+            <p className="text-xs2 text-amber-700 bg-amber-50 rounded-lg px-3 py-2 break-words">
+              Sat in {stage.name} for {daysInStage(task)} days — the target here is {stage.target_days}.
+            </p>
+          )}
+
           {/* Meta grid */}
           <div className="space-y-3 text-sm">
             {/* Visibility — only for unlinked (no client/project) tasks */}
@@ -278,25 +323,37 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
              *  to the Completed tab instead of writing a stage_id. */}
             {stages.length > 0 && (
               <Field label="Stage">
-                <select
-                  value={task.done ? COMPLETED_STAGE : (task.stage_id ?? '')}
-                  onChange={(e) => {
-                    const next = e.target.value
-                    if (next === COMPLETED_STAGE) { if (!task.done) props.onToggleDone(task.id); return }
-                    // Moving a completed task back to a real stage has to clear
-                    // `done` too. Without it the row keeps its completed flag,
-                    // the select re-reads as "Completed", and the change looks
-                    // like it silently failed.
-                    void onPatch(task.id, {
-                      stage_id: next || null,
-                      ...(task.done ? { done: false } : {}),
-                    })
-                  }}
-                  className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
-                >
-                  {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  <option value={COMPLETED_STAGE}>Completed</option>
-                </select>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={task.done ? COMPLETED_STAGE : (task.stage_id ?? '')}
+                    disabled={stageLocked}
+                    onChange={(e) => {
+                      const next = e.target.value
+                      if (next === COMPLETED_STAGE) { if (!task.done) props.onToggleDone(task.id); return }
+                      // Moving a completed task back to a real stage has to clear
+                      // `done` too. Without it the row keeps its completed flag,
+                      // the select re-reads as "Completed", and the change looks
+                      // like it silently failed.
+                      void onPatch(task.id, {
+                        stage_id: next || null,
+                        ...(task.done ? { done: false } : {}),
+                      })
+                    }}
+                    className="px-2.5 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400 disabled:bg-gray-50 disabled:text-gray-400"
+                  >
+                    {stages.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}{s.requires_approval ? ' (needs sign-off)' : ''}
+                      </option>
+                    ))}
+                    <option value={COMPLETED_STAGE}>Completed</option>
+                  </select>
+                  {stageLocked && (
+                    <span className="inline-flex items-center gap-1 text-2xs text-gray-400">
+                      <Lock size={11} /> Awaiting sign-off
+                    </span>
+                  )}
+                </div>
               </Field>
             )}
 
@@ -316,6 +373,25 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
                 ))}
               </div>
             </Field>
+
+            {/* Whose desk it's on. Distinct from assignees on purpose:
+                assignees are who's involved, this is who's answerable today —
+                and the only person it counts as overdue for. */}
+            {showResponsibility && onSetResponsible && (
+              <Field label="On the desk of">
+                <PersonPicker
+                  {...(members ? { members } : {})}
+                  workspaceId={workspaceId}
+                  selectedId={task.responsible_id}
+                  onChange={(id) => void onSetResponsible(task.id, id)}
+                  title="Who's holding this task?"
+                  emptyLabel="Nobody yet"
+                  clearable
+                  clearLabel="Nobody"
+                  disabled={stageLocked}
+                />
+              </Field>
+            )}
 
             {/* Assignees */}
             <Field label="Assignees">
@@ -428,6 +504,18 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
               />
             </div>
           </div>
+
+          {/* Where it's been. Keyed on stage + holder + state so a move made
+              from this drawer refreshes the trail instead of leaving it stale. */}
+          {showResponsibility && (
+            <div>
+              <p className="text-xs2 font-semibold text-gray-400 uppercase tracking-wider mb-1.5">History</p>
+              <TaskHandoffTrail
+                taskId={task.id}
+                reloadKey={`${task.stage_id ?? ''}:${task.responsible_id ?? ''}:${task.approval_state}`}
+              />
+            </div>
+          )}
 
           {/* Comments */}
           {!hideComments && (

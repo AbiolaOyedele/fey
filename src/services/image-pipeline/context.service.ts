@@ -2,10 +2,16 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { AppError } from '@/lib/errors'
 import { userSettingsRepository as settingsRepo } from '@/repositories/image-pipeline/settings.repository'
+import { isProviderConfigured } from '@/lib/image-render'
 import {
+  DEFAULT_IMAGE_MODEL,
   DEFAULT_RETENTION_WEEKS,
+  findImageModel,
+  imageModelsForTier,
   type ChannelAvailability,
+  type ImageModelMeta,
   type ImagePipelineAdminContext,
+  type ImageTier,
   type IpGeneration,
   type RetentionWeeks,
   type TierResolution,
@@ -27,8 +33,30 @@ export interface PipelineContextResponse {
   retention_weeks: RetentionWeeks
   balance: number
   channels: ChannelAvailability[]
+  /**
+   * Render engines this caller may actually pick — filtered by their tier AND
+   * by which providers have a key configured. Resolved server-side so the
+   * picker can't offer a model the server would refuse.
+   */
+  models: ImageModelMeta[]
+  /** Pre-selected model: the user's saved preference, else the app default. */
+  default_image_model: string
   /** The run still in flight for this user, if any. */
   active_generation: IpGeneration | null
+}
+
+/**
+ * The models on offer, and which one starts selected.
+ *
+ * A saved preference that no longer qualifies — the model left the catalogue,
+ * the user's tier was lowered, or its provider lost its key — falls back to the
+ * first available model rather than being offered and then refused on submit.
+ */
+function resolveModelChoice(tier: ImageTier, saved: string | null): { models: ImageModelMeta[]; selected: string } {
+  const models = imageModelsForTier(tier).filter((m) => isProviderConfigured(m.provider))
+  const preferred = saved && models.some((m) => m.id === saved) ? saved : null
+  const appDefault = models.some((m) => m.id === DEFAULT_IMAGE_MODEL) ? DEFAULT_IMAGE_MODEL : null
+  return { models, selected: preferred ?? appDefault ?? models[0]?.id ?? DEFAULT_IMAGE_MODEL }
 }
 
 export async function getPipelineContext(db: SupabaseClient, ctx: PipelineCtx): Promise<PipelineContextResponse> {
@@ -40,6 +68,8 @@ export async function getPipelineContext(db: SupabaseClient, ctx: PipelineCtx): 
     getActiveGeneration(db, ctx.userId),
   ])
 
+  const { models, selected } = resolveModelChoice(tier.tier, settings?.default_image_model ?? null)
+
   return {
     admin: resolveAdminContext(ctx),
     tier,
@@ -47,6 +77,8 @@ export async function getPipelineContext(db: SupabaseClient, ctx: PipelineCtx): 
     retention_weeks: settings?.retention_weeks ?? DEFAULT_RETENTION_WEEKS,
     balance,
     channels,
+    models,
+    default_image_model: selected,
     active_generation: active,
   }
 }
@@ -54,6 +86,8 @@ export async function getPipelineContext(db: SupabaseClient, ctx: PipelineCtx): 
 const settingsSchema = z.object({
   retention_weeks: z.union([z.literal(1), z.literal(2)]).optional(),
   skip_prompt_review: z.boolean().optional(),
+  /** null clears the saved model preference. */
+  default_image_model: z.string().trim().max(64).nullable().optional(),
 })
 
 /** Updates the caller's own pipeline preferences (never someone else's). */
@@ -68,4 +102,28 @@ export async function updateOwnSettings(db: SupabaseClient, ctx: PipelineCtx, in
   if (parsed.data.skip_prompt_review !== undefined) {
     await settingsRepo.setSkipPromptReview(db, scope, parsed.data.skip_prompt_review)
   }
+  if (parsed.data.default_image_model !== undefined) {
+    await settingsRepo.setDefaultImageModel(db, scope, await validModelPreference(db, ctx, parsed.data.default_image_model))
+  }
+}
+
+/**
+ * Validates a saved model preference before it is stored.
+ *
+ * Storing a model the user isn't entitled to would sit there quietly until the
+ * next run, which would then be refused with no obvious cause — so the same
+ * tier and provider-configuration rules that gate a run apply here too.
+ */
+async function validModelPreference(db: SupabaseClient, ctx: PipelineCtx, model: string | null): Promise<string | null> {
+  if (!model) return null
+  const meta = findImageModel(model)
+  if (!meta) throw new AppError(400, 'That image model isn’t available. Pick one from the list.', 'IP_MODEL_UNKNOWN')
+  if (!isProviderConfigured(meta.provider)) {
+    throw new AppError(503, `${meta.label} isn’t set up yet. Pick another model.`, 'IP_MODEL_NOT_CONFIGURED')
+  }
+  const { tier } = await resolveTier(db, ctx)
+  if (!meta.tiers.includes(tier)) {
+    throw new AppError(403, `${meta.label} is only available on the pro tier.`, 'IP_MODEL_TIER_FORBIDDEN')
+  }
+  return meta.id
 }

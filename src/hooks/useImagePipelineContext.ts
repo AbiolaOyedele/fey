@@ -3,7 +3,7 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useId, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { getContext, setRetentionWeeks, type PipelineContext } from '@/lib/image-pipeline-api'
+import { getContext, setDefaultImageModel, setRetentionWeeks, type PipelineContext } from '@/lib/image-pipeline-api'
 import type { ChannelAvailability, RetentionWeeks } from '@/types/image-pipeline'
 
 interface ContextState {
@@ -16,6 +16,8 @@ interface ContextState {
   refresh: () => Promise<void>
   /** Persist the user's default image-retention preference. */
   updateRetention: (weeks: RetentionWeeks) => Promise<void>
+  /** Persist the render engine to pre-select on the next run. */
+  updateDefaultModel: (model: string) => Promise<void>
 }
 
 const Ctx = createContext<ContextState | null>(null)
@@ -78,9 +80,14 @@ export function PipelineProvider({ children }: { children: ReactNode }) {
     await refresh()
   }, [refresh])
 
+  const updateDefaultModel = useCallback(async (model: string) => {
+    await setDefaultImageModel(model)
+    await refresh()
+  }, [refresh])
+
   return createElement(
     Ctx.Provider,
-    { value: { context, channels, loading, forbidden, refresh, updateRetention } },
+    { value: { context, channels, loading, forbidden, refresh, updateRetention, updateDefaultModel } },
     children,
   )
 }

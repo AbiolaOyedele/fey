@@ -50,7 +50,12 @@ console.log(`Syncing v${latest.version} — "${latest.title}"…`);
 // Upsert into whats_new (conflict on version column)
 // The popup fetches the latest entry directly from this table — no per-user
 // app_settings update needed.
-await req('POST', '/whats_new', {
+//
+// on_conflict is required, not optional: `Prefer: resolution=merge-duplicates`
+// alone only resolves against the primary key, so without naming the version
+// constraint here a re-sync of an already-published version fails on 23505.
+// Re-syncing is normal — release notes get reworded after they go out.
+await req('POST', '/whats_new?on_conflict=version', {
   version: latest.version,
   title: latest.title,
   features: latest.features,

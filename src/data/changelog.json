@@ -4,16 +4,16 @@
     "date": "16 August 2026",
     "title": "Tasks hand over properly",
     "features": [
-      "Every task now sits with one person at a time — move it on and it leaves your desk and lands on theirs",
-      "Tasks split into My desk, Involved and All, so what you're answerable for today is separate from what you're waiting on",
-      "Set what each stage does: keep the work with whoever has it, always hand it to a set person, or ask who's taking it on",
-      "Give a stage a day target — work that sits too long shows as stalled, counted from when it arrived, not against a deadline the whole chain shares",
-      "Require sign-off on a stage and work stops there until it's approved or sent back",
-      "Sending work back returns it to whoever handed it over, so rework lands with the person who did it",
-      "Whoever picks up a task gets told it's their turn",
-      "Every task keeps a history of who held it, for how long, and what was said",
-      "Your daily email and the Insights numbers now count a task against whoever is holding it — a delay downstream no longer lands on the person who already finished their part",
-      "Save on a task now saves and closes"
+      "Tasks now sit with one person at a time. Move a task on and it leaves your desk and lands on theirs — so a hold-up further down the chain stops counting against you.",
+      "Start on Tasks → My desk. That's what you're answerable for today. Involved is what you're on but someone else is holding, so handing work over doesn't hide it from you.",
+      "Set your board up once: Tasks → Stages & rules, then tap Rules on a stage.",
+      "\"When work arrives here\" decides who picks it up — it stays with whoever moved it, always goes to one set person, or you get asked each time.",
+      "\"Needs sign-off to leave\" stops work in that stage until someone approves it or sends it back. Sending it back returns it to whoever handed it over, so rework lands with the person who did it.",
+      "\"Should take no longer than\" flags work that's been sitting too long — counted from when it arrived in that stage, not against a deadline the whole chain shares.",
+      "Whoever picks up a task gets told it's their turn.",
+      "Open any task to see who's holding it, and a history of everyone who has — including how long each person had it.",
+      "Your daily email and the Insights people breakdown now count a task against whoever is holding it, not everyone who's ever been assigned. Your overdue numbers will look different, and more honest.",
+      "Save on a task now saves and closes."
     ]
   },
   {

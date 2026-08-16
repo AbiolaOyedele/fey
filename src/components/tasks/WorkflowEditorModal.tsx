@@ -51,6 +51,44 @@ export default function WorkflowEditorModal({
 
   const msg = (e: unknown) => setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
 
+  /**
+   * Whether any stage does anything beyond sitting there.
+   *
+   * Until one does, handing over is invisible: every task simply stays with
+   * whoever moved it, and a board of default stages looks exactly like the old
+   * one. That's a discoverability problem, not a knowledge problem — so the
+   * empty state below teaches and offers the first rule rather than waiting to
+   * be found.
+   */
+  const hasAnyRule = order.some((s) => (
+    s.handoff_mode !== 'keep' || s.requires_approval || s.target_days !== null
+  ))
+
+  /**
+   * The stage a sign-off gate most naturally belongs on: one named like a review
+   * step, else the last stage before the end of the board — the point work
+   * usually passes through on its way out.
+   */
+  const suggested = order.find((s) => /review|approv|qa|check/i.test(s.name))
+    ?? (order.length >= 2 ? order[order.length - 2] : order[0])
+
+  const applySuggestion = async () => {
+    if (!suggested || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      // No approver named on purpose — it falls back to anyone who can manage
+      // the workspace, so the first gate someone tries can't strand a task
+      // behind a person who wasn't expecting to be picked.
+      await onUpdateStage(suggested.id, { requires_approval: true, approver_id: null })
+      setExpanded(suggested.id)
+    } catch (err) {
+      msg(err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const onDragEnd = (e: DragEndEvent) => {
     const { active, over } = e
     if (!over || active.id === over.id) return
@@ -100,6 +138,34 @@ export default function WorkflowEditorModal({
           {workflow.name} workflow · drag to reorder. Tap <span className="font-semibold text-gray-500">Rules</span> on a
           stage to set who picks work up there, whether it needs signing off, and how long it should take.
         </p>
+
+        {/* Nothing is configured yet, so the board behaves exactly as it always
+            did. Say so plainly and offer the first rule — the feature is
+            otherwise invisible until someone guesses that Rules does something. */}
+        {!hasAnyRule && suggested && (
+          <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50/70 p-3.5">
+            <p className="text-xs2 font-semibold text-gray-700">Your stages don’t hand work over yet</p>
+            <p className="mt-1 text-2xs text-gray-500 break-words">
+              Right now a task stays with whoever moved it, wherever it goes. Give a stage a rule and
+              work starts changing hands — landing on one person’s desk at a time, and coming off
+              everyone else’s.
+            </p>
+            <button
+              type="button"
+              onClick={() => void applySuggestion()}
+              disabled={busy}
+              className="mt-2.5 inline-flex items-center gap-1.5 min-h-[44px] px-3.5 rounded-xl text-xs2 font-semibold text-white disabled:opacity-50"
+              style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
+            >
+              <ShieldCheck size={14} />
+              {busy ? 'Setting up…' : `Make ${suggested.name} need sign-off`}
+            </button>
+            <p className="mt-1.5 text-2xs text-gray-400 break-words">
+              Work will stop in {suggested.name} until someone who manages this workspace approves it
+              or sends it back. You can change who signs off, or switch it off again, below.
+            </p>
+          </div>
+        )}
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={order.map((s) => s.id)} strategy={verticalListSortingStrategy}>

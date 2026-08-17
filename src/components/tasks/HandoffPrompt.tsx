@@ -71,7 +71,10 @@ export default function HandoffPrompt({
           <button
             type="button"
             onClick={onCancel}
-            aria-label="Cancel"
+            // Not "Cancel" — the footer button already carries that name, and
+            // two controls with the same accessible name is a coin toss for
+            // anyone navigating by voice or screen reader.
+            aria-label="Close"
             className="w-11 h-11 -mr-2 -mt-2 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 flex-shrink-0"
           >
             <X size={16} />

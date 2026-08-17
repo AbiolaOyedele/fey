@@ -423,7 +423,7 @@ export default function InvoicesPage() {
                         <StatusDropdown inv={inv} onStatusChange={(i, s) => void handleStatusChange(i, s)} cfg={cfg} />
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 reveal-on-hover transition-opacity">
                           <button
                             onClick={() => router.push(`/invoices/${inv.id}`)}
                             className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors"

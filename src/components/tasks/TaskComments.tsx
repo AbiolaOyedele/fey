@@ -64,7 +64,7 @@ export default function TaskComments({ taskId, workspaceId, taskLink, taskTitle 
                   <span className="text-xs2 font-semibold text-gray-700">{authorName}</span>
                   <span className="text-xs2 text-gray-300">{timeLabel(c.created_at)}{c.edited_at && ' · edited'}</span>
                   {isMine && (
-                    <div className="ml-auto flex items-center gap-2 opacity-0 group-hover:opacity-100">
+                    <div className="ml-auto flex items-center gap-4 reveal-on-hover">
                       <button onClick={() => setEditingId(c.id)} className="text-xs2 text-gray-400 hover:text-gray-600">Edit</button>
                       <button
                         onClick={async () => {

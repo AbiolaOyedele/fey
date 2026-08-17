@@ -650,7 +650,7 @@ function SubtaskRow({
           {renderMentions(subtask.title)}
         </span>
       )}
-      <button onClick={onDelete} className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400">
+      <button onClick={onDelete} className="reveal-on-hover tap-target text-gray-300 hover:text-red-400">
         <Trash2 size={13} />
       </button>
     </div>

@@ -52,7 +52,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   // A brand had chat and files but no tasks, so the work assigned to it lived
   // only on the board — you could open a brand and not see what was owed on it.
   // Same list, same drawer, same modal as the Tasks section: one task model.
-  const brandTasks = useTasks({ scope: 'project', workspaceId: workspace?.id ?? null, projectId })
+  const brandTasks = useTasks({ scope: 'project', workspaceId: workspace?.id ?? null, projectId, onError: showToast })
   const { workflows } = useWorkflows(workspace?.id ?? null)
   const stages = useMemo(() => (workflows.find((w) => w.is_default) ?? workflows[0])?.stages ?? [], [workflows])
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)

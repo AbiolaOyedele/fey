@@ -14,13 +14,23 @@ interface UseTasksArgs {
   contactId?: string | null
   /** undefined = active only (default), true = completed only */
   done?: boolean
+  /**
+   * Called when an optimistic write fails and the list is rolled back.
+   *
+   * Without it, a rejected write reverts in silence: the subtask un-ticks
+   * itself, the file reappears, the rename undoes — which reads as the app
+   * being broken rather than as the action having failed. Pages pass their
+   * toast in. Optional so a caller that genuinely has nowhere to show a
+   * message still compiles, rather than being forced into a fake one.
+   */
+  onError?: (message: string) => void
 }
 
 /**
  * Loads and mutates tasks for a given scope via the /api/v1/tasks routes.
  * Mutations update local state optimistically and reconcile by refetch on error.
  */
-export function useTasks({ scope, workspaceId, projectId, contactId, done }: UseTasksArgs) {
+export function useTasks({ scope, workspaceId, projectId, contactId, done, onError }: UseTasksArgs) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -47,6 +57,17 @@ export function useTasks({ scope, workspaceId, projectId, contactId, done }: Use
       if (!silent) setLoading(false)
     }
   }, [qs])
+
+  // Held in a ref so an inline `onError` from the caller doesn't rebuild every
+  // mutation on each render.
+  const onErrorRef = useRef(onError)
+  useEffect(() => { onErrorRef.current = onError }, [onError])
+
+  /** Rolls back by refetching, and says out loud that the action failed. */
+  const reportFailure = useCallback(async (e: unknown, fallback: string) => {
+    onErrorRef.current?.(e instanceof Error ? e.message : fallback)
+    await load(true)
+  }, [load])
 
   const refetch = useCallback(() => load(false), [load])
 
@@ -210,10 +231,10 @@ export function useTasks({ scope, workspaceId, projectId, contactId, done }: Use
       : t))
     try {
       await apiFetch(`/api/v1/subtasks/${subtaskId}`, { method: 'PATCH', body: JSON.stringify({ done: nextDone }) })
-    } catch {
-      await refetch()
+    } catch (e) {
+      await reportFailure(e, 'Couldn’t update that subtask.')
     }
-  }, [refetch])
+  }, [reportFailure])
 
   const renameSubtask = useCallback(async (taskId: string, subtaskId: string, title: string) => {
     setTasks((cur) => cur.map((t) => t.id === taskId
@@ -221,19 +242,19 @@ export function useTasks({ scope, workspaceId, projectId, contactId, done }: Use
       : t))
     try {
       await apiFetch(`/api/v1/subtasks/${subtaskId}`, { method: 'PATCH', body: JSON.stringify({ title }) })
-    } catch {
-      await refetch()
+    } catch (e) {
+      await reportFailure(e, 'Couldn’t rename that subtask.')
     }
-  }, [refetch])
+  }, [reportFailure])
 
   const deleteSubtask = useCallback(async (taskId: string, subtaskId: string) => {
     setTasks((cur) => cur.map((t) => t.id === taskId ? { ...t, subtasks: t.subtasks.filter((s) => s.id !== subtaskId) } : t))
     try {
       await apiFetch(`/api/v1/subtasks/${subtaskId}`, { method: 'DELETE' })
-    } catch {
-      await refetch()
+    } catch (e) {
+      await reportFailure(e, 'Couldn’t delete that subtask.')
     }
-  }, [refetch])
+  }, [reportFailure])
 
   const addFile = useCallback(async (
     taskId: string,
@@ -252,10 +273,10 @@ export function useTasks({ scope, workspaceId, projectId, contactId, done }: Use
     try {
       // The API also removes the Cloudinary asset server-side (best-effort).
       await apiFetch(`/api/v1/tasks/${taskId}/files/${fileId}`, { method: 'DELETE' })
-    } catch {
-      await refetch()
+    } catch (e) {
+      await reportFailure(e, 'Couldn’t remove that file.')
     }
-  }, [refetch])
+  }, [reportFailure])
 
   return {
     tasks, loading, error, refetch,

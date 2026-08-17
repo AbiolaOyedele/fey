@@ -149,7 +149,7 @@ export default function EditClientModal({ client, onSave, onClose }: EditClientM
                 />
                 <button
                   onClick={() => setLogo('')}
-                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center reveal-on-hover tap-target transition-opacity"
                 >
                   <X size={8} />
                 </button>

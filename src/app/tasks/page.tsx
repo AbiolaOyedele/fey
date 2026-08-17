@@ -71,8 +71,8 @@ export default function TasksPage() {
   // Fetch the full workspace-wide set (server-scoped by role: admins get every
   // task, members get theirs + team-visible). The Personal sub-tab narrows this
   // to the current user's own tasks client-side.
-  const active = useTasks({ scope: 'all', workspaceId: wsId, done: false })
-  const completed = useTasks({ scope: 'all', workspaceId: wsId, done: true })
+  const active = useTasks({ scope: 'all', workspaceId: wsId, done: false, onError: showToast })
+  const completed = useTasks({ scope: 'all', workspaceId: wsId, done: true, onError: showToast })
   const { workflows, addStage, updateStage, deleteStage, reorderStages } = useWorkflows(wsId)
 
   const [showWorkflow, setShowWorkflow] = useState(false)

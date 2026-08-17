@@ -317,3 +317,32 @@ input[type="checkbox"] {
 /* Hide scrollbars while keeping scroll behaviour (e.g. horizontal filter rails). */
 .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
+/* ── Controls that reveal on hover ──────────────────────────────────────────
+   Row actions (delete a subtask, remove an invoice line) used to be
+   `opacity-0 group-hover:opacity-100`. There is no hover on a touch screen, so
+   on a phone those controls were permanently invisible — you could not delete
+   a subtask, a comment, or a line item at all. They were also unreachable by
+   keyboard, since focus isn't hover.
+
+   This keeps the quiet-until-needed look on a mouse, and shows the control
+   outright everywhere else. Focus reveals it too, so tabbing to it works. */
+.reveal-on-hover { opacity: 1; }
+
+@media (hover: hover) and (pointer: fine) {
+  .reveal-on-hover { opacity: 0; transition: opacity 150ms ease; }
+  .group:hover .reveal-on-hover,
+  .reveal-on-hover:hover,
+  .reveal-on-hover:focus-visible,
+  .reveal-on-hover:focus-within { opacity: 1; }
+}
+
+/* Expands a small control's touch target to the 44px minimum without changing
+   how it looks or how the row lays out. For icon buttons that have to stay
+   visually small — a remove-line X, a chip's dismiss — where growing the box
+   would push the layout around. */
+.tap-target { position: relative; }
+.tap-target::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+}

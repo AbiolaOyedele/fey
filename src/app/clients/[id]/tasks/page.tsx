@@ -31,7 +31,7 @@ export default function ClientTasksTab({ params }: { params: Promise<{ id: strin
   const [showNew, setShowNew] = useState(false)
   const [showDone, setShowDone] = useState(false)
 
-  const tasks = useTasks({ scope: 'contact', contactId: id, workspaceId: wsId, ...(showDone ? {} : { done: false }) })
+  const tasks = useTasks({ scope: 'contact', contactId: id, workspaceId: wsId, onError: showToast, ...(showDone ? {} : { done: false }) })
   const { workflows } = useWorkflows(wsId)
   const stages = (workflows.find((w) => w.is_default) ?? workflows[0])?.stages ?? []
 

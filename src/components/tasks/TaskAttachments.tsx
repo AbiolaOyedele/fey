@@ -149,7 +149,7 @@ export default function TaskAttachments({ taskId, files, onAdd, onRemove, readOn
                   <button
                     onClick={() => void onRemove(taskId, f.id)}
                     title={`Delete ${f.file_name}`}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white shadow border border-gray-100 flex items-center justify-center text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-white shadow border border-gray-100 flex items-center justify-center text-gray-300 hover:text-red-400 reveal-on-hover tap-target transition-opacity"
                   >
                     <Trash2 size={10} />
                   </button>

@@ -814,7 +814,7 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
                     </div>
                     <div className="col-span-2 flex items-center justify-end gap-1">
                       <span className="text-sm font-medium">{fmt((Number(item.qty) || 1) * (Number(item.price) || 0), invCurrSym)}</span>
-                      <button onClick={() => removeLine(item.id)} className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-red-100 text-red-400 transition-all">
+                      <button onClick={() => removeLine(item.id)} className="p-0.5 rounded reveal-on-hover tap-target hover:bg-red-100 text-red-400 transition-all">
                         <X size={12} />
                       </button>
                     </div>
@@ -892,7 +892,7 @@ function EditInvoicePageInner({ params }: { params: Promise<{ id: string }> }) {
                         <input type="number" value={add.value} onChange={(e) => updateAddition(add.id, 'value', e.target.value)} className={`${iField} w-16 text-right`} min="0" step="0.01" />
                         {add.isPercent && <span className="opacity-40 text-xs">%</span>}
                         <span className="w-20 text-right">{add.type === 'discount' || add.type === 'withholding' ? '-' : '+'}{fmt(Math.abs(amt), invCurrSym)}</span>
-                        <button onClick={() => removeAddition(add.id)} className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-red-100 text-red-400 transition-all"><X size={10} /></button>
+                        <button onClick={() => removeAddition(add.id)} className="p-0.5 rounded reveal-on-hover tap-target hover:bg-red-100 text-red-400 transition-all"><X size={10} /></button>
                       </div>
                     )
                   })}

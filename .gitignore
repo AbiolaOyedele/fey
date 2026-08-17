@@ -20,3 +20,8 @@ supabase/.temp/
 
 # react-email dev build
 .react-email/
+
+# Playwright — saved login session, reports, traces
+tests/e2e/.auth/
+playwright-report/
+test-results/

@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Types, lint, unit and component tests, and a real build. Everything here
+  # runs without a single secret, so it works on forks and on every PR.
+  check:
+    name: Types, lint, tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint .
+        continue-on-error: true # TODO: drop once the pre-existing findings are cleared
+
+      - name: Unit and component tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          # Placeholders: src/config/env.ts validates on import and would fail
+          # the build otherwise. Nothing here reaches a real service.
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: build-placeholder
+
+  # End-to-end runs only where the credentials exist. A fork or a PR without
+  # secrets skips it rather than failing on something it can't have.
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    needs: check
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Skip when no test account is configured
+        id: gate
+        run: echo "ready=${{ secrets.E2E_EMAIL != '' && secrets.E2E_PASSWORD != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Install browsers
+        if: steps.gate.outputs.ready == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run journeys
+        if: steps.gate.outputs.ready == 'true'
+        run: npx playwright test
+        env:
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - uses: actions/upload-artifact@v4
+        if: failure() && steps.gate.outputs.ready == 'true'
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

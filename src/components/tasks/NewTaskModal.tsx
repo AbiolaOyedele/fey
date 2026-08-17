@@ -50,7 +50,9 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
   const [projectId, setProjectId] = useState<string | null>(fixedProjectId ?? null)
 
   const [title, setTitle] = useState('')
-  const [visibility, setVisibility] = useState<TaskVisibility>(lockedVisibility ?? 'personal')
+  // Team by default. Most tasks in a workspace are the workspace's, and a task
+  // nobody else can see is the deliberate exception rather than the norm.
+  const [visibility, setVisibility] = useState<TaskVisibility>(lockedVisibility ?? 'team')
   const [priority, setPriority] = useState<TaskPriority>('medium')
   const [dueDate, setDueDate] = useState('')
   // Null means "not chosen", not "no stage". Stages can still be loading when

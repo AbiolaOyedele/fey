@@ -307,7 +307,9 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
             {!task.contact_id && !task.project_id && (
               <Field label="Visibility">
                 <div className="flex gap-1.5">
-                  {(['personal', 'team'] as const).map((v) => (
+                  {/* Team first, as in the compose sheet — the two shouldn't
+                      disagree about which one is the ordinary choice. */}
+                  {(['team', 'personal'] as const).map((v) => (
                     <button
                       key={v}
                       onClick={() => void onPatch(task.id, { visibility: v })}

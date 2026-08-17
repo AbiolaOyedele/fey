@@ -464,8 +464,11 @@ export async function createTask(db: SupabaseClient, ctx: Ctx, input: unknown): 
   const stageId = d.stage_id ?? await defaultStageId(db, link.owner_id, link.workspace_id, link.project_id)
 
   // Linked tasks (client/project) are workspace-visible regardless; for unlinked
-  // tasks the caller picks personal vs team.
-  const visibility = (link.project_id || link.contact_id) ? 'team' : (d.visibility ?? 'personal')
+  // tasks the caller picks personal vs team. A caller that says nothing gets
+  // team, matching what the compose sheet offers — the two defaults have to
+  // agree, or a task created through the API lands somewhere its author
+  // wouldn't expect from using the app.
+  const visibility = (link.project_id || link.contact_id) ? 'team' : (d.visibility ?? 'team')
 
   // A task starts on someone's desk from the moment it exists: whoever was named,
   // else the first assignee, else the person who raised it. Never nobody —

@@ -13,9 +13,17 @@ import type { Task, UpdateTaskPayload, WorkflowStage } from '@/types/work-tasks'
  * sides is which endpoints those callbacks hit — everything the client sees is
  * then identical to the app by construction.
  */
+/** A brand as the task sheet needs it — just enough to label an option. */
+export interface PortalBrandOption {
+  id: string
+  title: string
+}
+
 export interface PortalTasksState {
   tasks: Task[]
   stages: WorkflowStage[]
+  /** The client's brands, for filing a new task under one. */
+  brands: PortalBrandOption[]
   loading: boolean
   error: string | null
   refetch: () => Promise<void>
@@ -39,6 +47,7 @@ export interface PortalTasksState {
 export function usePortalTasks(subdomain: string): PortalTasksState {
   const [tasks, setTasks]     = useState<Task[]>([])
   const [stages, setStages]   = useState<WorkflowStage[]>([])
+  const [brands, setBrands]   = useState<PortalBrandOption[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
 
@@ -53,9 +62,10 @@ export function usePortalTasks(subdomain: string): PortalTasksState {
     try {
       const res = await fetch('/api/v1/portal/tasks', { headers: h })
       if (!res.ok) throw new Error('load failed')
-      const d = await res.json() as { tasks: Task[]; stages: WorkflowStage[] }
+      const d = await res.json() as { tasks: Task[]; stages: WorkflowStage[]; brands?: PortalBrandOption[] }
       setTasks(d.tasks)
       setStages(d.stages ?? [])
+      setBrands(d.brands ?? [])
       setError(null)
     } catch {
       setError('Couldn’t load your tasks. Please refresh and try again.')
@@ -160,7 +170,7 @@ export function usePortalTasks(subdomain: string): PortalTasksState {
   }, [send, refetch])
 
   return {
-    tasks, stages, loading, error, refetch,
+    tasks, stages, brands, loading, error, refetch,
     createTask, patchTask, deleteTask, toggleDone, setAssignees,
     addSubtask, toggleSubtask, renameSubtask, deleteSubtask, addFile, removeFile,
   }

@@ -620,6 +620,8 @@ export async function insertPortalTask(
     contactId: string
     portalUserId: string
     stageId: string | null
+    /** The brand (project) the client filed it under, checked as theirs first. */
+    projectId: string | null
     title: string
     description: string | null
     priority: PortalTask['priority']
@@ -632,6 +634,10 @@ export async function insertPortalTask(
       owner_id:     args.ownerId,
       workspace_id: args.workspaceId,
       contact_id:   args.contactId,
+      // Both, deliberately. The app nulls contact_id when a task is filed under
+      // a brand, but every portal read is keyed on contact_id — dropping it here
+      // would hide the client's own task from them the moment they chose a brand.
+      project_id:   args.projectId,
       created_by:   args.ownerId,
       requested_by_portal_user: args.portalUserId,
       stage_id:     args.stageId,

@@ -216,6 +216,10 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
           stages={t.stages}
           members={pickableMembers}
           hideLinks
+          // Which client it's for is a given; which brand isn't, and they know
+          // better than we do. Filing it under one also puts it on that brand's
+          // board and into its reporting instead of counting as unbranded work.
+          brands={t.brands}
           // Everything a client raises goes to the team — the endpoint enforces
           // it, so the modal states it instead of pretending otherwise.
           lockedVisibility="team"

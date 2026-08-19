@@ -5,6 +5,7 @@ import { notify, notifyOwnerAdmins } from '@/services/notifications.service'
 import { resolveOwnerWorkflow } from '@/services/workflows.service'
 import * as access from '@/repositories/client-team-access.repository'
 import * as portalRepo from '@/repositories/portal.repository'
+import * as projectRepo from '@/repositories/portal-projects.repository'
 import { isReadOnly } from '@/services/portal-members.service'
 import * as taskRepo from '@/repositories/work-tasks.repository'
 import type { Task } from '@/types/work-tasks'
@@ -61,6 +62,17 @@ export async function listStages(db: SupabaseClient, scope: Scope) {
   return workflow.stages
 }
 
+/**
+ * The brands this client can file a task against.
+ *
+ * Their own projects, and the same list the Brands section shows them — so the
+ * picker can't offer something the create endpoint will then refuse.
+ */
+export async function listBrands(db: SupabaseClient, scope: Scope): Promise<{ id: string; title: string }[]> {
+  const projects = await projectRepo.listProjectsForContact(db, scope.contactId, scope.ownerId)
+  return projects.map((p) => ({ id: p.id, title: p.title }))
+}
+
 /** The agency's board, resolved the same way for reads and writes. */
 async function ownerWorkflow(db: SupabaseClient, scope: Scope) {
   const workspaceId = await portalRepo.getOwnerWorkspaceId(db, scope.ownerId)
@@ -115,6 +127,9 @@ const createSchema = z.object({
   // Accepted, then checked against the agency's own board below. A client
   // picking a column is fine; a client naming someone else's column is not.
   stage_id:    z.string().uuid().nullish(),
+  // Which brand the work is for. Checked against the brands this contact can
+  // actually see before it's written — see the note in createTask.
+  project_id:  z.string().uuid().nullish(),
 })
 
 /**
@@ -154,6 +169,23 @@ export async function createTask(
     }
   }
 
+  // The brand, only if it's one of theirs.
+  //
+  // Same reasoning as the stage check, and it matters more: this runs
+  // service-role with no RLS underneath, so an unchecked project_id would let a
+  // client file a task against another agency's brand — and that task would then
+  // show up on that brand's board and in its reporting. An id that isn't theirs
+  // is refused outright rather than quietly dropped, because silently filing the
+  // work somewhere else is how a request goes missing.
+  let projectId: string | null = null
+  if (d.project_id) {
+    const project = await projectRepo.getProjectForPortal(db, d.project_id, scope.contactId, scope.ownerId)
+    if (!project) {
+      throw new AppError(404, 'That brand isn’t one of yours, so the task can’t be filed under it.', 'PORTAL_TASK_BRAND_NOT_YOURS')
+    }
+    projectId = project.id
+  }
+
   const workflow = await ownerWorkflow(db, scope)
   // The client's choice, but only if it names a column on the agency's own
   // board. Falling back to the first column means the task still lands
@@ -167,6 +199,7 @@ export async function createTask(
     contactId:    scope.contactId,
     portalUserId: actor.id,
     stageId,
+    projectId,
     title:        d.title,
     description:  d.description ?? null,
     priority:     d.priority ?? 'medium',

@@ -4,25 +4,39 @@ import { AppError } from '@/lib/errors'
 import type { Workflow, WorkflowStage, UpdateStagePayload } from '@/types/work-tasks'
 import * as repo from '@/repositories/workflows.repository'
 
-/** Seeded on first use. Order matters — the first stage is the default column. */
+/**
+ * Seeded on first use. Order matters — the first stage is the default column,
+ * and it's where anything created without an explicit stage lands, including
+ * every task a client raises from their portal. So it reads "Assigned": work
+ * arriving on the agency's desk, not a wishlist nobody has committed to.
+ */
 export const DEFAULT_STAGES: ReadonlyArray<{ name: string; color: string }> = [
-  { name: 'Backlog',     color: '#94A3B8' },
+  { name: 'Assigned',    color: '#94A3B8' },
   { name: 'In Progress', color: '#3B82F6' },
   { name: 'Review',      color: '#F59E0B' },
   { name: 'Done',        color: '#22C55E' },
 ]
 
 /**
- * Returns the workspace's default workflow, creating it (named "Default" with
- * the four seed stages) the first time it's needed. Safe under concurrency: if
- * the unique index rejects a second insert, we re-read the winner.
+ * The owner's board, creating it (named "Default" with the seed stages) the
+ * first time it's needed. Safe under concurrency: if the unique index rejects a
+ * second insert, we re-read the winner.
+ *
+ * Resolved per OWNER, not per workspace, and that distinction is the whole
+ * point. The old index was `UNIQUE (workspace_id) WHERE is_default`, and two
+ * NULLs are not equal in a Postgres unique index — so an owner could hold a
+ * default board filed under NULL and another filed under their workspace, and
+ * did. The app took the oldest; the portal took the workspace-exact one. Two
+ * boards, two sets of column names, one account, and client-raised tasks landing
+ * in stages the agency's board doesn't have. See
+ * 20260819_one_board_per_owner.sql.
  */
 export async function ensureDefaultWorkflow(
   db: SupabaseClient,
   ownerId: string,
   workspaceId: string | null,
 ): Promise<Workflow> {
-  const existing = await repo.getDefaultWorkflow(db, ownerId, workspaceId)
+  const existing = await repo.getAnyDefaultWorkflow(db, ownerId)
   if (existing) return existing
   try {
     const { id } = await repo.insertWorkflow(db, { owner_id: ownerId, workspace_id: workspaceId, name: 'Default', is_default: true })
@@ -32,7 +46,7 @@ export async function ensureDefaultWorkflow(
   } catch {
     /* unique violation — another request created it; fall through to re-read */
   }
-  const winner = await repo.getDefaultWorkflow(db, ownerId, workspaceId)
+  const winner = await repo.getAnyDefaultWorkflow(db, ownerId)
   if (!winner) throw new AppError(500, 'Could not set up the task board. Please try again.', 'WORKFLOW_SEED_FAILED')
   return winner
 }
@@ -41,26 +55,20 @@ export async function ensureDefaultWorkflow(
  * The board a caller should be looking at when it can't be sure of the
  * workspace — the client portal, specifically.
  *
- * A portal token carries an owner and a contact, so the workspace has to be
- * inferred, and `ensureDefaultWorkflow` treats a miss as "no board yet" and
- * seeds one. That's how a client ends up choosing between Backlog, In Progress,
- * Review and Done while the agency's real board says something else entirely —
- * and it leaves a second workflow behind in the owner's account.
+ * Now the same call the app makes, which is the only way the two sides can
+ * agree. A portal token carries an owner and a contact but no workspace, and
+ * resolving by a guessed workspace is exactly what produced a second board: a
+ * miss seeded stock stages beside the real ones, and a hit could match a
+ * different board than the one the agency has open.
  *
- * So: try the workspace we think it is, then settle for the owner's default
- * whatever workspace it sits in, and only seed when they genuinely have none.
+ * Kept as its own name because the portal's reason for needing it is worth
+ * stating at the call site.
  */
-export async function resolveOwnerWorkflow(
+export function resolveOwnerWorkflow(
   db: SupabaseClient,
   ownerId: string,
   workspaceId: string | null,
 ): Promise<Workflow> {
-  if (workspaceId) {
-    const exact = await repo.getDefaultWorkflow(db, ownerId, workspaceId)
-    if (exact) return exact
-  }
-  const any = await repo.getAnyDefaultWorkflow(db, ownerId)
-  if (any) return any
   return ensureDefaultWorkflow(db, ownerId, workspaceId)
 }
 

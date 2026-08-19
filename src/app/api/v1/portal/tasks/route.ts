@@ -17,11 +17,14 @@ export async function GET(req: NextRequest) {
   const db = createServiceClient()
   try {
     const scope = { contactId: payload!.contact_id, ownerId: payload!.owner_id }
-    const [tasks, stages] = await Promise.all([
+    const [tasks, stages, brands] = await Promise.all([
       portalTasks.listTasks(db, scope),
       portalTasks.listStages(db, scope),
+      // Sent with the list so the New task sheet has them the moment it opens,
+      // rather than a picker that populates a beat after the client looks at it.
+      portalTasks.listBrands(db, scope),
     ])
-    return NextResponse.json({ tasks, stages })
+    return NextResponse.json({ tasks, stages, brands })
   } catch (err) {
     return handleError(err, 'PORTAL_TASKS_GET_FAILED')
   }

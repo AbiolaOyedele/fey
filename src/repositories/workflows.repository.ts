@@ -64,31 +64,16 @@ export async function getWorkflowById(db: SupabaseClient, id: string): Promise<W
   return data ? mapWorkflow(data as RawWorkflow) : null
 }
 
-export async function getDefaultWorkflow(
-  db: SupabaseClient,
-  ownerId: string,
-  workspaceId: string | null,
-): Promise<Workflow | null> {
-  let q = db
-    .from('workflows')
-    .select('id, owner_id, workspace_id, name, is_default, workflow_stages ( id, workflow_id, name, color, sort_order, handoff_mode, handoff_user_id, requires_approval, approver_id, target_days )')
-    .eq('owner_id', ownerId)
-    .eq('is_default', true)
-    .is('deleted_at', null)
-  q = workspaceId ? q.eq('workspace_id', workspaceId) : q.is('workspace_id', null)
-  const { data, error } = await q.maybeSingle()
-  if (error) throw error
-  return data ? mapWorkflow(data as RawWorkflow) : null
-}
-
 /**
- * The owner's default workflow, whichever workspace it was filed under.
+ * The owner's one default board, whichever workspace it happens to be filed
+ * under. Every caller uses this — the app, the portal, and the seeder.
  *
- * `getDefaultWorkflow` matches an exact workspace_id, which is right when the
- * caller knows the scope. The portal doesn't: a portal token carries an owner
- * and a contact, not a workspace, so a guess that misses would look like "this
- * owner has no board" and seed a second one full of stock stages beside the
- * real one. Oldest first, so the answer is stable across calls.
+ * There used to be a workspace-exact variant alongside it. That was the bug:
+ * `UNIQUE (workspace_id) WHERE is_default` lets an owner hold two defaults,
+ * because a unique index doesn't consider two NULLs equal, and the two lookups
+ * then disagreed about which board was real. The index is now per owner, so
+ * this returns the only row there is; the ordering stays as a tiebreak for any
+ * account fixed up by 20260819_one_board_per_owner.sql.
  */
 export async function getAnyDefaultWorkflow(
   db: SupabaseClient,

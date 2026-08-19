@@ -28,6 +28,17 @@ interface NewTaskModalProps {
   members?: { user_id: string; name: string | null; email: string | null }[]
   hideLinks?: boolean
   /**
+   * The brands the client may file a task under, supplied by the caller.
+   *
+   * `hideLinks` hides the client and brand pickers together, which is right for
+   * the client picker — a portal user's client is themselves. The brand is a
+   * real choice though, and one they're better placed to make than we are. It
+   * can't come from `useProjects`: that hook fetches as an authenticated user
+   * and a portal user isn't one, so the list arrives from the portal's own
+   * endpoint instead.
+   */
+  brands?: { id: string; title: string }[]
+  /**
    * Fixes visibility and states it instead of offering a choice.
    *
    * The client portal sets this to 'team'. A task raised by a client is always
@@ -41,7 +52,7 @@ interface NewTaskModalProps {
 
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 
-export default function NewTaskModal({ workspaceId, fixedContactId, fixedProjectId, stages = [], onCreate, onClose, members, hideLinks, lockedVisibility }: NewTaskModalProps) {
+export default function NewTaskModal({ workspaceId, fixedContactId, fixedProjectId, stages = [], onCreate, onClose, members, hideLinks, brands, lockedVisibility }: NewTaskModalProps) {
   useScrollLock()
   const linkLocked = fixedContactId != null || fixedProjectId != null
   const { contacts } = useContacts()
@@ -130,6 +141,23 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
               </select>
             </div>
+          </div>
+        )}
+
+        {/* Client is implied, brand isn't. Full width rather than half of the
+            two-up grid above, since it's the only control on its row. */}
+        {hideLinks && !linkLocked && brands && brands.length > 0 && (
+          <div className="mb-4">
+            <label htmlFor="task-brand" className="block text-2xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Brand</label>
+            <select
+              id="task-brand"
+              value={projectId ?? ''}
+              onChange={(e) => setProjectId(e.target.value || null)}
+              className="w-full min-h-11 px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-gray-400"
+            >
+              <option value="">No particular brand</option>
+              {brands.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
+            </select>
           </div>
         )}
 

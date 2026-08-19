@@ -11,6 +11,9 @@ export type NotificationType =
   // reopened, reassigned. Deletes are separate so they can read differently.
   | 'task_updated'
   | 'task_deleted'
+  // Someone said something on a task. Its own type because a client asking a
+  // question needs to read differently from a field being edited.
+  | 'task_comment'
   // Review tab: a new version of the deliverable, and a ruling on one.
   | 'task_review_uploaded'
   | 'task_review_decided'

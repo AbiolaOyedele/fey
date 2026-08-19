@@ -71,7 +71,14 @@ interface TaskDetailDrawerProps {
    */
   members?: { user_id: string; name: string | null; email: string | null }[]
   /** Comments need workspace mentions, which a portal client has no access to. */
+  /**
+   * Hides the app's own comment thread — which reads the Supabase session and
+   * the workspace roster, neither of which a portal user has. Pass
+   * `commentsSlot` to put a different thread in its place rather than none.
+   */
   hideComments?: boolean
+  /** Rendered where the comment thread would be. Used by the client portal. */
+  commentsSlot?: React.ReactNode
   /** Hides delete — clients don't remove tasks, they just stop tracking them. */
   hideDelete?: boolean
   /**
@@ -100,7 +107,7 @@ const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 const COMPLETED_STAGE = '__completed__'
 
 export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
-  const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onRenameSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose, members, hideComments, hideDelete, portalSubdomain, reviewReadOnly, currentUserId, canManage, onSetResponsible, onRule } = props
+  const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onRenameSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose, members, hideComments, commentsSlot, hideDelete, portalSubdomain, reviewReadOnly, currentUserId, canManage, onSetResponsible, onRule } = props
   const confirm = useConfirm()
   useScrollLock()
   const [tab, setTab] = useState<DrawerTab>('details')
@@ -540,10 +547,10 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
             </div>
           )}
 
-          {/* Comments */}
-          {!hideComments && (
+          {/* Comments — the app's own thread, or whatever the caller puts here. */}
+          {commentsSlot ?? (!hideComments && (
             <TaskComments taskId={task.id} workspaceId={workspaceId} taskLink={taskLink} taskTitle={task.title} />
-          )}
+          ))}
 
           {/* Delete */}
           {!hideDelete && (

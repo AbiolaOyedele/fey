@@ -41,14 +41,22 @@ export function useTaskComments(
 
     void (async () => {
       setLoading(true)
+      // The client's name is joined so a comment raised from a portal has a
+      // byline. RLS decides whether this reader may see the roster at all; when
+      // it can't, the name comes back null and the thread says "Client".
       const { data, error: err } = await supabase
         .from('task_comments')
-        .select('*')
+        .select('*, portal_users:portal_author_id ( name )')
         .eq('task_id', taskId)
         .order('created_at', { ascending: true })
       if (cancelled) return
       if (err) { setError(err.message); setLoading(false); return }
-      setComments((data ?? []) as TaskComment[])
+      setComments(((data ?? []) as Array<Record<string, unknown>>).map((row) => {
+        const embedded = row.portal_users as { name?: string } | Array<{ name?: string }> | null
+        const one = Array.isArray(embedded) ? embedded[0] : embedded
+        const { portal_users: _drop, ...rest } = row
+        return { ...(rest as unknown as TaskComment), portal_author_name: one?.name ?? null }
+      }))
       setLoading(false)
     })()
 

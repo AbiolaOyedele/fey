@@ -8,6 +8,7 @@ import * as portalRepo from '@/repositories/portal.repository'
 import * as projectRepo from '@/repositories/portal-projects.repository'
 import { isReadOnly } from '@/services/portal-members.service'
 import * as taskRepo from '@/repositories/work-tasks.repository'
+import * as commentRepo from '@/repositories/task-comments.repository'
 import type { Task } from '@/types/work-tasks'
 import type { ClientTeamMember, PortalUser } from '@/types/crm'
 
@@ -93,6 +94,99 @@ function ownStageId(
 ): string | null {
   if (!stageId) return null
   return workflow.stages.some((s) => s.id === stageId) ? stageId : null
+}
+
+/**
+ * Confirms a task is one this client is entitled to see at all.
+ *
+ * Weaker than `assertOwnTask` on purpose. That one gates editing, and only the
+ * client who raised a task may edit it. Commenting is different: a client should
+ * be able to say something about any work being done for them, including work
+ * the agency raised — that is most of what they'd want to comment on.
+ */
+async function assertVisibleTask(db: SupabaseClient, scope: Scope, taskId: string): Promise<void> {
+  const { data } = await db
+    .from('work_tasks')
+    .select('id')
+    .eq('id', taskId)
+    .eq('contact_id', scope.contactId)
+    .eq('owner_id', scope.ownerId)
+    .is('deleted_at', null)
+    .maybeSingle()
+  if (!data) {
+    throw new AppError(404, 'That task isn’t one of yours.', 'PORTAL_TASK_NOT_VISIBLE')
+  }
+}
+
+/** The whole thread on a task — the agency's comments and the client's alike. */
+export async function listComments(db: SupabaseClient, scope: Scope, taskId: string) {
+  await assertVisibleTask(db, scope, taskId)
+  return commentRepo.listCommentsForPortal(db, taskId)
+}
+
+const commentSchema = z.object({
+  body: z.string().trim().min(1, 'Write something first.').max(10000),
+})
+
+/**
+ * A client's comment on a task.
+ *
+ * Attributed to the portal user from the verified token, never from the body,
+ * and written into the same thread the team reads — so a client's question
+ * appears where the work is discussed rather than in a separate inbox nobody
+ * checks. The team is notified; a comment nobody sees is the same as no comment.
+ */
+export async function addComment(
+  db: SupabaseClient,
+  scope: Scope,
+  actor: Pick<PortalUser, 'id' | 'name' | 'role'>,
+  taskId: string,
+  input: unknown,
+) {
+  if (isReadOnly(actor.role)) {
+    throw new AppError(403, 'Your access is view-only, so you can’t comment.', 'PORTAL_COMMENT_FORBIDDEN')
+  }
+  const parsed = commentSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new AppError(400, parsed.error.issues[0]?.message ?? 'That comment isn’t valid.', 'PORTAL_COMMENT_INVALID')
+  }
+  await assertVisibleTask(db, scope, taskId)
+
+  const comment = await commentRepo.insertComment(db, {
+    task_id: taskId,
+    portal_author_id: actor.id,
+    body: parsed.data.body,
+  })
+
+  const task = await taskRepo.getTaskById(db, taskId)
+  const workspaceId = await portalRepo.getOwnerWorkspaceId(db, scope.ownerId)
+  // Whoever is holding it hears first; if nobody is, the owner and admins do,
+  // because an unanswered client question is worse than a noisy notification.
+  const holder = task?.responsible_id
+  if (holder) {
+    await notify({
+      db,
+      recipientIds: [holder],
+      workspaceId,
+      type:  'task_comment',
+      title: `${actor.name} commented`,
+      body:  `${task?.title ?? 'A task'} — ${parsed.data.body.slice(0, 120)}`,
+      link:  `/tasks?taskId=${taskId}`,
+      entityType: 'task',
+      entityId:   taskId,
+    })
+  } else {
+    await notifyOwnerAdmins(db, scope.ownerId, {
+      type:  'task_comment',
+      title: `${actor.name} commented`,
+      body:  `${task?.title ?? 'A task'} — ${parsed.data.body.slice(0, 120)}`,
+      link:  `/tasks?taskId=${taskId}`,
+      entityType: 'task',
+      entityId:   taskId,
+    })
+  }
+
+  return { ...comment, portal_author_name: actor.name }
 }
 
 /** Only tasks the client raised are theirs to edit. Every write goes through this. */

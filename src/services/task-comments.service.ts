@@ -4,6 +4,7 @@ import type { TaskComment } from '@/types/work-tasks'
 import * as taskRepo from '@/repositories/work-tasks.repository'
 import * as repo from '@/repositories/task-comments.repository'
 import { notify } from '@/services/notifications.service'
+import { announceToClient } from '@/services/portal-notifications.service'
 
 export async function listComments(db: SupabaseClient, taskId: string): Promise<TaskComment[]> {
   const task = await taskRepo.getTaskCore(db, taskId)
@@ -67,12 +68,37 @@ export async function notifyCommentParticipants(args: NotifyCommentArgs): Promis
 
     const assigneeIds = await taskRepo.getAssigneeIds(args.userDb, args.taskId)
     const exclude = new Set([args.actorId, ...args.excludeUserIds])
-    const recipients = [...new Set([...assigneeIds, task.created_by])].filter((id) => id && !exclude.has(id))
-    if (recipients.length === 0) return
+    // The holder included: they're the one answerable for this task right now,
+    // which makes them the most likely person a comment is actually addressed
+    // to — and they aren't necessarily an assignee or the creator.
+    const recipients = [...new Set([...assigneeIds, task.created_by, task.responsible_id])]
+      .filter((id): id is string => !!id && !exclude.has(id))
 
     const link = task.contact_id
       ? `/clients/${task.contact_id}/tasks?taskId=${args.taskId}`
       : `/tasks?taskId=${args.taskId}`
+
+    // The client hears about it too, when the task is theirs. They can see and
+    // reply to this thread now, so a reply they're never told about is the same
+    // as no reply — and this is the agency talking, which is exactly the sort of
+    // thing a client is waiting on.
+    if (task.contact_id) {
+      announceToClient({
+        contactId: task.contact_id,
+        ownerId: task.owner_id,
+        // 'task' is the client's category — their preferences are per-section,
+        // so a comment is gated by the same "tasks" flag as everything else
+        // about their work.
+        type: 'task',
+        title: 'New comment on a task',
+        body: `${task.title} — from the team`,
+        link: `/tasks?taskId=${args.taskId}`,
+        entityType: 'task',
+        entityId: args.taskId,
+      })
+    }
+
+    if (recipients.length === 0) return
 
     await notify({
       db: args.serviceDb,

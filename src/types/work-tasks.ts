@@ -64,7 +64,19 @@ export interface Subtask {
 export interface TaskComment {
   id: string
   task_id: string
-  author_id: string
+  /** The teammate who wrote it. Null when a client did — see `portal_author_id`. */
+  author_id: string | null
+  /**
+   * The client who wrote it, for comments raised from a portal. Exactly one of
+   * this and `author_id` is set; the database enforces it.
+   */
+  portal_author_id: string | null
+  /**
+   * The client's name, resolved at read time. Absent for team comments, and
+   * null when the reader isn't allowed to see the client roster — the UI falls
+   * back to a plain "Client" rather than an empty byline.
+   */
+  portal_author_name?: string | null
   body: string
   created_at: string
   edited_at: string | null

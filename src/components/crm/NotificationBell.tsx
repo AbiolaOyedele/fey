@@ -39,6 +39,7 @@ const TYPE_META: Record<string, { category?: Category; icon: ReactNode }> = {
   task_unassigned: { category: 'tasks', icon: <UserRoundX size={15} /> },
   task_updated: { category: 'tasks', icon: <ListTodo size={15} /> },
   task_deleted: { category: 'tasks', icon: <ListTodo size={15} /> },
+  task_comment: { category: 'tasks', icon: <MessageSquare size={15} /> },
   task_review_uploaded: { category: 'tasks', icon: <FileCheck size={15} /> },
   task_review_decided: { category: 'tasks', icon: <FileCheck size={15} /> },
   project_file: { category: 'tasks', icon: <Paperclip size={15} /> },

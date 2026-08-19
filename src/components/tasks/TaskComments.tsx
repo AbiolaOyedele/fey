@@ -53,15 +53,28 @@ export default function TaskComments({ taskId, workspaceId, taskLink, taskTitle 
         {loading ? (
           <p className="text-sm text-gray-400">Loading comments…</p>
         ) : comments.length === 0 ? (
-          <p className="text-sm text-gray-400">No comments yet. @mention a teammate to loop them in.</p>
+          <p className="text-sm text-gray-400">No comments yet. @mention a teammate to loop them in — the client can reply here too.</p>
         ) : (
           comments.map((c) => {
-            const isMine = c.author_id === user?.id
-            const authorName = isMine ? 'You' : (nameById.get(c.author_id) ?? 'Teammate')
+            // A comment now has one author of one of two kinds. A client's is
+            // never "mine" and never editable from this side, and it's labelled
+            // so the team can see at a glance who is in the thread. The name can
+            // be absent for a member who can't read the client roster, hence the
+            // plain fallback rather than an empty byline.
+            const fromClient = c.portal_author_id !== null
+            const isMine = !fromClient && c.author_id !== null && c.author_id === user?.id
+            const authorName = fromClient
+              ? (c.portal_author_name ?? 'Client')
+              : isMine ? 'You' : (c.author_id ? nameById.get(c.author_id) ?? 'Teammate' : 'Teammate')
             return (
               <div key={c.id} className="group animate-slideUp">
                 <div className="flex items-center gap-1.5 mb-0.5">
                   <span className="text-xs2 font-semibold text-gray-700">{authorName}</span>
+                  {fromClient && (
+                    <span className="text-3xs font-medium text-gray-400 border border-gray-200 rounded-full px-1.5 py-px">
+                      Client
+                    </span>
+                  )}
                   <span className="text-xs2 text-gray-300">{timeLabel(c.created_at)}{c.edited_at && ' · edited'}</span>
                   {isMine && (
                     <div className="ml-auto flex items-center gap-4 reveal-on-hover">

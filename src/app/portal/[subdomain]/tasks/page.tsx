@@ -13,6 +13,7 @@ import { TaskRowsSkeleton } from '@/components/ui/skeletons'
 import TaskListView from '@/components/tasks/TaskListView'
 import TaskDetailDrawer from '@/components/tasks/TaskDetailDrawer'
 import NewTaskModal from '@/components/tasks/NewTaskModal'
+import PortalTaskComments from '@/components/portal/PortalTaskComments'
 import type { Task } from '@/types/work-tasks'
 import type { ClientTeamMember } from '@/types/crm'
 
@@ -189,6 +190,18 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
           stages={t.stages}
           members={pickableMembers}
           hideComments
+          // The client's own thread, on the same rows the team reads — so a
+          // question here reaches the person holding the work rather than
+          // sitting in a place only clients look.
+          commentsSlot={
+            <PortalTaskComments
+              taskId={liveSelected.id}
+              subdomain={subdomain}
+              portalUserId={session?.session.portalUser.id ?? ''}
+              canWrite={canWrite}
+              accent={accent}
+            />
+          }
           // A client may withdraw work they raised; agency-created tasks aren't
           // theirs to remove, so the control simply isn't there for those.
           hideDelete={!canWrite || !liveSelected.requested_by_portal_user}

@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react'
 import { usePortalBranding } from '@/hooks/usePortalBranding'
 import { usePortalBase, portalBasePath } from '@/hooks/usePortalBase'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
+import EmailTypoHint from '@/components/ui/EmailTypoHint'
 
 // ─── Inner page ───────────────────────────────────────────────────────────────
 
@@ -167,6 +168,10 @@ function JoinPageInner({ params }: { params: Promise<{ subdomain: string }> }) {
                   placeholder="jane@company.com"
                   className={inputCls}
                 />
+                {/* The account is created against whatever is typed here, and a
+                    typo'd domain means every mail we ever send them — welcome,
+                    reset, notification — goes nowhere, silently. */}
+                <EmailTypoHint value={form.email} onAccept={(v) => setForm((f) => ({ ...f, email: v }))} />
               </div>
 
               <div>

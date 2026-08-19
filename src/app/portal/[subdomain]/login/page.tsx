@@ -6,6 +6,7 @@ import { Loader2, CheckCircle2 } from 'lucide-react'
 import { portalTokenKey } from '../layout'
 import { usePortalBranding } from '@/hooks/usePortalBranding'
 import { usePortalBase, portalBasePath } from '@/hooks/usePortalBase'
+import EmailTypoHint from '@/components/ui/EmailTypoHint'
 
 function PortalLoginInner({ params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = use(params)
@@ -97,6 +98,10 @@ function PortalLoginInner({ params }: { params: Promise<{ subdomain: string }> }
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-gray-400 focus:bg-white transition-colors"
               placeholder="you@example.com"
             />
+            {/* Also here, not just at signup: someone who registered correctly
+                and mistypes now gets told, instead of being handed a flat
+                "invalid email or password" for a one-letter slip. */}
+            <EmailTypoHint value={email} onAccept={setEmail} />
           </div>
 
           <div>

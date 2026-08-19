@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { posthog } from '@/lib/posthog'
 import { workspaceUrl, activeWorkspaceSlug } from '@/utils/host'
+import EmailTypoHint from '@/components/ui/EmailTypoHint'
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react'
 
 interface WsChoice { name: string; slug: string }
@@ -197,6 +198,10 @@ function LoginPageInner() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm outline-none focus:border-gray-400 transition-all"
             />
+            {/* Same page signs up and signs in, and both want this: an account
+                created against a typo'd domain never receives its confirmation,
+                and a typo at sign-in reads as a wrong password. */}
+            <EmailTypoHint value={email} onAccept={setEmail} />
             <input
               type="password"
               required

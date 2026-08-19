@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import PortalShell from '@/components/portal/PortalShell'
 import { PortalSessionProvider } from '@/contexts/PortalSessionContext'
 import { PortalNotificationsProvider } from '@/contexts/PortalNotificationsContext'
+import PortalAppNudges from '@/components/portal/PortalAppNudges'
 import { portalTokenKey } from '@/hooks/usePortalAuth'
 import { portalBasePath } from '@/hooks/usePortalBase'
 import type { PortalOwnerBranding, PortalUser } from '@/types/crm'
@@ -128,6 +129,9 @@ export default function PortalLayout({
         >
           {children}
         </PortalShell>
+        {/* Inside the session, so a client is only offered the portal once they
+            actually have one — not while they're still on the login screen. */}
+        <PortalAppNudges subdomain={subdomain} businessName={session.branding.business_name} />
       </PortalNotificationsProvider>
     </PortalSessionProvider>
   )

@@ -4,8 +4,11 @@ import { useEffect } from 'react'
 
 /**
  * Registers the service worker (needed for installability + Web Push). Mounted
- * once in AppShell. The install prompt itself is left to the browser's native
- * UI / the user's "Add to Home Screen"; we just ensure the SW + manifest are live.
+ * once in AppShell, and once in the client portal — which has its own manifest
+ * and its own subscriptions, but shares this worker, because a service worker
+ * is scoped to an origin and the two live on the same one. The install prompt
+ * itself is left to the browser's native UI / the user's "Add to Home Screen";
+ * we just ensure the SW + manifest are live.
  */
 export default function PwaRegister() {
   useEffect(() => {

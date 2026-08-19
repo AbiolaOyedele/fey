@@ -1,29 +1,29 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
 import { env } from '@/config/env'
+import { portalTokenKey } from '@/hooks/usePortalAuth'
+import { portalBasePath } from '@/hooks/usePortalBase'
+import { urlBase64ToUint8Array, type PushController } from '@/hooks/usePush'
 
 /**
- * What a nudge or a settings toggle needs from a push implementation. The app
- * and the client portal store subscriptions in different places — auth users
- * vs portal users — but present the identical control, so they share a shape.
+ * Web Push for a client portal, device by device.
+ *
+ * The same job as `usePushSubscription`, through a different door: portal users
+ * aren't Supabase Auth users, so the subscription can't be written with the
+ * Supabase client and goes to /api/v1/portal/push behind the portal JWT
+ * instead.
+ *
+ * It also sends the base path this device reaches the portal on. A portal is
+ * served at /client/* on the agency's subdomain and /portal/<slug>/* elsewhere,
+ * and the server has no way to know which — so without this, a notification
+ * would open a path that doesn't exist on the device that tapped it.
  */
-export interface PushController {
-  supported: boolean
-  permission: NotificationPermission
-  subscribed: boolean
-  busy: boolean
-  subscribe: () => Promise<void>
-  unsubscribe: () => Promise<void>
-}
-
-/** Web Push subscription management for the current device. */
-export function usePushSubscription(): PushController {
-  const [supported, setSupported] = useState(false)
+export function usePortalPush(subdomain: string): PushController {
+  const [supported, setSupported]   = useState(false)
   const [permission, setPermission] = useState<NotificationPermission>('default')
   const [subscribed, setSubscribed] = useState(false)
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy]             = useState(false)
 
   useEffect(() => {
     const ok =
@@ -46,33 +46,50 @@ export function usePushSubscription(): PushController {
       .catch(() => undefined)
   }, [])
 
+  const authHeaders = useCallback((): HeadersInit | null => {
+    const token = localStorage.getItem(portalTokenKey(subdomain))
+    return token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : null
+  }, [subdomain])
+
   const subscribe = useCallback(async () => {
     if (busy) return
     setBusy(true)
     try {
+      const headers = authHeaders()
+      if (!headers) return
+
       const reg = await navigator.serviceWorker.register('/sw.js')
       await navigator.serviceWorker.ready
       const perm = await Notification.requestPermission()
       setPermission(perm)
       if (perm !== 'granted') return
+
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!) as BufferSource,
       })
       const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } }
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      await supabase.from('push_subscriptions').upsert(
-        { user_id: session.user.id, endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth, user_agent: navigator.userAgent },
-        { onConflict: 'endpoint' },
-      )
+
+      const res = await fetch('/api/v1/portal/push', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          endpoint:   json.endpoint,
+          keys:       json.keys,
+          base_path:  portalBasePath(subdomain),
+          user_agent: navigator.userAgent,
+        }),
+      })
+      // A subscription the server didn't keep would leave the browser thinking
+      // notifications are on while nothing can ever be delivered to it.
+      if (!res.ok) { await sub.unsubscribe().catch(() => undefined); return }
       setSubscribed(true)
     } catch {
-      /* user dismissed or transient — leave state as-is */
+      /* dismissed, or transient — leave the state alone */
     } finally {
       setBusy(false)
     }
-  }, [busy])
+  }, [busy, authHeaders, subdomain])
 
   const unsubscribe = useCallback(async () => {
     if (busy) return
@@ -81,7 +98,14 @@ export function usePushSubscription(): PushController {
       const reg = await navigator.serviceWorker.getRegistration()
       const sub = await reg?.pushManager.getSubscription()
       if (sub) {
-        await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+        const headers = authHeaders()
+        if (headers) {
+          await fetch('/api/v1/portal/push', {
+            method: 'DELETE',
+            headers,
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          }).catch(() => undefined)
+        }
         await sub.unsubscribe()
       }
       setSubscribed(false)
@@ -90,17 +114,7 @@ export function usePushSubscription(): PushController {
     } finally {
       setBusy(false)
     }
-  }, [busy])
+  }, [busy, authHeaders])
 
   return { supported, permission, subscribed, busy, subscribe, unsubscribe }
-}
-
-/** VAPID public key (base64url) → Uint8Array for applicationServerKey. */
-export function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const raw = atob(base64)
-  const out = new Uint8Array(raw.length)
-  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i)
-  return out
 }

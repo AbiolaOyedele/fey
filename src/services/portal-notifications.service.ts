@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { AppError } from '@/lib/errors'
 import { createServiceClient } from '@/lib/supabase-server'
 import * as repo from '@/repositories/portal-notifications.repository'
+import * as pushRepo from '@/repositories/portal-push.repository'
+import { sendPush } from '@/lib/push'
 import {
   PREF_KEY_FOR_TYPE,
   type ListPortalNotificationsResponse,
@@ -86,7 +88,93 @@ async function notifyClientInner(args: NotifyClientArgs): Promise<void> {
       entity_id: args.entityId ?? null,
     })),
   )
+
+  await pushToClients(args, wanted.map((r) => r.id))
 }
+
+/**
+ * The same notification, on the client's phone.
+ *
+ * Respects the preference check above by taking the already-filtered list —
+ * a client who turned a category off shouldn't have it arrive by another route.
+ *
+ * The link is portal-relative ('/messages'), and the base it hangs off depends
+ * on where the device subscribed from: '/client' on the agency's own subdomain,
+ * '/portal/<slug>' anywhere else. That's why each subscription carries its own
+ * base_path — the server has no way to know the device's hostname otherwise,
+ * and a notification that opens the wrong path is worse than no link at all.
+ *
+ * Never throws, and dead endpoints are cleaned up as they're discovered.
+ */
+async function pushToClients(args: NotifyClientArgs, portalUserIds: string[]): Promise<void> {
+  try {
+    const subs = await pushRepo.getSubscriptionsForPortalUsers(args.db, portalUserIds)
+    if (subs.length === 0) return
+
+    const results = await Promise.all(subs.map((s) => sendPush(
+      [{ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }],
+      {
+        title: args.title,
+        body:  args.body ?? '',
+        url:   `${s.base_path}${args.link ?? ''}` || s.base_path,
+        ...(args.entityId ? { tag: `${args.type}:${args.entityId}` } : {}),
+      },
+    )))
+
+    const stale = results.flatMap((r) => r.staleEndpoints)
+    if (stale.length > 0) await pushRepo.deleteSubscriptions(args.db, stale)
+  } catch (err) {
+    // The bell already has it. A failed push is not worth losing that over.
+    console.warn('[notifyClient] push failed:', err)
+  }
+}
+
+/**
+ * Registers a device for push, or removes it.
+ *
+ * Scoped to the portal user from the verified token — never from the request
+ * body — so one client can't register a device against another's account.
+ */
+export async function subscribeToPush(
+  db: SupabaseClient,
+  scope: { portalUserId: string; ownerId: string },
+  input: unknown,
+): Promise<void> {
+  const parsed = pushSubscriptionSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new AppError(400, 'That notification setup isn’t valid.', 'PORTAL_PUSH_INVALID')
+  }
+  const d = parsed.data
+  await pushRepo.upsertSubscription(db, {
+    portal_user_id: scope.portalUserId,
+    owner_id:       scope.ownerId,
+    endpoint:       d.endpoint,
+    p256dh:         d.keys.p256dh,
+    auth:           d.keys.auth,
+    base_path:      d.base_path ?? '/client',
+    user_agent:     d.user_agent ?? null,
+  })
+}
+
+export async function unsubscribeFromPush(db: SupabaseClient, endpoint: string): Promise<void> {
+  // Keyed on the endpoint alone, which is safe: an endpoint is an unguessable
+  // per-device URL issued by the push service, so holding one is proof enough
+  // to stop it. Requiring a match on the portal user as well would strand a
+  // device that had been re-registered to somebody else on a shared machine.
+  await pushRepo.deleteSubscription(db, endpoint)
+}
+
+const pushSubscriptionSchema = z.object({
+  endpoint: z.string().url().max(2000),
+  keys: z.object({
+    p256dh: z.string().min(1).max(500),
+    auth:   z.string().min(1).max(500),
+  }),
+  // Where this device reaches the portal. Constrained so a crafted value can't
+  // turn a notification into a link somewhere else.
+  base_path:  z.string().regex(/^\/(client|portal\/[a-z0-9-]{1,30})$/).optional(),
+  user_agent: z.string().max(500).nullish(),
+})
 
 // ── Reads (the portal's own bell + list) ─────────────────────────────────────
 

@@ -30,3 +30,20 @@ if (!window.ResizeObserver) {
     disconnect() {}
   } as unknown as typeof ResizeObserver
 }
+
+// Node's own localStorage (and jsdom's, depending on the runner) can arrive
+// without the full Storage surface — `clear` in particular — so anything that
+// isolates state between tests explodes on the environment rather than on the
+// thing under test. Replaced wholesale with a plain in-memory implementation.
+if (typeof localStorage === 'undefined' || typeof localStorage.clear !== 'function') {
+  const store = new Map<string, string>()
+  const memoryStorage: Storage = {
+    get length() { return store.size },
+    clear: () => store.clear(),
+    getItem: (k: string) => store.get(k) ?? null,
+    key: (i: number) => [...store.keys()][i] ?? null,
+    removeItem: (k: string) => { store.delete(k) },
+    setItem: (k: string, v: string) => { store.set(k, String(v)) },
+  }
+  Object.defineProperty(globalThis, 'localStorage', { value: memoryStorage, configurable: true, writable: true })
+}

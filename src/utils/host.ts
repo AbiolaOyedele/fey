@@ -24,6 +24,21 @@ export function workspaceUrl(slug: string, path = '/'): string {
 }
 
 /**
+ * Where a client signs in for a given workspace.
+ *
+ * In production each workspace has its own subdomain and the proxy maps
+ * /client-login onto that portal's sign-in page. Off the root domain —
+ * localhost, preview builds — the subdomain doesn't resolve, so this falls back
+ * to the path form the proxy rewrites to, which serves the same page.
+ */
+export function clientLoginUrl(slug: string): string {
+  if (typeof window !== 'undefined' && !window.location.hostname.endsWith(ROOT_DOMAIN)) {
+    return `/portal/${slug}/login`
+  }
+  return workspaceUrl(slug, '/client-login')
+}
+
+/**
  * The neutral landing host (dashboard.theruff.agency), used when there's no
  * workspace to land on — e.g. after deleting the last workspace. Going to "/"
  * on a just-deleted subdomain strands the user on a dead workspace URL.

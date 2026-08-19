@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import bcrypt from 'bcryptjs'
 import { AppError } from '@/lib/errors'
 import * as portalRepo from '@/repositories/portal.repository'
 import * as crmRepo    from '@/repositories/crm.repository'
@@ -53,6 +54,58 @@ export async function getOwnerBranding(
 }
 
 // ── Portal user ───────────────────────────────────────────────────────────────
+
+/** What `locatePortalAccount` found, if anything. */
+export interface LocatedPortalAccount {
+  workspace_slug: string
+  business_name: string | null
+}
+
+/** Shape-matched to a real hash, so a miss costs the same as a wrong password. */
+const DUMMY_HASH = '$2b$12$invaliddummyhashfortimingreasons000000000000000000000000'
+
+/**
+ * Which client portal a set of credentials belongs to, if any.
+ *
+ * For someone who has typed client details into the agency's own sign-in form.
+ * That form authenticates against Supabase Auth, and portal users deliberately
+ * aren't there — they're rows in portal_users with a bcrypt hash — so it can
+ * never sign them in however correct their details are, and all it can tell
+ * them is that the credentials are invalid. They aren't. They're for a
+ * different door, and this finds which one.
+ *
+ * On enumeration, which the rest of portal auth is careful about: the workspace
+ * comes back ONLY when the password verifies. Anyone who gets an answer has
+ * proved they already hold the credential, so they learn nothing they didn't
+ * arrive with. A wrong password is indistinguishable from an address that was
+ * never registered — same null, and a bcrypt comparison runs either way so the
+ * two don't separate on timing.
+ */
+export async function locatePortalAccount(
+  db: SupabaseClient,
+  email: string,
+  password: string,
+): Promise<LocatedPortalAccount | null> {
+  const rows = await portalRepo.listPortalCredentialsByEmail(db, email)
+
+  if (rows.length === 0) {
+    await bcrypt.compare(password, DUMMY_HASH)
+    return null
+  }
+
+  let match: string | null = null
+  for (const row of rows) {
+    const ok = await bcrypt.compare(password, row.password_hash ?? DUMMY_HASH)
+    // Deliberately no early exit. The same address can be a client of several
+    // agencies, and stopping at the first hit would leak how far down the list
+    // it sat.
+    if (ok && !match) match = row.workspace_slug
+  }
+  if (!match) return null
+
+  const branding = await portalRepo.getOwnerByWorkspaceSlug(db, match)
+  return { workspace_slug: match, business_name: branding?.business_name ?? null }
+}
 
 export async function getPortalUser(db: SupabaseClient, userId: string): Promise<PortalUser> {
   const user = await portalRepo.getPortalUser(db, userId)

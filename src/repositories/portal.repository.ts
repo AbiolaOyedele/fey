@@ -105,6 +105,28 @@ export async function getPortalUser(
   return mapPortalUser(data as Record<string, unknown>)
 }
 
+/**
+ * Every portal credential registered against an address, across all workspaces.
+ *
+ * Unscoped by workspace on purpose — the caller has an email and a password and
+ * no idea which portal they belong to, which is the whole question being asked.
+ * Only the hash and the slug come back; verifying is the service's job.
+ */
+export async function listPortalCredentialsByEmail(
+  db: SupabaseClient,
+  email: string,
+): Promise<Array<{ workspace_slug: string; password_hash: string | null }>> {
+  const { data, error } = await db
+    .from('portal_users')
+    .select('workspace_slug, password_hash')
+    .eq('email', email)
+    // A person can be a client of several agencies; ten is far past realistic
+    // and keeps one address from turning into an unbounded run of bcrypt work.
+    .limit(10)
+  if (error) return []
+  return (data ?? []) as Array<{ workspace_slug: string; password_hash: string | null }>
+}
+
 export async function getPortalUserByWorkspaceAndEmail(
   db: SupabaseClient,
   workspaceSlug: string,

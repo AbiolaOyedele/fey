@@ -5,7 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { posthog } from '@/lib/posthog'
-import { workspaceUrl, activeWorkspaceSlug } from '@/utils/host'
+import { workspaceUrl, activeWorkspaceSlug, clientLoginUrl } from '@/utils/host'
 import EmailTypoHint from '@/components/ui/EmailTypoHint'
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react'
 
@@ -45,6 +45,14 @@ function LoginPageInner() {
   const [error,     setError]     = useState('')
   const [info,      setInfo]      = useState('')
   const [loading,   setLoading]   = useState(false)
+
+  /**
+   * Set when the details typed here turn out to belong to a client portal.
+   * Portal users aren't Supabase Auth users, so this form can never sign them
+   * in — and "invalid login credentials" is a dead end when the credentials are
+   * perfectly valid for a different door.
+   */
+  const [clientPortal, setClientPortal] = useState<{ slug: string; name: string | null } | null>(null)
 
   const [wsChoices, setWsChoices] = useState<WsChoice[] | null>(null)
 
@@ -126,6 +134,7 @@ function LoginPageInner() {
     e.preventDefault()
     setError('')
     setInfo('')
+    setClientPortal(null)
 
     if (mode === 'signup') {
       if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
@@ -141,8 +150,28 @@ function LoginPageInner() {
 
     setLoading(true)
     const { error: err } = await signIn(email, password)
+    if (!err) { setLoading(false); return }
+
+    // Rejected here doesn't mean wrong. Ask whether these are client details,
+    // and if they are, hand over the right link rather than the wrong verdict.
+    // Only answers when the password actually verifies, so this can't be used
+    // to discover whether an address has a portal account.
+    try {
+      const res = await fetch('/api/v1/portal/auth/locate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json() as { found?: boolean; workspace_slug?: string; business_name?: string | null }
+      if (data.found && data.workspace_slug) {
+        setClientPortal({ slug: data.workspace_slug, name: data.business_name ?? null })
+        setLoading(false)
+        return
+      }
+    } catch { /* the sign-in error below is still the right thing to show */ }
+
     setLoading(false)
-    if (err) setError((err as Error).message)
+    setError((err as Error).message)
   }
 
   const handleForgot = async () => {
@@ -233,7 +262,22 @@ function LoginPageInner() {
               </div>
             )}
 
-            {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+            {clientPortal ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center">
+                <p className="text-xs text-amber-900">
+                  These are your client sign-in details{clientPortal.name ? ` for ${clientPortal.name}` : ''}.
+                  This page is for the team.
+                </p>
+                <a
+                  href={clientLoginUrl(clientPortal.slug)}
+                  className="tap-target mt-1.5 inline-block text-xs font-semibold text-amber-900 underline underline-offset-2"
+                >
+                  Go to your client sign-in
+                </a>
+              </div>
+            ) : (
+              error && <p className="text-xs text-red-500 text-center">{error}</p>
+            )}
             {info  && <p className="text-xs text-green-600 text-center">{info}</p>}
 
             <button

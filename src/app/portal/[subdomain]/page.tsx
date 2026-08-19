@@ -76,8 +76,14 @@ export default function PortalHome({ params }: { params: Promise<{ subdomain: st
       if (tasksRes.ok) {
         // Tasks is best-effort on the dashboard: the section owns the real view,
         // this is only a count, so an unexpected shape just leaves it at zero.
-        const d = await tasksRes.json().catch(() => null) as { tasks?: Array<{ status?: string }> } | null
-        setOpenTasks((d?.tasks ?? []).filter((t) => t.status !== 'done' && t.status !== 'completed').length)
+        //
+        // Counted on `done`, which is the field a task actually has. This used
+        // to test `t.status` against 'done' and 'completed' — there is no status
+        // field on a task, so the comparison was `undefined !== 'done'` every
+        // time and the count was simply "how many tasks exist", finished ones
+        // included.
+        const d = await tasksRes.json().catch(() => null) as { tasks?: Array<{ done?: boolean }> } | null
+        setOpenTasks((d?.tasks ?? []).filter((t) => t.done !== true).length)
       }
       if (sessionRes.ok) {
         const d = await sessionRes.json() as { name: string }

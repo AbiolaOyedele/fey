@@ -75,9 +75,27 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
   const [assigneeIds, setAssigneeIds] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  /**
+   * Raised once when a task that isn't personal is about to be created with
+   * nobody on it.
+   *
+   * A personal task is a note to yourself and needs no owner. Anything else is
+   * work someone has to pick up, and an unassigned one lands on a board where
+   * everybody assumes somebody else has it. Asking is enough — this is a nudge,
+   * not a gate, because "I don't know who yet" is a legitimate answer and the
+   * team is told about unassigned work either way.
+   */
+  const [warnedUnassigned, setWarnedUnassigned] = useState(false)
+
+  // Only worth asking when there is in fact someone to pick. A portal user whose
+  // agency hasn't shared anyone would otherwise be nagged toward an empty list.
+  const isPersonal = !contactId && !projectId && visibility === 'personal'
+  const canAssignSomeone = members ? members.length > 0 : true
+  const needsOwnerPrompt = !isPersonal && assigneeIds.length === 0 && canAssignSomeone
 
   const submit = async () => {
     if (!title.trim()) { setError('Add a task title.'); return }
+    if (needsOwnerPrompt && !warnedUnassigned) { setWarnedUnassigned(true); return }
     setSubmitting(true)
     setError('')
     try {
@@ -222,8 +240,20 @@ export default function NewTaskModal({ workspaceId, fixedContactId, fixedProject
               {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           )}
-          <AssigneePicker workspaceId={workspaceId} selectedIds={assigneeIds} onChange={setAssigneeIds} {...(members ? { members } : {})} />
+          <AssigneePicker
+            workspaceId={workspaceId}
+            selectedIds={assigneeIds}
+            onChange={(ids) => { setAssigneeIds(ids); if (ids.length > 0) setWarnedUnassigned(false) }}
+            {...(members ? { members } : {})}
+          />
         </div>
+
+        {warnedUnassigned && needsOwnerPrompt && (
+          <p className="text-xs2 text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-3">
+            Nobody’s on this yet. Pick someone above, or press Add task again to
+            raise it unassigned — the team will be told it needs picking up.
+          </p>
+        )}
 
         {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
 

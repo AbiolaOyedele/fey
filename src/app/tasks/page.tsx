@@ -115,6 +115,31 @@ export default function TasksPage() {
     return list
   }, [source.tasks, subTab, search, user])
 
+  /**
+   * Finished work, narrowed the same way the board is.
+   *
+   * The Completed column used to be an empty drop target: you dragged a task
+   * into it, the task left the active list, and the column it landed in still
+   * said "drop a task here". Now it holds what was actually completed, under the
+   * same desk/involved/search narrowing as every other column — a board that
+   * filtered four columns and not the fifth would just be lying differently.
+   */
+  const completedFiltered = useMemo(() => {
+    let list = completed.tasks
+    if (user && subTab === 'desk') list = list.filter((t) => t.responsible_id === user.id)
+    if (user && subTab === 'involved') {
+      list = list.filter((t) => (
+        t.responsible_id !== user.id
+        && (t.created_by === user.id || t.assignees.some((a) => a.user_id === user.id))
+      ))
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter((t) => t.title.toLowerCase().includes(q))
+    }
+    return list
+  }, [completed.tasks, subTab, search, user])
+
   /** Counts on the tabs, so a handoff is visible without switching to look. */
   const tabCounts = useMemo(() => {
     if (!user) return { desk: 0, involved: 0, all: source.tasks.length }
@@ -164,27 +189,73 @@ export default function TasksPage() {
     showToast(payload.decision === 'approved'
       ? (task.done ? 'Approved — task complete' : 'Approved and moved on')
       : 'Sent back for changes')
-    // Approving the last stage finishes the task, which drops it out of the
-    // active list — leaving the drawer open would show a row that no longer
-    // refreshes. Everything else stays open so the trail can be read.
-    if (task.done) setSelected(null)
+    // Approving the last stage finishes the task, which moves it from the active
+    // list to the completed one. Refetch the destination so the open drawer
+    // keeps reading live data instead of the copy it was holding — that staleness
+    // was the reason this used to close the drawer, and closing it took the
+    // trail away at the exact moment someone might want to read it.
+    if (task.done) await completed.refetch()
     return task
-  }, [active, showToast])
+  }, [active, completed, showToast])
 
   // Completing is a way of leaving a stage, so a gate can refuse it. The toast
   // only claims success once the write has actually landed.
-  const handleComplete = useCallback((id: string) => {
-    active.toggleDone(id)
-      .then(() => showToast('Task completed', { action: { label: 'Undo', onClick: () => void completed.toggleDone(id) } }))
-      .catch((e: unknown) => showToast(e instanceof Error ? e.message : 'Couldn’t complete that task.'))
-  }, [active, completed, showToast])
-
+  /**
+   * Done-ness is what decides which of the two lists a task lives in, so
+   * flipping it moves the task between them. `toggleDone` drops it from the list
+   * it was in; the other has to be refetched or it won't have arrived anywhere —
+   * which is what made a task look like it vanished on completion, and what left
+   * an open drawer frozen on the copy it was holding.
+   *
+   * `selected` is corrected optimistically so the drawer reflects the change on
+   * the same frame rather than snapping back for the length of a round trip.
+   *
+   * Completing deliberately does NOT close the drawer any more. Marking work
+   * done is often the moment you want to look at it — the trail, the files, what
+   * was signed off — so it's dismissed by Save & close or the X, where a person
+   * expects to decide it, rather than yanked away by the act of finishing.
+   */
   const handleToggleDone = useCallback((id: string) => {
     const wasDone = source.tasks.find((t) => t.id === id)?.done ?? false
+    setSelected((cur) => (cur && cur.id === id ? { ...cur, done: !wasDone } : cur))
     source.toggleDone(id)
-      .then(() => showToast(wasDone ? 'Marked as not done' : 'Task completed'))
-      .catch((e: unknown) => showToast(e instanceof Error ? e.message : 'Couldn’t update that task.'))
-  }, [source, showToast])
+      .then(async () => {
+        await (wasDone ? active : completed).refetch()
+        showToast(wasDone ? 'Marked as not done' : 'Task completed')
+      })
+      .catch((e: unknown) => {
+        setSelected((cur) => (cur && cur.id === id ? { ...cur, done: wasDone } : cur))
+        showToast(e instanceof Error ? e.message : 'Couldn’t update that task.')
+      })
+  }, [source, active, completed, showToast])
+
+  const handleComplete = useCallback((id: string) => {
+    active.toggleDone(id)
+      .then(async () => {
+        await completed.refetch()
+        showToast('Task completed', { action: { label: 'Undo', onClick: () => void handleToggleDone(id) } })
+      })
+      .catch((e: unknown) => showToast(e instanceof Error ? e.message : 'Couldn’t complete that task.'))
+  }, [active, completed, showToast, handleToggleDone])
+
+  /**
+   * Dragging finished work back onto a stage puts it back to work there.
+   *
+   * Two writes rather than one because they're two different facts, and the
+   * order matters: reopening first means the stage move is applied to a live
+   * task, which is what the gate and the handoff rules expect to be looking at.
+   */
+  const handleReopen = useCallback(async (id: string, stageId: string) => {
+    try {
+      await completed.toggleDone(id)
+      await active.refetch()
+      await handleMoveStage(id, stageId)
+      showToast('Task reopened')
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'Couldn’t reopen that task.')
+      await Promise.all([active.refetch(), completed.refetch()])
+    }
+  }, [active, completed, handleMoveStage, showToast])
 
   const handleDelete = useCallback(async (id: string) => {
     await source.deleteTask(id)
@@ -290,9 +361,11 @@ export default function TasksPage() {
       ) : view === 'board' ? (
         <TaskBoardView
           tasks={filtered}
+          completedTasks={completedFiltered}
           stages={defaultStages}
           onMoveStage={handleMoveStage}
           onComplete={handleComplete}
+          onReopen={handleReopen}
           onOpen={setSelected}
           workspaceId={wsId}
           currentUserId={user?.id ?? null}
@@ -319,7 +392,7 @@ export default function TasksPage() {
           onDeleteSubtask={source.deleteSubtask}
           onAddFile={source.addFile}
           onRemoveFile={source.removeFile}
-          onToggleDone={(id) => { handleToggleDone(id); setSelected(null) }}
+          onToggleDone={handleToggleDone}
           onDelete={handleDelete}
           onClose={() => setSelected(null)}
           currentUserId={user?.id ?? null}

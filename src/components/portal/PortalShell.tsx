@@ -62,7 +62,22 @@ export default function PortalShell({ subdomain, branding, clientName, children 
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
+    /*
+     * 100dvh, not 100vh.
+     *
+     * This is an app frame: it is exactly the viewport tall, clips its own
+     * overflow, and scrolls the content inside <main>. On a phone that combination
+     * breaks against 100vh, because 100vh is the LARGE viewport — the height the
+     * page would have if the browser's address bar were retracted. The address bar
+     * only retracts when the document scrolls, and here the document never scrolls
+     * (nothing overflows it), so the bar stays put and the frame is permanently
+     * taller than the screen. The bottom of every page then sits underneath the
+     * browser UI, unreachable, because the frame clips it.
+     *
+     * dvh tracks the viewport that is actually visible, so the frame ends where
+     * the screen ends and the last row of a list can be reached.
+     */
+    <div className="flex h-[100dvh] overflow-hidden bg-white">
       {/* Desktop sidebar */}
       <Sidebar {...nav} />
 
@@ -113,7 +128,10 @@ export default function PortalShell({ subdomain, branding, clientName, children 
         {/* Section tabs — the client's equivalent of the owner's ContactTabs */}
         {showTabs && <PortalWorkspaceTabs subdomain={subdomain} accent={accent} />}
 
-        <main className="flex-1 overflow-y-auto bg-appbg">
+        {/* overscroll-contain stops a flick at the end of the list from being
+            handed to the page behind it — which on iOS shows as the whole shell
+            rubber-banding when the content had simply run out. */}
+        <main className="flex-1 overflow-y-auto overscroll-contain bg-appbg">
           {children}
         </main>
       </div>
@@ -154,7 +172,7 @@ function Sidebar({
 }: SidebarProps) {
   return (
     <div
-      className={`${mobile ? 'flex flex-col h-full' : 'hidden md:flex flex-col h-screen'} w-60 flex-shrink-0 border-r bg-white`}
+      className={`${mobile ? 'flex flex-col h-full' : 'hidden md:flex flex-col h-[100dvh]'} w-60 flex-shrink-0 border-r bg-white`}
       style={{ borderColor: '#EBEBEB' }}
     >
       {/* Brand header */}

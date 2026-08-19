@@ -11,11 +11,21 @@ import HandoffPrompt from './HandoffPrompt'
 
 interface TaskBoardViewProps {
   tasks: Task[]
+  /**
+   * Finished work, so the Completed column actually contains it.
+   *
+   * It's a separate list because completed tasks are fetched separately — done
+   * -ness is what decides which list a task lives in, and the board's own list
+   * is the active one.
+   */
+  completedTasks?: Task[]
   stages: WorkflowStage[]
   /** `responsibleId` is only sent when the target stage asks who's taking it on. */
   onMoveStage: (taskId: string, stageId: string, responsibleId?: string | null) => void
   /** Dropping a card into the trailing "Completed" column marks the task done. */
   onComplete: (taskId: string) => void
+  /** Dragging finished work back onto a stage reopens it there. */
+  onReopen?: (taskId: string, stageId: string) => void
   onOpen: (task: Task) => void
   workspaceId: string | null | undefined
   currentUserId: string | null
@@ -36,8 +46,12 @@ interface Column {
   stage: WorkflowStage | null
 }
 
+/** How many finished tasks the column shows before it stops being a board. */
+const COMPLETED_VISIBLE = 20
+
 export default function TaskBoardView({
-  tasks, stages, onMoveStage, onComplete, onOpen, workspaceId, currentUserId, canManage, onBlocked,
+  tasks, completedTasks = [], stages, onMoveStage, onComplete, onReopen, onOpen,
+  workspaceId, currentUserId, canManage, onBlocked,
 }: TaskBoardViewProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
   // A move into a stage that asks who's next is held here until someone is picked.
@@ -54,12 +68,23 @@ export default function TaskBoardView({
     const cols: Column[] = stages.map((s) => ({ id: s.id, name: s.name, color: s.color, tasks: byStage.get(s.id) ?? [], stage: s }))
     const orphans = byStage.get(UNASSIGNED) ?? []
     if (orphans.length) cols.unshift({ id: UNASSIGNED, name: 'Unscheduled', color: '#CBD5E1', tasks: orphans, stage: null })
-    // Always-present trailing drop target — completed tasks leave the active
-    // list (see useTasks.toggleDone), so this column is intentionally never
-    // populated; it exists purely to catch drags.
-    cols.push({ id: COMPLETED, name: 'Completed', color: '#22C55E', tasks: [], stage: null })
+    // Newest first, and capped: a board column is for looking at recent work,
+    // not for holding a year of it. The count below says what isn't shown rather
+    // than quietly truncating.
+    const done = [...completedTasks].sort((a, b) => (
+      (b.completed_at ?? b.updated_at).localeCompare(a.completed_at ?? a.updated_at)
+    ))
+    cols.push({
+      id: COMPLETED,
+      name: 'Completed',
+      color: '#22C55E',
+      tasks: done.slice(0, COMPLETED_VISIBLE),
+      stage: null,
+    })
     return cols
-  }, [tasks, stages])
+  }, [tasks, completedTasks, stages])
+
+  const completedHidden = Math.max(0, completedTasks.length - COMPLETED_VISIBLE)
 
   /**
    * Whether the viewer may take this task out of where it currently sits.
@@ -77,8 +102,17 @@ export default function TaskBoardView({
     const taskId = String(e.active.id)
     const target = e.over ? String(e.over.id) : null
     if (!target || target === UNASSIGNED) return
-    const task = tasks.find((t) => t.id === taskId)
+    // Both lists: a card dragged out of the Completed column isn't in `tasks`.
+    const task = tasks.find((t) => t.id === taskId) ?? completedTasks.find((t) => t.id === taskId)
     if (!task) return
+
+    // Finished work is already past every gate — dragging it back to a stage
+    // reopens it there rather than being refused by the gate it cleared.
+    if (task.done) {
+      if (target === COMPLETED) return
+      onReopen?.(taskId, target)
+      return
+    }
 
     const gate = canLeaveCurrentStage(task)
     if (!gate.ok) { onBlocked?.(gate.message); return }
@@ -103,7 +137,7 @@ export default function TaskBoardView({
         <div className="flex gap-3 overflow-x-auto pb-4">
           {columns.map((col) => (
             col.id === COMPLETED
-              ? <CompletedColumn key={col.id} col={col} />
+              ? <CompletedColumn key={col.id} col={col} onOpen={onOpen} hidden={completedHidden} />
               : <BoardColumn key={col.id} col={col} onOpen={onOpen} />
           ))}
         </div>
@@ -128,21 +162,39 @@ export default function TaskBoardView({
   )
 }
 
-function CompletedColumn({ col }: { col: Column }) {
+function CompletedColumn({ col, onOpen, hidden }: {
+  col: Column; onOpen: (t: Task) => void; hidden: number
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: col.id })
   return (
     <div className="w-72 flex-shrink-0">
       <div className="flex items-center gap-2 px-1 mb-2">
         <Check size={13} style={{ color: col.color }} />
         <span className="text-sm font-semibold text-gray-700">{col.name}</span>
+        {col.tasks.length > 0 && (
+          <span className="text-xs2 text-gray-400">{col.tasks.length + hidden}</span>
+        )}
       </div>
       <div
         ref={setNodeRef}
-        className={`min-h-[120px] rounded-2xl p-2 border-2 border-dashed transition-colors flex items-center justify-center ${
+        className={`min-h-[120px] rounded-2xl p-2 border-2 border-dashed transition-colors space-y-2 ${
           isOver ? 'bg-green-50 border-green-300' : 'border-gray-200'
         }`}
       >
-        <p className="text-xs2 text-gray-400 text-center px-2">Drop a task here to mark it complete</p>
+        {col.tasks.length === 0 ? (
+          <p className="text-xs2 text-gray-400 text-center px-2 py-8">Drop a task here to mark it complete</p>
+        ) : (
+          <>
+            {col.tasks.map((t) => <Card key={t.id} task={t} stage={null} onOpen={onOpen} />)}
+            {/* Said out loud rather than silently cut off — a column showing 20
+                of 300 that looked like all of them would be worse than a count. */}
+            {hidden > 0 && (
+              <p className="text-3xs text-gray-400 text-center pt-1">
+                {hidden} more in the Completed view
+              </p>
+            )}
+          </>
+        )}
       </div>
     </div>
   )

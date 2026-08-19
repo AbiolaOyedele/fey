@@ -11,6 +11,7 @@ import { useAllProjects } from '@/hooks/useProjects'
 import { useContacts } from '@/hooks/useCrm'
 import { useTeam } from '@/hooks/useTeam'
 import { useTeamChatRecent } from '@/hooks/useTeamChatRecent'
+import { useAuth } from '@/contexts/AuthContext'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Task, TaskPriority } from '@/types/work-tasks'
 import type { Project } from '@/types/project'
@@ -75,6 +76,7 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
   const { contacts } = useContacts()
   const { members } = useTeam(workspaceId ?? null)
   const { messages: teamMessages, loading: teamLoading } = useTeamChatRecent(workspaceId)
+  const { user } = useAuth()
 
   const today = startOfToday()
 
@@ -88,9 +90,23 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
     })
   }, [tasks])
 
-  const overdueCount = useMemo(
-    () => tasks.filter((t) => t.due_date && new Date(t.due_date).setHours(0, 0, 0, 0) < today).length,
-    [tasks, today],
+  /**
+   * Overdue work sitting on YOUR desk — not the workspace's total.
+   *
+   * The badge used to count every overdue task in the workspace, which meant a
+   * task you handed to someone a fortnight ago still showed up as a red number
+   * next to your name. Responsibility is what the whole handoff model is for:
+   * if it isn't on your desk, it isn't yours to answer for, and the badge says
+   * so. The tile's own count stays workspace-wide — it's labelled "Open tasks",
+   * and that is the workspace's open work.
+   */
+  const overdueOnMyDesk = useMemo(
+    () => tasks.filter((t) => (
+      t.responsible_id === user?.id
+      && t.due_date
+      && new Date(t.due_date).setHours(0, 0, 0, 0) < today
+    )).length,
+    [tasks, today, user?.id],
   )
 
   const activeProjects = useMemo(() => projects.filter((p) => p.status === 'active'), [projects])
@@ -110,7 +126,7 @@ export default function DashboardWork({ workspaceId, accent, unreadMessages, pen
   const tiles: { label: string; value: number; badge?: { text: string; color: string }; href: string; icon: typeof CheckCircle2 }[] = [
     {
       label: 'Open tasks', value: tasks.length, href: '/tasks', icon: CheckCircle2,
-      ...(overdueCount > 0 ? { badge: { text: `${overdueCount} overdue`, color: '#E24B4A' } } : {}),
+      ...(overdueOnMyDesk > 0 ? { badge: { text: `${overdueOnMyDesk} overdue on your desk`, color: '#E24B4A' } } : {}),
     },
     { label: 'Active brands', value: activeProjects.length, href: '/projects', icon: FolderKanban },
     { label: 'Unread messages', value: unreadMessages, href: '/clients', icon: MessageSquare },

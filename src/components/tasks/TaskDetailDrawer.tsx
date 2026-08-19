@@ -225,10 +225,18 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
             need to know how tall the header is. */}
         <div className="sticky top-0 z-10 bg-white rounded-t-2xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2 text-xs2 text-gray-400 min-w-0">
-            {task.project_title ? <span className="truncate">{task.project_title}</span>
-              : task.contact_name ? <span className="truncate">{task.contact_name}</span>
-              : <span>{task.visibility === 'team' ? 'Team' : 'Personal'}</span>}
+          {/* Which brand this is for is the first thing you need when a task is
+              one of forty across six clients, so it reads as a heading rather
+              than as small print. The fallbacks stay quiet — "Team" isn't a
+              brand and shouldn't be dressed as one. */}
+          <div className="flex items-center gap-2 min-w-0">
+            {task.project_title ? (
+              <span className="truncate text-sm font-semibold text-gray-800">{task.project_title}</span>
+            ) : task.contact_name ? (
+              <span className="truncate text-sm font-semibold text-gray-800">{task.contact_name}</span>
+            ) : (
+              <span className="text-xs2 text-gray-400">{task.visibility === 'team' ? 'Team' : 'Personal'}</span>
+            )}
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100">
             <X size={18} />

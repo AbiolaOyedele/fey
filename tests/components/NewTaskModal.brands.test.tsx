@@ -60,6 +60,9 @@ describe('NewTaskModal — brand picker', () => {
 
     await user.type(screen.getByPlaceholderText('Task title…'), 'New billboard')
     await user.selectOptions(screen.getByLabelText('Brand'), 'p2')
+    // Twice: nobody is assigned, so the first press raises the "nobody's on
+    // this" nudge. Covered properly in its own describe below.
+    await user.click(screen.getByRole('button', { name: 'Add task' }))
     await user.click(screen.getByRole('button', { name: 'Add task' }))
 
     expect(onCreate).toHaveBeenCalledTimes(1)
@@ -71,6 +74,7 @@ describe('NewTaskModal — brand picker', () => {
     const onCreate = renderPortalSheet()
 
     await user.type(screen.getByPlaceholderText('Task title…'), 'Unfiled')
+    await user.click(screen.getByRole('button', { name: 'Add task' }))
     await user.click(screen.getByRole('button', { name: 'Add task' }))
 
     expect(onCreate.mock.calls[0]![0]).toMatchObject({ project_id: null })
@@ -96,5 +100,72 @@ describe('NewTaskModal — brand picker', () => {
   it('meets the 44px tap target minimum', () => {
     renderPortalSheet()
     expect(screen.getByLabelText('Brand').className).toContain('min-h-11')
+  })
+})
+
+/**
+ * A task that isn't personal and has nobody on it.
+ *
+ * Unassigned team work lands on a board where everyone assumes somebody else
+ * has it. The prompt is a nudge, not a gate: "I don't know who yet" is a real
+ * answer, and pressing again goes through.
+ */
+describe('NewTaskModal — unassigned team task', () => {
+  function renderTeamSheet(onCreate = vi.fn().mockResolvedValue({})) {
+    render(
+      <NewTaskModal
+        workspaceId={null}
+        hideLinks
+        lockedVisibility="team"
+        brands={BRANDS}
+        members={[{ user_id: 'u1', name: 'Ada', email: null }]}
+        stages={[]}
+        onCreate={onCreate}
+        onClose={vi.fn()}
+      />,
+    )
+    return onCreate
+  }
+
+  it('asks before raising work nobody is on', async () => {
+    const user = userEvent.setup()
+    const onCreate = renderTeamSheet()
+    await user.type(screen.getByPlaceholderText('Task title…'), 'Nobody on this')
+    await user.click(screen.getByRole('button', { name: 'Add task' }))
+
+    expect(onCreate).not.toHaveBeenCalled()
+    expect(screen.getByText(/Nobody’s on this yet/)).toBeInTheDocument()
+  })
+
+  it('goes through on the second press — a nudge, not a gate', async () => {
+    const user = userEvent.setup()
+    const onCreate = renderTeamSheet()
+    await user.type(screen.getByPlaceholderText('Task title…'), 'Nobody on this')
+    await user.click(screen.getByRole('button', { name: 'Add task' }))
+    await user.click(screen.getByRole('button', { name: 'Add task' }))
+
+    expect(onCreate).toHaveBeenCalledTimes(1)
+    expect(onCreate.mock.calls[0]![0]).toMatchObject({ assignee_ids: [] })
+  })
+
+  it('never asks when there is nobody to assign to', async () => {
+    const user = userEvent.setup()
+    const onCreate = vi.fn().mockResolvedValue({})
+    render(
+      <NewTaskModal
+        workspaceId={null}
+        hideLinks
+        lockedVisibility="team"
+        brands={BRANDS}
+        // The agency hasn't shared anyone with this client yet.
+        members={[]}
+        stages={[]}
+        onCreate={onCreate}
+        onClose={vi.fn()}
+      />,
+    )
+    await user.type(screen.getByPlaceholderText('Task title…'), 'No roster')
+    await user.click(screen.getByRole('button', { name: 'Add task' }))
+    expect(onCreate).toHaveBeenCalledTimes(1)
   })
 })

@@ -196,12 +196,53 @@ export const isImageType = (fileType: FileType): boolean => fileType === 'image'
 export const isPdfType   = (fileType: FileType): boolean => fileType === 'pdf'
 
 /**
+ * True when `downloadUrl` can actually force a download for this URL.
+ *
+ * Only Cloudinary can: the rewrite below makes it send
+ * `Content-Disposition: attachment`, which is what turns a click into a save
+ * rather than a render. The `download` attribute on an anchor can't do it —
+ * browsers ignore it cross-origin — so anything not delivered by Cloudinary
+ * still has to open, and callers use this to decide whether a new tab is the
+ * honest behaviour or an avoidable one.
+ */
+export const canForceDownload = (fileUrl: string): boolean =>
+  /^https:\/\/res\.cloudinary\.com\//.test(fileUrl) && fileUrl.includes('/upload/')
+
+/**
  * Rewrites a Cloudinary delivery URL so the browser downloads instead of
  * rendering inline (`fl_attachment` transformation). Non-Cloudinary URLs are
- * returned untouched.
+ * returned untouched — which the host check is what actually guarantees; a bare
+ * `/upload/` appears in plenty of URLs that aren't Cloudinary's.
  */
 export const downloadUrl = (fileUrl: string): string =>
-  fileUrl.replace(/\/upload\//, '/upload/fl_attachment/')
+  canForceDownload(fileUrl) ? fileUrl.replace('/upload/', '/upload/fl_attachment/') : fileUrl
+
+/** Anchor props for a "save this file" control — see `downloadAnchorProps`. */
+export interface DownloadAnchorProps {
+  href: string
+  download: string
+  target?: '_blank'
+  rel?: string
+}
+
+/**
+ * Props for a control whose job is to save a file, not display it.
+ *
+ * Writing `download={name}` on an anchor does nothing when the file lives on
+ * another origin — every browser ignores it — so these controls were quietly
+ * behaving as "open": a new tab with the PDF or image rendered in it, and
+ * nothing saved. Cloudinary can be asked for an attachment variant, which sets
+ * `Content-Disposition` and makes the click a real download that leaves the
+ * current page alone; where that isn't possible the link still opens in a new
+ * tab, because navigating someone out of what they were doing is worse.
+ *
+ * Spread onto the anchor: `<a {...downloadAnchorProps(url, name)}>`.
+ */
+export function downloadAnchorProps(fileUrl: string, fileName: string): DownloadAnchorProps {
+  return canForceDownload(fileUrl)
+    ? { href: downloadUrl(fileUrl), download: fileName }
+    : { href: fileUrl, download: fileName, target: '_blank', rel: 'noopener noreferrer' }
+}
 
 /** Small square thumbnail variant of a Cloudinary image URL (fast to load). */
 export const thumbUrl = (fileUrl: string, size = 160): string =>

@@ -23,6 +23,7 @@ import {
   isPdfType,
   uploadToCloudinary,
   getFileType,
+  downloadAnchorProps,
 } from '@/utils/cloudinary'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -139,10 +140,7 @@ function FilePreview({ file }: FilePreviewProps) {
         </p>
       </div>
       <a
-        href={file.file_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        download={file.file_name}
+        {...downloadAnchorProps(file.file_url, file.file_name)}
         className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
         style={{ backgroundColor: 'var(--accent, #ED64A6)' }}
       >
@@ -395,10 +393,7 @@ export default function FilePreviewModal({
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <a
-              href={currentFile.file_url}
-              download={currentFile.file_name}
-              target="_blank"
-              rel="noopener noreferrer"
+              {...downloadAnchorProps(currentFile.file_url, currentFile.file_name)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
             >
               <Download size={13} />

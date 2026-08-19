@@ -362,6 +362,27 @@ async function planStageMove(
   }
 }
 
+/**
+ * Keeps the desk and the assignee list agreeing.
+ *
+ * Handing someone the baton puts them on the task. Without this the two can
+ * drift apart — a task sitting on Bob's desk while the people "on" it are Ada
+ * and Chi — and then every later edit to the assignees has to guess whether
+ * Bob's claim outranks theirs. Making the holder an assignee removes the guess:
+ * the people on a task are its assignees, and exactly one of them is holding it.
+ *
+ * Never throws. Someone failing to appear in an avatar list must not roll back
+ * the handoff itself.
+ */
+async function keepHolderOnTask(db: SupabaseClient, taskId: string, holderId: string | null): Promise<void> {
+  if (!holderId) return
+  try {
+    await repo.addAssignee(db, taskId, holderId)
+  } catch (err) {
+    console.warn('[work-tasks] holder not added to assignees (change saved)', { taskId, err })
+  }
+}
+
 /** Appends to the chain. Never throws — history must not fail a real move. */
 async function recordHandoff(args: {
   db: SupabaseClient
@@ -585,6 +606,9 @@ export async function updateTask(db: SupabaseClient, ctx: Ctx, id: string, input
   }
 
   await repo.updateTaskRow(db, id, updates)
+  if (updates.responsible_id !== undefined) {
+    await keepHolderOnTask(db, id, updates.responsible_id as string | null)
+  }
   if (d.description !== undefined) await cleanupRemovedDescriptionImages(id, existing.description, d.description)
 
   const core: TaskCore = {
@@ -706,16 +730,49 @@ export async function setAssignees(db: SupabaseClient, taskId: string, userIds: 
   const added   = userIds.filter((id) => !prev.includes(id))
   const removed = prev.filter((id) => !userIds.includes(id))
 
-  // Keep the baton on a real person. Two ways it comes loose: the holder was
-  // just taken off the task, or the task never had one. Either way the first
-  // assignee picks it up, so the task can't drift into being nobody's job.
-  const holderRemoved = existing.responsible_id !== null && !userIds.includes(existing.responsible_id) && removed.includes(existing.responsible_id)
-  if ((holderRemoved || existing.responsible_id === null) && userIds.length > 0) {
-    await repo.updateTaskRow(db, taskId, { responsible_id: userIds[0] })
+  // Assigning someone hands them the task.
+  //
+  // The baton follows the assignee list: whoever holds it keeps it while they're
+  // still on the task, and otherwise the first assignee picks it up. That's what
+  // makes "assign it to Ada" put the work on Ada's desk rather than leaving it
+  // on yours with her name attached to it.
+  //
+  // The previous rule also required the holder to have BEEN an assignee before
+  // (`removed.includes(...)`), which is precisely the case that never holds. A
+  // task starts on its creator's desk without the creator being assigned to it,
+  // so on the first assignment there was nothing to remove and the baton never
+  // moved. Handing work over left it exactly where it was.
+  //
+  // An empty list can't take the baton — an unheld task is one nobody is
+  // answerable for, and the holder stays until there's someone to pass it to.
+  const holderStillOn = existing.responsible_id !== null && userIds.includes(existing.responsible_id)
+  const nextHolder = holderStillOn ? existing.responsible_id : (userIds[0] ?? existing.responsible_id)
+  const batonMoved = nextHolder !== existing.responsible_id
+
+  if (batonMoved) {
+    await repo.updateTaskRow(db, taskId, { responsible_id: nextHolder })
+    await recordHandoff({
+      db,
+      existing,
+      toStageId: existing.stage_id,
+      toUserId: nextHolder,
+      actorId,
+      kind: 'reassigned',
+    })
   }
+
+  const task = await repo.getTaskById(db, taskId)
+  const taskTitle = task?.title ?? existing.title ?? 'A task'
+
   if (added.length) {
-    const task = await repo.getTaskById(db, taskId)
-    await notifyAssigned(existing, added, task?.title ?? 'A task', actorId)
+    await notifyAssigned(existing, added, taskTitle, actorId)
+  }
+  // Only when they weren't just told. Someone newly assigned already has a
+  // message saying so; a second one saying the same task is on their desk is
+  // the same fact twice. Someone already on the task who has just picked up the
+  // baton has heard nothing yet, and it's theirs now.
+  if (batonMoved && nextHolder !== null && !added.includes(nextHolder)) {
+    await notifyBatonPassed(existing, nextHolder, taskTitle, null, actorId)
   }
   // Everyone still on the task hears that the line-up changed — including the
   // people taken off it, who otherwise find out by the task quietly vanishing.
@@ -813,6 +870,7 @@ export async function ruleOnTask(
 
   updates.responsible_id = toUser
   await repo.updateTaskRow(db, id, updates)
+  await keepHolderOnTask(db, id, toUser)
 
   await recordHandoff({
     db, existing,

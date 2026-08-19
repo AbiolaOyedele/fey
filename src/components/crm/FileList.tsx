@@ -7,6 +7,7 @@ import {
   X, ExternalLink, LayoutGrid, List,
 } from 'lucide-react'
 import { useViewMode } from '@/hooks/useViewMode'
+import { downloadAnchorProps } from '@/utils/cloudinary'
 import type { CrmFile } from '@/types/crm'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -164,7 +165,7 @@ function PreviewModal({ file, isOwn, onClose, onDelete }: { file: CrmFile; isOwn
           <a href={file.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors">
             <ExternalLink size={13} /> Open original
           </a>
-          <a href={file.file_url} download={file.file_name} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors">
+          <a {...downloadAnchorProps(file.file_url, file.file_name)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors">
             <Download size={13} /> Download
           </a>
           {isOwn && (
@@ -205,7 +206,7 @@ function PreviewModal({ file, isOwn, onClose, onDelete }: { file: CrmFile; isOwn
             </div>
             <p className="text-sm font-semibold text-gray-800">{file.file_name}</p>
             <p className="text-xs text-gray-400">{formatBytes(file.file_size)}</p>
-            <a href={file.file_url} download={file.file_name} className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
+            <a {...downloadAnchorProps(file.file_url, file.file_name)} className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: 'var(--accent, #ED64A6)' }}>
               <Download size={14} /> Download file
             </a>
           </div>
@@ -324,8 +325,10 @@ export default function FileList({ files, loading, onUpload, onDelete, uploading
                     {formatDate(file.created_at)}
                   </p>
                 </button>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                  <a href={file.file_url} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors" title="Download">
+                {/* reveal-on-hover, not opacity-0: on a touch screen there is no hover, so
+                    these were invisible and the file could not be downloaded at all. */}
+                <div className="flex items-center gap-1 reveal-on-hover flex-shrink-0">
+                  <a {...downloadAnchorProps(file.file_url, file.file_name)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors" title="Download">
                     <Download size={14} />
                   </a>
                   {canDelete && (

@@ -6,7 +6,7 @@ import {
   FileText, FileSpreadsheet, FileArchive, File as FileIcon,
 } from 'lucide-react'
 import { useTaskReview } from '@/hooks/useTaskReview'
-import { uploadToCloudinary, getFileType, validateUploadFile, type FileType } from '@/utils/cloudinary'
+import { uploadToCloudinary, getFileType, validateUploadFile, downloadAnchorProps, type FileType } from '@/utils/cloudinary'
 import { Skeleton } from '@/components/ui/skeleton'
 import { relativeTime } from '@/utils/relativeTime'
 import { MAX_REVIEW_VERSIONS, REVIEW_STATUS_META } from '@/types/task-review'
@@ -442,7 +442,7 @@ function ReviewFileRow({ file, onRemove }: { file: ReviewFile; onRemove?: (() =>
           {formatSize(file.file_size) && (
             <span className="text-4xs text-gray-400 flex-shrink-0">{formatSize(file.file_size)}</span>
           )}
-          <DownloadLink url={file.file_url} />
+          <DownloadLink url={file.file_url} name={file.file_name} />
           {remove}
         </div>
       </div>
@@ -459,7 +459,7 @@ function ReviewFileRow({ file, onRemove }: { file: ReviewFile; onRemove?: (() =>
           {formatSize(file.file_size) && (
             <span className="text-4xs text-gray-400 flex-shrink-0">{formatSize(file.file_size)}</span>
           )}
-          <DownloadLink url={file.file_url} />
+          <DownloadLink url={file.file_url} name={file.file_name} />
           {remove}
         </div>
       </div>
@@ -475,19 +475,30 @@ function ReviewFileRow({ file, onRemove }: { file: ReviewFile; onRemove?: (() =>
       {formatSize(file.file_size) && (
         <span className="text-4xs text-gray-400 flex-shrink-0">{formatSize(file.file_size)}</span>
       )}
-      <DownloadLink url={file.file_url} />
+      <DownloadLink url={file.file_url} name={file.file_name} />
       {remove}
     </div>
   )
 }
 
-function DownloadLink({ url }: { url: string }) {
+/**
+ * Saves the file instead of opening it.
+ *
+ * This used to be `target="_blank"` on the raw URL, which hands the browser an
+ * image or a PDF and lets it render — a new tab, and no file. Cloudinary is
+ * asked for the attachment variant instead, so the click downloads and the
+ * review stays where it is. The `download` attribute alone can't do this:
+ * browsers ignore it cross-origin.
+ *
+ * Anything not served by Cloudinary can't be forced, so it opens in a tab
+ * rather than navigating the person out of the task they're reviewing.
+ */
+function DownloadLink({ url, name }: { url: string; name: string }) {
+  const props = downloadAnchorProps(url, name)
   return (
     <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      title="Download"
+      {...props}
+      title={props.target ? `Open ${name}` : `Download ${name}`}
       className="w-9 h-9 -my-1 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 flex-shrink-0"
     >
       <Download size={14} />

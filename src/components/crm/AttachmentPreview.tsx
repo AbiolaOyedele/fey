@@ -1,7 +1,7 @@
 'use client'
 
 import { FileText, FileSpreadsheet, FileArchive, File as FileIcon, Download } from 'lucide-react'
-import { formatFileSize } from '@/utils/cloudinary'
+import { formatFileSize, downloadAnchorProps } from '@/utils/cloudinary'
 import type { MessageAttachment } from '@/types/crm'
 
 function isImage(att: MessageAttachment): boolean {
@@ -51,11 +51,11 @@ export default function AttachmentPreview({ attachments, onAccent = false }: Att
             />
           </a>
         ) : (
+          // The chip carries a download glyph, so it downloads. It used to open
+          // a tab and render the file, which is what the glyph promised not to do.
           <a
             key={i}
-            href={att.file_url}
-            target="_blank"
-            rel="noopener noreferrer"
+            {...downloadAnchorProps(att.file_url, att.file_name)}
             className={`group flex items-center gap-2.5 rounded-xl px-2.5 py-2 max-w-[240px] transition-colors ${
               onAccent ? 'bg-white/20 hover:bg-white/30' : 'bg-gray-50 hover:bg-gray-100 border border-gray-100'
             }`}

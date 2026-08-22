@@ -89,7 +89,10 @@ async function announceReviewEvent(args: {
   headline: string
   detail: string
 }): Promise<void> {
-  const link = `/tasks?taskId=${args.taskId}`
+  // Straight to the Review tab. The whole subject of this notification is the
+  // deliverable, and landing on Details meant the client was told work was ready
+  // and then shown a form, with one more tap to find the thing itself.
+  const link = `/tasks?taskId=${args.taskId}&tab=review`
   try {
     const db = createServiceClient()
     const participants = await taskRepo.getTaskParticipants(db, args.taskId)

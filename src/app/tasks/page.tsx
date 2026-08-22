@@ -57,6 +57,12 @@ export default function TasksPage() {
   const wsId = workspace?.id ?? null
   const searchParams = useSearchParams()
   const deepLinkTaskId = searchParams.get('taskId')
+  /**
+   * Which tab that link wants. A review notification is about the deliverable,
+   * so it opens on Review — the client's side does the same, from the same
+   * link, because both sides are told about the same event.
+   */
+  const deepLinkTab = searchParams.get('tab') === 'review' ? 'review' as const : undefined
   // The dashboard links straight to the insights tab.
   const deepLinkView = searchParams.get('view')
 
@@ -155,6 +161,9 @@ export default function TasksPage() {
 
   // Keep the open drawer's task in sync with the latest data.
   const liveSelected = selected ? (active.tasks.find((t) => t.id === selected.id) ?? completed.tasks.find((t) => t.id === selected.id) ?? selected) : null
+
+  // Only for the task the link named; anything opened by hand starts on Details.
+  const openTab = liveSelected && liveSelected.id === deepLinkTaskId ? deepLinkTab : undefined
 
   // ── Action handlers with confirmation toasts ──────────────────────────────
   const handleCreate = useCallback(async (payload: Parameters<typeof active.createTask>[0]) => {
@@ -381,7 +390,11 @@ export default function TasksPage() {
       {/* Drawer */}
       {liveSelected && (
         <TaskDetailDrawer
+          // Keyed so a second notification arriving while the drawer is already
+          // open re-opens it on the tab that notification asked for.
+          key={`${liveSelected.id}:${openTab ?? 'details'}`}
           task={liveSelected}
+          {...(openTab ? { initialTab: openTab } : {})}
           workspaceId={wsId}
           stages={defaultStages}
           onPatch={source.patchTask}

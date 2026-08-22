@@ -16,7 +16,13 @@ export function portalNotificationHref(n: Pick<PortalNotification, 'link' | 'ent
   const id = n.entity_id
   if (id) {
     switch (n.entity_type) {
-      case 'task':            return `/tasks?taskId=${encodeURIComponent(id)}`
+      // A stored link that already names this task is MORE specific than
+      // anything rebuilt from the entity alone — it can carry which tab to open,
+      // which is how a "ready for review" notification lands on the deliverable
+      // rather than on the task's details. Rebuilding is still the answer for
+      // the old rows this function exists for, which stored a bare '/tasks'.
+      case 'task':
+        return n.link?.includes(`taskId=${id}`) ? n.link : `/tasks?taskId=${encodeURIComponent(id)}`
       case 'crm_contract':    return `/contracts/${id}`
       case 'crm_form':        return `/forms/${id}`
       case 'crm_message':     return `/messages?messageId=${encodeURIComponent(id)}`

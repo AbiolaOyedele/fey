@@ -76,6 +76,8 @@ interface TaskDetailDrawerProps {
    * the workspace roster, neither of which a portal user has. Pass
    * `commentsSlot` to put a different thread in its place rather than none.
    */
+  /** Which tab to open on. Notifications about a deliverable open on Review. */
+  initialTab?: DrawerTab
   hideComments?: boolean
   /** Rendered where the comment thread would be. Used by the client portal. */
   commentsSlot?: React.ReactNode
@@ -110,7 +112,11 @@ export default function TaskDetailDrawer(props: TaskDetailDrawerProps) {
   const { task, workspaceId, stages, onPatch, onSetAssignees, onAddSubtask, onToggleSubtask, onRenameSubtask, onDeleteSubtask, onAddFile, onRemoveFile, onDelete, onClose, members, hideComments, commentsSlot, hideDelete, portalSubdomain, reviewReadOnly, currentUserId, canManage, onSetResponsible, onRule } = props
   const confirm = useConfirm()
   useScrollLock()
-  const [tab, setTab] = useState<DrawerTab>('details')
+  // Which tab to land on. Read once as the initial value rather than synced
+  // through an effect: a notification decides where you arrive, not where you
+  // stay, and re-applying it would drag someone back every time the task
+  // refetched under them.
+  const [tab, setTab] = useState<DrawerTab>(props.initialTab ?? 'details')
 
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description ?? '')

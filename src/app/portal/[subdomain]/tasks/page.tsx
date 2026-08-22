@@ -35,7 +35,17 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
   const accent  = usePortalAccent(subdomain)
   const session = usePortalSession()
   // A notification names one task, so it links to that task — ?taskId=<id>.
-  const deepLinkTaskId = useSearchParams().get('taskId')
+  const searchParams = useSearchParams()
+  const deepLinkTaskId = searchParams.get('taskId')
+  /**
+   * Which tab that link wants. "Your work is ready for review" should land on
+   * the deliverable, not on the task's details with the thing itself one more
+   * tap away.
+   *
+   * Only honoured while the deep link is being consumed — opening a task by
+   * hand afterwards starts on Details, as it should.
+   */
+  const deepLinkTab = searchParams.get('tab') === 'review' ? 'review' as const : undefined
   // Viewers are read-only by definition, so they never see the compose button.
   const canWrite = session ? session.session.portalUser.role !== 'viewer' : false
 
@@ -99,6 +109,10 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
 
   // Keep the open drawer's task in step with the latest data.
   const liveSelected = selected ? (t.tasks.find((x) => x.id === selected.id) ?? selected) : null
+
+  // The requested tab belongs to the task the link named, and only that one.
+  // Opening something else by hand afterwards starts on Details.
+  const openTab = liveSelected && liveSelected.id === deepLinkTaskId ? deepLinkTab : undefined
 
   // Progress only appears when the owner has switched it on for this client —
   // resolved with the session, so there's no tab that opens onto a refusal.
@@ -185,7 +199,11 @@ export default function PortalTasksPage({ params }: { params: Promise<{ subdomai
 
       {liveSelected && (
         <TaskDetailDrawer
+          // Keyed so a second notification, arriving while the drawer is
+          // already open, re-opens it on the tab that notification asked for.
+          key={`${liveSelected.id}:${openTab ?? 'details'}`}
           task={liveSelected}
+          {...(openTab ? { initialTab: openTab } : {})}
           workspaceId={null}
           stages={t.stages}
           members={pickableMembers}
